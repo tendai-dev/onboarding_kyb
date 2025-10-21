@@ -1,0 +1,140 @@
+name: Build and Test
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+
+env:
+  DOTNET_VERSION: '8.0.x'
+
+jobs:
+  build-and-test:
+    name: Build and Test .NET Services
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        service:
+          - onboarding-api
+          - document-service
+          - checklist-service
+          - risk-service
+          - notification-service
+          - webhook-dispatcher
+          - auditlog-service
+          - projections-api
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      - name: Restore dependencies
+        run: |
+          cd services/${{ matrix.service }}
+          dotnet restore
+
+      - name: Build
+        run: |
+          cd services/${{ matrix.service }}
+          dotnet build --no-restore --configuration Release
+
+      - name: Run unit tests
+        run: |
+          cd services/${{ matrix.service }}
+          dotnet test --no-build --configuration Release --verbosity normal --collect:"XPlat Code Coverage"
+
+      - name: Upload coverage reports
+        uses: codecov/codecov-action@v3
+        with:
+          file: ./services/${{ matrix.service }}/**/coverage.cobertura.xml
+          flags: ${{ matrix.service }}
+          name: ${{ matrix.service }}
+
+  lint-docker:
+    name: Lint Dockerfiles
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Run Hadolint
+        uses: hadolint/hadolint-action@v3.1.0
+        with:
+          dockerfile: services/*/Dockerfile
+          recursive: true
+
+  lint-helm:
+    name: Lint Helm Charts
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Helm
+        uses: azure/setup-helm@v3
+        with:
+          version: '3.13.0'
+
+      - name: Lint Helm charts
+        run: |
+          for chart in infra/helm/charts/*; do
+            if [ -d "$chart" ]; then
+              echo "Linting $chart"
+              helm lint "$chart"
+            fi
+          done
+
+  security-scan:
+    name: Security Scanning
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Run Trivy vulnerability scanner
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: 'fs'
+          scan-ref: '.'
+          format: 'sarif'
+          output: 'trivy-results.sarif'
+
+      - name: Upload Trivy results to GitHub Security tab
+        uses: github/codeql-action/upload-sarif@v2
+        with:
+          sarif_file: 'trivy-results.sarif'
+
+  sbom:
+    name: Generate SBOM
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      - name: Install SBOM tool
+        run: dotnet tool install --global Microsoft.Sbom.DotNetTool
+
+      - name: Generate SBOM
+        run: |
+          for service in services/*/src/*.csproj; do
+            dir=$(dirname "$service")
+            sbom-tool generate -b "$dir" -bc "$dir" -pn "$(basename $(dirname $(dirname $service)))" -pv "1.0.0" -ps "YourOrg" -nsb "https://sbom.yourorg.com"
+          done
+
+      - name: Upload SBOM artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: sbom
+          path: services/*/_manifest/spdx_2.2/*.json
+

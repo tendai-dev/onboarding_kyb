@@ -1,0 +1,161 @@
+# API Gateway Policies & Standards
+# These are enforced via Nginx Ingress configuration
+
+# ========================================
+# Standard Headers (Required)
+# ========================================
+# Request Headers:
+#   - Authorization: Bearer <token>     (required for authenticated endpoints)
+#   - Content-Type: application/json    (required for POST/PUT/PATCH)
+#   - Accept: application/json          (required)
+#   - X-Request-Id: <uuid>              (auto-generated if not provided)
+#   - Idempotency-Key: <uuid>           (required for state-changing operations)
+#   - Prefer: return=minimal|respond-async (optional)
+
+# Response Headers:
+#   - Content-Type: application/json
+#   - X-Request-Id: <uuid>
+#   - X-RateLimit-Limit: <limit>
+#   - X-RateLimit-Remaining: <remaining>
+#   - X-RateLimit-Reset: <timestamp>
+#   - ETag: "<etag>"                    (for cacheable resources)
+#   - Last-Modified: <timestamp>        (for cacheable resources)
+
+# ========================================
+# Error Response Format (Standard Envelope)
+# ========================================
+# {
+#   "name": "ValidationError",
+#   "message": "Request validation failed",
+#   "details": [
+#     {
+#       "field": "email",
+#       "message": "Invalid email format"
+#     }
+#   ],
+#   "debug_id": "req-12345678-1234-1234-1234-123456789012"
+# }
+
+# ========================================
+# Success Response Formats
+# ========================================
+# Single Resource:
+# {
+#   "id": "uuid",
+#   "type": "onboarding-case",
+#   "attributes": { ... },
+#   "relationships": { ... },
+#   "links": {
+#     "self": "/onboarding/v1/cases/uuid"
+#   }
+# }
+
+# Collection:
+# {
+#   "items": [ ... ],
+#   "total": 100,
+#   "page": 1,
+#   "page_size": 20,
+#   "links": {
+#     "self": "/onboarding/v1/cases?page=1",
+#     "next": "/onboarding/v1/cases?page=2",
+#     "prev": null
+#   }
+# }
+
+# ========================================
+# HTTP Status Codes (Standard Usage)
+# ========================================
+# 200 OK                  - Successful GET/PUT/PATCH
+# 201 Created             - Successful POST (with Location header)
+# 202 Accepted            - Async operation started (with status endpoint)
+# 204 No Content          - Successful DELETE or Prefer: return=minimal
+# 304 Not Modified        - ETag/If-None-Match match
+# 400 Bad Request         - Invalid request payload/parameters
+# 401 Unauthorized        - Missing or invalid Bearer token
+# 403 Forbidden           - Valid token but insufficient permissions
+# 404 Not Found           - Resource does not exist
+# 409 Conflict            - Resource conflict (e.g., duplicate)
+# 415 Unsupported Media   - Non-JSON Content-Type
+# 422 Unprocessable       - Validation errors
+# 429 Too Many Requests   - Rate limit exceeded
+# 500 Internal Server     - Unexpected server error
+# 502 Bad Gateway         - Upstream service error
+# 503 Service Unavailable - Service temporarily unavailable
+# 504 Gateway Timeout     - Upstream timeout
+
+# ========================================
+# Rate Limiting Tiers
+# ========================================
+# Default:        100 req/s per IP, 50 concurrent connections
+# Authenticated:  Based on token scope (configured in services)
+# Burst:          Allow 20% over limit for 1s
+
+# ========================================
+# Idempotency
+# ========================================
+# - Required for: POST, PUT, PATCH, DELETE
+# - Header: Idempotency-Key: <uuid>
+# - Stored in Redis for 24 hours
+# - Same key + payload = cached response (200 or 201)
+# - Same key + different payload = 409 Conflict
+
+# ========================================
+# Authentication & Authorization
+# ========================================
+# - OAuth 2.1 Bearer tokens via Keycloak
+# - Token validation: signature + expiry + audience
+# - RBAC: roles/scopes checked in application layer
+# - Ownership: resources filtered by user/partner ID
+
+# ========================================
+# Tracing & Observability
+# ========================================
+# - W3C Trace Context: traceparent, tracestate headers
+# - Request ID: X-Request-Id (auto-generated or forwarded)
+# - Correlation: All logs/traces include request_id and trace_id
+# - Metrics: Prometheus format at /metrics endpoint
+# - Health: /health/live (liveness), /health/ready (readiness)
+
+# ========================================
+# API Versioning
+# ========================================
+# - URL-based: /service/v1/...
+# - Avoid breaking changes (additive only)
+# - Use /v2 only as last resort with 6-month deprecation
+
+# ========================================
+# Caching
+# ========================================
+# - ETag: Strong validators for GET responses
+# - Last-Modified: Timestamp-based validation
+# - Cache-Control: Vary by Authorization header
+# - If-None-Match: Client sends ETag for conditional requests
+# - 304 Not Modified: Return when ETag matches
+
+# ========================================
+# Content Negotiation
+# ========================================
+# - Accept: application/json (only JSON supported)
+# - Accept-Encoding: gzip, br (compression enabled)
+# - Accept-Language: en-US (i18n for error messages)
+
+# ========================================
+# Security Headers
+# ========================================
+# - Strict-Transport-Security: max-age=31536000; includeSubDomains
+# - X-Content-Type-Options: nosniff
+# - X-Frame-Options: DENY
+# - X-XSS-Protection: 1; mode=block
+# - Content-Security-Policy: (service-specific)
+
+# ========================================
+# Webhook Callbacks (Outbound)
+# ========================================
+# - Signature: X-Signature: sha256=<base64>
+# - Delivery ID: X-Delivery-Id: <uuid>
+# - Event Type: X-Event-Type: <event.name>
+# - Timestamp: X-Timestamp: <iso8601>
+# - Retry-After: <seconds> (on 429/503)
+# - User-Agent: OnboardingPlatform-Webhooks/1.0
+

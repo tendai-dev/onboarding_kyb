@@ -1,0 +1,154 @@
+---
+# Allow egress to DNS, Postgres, Redis, Kafka, MinIO from business services
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-egress-platform
+  namespace: business-onboarding
+spec:
+  podSelector: {}
+  policyTypes:
+  - Egress
+  egress:
+  # Allow DNS
+  - to:
+    - namespaceSelector:
+        matchLabels:
+          kubernetes.io/metadata.name: kube-system
+    ports:
+    - protocol: UDP
+      port: 53
+  # Allow Postgres
+  - to:
+    - namespaceSelector:
+        matchLabels:
+          name: platform-observability
+    ports:
+    - protocol: TCP
+      port: 5432
+  # Allow Redis
+  - to:
+    - namespaceSelector:
+        matchLabels:
+          name: platform-observability
+    ports:
+    - protocol: TCP
+      port: 6379
+  # Allow Kafka
+  - to:
+    - namespaceSelector:
+        matchLabels:
+          name: platform-observability
+    ports:
+    - protocol: TCP
+      port: 9092
+  # Allow MinIO
+  - to:
+    - namespaceSelector:
+        matchLabels:
+          name: platform-observability
+    ports:
+    - protocol: TCP
+      port: 9000
+  # Allow Keycloak
+  - to:
+    - namespaceSelector:
+        matchLabels:
+          name: platform-security
+    ports:
+    - protocol: TCP
+      port: 8080
+  # Allow external HTTPS (for external APIs, webhooks)
+  - to:
+    - namespaceSelector: {}
+    ports:
+    - protocol: TCP
+      port: 443
+  # Allow internal service mesh
+  - to:
+    - namespaceSelector: {}
+    ports:
+    - protocol: TCP
+      port: 8080
+---
+# Repeat for other business namespaces
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-egress-platform
+  namespace: business-documents
+spec:
+  podSelector: {}
+  policyTypes:
+  - Egress
+  egress:
+  - to:
+    - namespaceSelector: {}
+    ports:
+    - protocol: TCP
+    - protocol: UDP
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-egress-platform
+  namespace: business-risk
+spec:
+  podSelector: {}
+  policyTypes:
+  - Egress
+  egress:
+  - to:
+    - namespaceSelector: {}
+    ports:
+    - protocol: TCP
+    - protocol: UDP
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-egress-platform
+  namespace: business-notifications
+spec:
+  podSelector: {}
+  policyTypes:
+  - Egress
+  egress:
+  - to:
+    - namespaceSelector: {}
+    ports:
+    - protocol: TCP
+    - protocol: UDP
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-egress-platform
+  namespace: business-webhooks
+spec:
+  podSelector: {}
+  policyTypes:
+  - Egress
+  egress:
+  - to:
+    - namespaceSelector: {}
+    ports:
+    - protocol: TCP
+    - protocol: UDP
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-egress-platform
+  namespace: business-readmodel
+spec:
+  podSelector: {}
+  policyTypes:
+  - Egress
+  egress:
+  - to:
+    - namespaceSelector: {}
+    ports:
+    - protocol: TCP
+    - protocol: UDP
+

@@ -1,0 +1,193 @@
+# Spectral Linting Rules for OpenAPI Specifications
+# Enforces API design standards across all services
+
+extends: [[spectral:oas, all]]
+
+rules:
+  # ========================================
+  # Versioning Rules
+  # ========================================
+  oas3-api-servers:
+    description: Servers must include /v{N} in path
+    severity: error
+    given: $.servers[*].url
+    then:
+      function: pattern
+      functionOptions:
+        match: "^https?://[^/]+/(v[0-9]+)(/.*)?$"
+  
+  # ========================================
+  # Operation Rules
+  # ========================================
+  operation-operationId:
+    description: All operations must have unique operationId
+    severity: error
+    given: $.paths[*][*]
+    then:
+      field: operationId
+      function: truthy
+  
+  operation-tags:
+    description: All operations must have tags
+    severity: warn
+    given: $.paths[*][*]
+    then:
+      field: tags
+      function: truthy
+  
+  operation-summary:
+    description: All operations must have summary
+    severity: warn
+    given: $.paths[*][*]
+    then:
+      field: summary
+      function: truthy
+  
+  operation-description:
+    description: All operations should have description
+    severity: info
+    given: $.paths[*][*]
+    then:
+      field: description
+      function: truthy
+  
+  # ========================================
+  # Request/Response Rules
+  # ========================================
+  operation-post-idempotency-key:
+    description: POST operations should document Idempotency-Key header
+    severity: warn
+    given: $.paths[*].post
+    then:
+      field: parameters
+      function: schema
+      functionOptions:
+        schema:
+          type: array
+          contains:
+            properties:
+              name:
+                const: Idempotency-Key
+              in:
+                const: header
+  
+  operation-security:
+    description: All operations except health checks must require authentication
+    severity: error
+    given: $.paths[?(@property != '/health/live' && @property != '/health/ready')][*]
+    then:
+      field: security
+      function: truthy
+  
+  response-2xx-schema:
+    description: 2xx responses must have schema
+    severity: error
+    given: $.paths[*][*].responses[?(@property >= '200' && @property < '300')]
+    then:
+      field: content.application/json.schema
+      function: truthy
+  
+  response-4xx-error-schema:
+    description: 4xx/5xx responses must reference ErrorResponse
+    severity: error
+    given: $.paths[*][*].responses[?(@property >= '400')]
+    then:
+      field: content.application/json.schema.$ref
+      function: pattern
+      functionOptions:
+        match: ".*ErrorResponse$"
+  
+  # ========================================
+  # Naming Conventions
+  # ========================================
+  path-lowercase:
+    description: Path segments should be lowercase with hyphens
+    severity: error
+    given: $.paths.*~
+    then:
+      function: pattern
+      functionOptions:
+        match: "^/[a-z0-9/-]+$"
+  
+  schema-names-pascal-case:
+    description: Schema names should be PascalCase
+    severity: warn
+    given: $.components.schemas.*~
+    then:
+      function: pattern
+      functionOptions:
+        match: "^[A-Z][a-zA-Z0-9]*$"
+  
+  property-names-snake-case:
+    description: Property names should be snake_case
+    severity: warn
+    given: $.components.schemas.*.properties.*~
+    then:
+      function: pattern
+      functionOptions:
+        match: "^[a-z][a-z0-9_]*$"
+  
+  # ========================================
+  # Standard Headers
+  # ========================================
+  response-request-id-header:
+    description: Responses should include X-Request-Id header
+    severity: warn
+    given: $.paths[*][*].responses[?(@property >= '200' && @property < '300')]
+    then:
+      field: headers.X-Request-Id
+      function: truthy
+  
+  response-etag-header:
+    description: GET responses should include ETag header for caching
+    severity: info
+    given: $.paths[*].get.responses['200']
+    then:
+      field: headers.ETag
+      function: truthy
+  
+  # ========================================
+  # Pagination
+  # ========================================
+  collection-response-pagination:
+    description: Collection responses should include pagination fields
+    severity: warn
+    given: $.paths[*].get.responses['200'].content.application/json.schema.properties
+    then:
+      function: schema
+      functionOptions:
+        schema:
+          type: object
+          required: [items, total, page, page_size]
+  
+  # ========================================
+  # Rate Limiting
+  # ========================================
+  response-429-retry-after:
+    description: 429 responses must include Retry-After header
+    severity: error
+    given: $.paths[*][*].responses['429']
+    then:
+      field: headers.Retry-After
+      function: truthy
+  
+  # ========================================
+  # Security
+  # ========================================
+  security-definitions:
+    description: Must define security schemes
+    severity: error
+    given: $.components.securitySchemes
+    then:
+      function: truthy
+  
+  bearer-token-format:
+    description: Bearer auth should specify JWT format
+    severity: warn
+    given: $.components.securitySchemes[?(@.type == 'http' && @.scheme == 'bearer')]
+    then:
+      field: bearerFormat
+      function: enumeration
+      functionOptions:
+        values: [JWT]
+

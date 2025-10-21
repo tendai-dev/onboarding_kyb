@@ -1,0 +1,308 @@
+environments:
+  dev:
+    values:
+      - values/dev.yaml
+
+repositories:
+  - name: bitnami
+    url: https://charts.bitnami.com/bitnami
+  - name: minio
+    url: https://charts.min.io/
+  - name: prometheus-community
+    url: https://prometheus-community.github.io/helm-charts
+  - name: grafana
+    url: https://grafana.github.io/helm-charts
+  - name: elastic
+    url: https://helm.elastic.co
+  - name: fluent
+    url: https://fluent.github.io/helm-charts
+  - name: codecentric
+    url: https://codecentric.github.io/helm-charts
+  - name: open-telemetry
+    url: https://open-telemetry.github.io/opentelemetry-helm-charts
+
+helmDefaults:
+  wait: true
+  timeout: 600
+  recreatePods: false
+  force: false
+
+releases:
+  # ========================================
+  # Platform: Storage & Databases
+  # ========================================
+  - name: minio
+    namespace: platform-observability
+    chart: minio/minio
+    version: 5.0.15
+    labels:
+      tier: platform
+      component: storage
+    values:
+      - values/{{ .Environment.Name }}.yaml
+    set:
+      - name: mode
+        value: standalone
+      - name: replicas
+        value: "1"
+      - name: persistence.enabled
+        value: "true"
+      - name: persistence.size
+        value: 50Gi
+      - name: resources.requests.memory
+        value: 512Mi
+      - name: consoleService.type
+        value: ClusterIP
+      - name: metrics.serviceMonitor.enabled
+        value: "true"
+
+  - name: postgresql
+    namespace: platform-observability
+    chart: bitnami/postgresql
+    version: 13.2.24
+    labels:
+      tier: platform
+      component: database
+    values:
+      - values/{{ .Environment.Name }}.yaml
+    set:
+      - name: auth.database
+        value: onboarding
+      - name: primary.persistence.size
+        value: 20Gi
+      - name: primary.resources.requests.memory
+        value: 512Mi
+      - name: metrics.enabled
+        value: "true"
+      - name: metrics.serviceMonitor.enabled
+        value: "true"
+
+  - name: redis
+    namespace: platform-observability
+    chart: bitnami/redis
+    version: 18.4.0
+    labels:
+      tier: platform
+      component: cache
+    values:
+      - values/{{ .Environment.Name }}.yaml
+    set:
+      - name: architecture
+        value: standalone
+      - name: master.persistence.size
+        value: 8Gi
+      - name: metrics.enabled
+        value: "true"
+      - name: metrics.serviceMonitor.enabled
+        value: "true"
+
+  # ========================================
+  # Platform: Message Broker (Kafka default)
+  # ========================================
+  - name: kafka
+    namespace: platform-observability
+    chart: bitnami/kafka
+    version: 26.8.3
+    condition: kafka.enabled
+    labels:
+      tier: platform
+      component: broker
+    values:
+      - values/{{ .Environment.Name }}.yaml
+    set:
+      - name: replicaCount
+        value: "1"
+      - name: persistence.size
+        value: 20Gi
+      - name: metrics.kafka.enabled
+        value: "true"
+      - name: metrics.jmx.enabled
+        value: "true"
+      - name: metrics.serviceMonitor.enabled
+        value: "true"
+
+  - name: rabbitmq
+    namespace: platform-observability
+    chart: bitnami/rabbitmq
+    version: 12.10.0
+    condition: rabbitmq.enabled
+    labels:
+      tier: platform
+      component: broker
+    values:
+      - values/{{ .Environment.Name }}.yaml
+    set:
+      - name: replicaCount
+        value: "1"
+      - name: persistence.size
+        value: 10Gi
+      - name: metrics.enabled
+        value: "true"
+      - name: metrics.serviceMonitor.enabled
+        value: "true"
+
+  # ========================================
+  # Platform: Security (Keycloak)
+  # ========================================
+  - name: keycloak
+    namespace: platform-security
+    chart: codecentric/keycloak
+    version: 18.4.0
+    labels:
+      tier: platform
+      component: security
+    values:
+      - values/{{ .Environment.Name }}.yaml
+    set:
+      - name: replicas
+        value: "1"
+      - name: postgresql.enabled
+        value: "true"
+      - name: metrics.enabled
+        value: "true"
+
+  # ========================================
+  # Platform: Observability - Logs
+  # ========================================
+  - name: elasticsearch
+    namespace: platform-observability
+    chart: elastic/elasticsearch
+    version: 8.5.1
+    labels:
+      tier: platform
+      component: observability
+    values:
+      - values/{{ .Environment.Name }}.yaml
+    set:
+      - name: replicas
+        value: "1"
+      - name: minimumMasterNodes
+        value: "1"
+      - name: volumeClaimTemplate.resources.requests.storage
+        value: 30Gi
+
+  - name: fluent-bit
+    namespace: platform-observability
+    chart: fluent/fluent-bit
+    version: 0.43.0
+    labels:
+      tier: platform
+      component: observability
+    values:
+      - values/{{ .Environment.Name }}.yaml
+
+  # ========================================
+  # Platform: Observability - Metrics
+  # ========================================
+  - name: prometheus
+    namespace: platform-observability
+    chart: prometheus-community/kube-prometheus-stack
+    version: 55.5.0
+    labels:
+      tier: platform
+      component: observability
+    values:
+      - values/{{ .Environment.Name }}.yaml
+    set:
+      - name: prometheus.prometheusSpec.retention
+        value: 15d
+      - name: prometheus.prometheusSpec.storageSpec.volumeClaimTemplate.spec.resources.requests.storage
+        value: 20Gi
+
+  - name: grafana
+    namespace: platform-observability
+    chart: grafana/grafana
+    version: 7.2.0
+    labels:
+      tier: platform
+      component: observability
+    values:
+      - values/{{ .Environment.Name }}.yaml
+
+  # ========================================
+  # Platform: Observability - Traces
+  # ========================================
+  - name: opentelemetry-collector
+    namespace: platform-observability
+    chart: open-telemetry/opentelemetry-collector
+    version: 0.79.0
+    labels:
+      tier: platform
+      component: observability
+    values:
+      - values/{{ .Environment.Name }}.yaml
+
+  # ========================================
+  # Business Services
+  # ========================================
+  - name: onboarding-api
+    namespace: business-onboarding
+    chart: charts/onboarding-api
+    labels:
+      tier: business
+      service: onboarding
+    values:
+      - values/{{ .Environment.Name }}.yaml
+
+  - name: document-service
+    namespace: business-documents
+    chart: charts/document-service
+    labels:
+      tier: business
+      service: documents
+    values:
+      - values/{{ .Environment.Name }}.yaml
+
+  - name: checklist-service
+    namespace: business-onboarding
+    chart: charts/checklist-service
+    labels:
+      tier: business
+      service: checklist
+    values:
+      - values/{{ .Environment.Name }}.yaml
+
+  - name: risk-service
+    namespace: business-risk
+    chart: charts/risk-service
+    labels:
+      tier: business
+      service: risk
+    values:
+      - values/{{ .Environment.Name }}.yaml
+
+  - name: notification-service
+    namespace: business-notifications
+    chart: charts/notification-service
+    labels:
+      tier: business
+      service: notifications
+    values:
+      - values/{{ .Environment.Name }}.yaml
+
+  - name: webhook-dispatcher
+    namespace: business-webhooks
+    chart: charts/webhook-dispatcher
+    labels:
+      tier: business
+      service: webhooks
+    values:
+      - values/{{ .Environment.Name }}.yaml
+
+  - name: auditlog-service
+    namespace: business-admin
+    chart: charts/auditlog-service
+    labels:
+      tier: business
+      service: audit
+    values:
+      - values/{{ .Environment.Name }}.yaml
+
+  - name: projections-api
+    namespace: business-readmodel
+    chart: charts/projections-api
+    labels:
+      tier: business
+      service: projections
+    values:
+      - values/{{ .Environment.Name }}.yaml

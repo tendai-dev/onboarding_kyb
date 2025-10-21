@@ -1,0 +1,186 @@
+---
+# Alertmanager Alert Rules for SLO/SLI monitoring
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: prometheus-slo-alerts
+  namespace: platform-observability
+data:
+  slo-alerts.yaml: |
+    groups:
+      - name: slo_alerts
+        interval: 30s
+        rules:
+          # Availability SLO: 99.9% uptime (< 0.1% 5xx errors)
+          - alert: HighErrorRate
+            expr: |
+              (
+                sum(rate(http_requests_total{namespace=~"business-.*",status=~"5.."}[5m])) by (service)
+                /
+                sum(rate(http_requests_total{namespace=~"business-.*"}[5m])) by (service)
+              ) * 100 > 1
+            for: 5m
+            labels:
+              severity: critical
+              slo: availability
+            annotations:
+              summary: "High error rate for {{ $labels.service }}"
+              description: "Service {{ $labels.service }} has {{ $value | humanize }}% error rate (threshold: 1%)"
+              runbook: "https://wiki.example.com/runbooks/high-error-rate"
+          
+          # Latency SLO: P95 < 500ms
+          - alert: HighLatencyP95
+            expr: |
+              histogram_quantile(0.95,
+                sum(rate(http_request_duration_seconds_bucket{namespace=~"business-.*"}[5m])) by (service, le)
+              ) * 1000 > 500
+            for: 5m
+            labels:
+              severity: warning
+              slo: latency
+            annotations:
+              summary: "High P95 latency for {{ $labels.service }}"
+              description: "Service {{ $labels.service }} P95 latency is {{ $value | humanize }}ms (threshold: 500ms)"
+              runbook: "https://wiki.example.com/runbooks/high-latency"
+          
+          # Latency SLO: P95 < 1000ms (critical)
+          - alert: CriticalLatencyP95
+            expr: |
+              histogram_quantile(0.95,
+                sum(rate(http_request_duration_seconds_bucket{namespace=~"business-.*"}[5m])) by (service, le)
+              ) * 1000 > 1000
+            for: 2m
+            labels:
+              severity: critical
+              slo: latency
+            annotations:
+              summary: "Critical P95 latency for {{ $labels.service }}"
+              description: "Service {{ $labels.service }} P95 latency is {{ $value | humanize }}ms (threshold: 1000ms)"
+              runbook: "https://wiki.example.com/runbooks/critical-latency"
+          
+          # Database connection pool exhaustion
+          - alert: DatabaseConnectionPoolExhausted
+            expr: |
+              (
+                sum(db_connection_pool_active{namespace=~"business-.*"}) by (service)
+                /
+                sum(db_connection_pool_max{namespace=~"business-.*"}) by (service)
+              ) * 100 > 90
+            for: 3m
+            labels:
+              severity: warning
+            annotations:
+              summary: "Database connection pool near exhaustion for {{ $labels.service }}"
+              description: "Service {{ $labels.service }} using {{ $value | humanize }}% of connection pool"
+          
+          # Kafka consumer lag
+          - alert: KafkaConsumerLagHigh
+            expr: |
+              kafka_consumer_lag{namespace=~"business-.*"} > 1000
+            for: 5m
+            labels:
+              severity: warning
+            annotations:
+              summary: "High Kafka consumer lag for {{ $labels.service }}"
+              description: "Consumer {{ $labels.service }}/{{ $labels.topic }} lag is {{ $value }} messages"
+          
+          # Outbox events stuck
+          - alert: OutboxEventsStuck
+            expr: |
+              outbox_events_pending{namespace=~"business-.*"} > 100
+            for: 10m
+            labels:
+              severity: warning
+            annotations:
+              summary: "Outbox events stuck for {{ $labels.service }}"
+              description: "Service {{ $labels.service }} has {{ $value }} pending outbox events for >10m"
+          
+          # Circuit breaker open
+          - alert: CircuitBreakerOpen
+            expr: |
+              circuit_breaker_state{namespace=~"business-.*",state="open"} == 1
+            for: 2m
+            labels:
+              severity: warning
+            annotations:
+              summary: "Circuit breaker open for {{ $labels.service }}"
+              description: "Service {{ $labels.service }} circuit breaker {{ $labels.name }} is OPEN"
+          
+          # Pod restarts
+          - alert: PodRestartingFrequently
+            expr: |
+              rate(kube_pod_container_status_restarts_total{namespace=~"business-.*"}[15m]) > 0.1
+            for: 5m
+            labels:
+              severity: warning
+            annotations:
+              summary: "Pod {{ $labels.pod }} restarting frequently"
+              description: "Pod {{ $labels.namespace }}/{{ $labels.pod }} restarted {{ $value | humanize }} times in last 15m"
+          
+          # Memory usage high
+          - alert: HighMemoryUsage
+            expr: |
+              (
+                container_memory_usage_bytes{namespace=~"business-.*"}
+                /
+                container_spec_memory_limit_bytes{namespace=~"business-.*"}
+              ) * 100 > 90
+            for: 5m
+            labels:
+              severity: warning
+            annotations:
+              summary: "High memory usage for {{ $labels.pod }}"
+              description: "Pod {{ $labels.namespace }}/{{ $labels.pod }} using {{ $value | humanize }}% memory"
+          
+          # CPU throttling
+          - alert: CPUThrottling
+            expr: |
+              rate(container_cpu_cfs_throttled_seconds_total{namespace=~"business-.*"}[5m]) > 0.3
+            for: 5m
+            labels:
+              severity: warning
+            annotations:
+              summary: "CPU throttling for {{ $labels.pod }}"
+              description: "Pod {{ $labels.namespace }}/{{ $labels.pod }} CPU is being throttled"
+          
+          # Disk space
+          - alert: DiskSpaceLow
+            expr: |
+              (
+                node_filesystem_avail_bytes{mountpoint="/"}
+                /
+                node_filesystem_size_bytes{mountpoint="/"}
+              ) * 100 < 15
+            for: 5m
+            labels:
+              severity: critical
+            annotations:
+              summary: "Low disk space on node {{ $labels.node }}"
+              description: "Node {{ $labels.node }} has {{ $value | humanize }}% disk space remaining"
+          
+          # Ingress 5xx errors
+          - alert: IngressHighErrorRate
+            expr: |
+              (
+                sum(rate(nginx_ingress_controller_requests{status=~"5.."}[5m]))
+                /
+                sum(rate(nginx_ingress_controller_requests[5m]))
+              ) * 100 > 1
+            for: 3m
+            labels:
+              severity: critical
+            annotations:
+              summary: "High 5xx error rate at Ingress"
+              description: "Ingress controller has {{ $value | humanize }}% 5xx error rate"
+          
+          # Certificate expiry
+          - alert: CertificateExpiringMinus7Days
+            expr: |
+              (certmanager_certificate_expiration_timestamp_seconds - time()) / 86400 < 7
+            for: 1h
+            labels:
+              severity: warning
+            annotations:
+              summary: "Certificate {{ $labels.name }} expiring soon"
+              description: "Certificate {{ $labels.namespace }}/{{ $labels.name }} expires in {{ $value | humanize }} days"
+

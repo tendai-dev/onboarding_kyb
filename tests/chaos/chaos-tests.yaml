@@ -1,0 +1,200 @@
+# Chaos Engineering Tests
+# Uses Chaos Mesh or manual fault injection
+# Tests system resilience under failure conditions
+
+---
+# Test 1: Pod Failure
+apiVersion: chaos-mesh.org/v1alpha1
+kind: PodChaos
+metadata:
+  name: onboarding-api-pod-failure
+  namespace: business-onboarding
+spec:
+  action: pod-failure
+  mode: one
+  duration: "30s"
+  selector:
+    namespaces:
+      - business-onboarding
+    labelSelectors:
+      "app.kubernetes.io/name": "onboarding-api"
+  
+  # Expected: Other pod takes over, no downtime
+
+---
+# Test 2: Network Delay (to PostgreSQL)
+apiVersion: chaos-mesh.org/v1alpha1
+kind: NetworkChaos
+metadata:
+  name: postgres-network-delay
+  namespace: business-onboarding
+spec:
+  action: delay
+  mode: all
+  selector:
+    namespaces:
+      - business-onboarding
+    labelSelectors:
+      "app.kubernetes.io/name": "onboarding-api"
+  delay:
+    latency: "500ms"
+    correlation: "50"
+    jitter: "100ms"
+  duration: "2m"
+  direction: to
+  target:
+    mode: all
+    selector:
+      namespaces:
+        - platform-observability
+      labelSelectors:
+        "app.kubernetes.io/name": "postgresql"
+  
+  # Expected: 
+  # - Requests still succeed (within timeout)
+  # - P95 latency increases but < 1s
+  # - No errors
+
+---
+# Test 3: Network Partition (Kafka unreachable)
+apiVersion: chaos-mesh.org/v1alpha1
+kind: NetworkChaos
+metadata:
+  name: kafka-network-partition
+  namespace: business-onboarding
+spec:
+  action: partition
+  mode: all
+  selector:
+    namespaces:
+      - business-onboarding
+  duration: "1m"
+  direction: to
+  target:
+    mode: all
+    selector:
+      namespaces:
+        - platform-observability
+      labelSelectors:
+        "app.kubernetes.io/name": "kafka"
+  
+  # Expected:
+  # - Events stored in outbox
+  # - API requests still succeed
+  # - Events published after recovery
+
+---
+# Test 4: CPU Stress
+apiVersion: chaos-mesh.org/v1alpha1
+kind: StressChaos
+metadata:
+  name: onboarding-api-cpu-stress
+  namespace: business-onboarding
+spec:
+  mode: one
+  selector:
+    namespaces:
+      - business-onboarding
+    labelSelectors:
+      "app.kubernetes.io/name": "onboarding-api"
+  stressors:
+    cpu:
+      workers: 2
+      load: 80
+  duration: "2m"
+  
+  # Expected:
+  # - P95 latency increases
+  # - No pod crashes
+  # - Autoscaling triggers (if enabled)
+
+---
+# Test 5: Memory Pressure
+apiVersion: chaos-mesh.org/v1alpha1
+kind: StressChaos
+metadata:
+  name: onboarding-api-memory-stress
+  namespace: business-onboarding
+spec:
+  mode: one
+  selector:
+    namespaces:
+      - business-onboarding
+    labelSelectors:
+      "app.kubernetes.io/name": "onboarding-api"
+  stressors:
+    memory:
+      workers: 1
+      size: "400MB"
+  duration: "1m"
+  
+  # Expected:
+  # - Pod continues functioning
+  # - Memory usage alert triggers
+  # - Pod may be OOMKilled (restart should be fast)
+
+---
+# Test 6: Redis Failure
+apiVersion: chaos-mesh.org/v1alpha1
+kind: PodChaos
+metadata:
+  name: redis-pod-kill
+  namespace: platform-observability
+spec:
+  action: pod-kill
+  mode: one
+  selector:
+    namespaces:
+      - platform-observability
+    labelSelectors:
+      "app.kubernetes.io/name": "redis"
+  duration: "30s"
+  
+  # Expected:
+  # - API continues working (graceful degradation)
+  # - Idempotency checks fail gracefully
+  # - Cache misses don't fail requests
+  # - Redis restarts automatically
+
+---
+# Manual Chaos Test Script
+# Run without Chaos Mesh
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: manual-chaos-tests
+  namespace: business-admin
+data:
+  run-chaos-tests.sh: |
+    #!/bin/bash
+    # Manual chaos testing without Chaos Mesh
+    
+    echo "🔥 Starting Manual Chaos Tests"
+    
+    # Test 1: Kill pod
+    echo "Test 1: Pod failure"
+    POD=$(kubectl get pod -n business-onboarding -l app.kubernetes.io/name=onboarding-api -o jsonpath='{.items[0].metadata.name}')
+    kubectl delete pod $POD -n business-onboarding
+    sleep 5
+    
+    # Verify service still responds
+    curl -f https://api.yourdomain.tld/onboarding/v1/health/live || echo "FAIL: Service unavailable"
+    
+    # Test 2: Simulate slow database
+    echo "Test 2: Database latency"
+    kubectl exec -n platform-observability postgresql-0 -- \
+      psql -U postgres -c "SELECT pg_sleep(5);" &
+    
+    # Make API request during slow query
+    time curl https://api.yourdomain.tld/onboarding/v1/cases
+    
+    # Test 3: Network delay to Kafka
+    echo "Test 3: Kafka network delay"
+    # Add network policy to delay traffic
+    
+    # Test 4: Fill disk space
+    echo "Test 4: Disk pressure (DO NOT RUN IN PROD)"
+    # dd if=/dev/zero of=/tmp/fillfile bs=1M count=1000
+    
+    echo "✓ Chaos tests complete"
+

@@ -1,0 +1,323 @@
+{
+  "id": "partners",
+  "realm": "partners",
+  "displayName": "Corporate Onboarding & KYC Platform",
+  "enabled": true,
+  "sslRequired": "external",
+  "registrationAllowed": false,
+  "registrationEmailAsUsername": true,
+  "rememberMe": true,
+  "verifyEmail": true,
+  "loginWithEmailAllowed": true,
+  "duplicateEmailsAllowed": false,
+  "resetPasswordAllowed": true,
+  "editUsernameAllowed": false,
+  "bruteForceProtected": true,
+  "permanentLockout": false,
+  "maxFailureWaitSeconds": 900,
+  "minimumQuickLoginWaitSeconds": 60,
+  "waitIncrementSeconds": 60,
+  "quickLoginCheckMilliSeconds": 1000,
+  "maxDeltaTimeSeconds": 43200,
+  "failureFactor": 5,
+  "defaultSignatureAlgorithm": "RS256",
+  "offlineSessionMaxLifespan": 5184000,
+  "offlineSessionMaxLifespanEnabled": true,
+  "accessTokenLifespan": 900,
+  "accessTokenLifespanForImplicitFlow": 900,
+  "ssoSessionIdleTimeout": 1800,
+  "ssoSessionMaxLifespan": 36000,
+  "refreshTokenMaxReuse": 0,
+  "accessCodeLifespan": 60,
+  "accessCodeLifespanUserAction": 300,
+  "accessCodeLifespanLogin": 1800,
+  "actionTokenGeneratedByAdminLifespan": 43200,
+  "actionTokenGeneratedByUserLifespan": 300,
+  "oauth2DeviceCodeLifespan": 600,
+  "oauth2DevicePollingInterval": 5,
+  "roles": {
+    "realm": [
+      {
+        "name": "partner",
+        "description": "External partner user - can view/edit own organization's cases",
+        "composite": false
+      },
+      {
+        "name": "partner_admin",
+        "description": "Partner administrator - can manage users within organization",
+        "composite": false
+      },
+      {
+        "name": "compliance_officer",
+        "description": "Internal compliance reviewer - can review, approve, reject cases",
+        "composite": false
+      },
+      {
+        "name": "risk_analyst",
+        "description": "Internal risk analyst - can view risk assessments, flag cases",
+        "composite": false
+      },
+      {
+        "name": "admin",
+        "description": "Platform administrator - full access to all resources",
+        "composite": false
+      },
+      {
+        "name": "auditor",
+        "description": "Read-only auditor - can view all data, no modifications",
+        "composite": false
+      }
+    ],
+    "client": {
+      "onboarding-api": [
+        {
+          "name": "case:read",
+          "description": "Read onboarding cases"
+        },
+        {
+          "name": "case:write",
+          "description": "Create/update onboarding cases"
+        },
+        {
+          "name": "case:delete",
+          "description": "Delete onboarding cases"
+        },
+        {
+          "name": "document:read",
+          "description": "Read documents"
+        },
+        {
+          "name": "document:write",
+          "description": "Upload documents"
+        },
+        {
+          "name": "webhook:configure",
+          "description": "Configure webhook endpoints"
+        }
+      ]
+    }
+  },
+  "clients": [
+    {
+      "clientId": "onboarding-api",
+      "name": "Onboarding API Service",
+      "description": "Corporate onboarding API backend",
+      "enabled": true,
+      "clientAuthenticatorType": "client-secret",
+      "secret": "**GENERATED**",
+      "serviceAccountsEnabled": true,
+      "authorizationServicesEnabled": true,
+      "standardFlowEnabled": false,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "publicClient": false,
+      "protocol": "openid-connect",
+      "attributes": {
+        "access.token.lifespan": "900",
+        "use.refresh.tokens": "true",
+        "pkce.code.challenge.method": "S256"
+      },
+      "protocolMappers": [
+        {
+          "name": "partner-id",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-attribute-mapper",
+          "consentRequired": false,
+          "config": {
+            "user.attribute": "partner_id",
+            "claim.name": "partner_id",
+            "jsonType.label": "String",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "userinfo.token.claim": "true"
+          }
+        },
+        {
+          "name": "organization-name",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-attribute-mapper",
+          "consentRequired": false,
+          "config": {
+            "user.attribute": "organization_name",
+            "claim.name": "organization_name",
+            "jsonType.label": "String",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "userinfo.token.claim": "true"
+          }
+        }
+      ]
+    },
+    {
+      "clientId": "partner-portal",
+      "name": "Partner Portal Web App",
+      "enabled": true,
+      "publicClient": true,
+      "standardFlowEnabled": true,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "redirectUris": [
+        "https://portal.yourdomain.tld/*",
+        "http://localhost:3000/*"
+      ],
+      "webOrigins": [
+        "https://portal.yourdomain.tld",
+        "http://localhost:3000"
+      ],
+      "protocol": "openid-connect",
+      "attributes": {
+        "pkce.code.challenge.method": "S256",
+        "post.logout.redirect.uris": "+"
+      }
+    },
+    {
+      "clientId": "admin-portal",
+      "name": "Admin Portal (Internal)",
+      "enabled": true,
+      "publicClient": true,
+      "standardFlowEnabled": true,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "redirectUris": [
+        "https://admin.yourdomain.tld/*",
+        "http://localhost:3001/*"
+      ],
+      "webOrigins": [
+        "https://admin.yourdomain.tld",
+        "http://localhost:3001"
+      ],
+      "protocol": "openid-connect",
+      "attributes": {
+        "pkce.code.challenge.method": "S256",
+        "post.logout.redirect.uris": "+"
+      }
+    }
+  ],
+  "clientScopes": [
+    {
+      "name": "onboarding",
+      "description": "Onboarding API access",
+      "protocol": "openid-connect",
+      "attributes": {
+        "include.in.token.scope": "true",
+        "display.on.consent.screen": "true"
+      },
+      "protocolMappers": [
+        {
+          "name": "partner-id",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-attribute-mapper",
+          "config": {
+            "user.attribute": "partner_id",
+            "claim.name": "partner_id",
+            "jsonType.label": "String",
+            "access.token.claim": "true"
+          }
+        }
+      ]
+    }
+  ],
+  "users": [
+    {
+      "username": "demo-partner@example.com",
+      "email": "demo-partner@example.com",
+      "emailVerified": true,
+      "enabled": true,
+      "firstName": "Demo",
+      "lastName": "Partner",
+      "attributes": {
+        "partner_id": ["00000000-0000-0000-0000-000000000001"],
+        "organization_name": ["Demo Partner Corp"]
+      },
+      "realmRoles": ["partner"],
+      "clientRoles": {
+        "onboarding-api": ["case:read", "case:write", "document:read", "document:write"]
+      }
+    },
+    {
+      "username": "compliance@example.com",
+      "email": "compliance@example.com",
+      "emailVerified": true,
+      "enabled": true,
+      "firstName": "Jane",
+      "lastName": "Compliance",
+      "realmRoles": ["compliance_officer"],
+      "clientRoles": {
+        "onboarding-api": ["case:read", "case:write"]
+      }
+    },
+    {
+      "username": "admin@example.com",
+      "email": "admin@example.com",
+      "emailVerified": true,
+      "enabled": true,
+      "firstName": "System",
+      "lastName": "Admin",
+      "realmRoles": ["admin"],
+      "clientRoles": {
+        "onboarding-api": ["case:read", "case:write", "case:delete", "document:read", "document:write", "webhook:configure"]
+      }
+    }
+  ],
+  "identityProviders": [
+    {
+      "alias": "corporate-ad",
+      "displayName": "Corporate AD (SAML)",
+      "providerId": "saml",
+      "enabled": false,
+      "trustEmail": true,
+      "storeToken": false,
+      "addReadTokenRoleOnCreate": false,
+      "firstBrokerLoginFlowAlias": "first broker login",
+      "config": {
+        "singleSignOnServiceUrl": "https://adfs.yourcompany.com/adfs/ls/",
+        "singleLogoutServiceUrl": "https://adfs.yourcompany.com/adfs/ls/",
+        "nameIDPolicyFormat": "urn:oasis:names:tc:SAML:1.1:nameid-format:emailAddress",
+        "principalType": "SUBJECT",
+        "signatureAlgorithm": "RSA_SHA256",
+        "wantAuthnRequestsSigned": "true",
+        "forceAuthn": "false",
+        "validateSignature": "true",
+        "postBindingResponse": "true",
+        "postBindingAuthnRequest": "true"
+      }
+    }
+  ],
+  "identityProviderMappers": [
+    {
+      "name": "ad-email-mapper",
+      "identityProviderAlias": "corporate-ad",
+      "identityProviderMapper": "saml-user-attribute-idp-mapper",
+      "config": {
+        "syncMode": "INHERIT",
+        "attribute.name": "mail",
+        "user.attribute": "email"
+      }
+    },
+    {
+      "name": "ad-groups-mapper",
+      "identityProviderAlias": "corporate-ad",
+      "identityProviderMapper": "saml-role-idp-mapper",
+      "config": {
+        "syncMode": "INHERIT",
+        "attribute.name": "memberOf",
+        "role": "compliance_officer"
+      }
+    }
+  ],
+  "passwordPolicy": "length(12) and digits(1) and lowerCase(1) and upperCase(1) and specialChars(1) and notUsername and passwordHistory(5)",
+  "otpPolicyType": "totp",
+  "otpPolicyAlgorithm": "HmacSHA1",
+  "otpPolicyDigits": 6,
+  "otpPolicyPeriod": 30,
+  "webAuthnPolicyRpEntityName": "Corporate Onboarding Platform",
+  "webAuthnPolicySignatureAlgorithms": ["ES256", "RS256"],
+  "webAuthnPolicyRpId": "yourdomain.tld",
+  "webAuthnPolicyAttestationConveyancePreference": "not specified",
+  "webAuthnPolicyAuthenticatorAttachment": "not specified",
+  "webAuthnPolicyRequireResidentKey": "not specified",
+  "webAuthnPolicyUserVerificationRequirement": "preferred",
+  "webAuthnPolicyCreateTimeout": 60,
+  "webAuthnPolicyAvoidSameAuthenticatorRegister": false
+}
+

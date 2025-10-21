@@ -1,0 +1,410 @@
+openapi: 3.0.3
+info:
+  title: Onboarding API
+  description: Corporate Digital Onboarding & KYC API
+  version: 1.0.0
+  contact:
+    name: Platform Team
+    email: platform@example.com
+
+servers:
+  - url: https://api.yourdomain.tld/onboarding/v1
+    description: Production
+  - url: http://localhost:8080/onboarding/v1
+    description: Local Development
+
+security:
+  - bearerAuth: []
+
+paths:
+  /cases:
+    post:
+      summary: Create a new onboarding case
+      operationId: createOnboardingCase
+      tags:
+        - Onboarding Cases
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/RequestId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateOnboardingCaseRequest'
+      responses:
+        '201':
+          description: Onboarding case created successfully
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/RequestId'
+            Location:
+              schema:
+                type: string
+              description: URI of created resource
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OnboardingCaseResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+
+  /cases/{caseId}:
+    get:
+      summary: Get an onboarding case by ID
+      operationId: getOnboardingCase
+      tags:
+        - Onboarding Cases
+      parameters:
+        - name: caseId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - $ref: '#/components/parameters/RequestId'
+      responses:
+        '200':
+          description: Onboarding case found
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/RequestId'
+            ETag:
+              schema:
+                type: string
+            Last-Modified:
+              schema:
+                type: string
+                format: date-time
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OnboardingCaseDetails'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: OAuth 2.1 Bearer token from Keycloak
+
+  parameters:
+    IdempotencyKey:
+      name: Idempotency-Key
+      in: header
+      required: true
+      schema:
+        type: string
+        format: uuid
+      description: Unique idempotency key for state-changing operations
+
+    RequestId:
+      name: X-Request-Id
+      in: header
+      required: false
+      schema:
+        type: string
+        format: uuid
+      description: Optional request ID for tracing
+
+  headers:
+    RequestId:
+      schema:
+        type: string
+        format: uuid
+      description: Request ID for tracing
+
+  schemas:
+    CreateOnboardingCaseRequest:
+      type: object
+      required:
+        - type
+        - partner_id
+        - partner_reference_id
+        - applicant
+      properties:
+        type:
+          type: string
+          enum: [Individual, Business]
+        partner_id:
+          type: string
+          format: uuid
+        partner_reference_id:
+          type: string
+          maxLength: 100
+        applicant:
+          $ref: '#/components/schemas/ApplicantDetails'
+        business:
+          $ref: '#/components/schemas/BusinessDetails'
+
+    ApplicantDetails:
+      type: object
+      required:
+        - first_name
+        - last_name
+        - date_of_birth
+        - email
+        - phone_number
+        - residential_address
+        - nationality
+      properties:
+        first_name:
+          type: string
+          maxLength: 100
+        last_name:
+          type: string
+          maxLength: 100
+        middle_name:
+          type: string
+          maxLength: 100
+        date_of_birth:
+          type: string
+          format: date
+        email:
+          type: string
+          format: email
+          maxLength: 255
+        phone_number:
+          type: string
+          maxLength: 50
+        residential_address:
+          $ref: '#/components/schemas/Address'
+        nationality:
+          type: string
+          minLength: 2
+          maxLength: 2
+          description: ISO 3166-1 alpha-2 country code
+        tax_id:
+          type: string
+          maxLength: 50
+        passport_number:
+          type: string
+          maxLength: 50
+        drivers_license_number:
+          type: string
+          maxLength: 50
+
+    BusinessDetails:
+      type: object
+      required:
+        - legal_name
+        - registration_number
+        - registration_country
+        - incorporation_date
+        - business_type
+        - industry
+        - registered_address
+      properties:
+        legal_name:
+          type: string
+          maxLength: 255
+        trade_name:
+          type: string
+          maxLength: 255
+        registration_number:
+          type: string
+          maxLength: 100
+        registration_country:
+          type: string
+          minLength: 2
+          maxLength: 2
+        incorporation_date:
+          type: string
+          format: date
+        business_type:
+          type: string
+          maxLength: 100
+        industry:
+          type: string
+          maxLength: 100
+        registered_address:
+          $ref: '#/components/schemas/Address'
+        operating_address:
+          $ref: '#/components/schemas/Address'
+        tax_id:
+          type: string
+          maxLength: 50
+        vat_number:
+          type: string
+          maxLength: 50
+        website:
+          type: string
+          format: uri
+          maxLength: 255
+        number_of_employees:
+          type: integer
+          minimum: 0
+        estimated_annual_revenue:
+          type: number
+          format: decimal
+          minimum: 0
+
+    Address:
+      type: object
+      required:
+        - street
+        - city
+        - state
+        - postal_code
+        - country
+      properties:
+        street:
+          type: string
+          maxLength: 255
+        street2:
+          type: string
+          maxLength: 255
+        city:
+          type: string
+          maxLength: 100
+        state:
+          type: string
+          maxLength: 100
+        postal_code:
+          type: string
+          maxLength: 20
+        country:
+          type: string
+          minLength: 2
+          maxLength: 2
+          description: ISO 3166-1 alpha-2 country code
+
+    OnboardingCaseResponse:
+      type: object
+      properties:
+        data:
+          type: object
+          properties:
+            id:
+              type: string
+              format: uuid
+            case_number:
+              type: string
+        meta:
+          $ref: '#/components/schemas/ResponseMeta'
+
+    OnboardingCaseDetails:
+      type: object
+      properties:
+        data:
+          type: object
+          properties:
+            id:
+              type: string
+              format: uuid
+            case_number:
+              type: string
+            type:
+              type: string
+            status:
+              type: string
+            partner_id:
+              type: string
+              format: uuid
+            partner_reference_id:
+              type: string
+            applicant:
+              $ref: '#/components/schemas/ApplicantDetails'
+            business:
+              $ref: '#/components/schemas/BusinessDetails'
+            created_at:
+              type: string
+              format: date-time
+            updated_at:
+              type: string
+              format: date-time
+            created_by:
+              type: string
+            updated_by:
+              type: string
+        meta:
+          $ref: '#/components/schemas/ResponseMeta'
+
+    ResponseMeta:
+      type: object
+      properties:
+        request_id:
+          type: string
+          format: uuid
+        timestamp:
+          type: string
+          format: date-time
+
+    ErrorResponse:
+      type: object
+      required:
+        - name
+        - message
+        - debug_id
+      properties:
+        name:
+          type: string
+          example: "ValidationError"
+        message:
+          type: string
+          example: "Request validation failed"
+        details:
+          type: array
+          items:
+            type: object
+            properties:
+              field:
+                type: string
+              message:
+                type: string
+              code:
+                type: string
+        debug_id:
+          type: string
+          format: uuid
+
+  responses:
+    BadRequest:
+      description: Bad Request
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+
+    Unauthorized:
+      description: Unauthorized
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+
+    NotFound:
+      description: Not Found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+
+    ValidationError:
+      description: Validation Error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+
+    TooManyRequests:
+      description: Too Many Requests
+      headers:
+        Retry-After:
+          schema:
+            type: integer
+          description: Seconds to wait before retrying
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+

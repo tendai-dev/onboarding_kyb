@@ -1,0 +1,22 @@
+{
+  "name": "onboarding-contract-tests",
+  "version": "1.0.0",
+  "description": "Contract tests for Onboarding Platform APIs",
+  "scripts": {
+    "test": "jest",
+    "test:consumer": "jest --testPathPattern=consumer",
+    "test:provider": "jest --testPathPattern=provider",
+    "pact:publish": "pact-broker publish ./pacts --consumer-app-version=$npm_package_version --broker-base-url=$PACT_BROKER_URL --broker-token=$PACT_BROKER_TOKEN"
+  },
+  "devDependencies": {
+    "@pact-foundation/pact": "^12.1.0",
+    "@pact-foundation/pact-node": "^10.18.0",
+    "axios": "^1.6.0",
+    "jest": "^29.7.0"
+  },
+  "jest": {
+    "testEnvironment": "node",
+    "testTimeout": 30000
+  }
+}
+

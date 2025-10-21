@@ -1,0 +1,156 @@
+---
+# API Gateway Routes - Nginx Ingress with unified API domain
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: api-gateway
+  namespace: platform-ingress
+  annotations:
+    cert-manager.io/cluster-issuer: "letsencrypt-http01"
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
+    
+    # Rate limiting
+    nginx.ingress.kubernetes.io/limit-rps: "100"
+    nginx.ingress.kubernetes.io/limit-connections: "50"
+    
+    # Timeouts
+    nginx.ingress.kubernetes.io/proxy-connect-timeout: "30"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "60"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "60"
+    
+    # Body size
+    nginx.ingress.kubernetes.io/proxy-body-size: "10m"
+    
+    # CORS
+    nginx.ingress.kubernetes.io/enable-cors: "true"
+    nginx.ingress.kubernetes.io/cors-allow-origin: "*"
+    nginx.ingress.kubernetes.io/cors-allow-methods: "GET, POST, PUT, PATCH, DELETE, OPTIONS"
+    nginx.ingress.kubernetes.io/cors-allow-headers: "DNT,X-CustomHeader,Keep-Alive,User-Agent,X-Requested-With,If-Modified-Since,Cache-Control,Content-Type,Authorization,X-Request-Id,Idempotency-Key"
+    nginx.ingress.kubernetes.io/cors-expose-headers: "ETag,Last-Modified,X-Request-Id,X-RateLimit-Limit,X-RateLimit-Remaining,X-RateLimit-Reset"
+    nginx.ingress.kubernetes.io/cors-max-age: "3600"
+    
+    # Request ID
+    nginx.ingress.kubernetes.io/configuration-snippet: |
+      more_set_headers "X-Request-Id: $req_id";
+      more_set_headers "X-Content-Type-Options: nosniff";
+      more_set_headers "X-Frame-Options: DENY";
+      more_set_headers "X-XSS-Protection: 1; mode=block";
+    
+    # JSON-only enforcement (added in controller config)
+    nginx.ingress.kubernetes.io/server-snippet: |
+      if ($request_method !~ ^(GET|POST|PUT|PATCH|DELETE|OPTIONS|HEAD)$) {
+        return 405;
+      }
+      
+      # Enforce JSON for POST/PUT/PATCH
+      set $reject_non_json 0;
+      if ($request_method ~ ^(POST|PUT|PATCH)$) {
+        set $reject_non_json 1;
+      }
+      if ($content_type ~ "application/json") {
+        set $reject_non_json 0;
+      }
+      if ($reject_non_json = 1) {
+        return 415;
+      }
+
+spec:
+  ingressClassName: nginx
+  tls:
+  - hosts:
+    - api.yourdomain.tld
+    secretName: api-gateway-tls
+  
+  rules:
+  - host: api.yourdomain.tld
+    http:
+      paths:
+      # Onboarding API
+      - path: /onboarding/v1
+        pathType: Prefix
+        backend:
+          service:
+            name: onboarding-api
+            port:
+              number: 8080
+      
+      # Document Service
+      - path: /documents/v1
+        pathType: Prefix
+        backend:
+          service:
+            name: document-service
+            port:
+              number: 8080
+      
+      # Checklist Service
+      - path: /checks/v1
+        pathType: Prefix
+        backend:
+          service:
+            name: checklist-service
+            port:
+              number: 8080
+      
+      # Risk Service
+      - path: /risk/v1
+        pathType: Prefix
+        backend:
+          service:
+            name: risk-service
+            port:
+              number: 8080
+      
+      # Notification Service
+      - path: /notifications/v1
+        pathType: Prefix
+        backend:
+          service:
+            name: notification-service
+            port:
+              number: 8080
+      
+      # Webhook Dispatcher
+      - path: /webhooks/v1
+        pathType: Prefix
+        backend:
+          service:
+            name: webhook-dispatcher
+            port:
+              number: 8080
+      
+      # Projections API (Read Models)
+      - path: /projections/v1
+        pathType: Prefix
+        backend:
+          service:
+            name: projections-api
+            port:
+              number: 8080
+      
+      # Frontend-compatible API routes (mapped to onboarding-api)
+      - path: /api/v1/onboardings
+        pathType: Prefix
+        backend:
+          service:
+            name: onboarding-api
+            port:
+              number: 8080
+      
+      - path: /api/v1/admin
+        pathType: Prefix
+        backend:
+          service:
+            name: onboarding-api
+            port:
+              number: 8080
+      
+      - path: /api/auth
+        pathType: Prefix
+        backend:
+          service:
+            name: onboarding-api
+            port:
+              number: 8080
+

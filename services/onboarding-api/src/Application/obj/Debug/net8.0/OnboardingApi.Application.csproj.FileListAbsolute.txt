@@ -1,0 +1,15 @@
+/root/onboarding_kyc/services/onboarding-api/src/Application/obj/Debug/net8.0/OnboardingApi.Application.csproj.AssemblyReference.cache
+/root/onboarding_kyc/services/onboarding-api/src/Application/obj/Debug/net8.0/OnboardingApi.Application.GeneratedMSBuildEditorConfig.editorconfig
+/root/onboarding_kyc/services/onboarding-api/src/Application/obj/Debug/net8.0/OnboardingApi.Application.AssemblyInfoInputs.cache
+/root/onboarding_kyc/services/onboarding-api/src/Application/obj/Debug/net8.0/OnboardingApi.Application.AssemblyInfo.cs
+/root/onboarding_kyc/services/onboarding-api/src/Application/obj/Debug/net8.0/OnboardingApi.Application.csproj.CoreCompileInputs.cache
+/root/onboarding_kyc/services/onboarding-api/src/Application/bin/Debug/net8.0/OnboardingApi.Application.deps.json
+/root/onboarding_kyc/services/onboarding-api/src/Application/bin/Debug/net8.0/OnboardingApi.Application.dll
+/root/onboarding_kyc/services/onboarding-api/src/Application/bin/Debug/net8.0/OnboardingApi.Application.pdb
+/root/onboarding_kyc/services/onboarding-api/src/Application/bin/Debug/net8.0/OnboardingApi.Domain.dll
+/root/onboarding_kyc/services/onboarding-api/src/Application/bin/Debug/net8.0/OnboardingApi.Domain.pdb
+/root/onboarding_kyc/services/onboarding-api/src/Application/obj/Debug/net8.0/Onboardi.C4E8355A.Up2Date
+/root/onboarding_kyc/services/onboarding-api/src/Application/obj/Debug/net8.0/OnboardingApi.Application.dll
+/root/onboarding_kyc/services/onboarding-api/src/Application/obj/Debug/net8.0/refint/OnboardingApi.Application.dll
+/root/onboarding_kyc/services/onboarding-api/src/Application/obj/Debug/net8.0/OnboardingApi.Application.pdb
+/root/onboarding_kyc/services/onboarding-api/src/Application/obj/Debug/net8.0/ref/OnboardingApi.Application.dll

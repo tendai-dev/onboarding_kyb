@@ -1,0 +1,91 @@
+# Data Residency Configuration
+# Defines where data is stored per region and entity type
+
+regions:
+  - id: eu-central
+    name: "Europe (Central)"
+    countries: [DE, FR, IT, ES, NL, BE, AT, CH, PL]
+    postgres:
+      host: postgresql-eu.platform-observability
+      database: onboarding_eu
+      schema_prefix: eu
+    minio:
+      endpoint: minio-eu.platform-observability
+      bucket_prefix: eu
+    compliance:
+      gdpr: true
+      data_localization_required: true
+    
+  - id: us-east
+    name: "United States (East)"
+    countries: [US, CA]
+    postgres:
+      host: postgresql-us.platform-observability
+      database: onboarding_us
+      schema_prefix: us
+    minio:
+      endpoint: minio-us.platform-observability
+      bucket_prefix: us
+    compliance:
+      ccpa: true
+      data_localization_required: false
+
+  - id: ap-southeast
+    name: "Asia Pacific (Southeast)"
+    countries: [SG, MY, TH, ID, PH]
+    postgres:
+      host: postgresql-ap.platform-observability
+      database: onboarding_ap
+      schema_prefix: ap
+    minio:
+      endpoint: minio-ap.platform-observability
+      bucket_prefix: ap
+    compliance:
+      pdpa: true
+      data_localization_required: true
+
+# Default region for unspecified countries
+default_region: us-east
+
+# Entity-specific residency rules
+entity_rules:
+  onboarding_case:
+    determine_by: applicant_nationality
+    store_in_region: true
+    cross_region_access: compliance_team_only
+    
+  document:
+    determine_by: case_region
+    store_in_region: true
+    cross_region_access: denied
+    
+  risk_assessment:
+    determine_by: case_region
+    store_in_region: true
+    cross_region_access: risk_team_only
+
+  audit_log:
+    determine_by: action_region
+    store_in_region: true
+    cross_region_access: auditor_only
+    retention_years: 7
+
+# Audit requirements
+audit:
+  log_all_writes: true
+  log_format: |
+    {
+      "timestamp": "{{timestamp}}",
+      "entity_type": "{{entity_type}}",
+      "entity_id": "{{entity_id}}",
+      "region": "{{region}}",
+      "storage_location": "{{storage_location}}",
+      "user_id": "{{user_id}}",
+      "ip_address": "{{ip_address}}"
+    }
+  
+  alert_on_violations: true
+  alert_channels:
+    - slack: "#compliance-alerts"
+    - email: compliance@yourdomain.tld
+

@@ -1,0 +1,95 @@
+name: Deploy to Development
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+env:
+  ENVIRONMENT: dev
+  KUBECONFIG_PATH: /tmp/kubeconfig
+
+jobs:
+  deploy:
+    name: Deploy to Dev Environment
+    runs-on: ubuntu-latest
+    environment:
+      name: development
+      url: https://api.yourdomain.tld
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install SSH key
+        uses: shimataro/ssh-key-action@v2
+        with:
+          key: ${{ secrets.VPS_SSH_KEY }}
+          known_hosts: ${{ secrets.VPS_KNOWN_HOSTS }}
+
+      - name: Setup Helmfile
+        run: |
+          wget https://github.com/helmfile/helmfile/releases/download/v0.162.0/helmfile_0.162.0_linux_amd64.tar.gz
+          tar -xzf helmfile_0.162.0_linux_amd64.tar.gz
+          sudo mv helmfile /usr/local/bin/
+          chmod +x /usr/local/bin/helmfile
+
+      - name: Copy kubeconfig from VPS
+        run: |
+          ssh -o StrictHostKeyChecking=no root@${{ secrets.VPS_HOST }} "cat ~/.kube/config" > ${{ env.KUBECONFIG_PATH }}
+
+      - name: Update image tags in values
+        run: |
+          sed -i "s|tag: latest|tag: sha-${{ github.sha }}|g" infra/helm/values/dev.yaml
+
+      - name: Deploy with Helmfile
+        env:
+          KUBECONFIG: ${{ env.KUBECONFIG_PATH }}
+        run: |
+          cd infra/helm
+          helmfile sync --environment ${{ env.ENVIRONMENT }}
+
+      - name: Wait for rollout
+        env:
+          KUBECONFIG: ${{ env.KUBECONFIG_PATH }}
+        run: |
+          kubectl rollout status deployment/onboarding-api -n business-onboarding --timeout=5m
+          kubectl rollout status deployment/document-service -n business-documents --timeout=5m
+          kubectl rollout status deployment/webhook-dispatcher -n business-webhooks --timeout=5m
+
+      - name: Run smoke tests
+        env:
+          KUBECONFIG: ${{ env.KUBECONFIG_PATH }}
+          API_BASE_URL: https://api.yourdomain.tld
+        run: |
+          # Test health endpoints
+          for service in onboarding documents webhooks; do
+            echo "Testing ${service} health..."
+            curl -f "${API_BASE_URL}/${service}/v1/health/live" || exit 1
+            curl -f "${API_BASE_URL}/${service}/v1/health/ready" || exit 1
+          done
+
+      - name: Print deployment info
+        env:
+          KUBECONFIG: ${{ env.KUBECONFIG_PATH }}
+        run: |
+          echo "=== Deployment Summary ==="
+          kubectl get pods -A -l tier=business
+          echo ""
+          echo "=== Ingress Routes ==="
+          kubectl get ingress -A
+          echo ""
+          echo "=== Service Endpoints ==="
+          echo "API Base: https://api.yourdomain.tld"
+          echo "Swagger: https://api.yourdomain.tld/onboarding/v1/swagger"
+          echo "Grafana: https://grafana.yourdomain.tld"
+          echo "Prometheus: https://prometheus.yourdomain.tld"
+
+      - name: Notify deployment
+        if: always()
+        uses: 8398a7/action-slack@v3
+        with:
+          status: ${{ job.status }}
+          text: 'Deployment to Dev: ${{ job.status }}'
+          webhook_url: ${{ secrets.SLACK_WEBHOOK }}
+
