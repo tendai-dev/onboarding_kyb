@@ -1,6 +1,7 @@
 using AuditLogService.Application.Interfaces;
 using AuditLogService.Domain.Aggregates;
 using MediatR;
+using Microsoft.Extensions.Logging;
 
 namespace AuditLogService.Application.Commands;
 

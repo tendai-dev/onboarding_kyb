@@ -5,6 +5,7 @@ using OnboardingApi.Application.Commands;
 using OnboardingApi.Application.Queries;
 using OnboardingApi.Presentation.Filters;
 using OnboardingApi.Presentation.Models;
+using OnboardingApi.Presentation.Configuration;
 using System.Text.Json;
 
 namespace OnboardingApi.Presentation.Controllers;
@@ -40,7 +41,7 @@ public class OnboardingsController : ControllerBase
         [FromQuery] string? status = null,
         CancellationToken cancellationToken = default)
     {
-        var userId = User.FindFirst("sub")?.Value ?? "system";
+        var userId = User.GetUserId();
         
         var query = new GetOnboardingsQuery
         {
@@ -65,33 +66,111 @@ public class OnboardingsController : ControllerBase
         [FromBody] CreateOnboardingRequest request,
         CancellationToken cancellationToken)
     {
-        var userId = User.FindFirst("sub")?.Value ?? "system";
+        var userId = User.GetUserId();
 
-        // For now, return a mock response
-        var response = new OnboardingDto
+        try
         {
-            Id = Guid.NewGuid().ToString(),
-            UserId = userId,
-            EntityType = request.EntityType,
-            Status = "draft",
-            LegalName = request.LegalName,
-            Country = request.Country,
-            Email = request.Email,
-            RegistrationNumber = request.RegistrationNumber,
-            TaxId = request.TaxId,
-            IncorporationDate = request.IncorporationDate,
-            BusinessAddress = request.BusinessAddress,
-            ContactPerson = request.ContactPerson,
-            PhoneNumber = request.PhoneNumber,
-            Website = request.Website,
-            CreatedAt = DateTime.UtcNow,
-            UpdatedAt = DateTime.UtcNow
-        };
+            // Map frontend request to backend domain model
+            var onboardingType = request.EntityType.ToLower() switch
+            {
+                "company" => OnboardingApi.Domain.Aggregates.OnboardingType.Business,
+                "ngo" => OnboardingApi.Domain.Aggregates.OnboardingType.Business,
+                "sole_proprietor" => OnboardingApi.Domain.Aggregates.OnboardingType.Individual,
+                _ => OnboardingApi.Domain.Aggregates.OnboardingType.Individual
+            };
 
-        return CreatedAtAction(
-            nameof(GetOnboarding),
-            new { id = response.Id },
-            response);
+            // Parse address from single field
+            var addressParts = (request.BusinessAddress ?? "").Split(',');
+            var address = new OnboardingApi.Domain.ValueObjects.Address
+            {
+                Street = addressParts.Length > 0 ? addressParts[0].Trim() : "",
+                City = addressParts.Length > 1 ? addressParts[1].Trim() : "",
+                State = addressParts.Length > 2 ? addressParts[2].Trim() : "",
+                PostalCode = addressParts.Length > 3 ? addressParts[3].Trim() : "",
+                Country = request.Country ?? ""
+            };
+
+            // Create applicant details (contact person becomes the applicant)
+            var applicantDetails = new OnboardingApi.Domain.ValueObjects.ApplicantDetails
+            {
+                FirstName = request.ContactPerson?.Split(' ').FirstOrDefault() ?? "Unknown",
+                LastName = request.ContactPerson?.Split(' ').Skip(1).FirstOrDefault() ?? "User",
+                Email = request.Email ?? "",
+                PhoneNumber = request.PhoneNumber ?? "",
+                ResidentialAddress = address,
+                Nationality = request.Country ?? "ZA",
+                DateOfBirth = DateTime.Now.AddYears(-30) // Default age
+            };
+
+            // Create business details if applicable
+            OnboardingApi.Domain.ValueObjects.BusinessDetails? businessDetails = null;
+            if (onboardingType == OnboardingApi.Domain.Aggregates.OnboardingType.Business)
+            {
+                businessDetails = new OnboardingApi.Domain.ValueObjects.BusinessDetails
+                {
+                    LegalName = request.LegalName ?? "",
+                    RegistrationNumber = request.RegistrationNumber ?? "",
+                    RegistrationCountry = request.Country ?? "ZA",
+                    IncorporationDate = DateTime.TryParse(request.IncorporationDate, out var incDate) ? incDate : DateTime.Now,
+                    BusinessType = request.EntityType ?? "company",
+                    Industry = "Financial Services", // Default
+                    RegisteredAddress = address,
+                    TaxId = request.TaxId,
+                    Website = request.Website ?? "",
+                    NumberOfEmployees = 1,
+                    EstimatedAnnualRevenue = 0
+                };
+            }
+
+            // Create the onboarding case using domain model
+            var onboardingCase = OnboardingApi.Domain.Aggregates.OnboardingCase.Create(
+                onboardingType,
+                Guid.NewGuid(), // Partner ID - for now use random
+                Guid.NewGuid().ToString(), // Partner reference
+                applicantDetails,
+                businessDetails,
+                userId
+            );
+
+            // Map to DTO for response
+            var response = new OnboardingDto
+            {
+                Id = onboardingCase.Id.ToString(),
+                UserId = userId,
+                EntityType = request.EntityType,
+                Status = onboardingCase.Status.ToString().ToLower(),
+                LegalName = request.LegalName,
+                Country = request.Country,
+                Email = request.Email,
+                RegistrationNumber = request.RegistrationNumber,
+                TaxId = request.TaxId,
+                IncorporationDate = request.IncorporationDate,
+                BusinessAddress = request.BusinessAddress,
+                ContactPerson = request.ContactPerson,
+                PhoneNumber = request.PhoneNumber,
+                Website = request.Website,
+                CreatedAt = onboardingCase.CreatedAt,
+                UpdatedAt = onboardingCase.UpdatedAt
+            };
+
+            _logger.LogInformation("Created onboarding case {CaseId} for user {UserId}", 
+                onboardingCase.Id, userId);
+
+            return CreatedAtAction(
+                nameof(GetOnboarding),
+                new { id = response.Id },
+                response);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error creating onboarding for user {UserId}", userId);
+            return BadRequest(new ErrorResponse
+            {
+                Name = "CreateOnboardingError",
+                Message = "Failed to create onboarding application",
+                DebugId = Guid.NewGuid().ToString()
+            });
+        }
     }
 
     /// <summary>
@@ -189,7 +268,7 @@ public class OnboardingsController : ControllerBase
         [FromBody] SendMessageRequest request,
         CancellationToken cancellationToken)
     {
-        var userId = User.FindFirst("sub")?.Value ?? "system";
+        var userId = User.GetUserId();
         
         // TODO: Implement message sending
         // For now, return a mock response
@@ -300,4 +379,19 @@ public class CreateOnboardingRequest
 public class SendMessageRequest
 {
     public string Body { get; set; } = string.Empty;
+}
+
+public class ErrorResponse
+{
+    public string Name { get; set; } = string.Empty;
+    public string Message { get; set; } = string.Empty;
+    public string DebugId { get; set; } = string.Empty;
+    public List<ValidationError>? Details { get; set; }
+}
+
+public class ValidationError
+{
+    public string Field { get; set; } = string.Empty;
+    public string Message { get; set; } = string.Empty;
+    public string Code { get; set; } = string.Empty;
 }

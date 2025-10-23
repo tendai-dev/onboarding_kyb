@@ -91,10 +91,12 @@ public class OnboardingCasesController : ControllerBase
 
         if (result == null)
         {
-            return NotFound(ErrorResponse.NotFound(
-                "OnboardingCaseNotFound",
-                $"Onboarding case with ID {id} was not found",
-                HttpContext.Request.Headers["X-Request-Id"].FirstOrDefault() ?? Guid.NewGuid().ToString()));
+            return NotFound(new ErrorResponse
+            {
+                Name = "OnboardingCaseNotFound",
+                Message = $"Onboarding case with ID {id} was not found",
+                DebugId = HttpContext.Request.Headers["X-Request-Id"].FirstOrDefault() ?? Guid.NewGuid().ToString()
+            });
         }
 
         // Authorization check: user can only access their partner's cases

@@ -61,8 +61,7 @@ controller:
     # Request ID
     generate-request-id: "true"
     
-    # Real IP
-    use-forwarded-headers: "true"
+    # Real IP (already configured above)
     
     # Hide version
     server-tokens: "false"

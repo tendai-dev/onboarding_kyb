@@ -1,0 +1,95 @@
+---
+# React Frontend Deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: frontend
+  namespace: business-onboarding
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: frontend
+  template:
+    metadata:
+      labels:
+        app: frontend
+    spec:
+      containers:
+      - name: frontend
+        image: node:18-alpine
+        ports:
+        - containerPort: 3000
+        env:
+        - name: NODE_ENV
+          value: "production"
+        - name: VITE_API_BASE_URL
+          value: "http://158.220.110.88/onboarding"
+        - name: VITE_DOCUMENT_API_URL
+          value: "http://158.220.110.88/documents"
+        - name: VITE_RISK_API_URL
+          value: "http://158.220.110.88/risk"
+        - name: VITE_NOTIFICATION_API_URL
+          value: "http://158.220.110.88/notifications"
+        workingDir: /app
+        command: ["/bin/sh"]
+        args: ["-c", "npm install && npm run build && npm start"]
+        volumeMounts:
+        - name: frontend-code
+          mountPath: /app
+        resources:
+          requests:
+            memory: "512Mi"
+            cpu: "250m"
+          limits:
+            memory: "1Gi"
+            cpu: "500m"
+      volumes:
+      - name: frontend-code
+        hostPath:
+          path: /root/onboarding_kyc/frontend/mukuruKyc
+          type: Directory
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: frontend
+  namespace: business-onboarding
+spec:
+  selector:
+    app: frontend
+  ports:
+  - port: 80
+    targetPort: 3000
+  type: ClusterIP
+---
+# Frontend Ingress
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: frontend-ingress
+  namespace: business-onboarding
+  annotations:
+    nginx.ingress.kubernetes.io/rewrite-target: /
+spec:
+  ingressClassName: nginx
+  rules:
+  - host: 158.220.110.88.nip.io
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: react-static
+            port:
+              number: 80
+  - http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: react-static
+            port:
+              number: 80

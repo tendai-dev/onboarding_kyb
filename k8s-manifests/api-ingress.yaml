@@ -1,0 +1,56 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: api-gateway
+  namespace: business-onboarding
+  annotations:
+    nginx.ingress.kubernetes.io/use-regex: "true"
+    nginx.ingress.kubernetes.io/priority: "100"
+spec:
+  ingressClassName: nginx
+  rules:
+  - host: 158.220.110.88.nip.io
+    http:
+      paths:
+      - path: /api
+        pathType: Prefix
+        backend:
+          service:
+            name: onboarding-api
+            port:
+              number: 80
+      - path: /onboarding(/|$)(.*)
+        pathType: ImplementationSpecific
+        backend:
+          service:
+            name: onboarding-api
+            port:
+              number: 80
+      - path: /documents(/|$)(.*)
+        pathType: ImplementationSpecific
+        backend:
+          service:
+            name: document-service
+            port:
+              number: 80
+      - path: /risk(/|$)(.*)
+        pathType: ImplementationSpecific
+        backend:
+          service:
+            name: risk-service
+            port:
+              number: 80
+      - path: /notifications(/|$)(.*)
+        pathType: ImplementationSpecific
+        backend:
+          service:
+            name: notification-service
+            port:
+              number: 80
+      - path: /checklist(/|$)(.*)
+        pathType: ImplementationSpecific
+        backend:
+          service:
+            name: checklist-service
+            port:
+              number: 80

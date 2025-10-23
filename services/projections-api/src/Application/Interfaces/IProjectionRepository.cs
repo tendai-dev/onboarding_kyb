@@ -1,4 +1,5 @@
 using ProjectionsApi.Domain.ReadModels;
+using ProjectionsApi.Application.Queries;
 
 namespace ProjectionsApi.Application.Interfaces;
 

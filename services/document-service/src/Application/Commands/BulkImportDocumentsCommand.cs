@@ -31,12 +31,12 @@ public record BulkImportResult
 {
     public Guid ImportBatchId { get; init; }
     public int TotalDocuments { get; init; }
-    public int SuccessCount { get; init; }
-    public int FailureCount { get; init; }
-    public int DuplicateCount { get; init; }
-    public List<ImportError> Errors { get; init; } = new();
-    public DateTime StartedAt { get; init; }
-    public DateTime CompletedAt { get; init; }
+    public int SuccessCount { get; set; }
+    public int FailureCount { get; set; }
+    public int DuplicateCount { get; set; }
+    public List<ImportError> Errors { get; set; } = new();
+    public DateTime StartedAt { get; set; }
+    public DateTime CompletedAt { get; set; }
 }
 
 public record ImportError

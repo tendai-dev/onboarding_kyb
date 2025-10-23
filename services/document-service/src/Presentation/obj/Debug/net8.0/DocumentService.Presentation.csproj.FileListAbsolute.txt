@@ -1,0 +1,8 @@
+/root/onboarding_kyc/services/document-service/src/Presentation/obj/Debug/net8.0/DocumentService.Presentation.csproj.AssemblyReference.cache
+/root/onboarding_kyc/services/document-service/src/Presentation/obj/Debug/net8.0/DocumentService.Presentation.GeneratedMSBuildEditorConfig.editorconfig
+/root/onboarding_kyc/services/document-service/src/Presentation/obj/Debug/net8.0/DocumentService.Presentation.AssemblyInfoInputs.cache
+/root/onboarding_kyc/services/document-service/src/Presentation/obj/Debug/net8.0/DocumentService.Presentation.AssemblyInfo.cs
+/root/onboarding_kyc/services/document-service/src/Presentation/obj/Debug/net8.0/DocumentService.Presentation.csproj.CoreCompileInputs.cache
+/root/onboarding_kyc/services/document-service/src/Presentation/obj/Debug/net8.0/DocumentService.Presentation.MvcApplicationPartsAssemblyInfo.cs
+/root/onboarding_kyc/services/document-service/src/Presentation/obj/Debug/net8.0/DocumentService.Presentation.MvcApplicationPartsAssemblyInfo.cache
+/root/onboarding_kyc/services/document-service/src/Presentation/obj/Debug/net8.0/DocumentService.Presentation.sourcelink.json

@@ -210,9 +210,9 @@ public enum RiskTier
 }
 
 /// <summary>
-/// Individual checklist item
+/// Individual KYC checklist item
 /// </summary>
-public class ChecklistItem
+public class KycChecklistItem
 {
     public string Code { get; private set; }
     public string Name { get; private set; }
@@ -223,7 +223,7 @@ public class ChecklistItem
     public DateTime? CompletedAt { get; private set; }
     public string? CompletedBy { get; private set; }
     
-    public ChecklistItem(string code, string name, CheckPriority priority, bool isMandatory)
+    public KycChecklistItem(string code, string name, CheckPriority priority, bool isMandatory)
     {
         Code = code;
         Name = name;
@@ -256,4 +256,8 @@ public enum CheckStatus
     Completed = 3,
     Failed = 4
 }
+
+
+
+
 

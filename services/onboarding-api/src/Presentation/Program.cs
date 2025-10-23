@@ -9,6 +9,7 @@ using OnboardingApi.Infrastructure.EventBus;
 using OnboardingApi.Infrastructure.Persistence;
 using OnboardingApi.Infrastructure.Persistence.Repositories;
 using OnboardingApi.Presentation.Filters;
+using OnboardingApi.Presentation.Configuration;
 using OpenTelemetry.Exporter;
 using OpenTelemetry.Resources;
 using OpenTelemetry.Trace;
@@ -99,26 +100,9 @@ builder.Services.AddTransient(typeof(IPipelineBehavior<,>), typeof(ValidationBeh
 builder.Services.AddValidatorsFromAssembly(typeof(OnboardingApi.Application.Commands.CreateOnboardingCaseCommand).Assembly);
 
 // ========================================
-// Authentication (OAuth 2.1 / Keycloak)
+// Authentication (Keycloak + Active Directory)
 // ========================================
-builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
-    .AddJwtBearer(options =>
-    {
-        options.Authority = builder.Configuration["Keycloak:Authority"];
-        options.Audience = builder.Configuration["Keycloak:Audience"];
-        options.RequireHttpsMetadata = !builder.Environment.IsDevelopment();
-        
-        options.TokenValidationParameters = new Microsoft.IdentityModel.Tokens.TokenValidationParameters
-        {
-            ValidateIssuer = true,
-            ValidateAudience = true,
-            ValidateLifetime = true,
-            ValidateIssuerSigningKey = true,
-            ClockSkew = TimeSpan.FromMinutes(5)
-        };
-    });
-
-builder.Services.AddAuthorization();
+builder.Services.AddAuthenticationServices(builder.Configuration);
 
 // ========================================
 // OpenTelemetry (Distributed Tracing)
@@ -238,8 +222,7 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseCors();
-app.UseAuthentication();
-app.UseAuthorization();
+app.UseAuthenticationMiddleware();
 app.MapControllers();
 
 // ========================================

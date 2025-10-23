@@ -1,0 +1,164 @@
+---
+# Simple Frontend using nginx to serve static files
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: frontend-simple
+  namespace: business-onboarding
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: frontend-simple
+  template:
+    metadata:
+      labels:
+        app: frontend-simple
+    spec:
+      containers:
+      - name: frontend
+        image: nginx:alpine
+        ports:
+        - containerPort: 80
+        volumeMounts:
+        - name: nginx-config
+          mountPath: /etc/nginx/conf.d/default.conf
+          subPath: default.conf
+        - name: frontend-html
+          mountPath: /usr/share/nginx/html/index.html
+          subPath: index.html
+        resources:
+          requests:
+            memory: "128Mi"
+            cpu: "100m"
+          limits:
+            memory: "256Mi"
+            cpu: "200m"
+      volumes:
+      - name: nginx-config
+        configMap:
+          name: frontend-nginx-config
+      - name: frontend-html
+        configMap:
+          name: frontend-html
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: frontend-nginx-config
+  namespace: business-onboarding
+data:
+  default.conf: |
+    server {
+        listen 80;
+        server_name _;
+        root /usr/share/nginx/html;
+        index index.html;
+        
+        location / {
+            try_files $uri $uri/ /index.html;
+        }
+        
+        location /api/ {
+            proxy_pass http://onboarding-api/;
+            proxy_set_header Host $host;
+            proxy_set_header X-Real-IP $remote_addr;
+        }
+    }
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: frontend-html
+  namespace: business-onboarding
+data:
+  index.html: |
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>KYC Onboarding Platform</title>
+        <script src="https://cdn.tailwindcss.com"></script>
+    </head>
+    <body class="bg-gray-100">
+        <div class="min-h-screen flex items-center justify-center">
+            <div class="max-w-md w-full bg-white rounded-lg shadow-md p-6">
+                <div class="text-center">
+                    <h1 class="text-3xl font-bold text-gray-900 mb-4">🏢 KYC Platform</h1>
+                    <p class="text-gray-600 mb-6">Corporate Digital Onboarding & KYC Platform</p>
+                    
+                    <div class="space-y-4">
+                        <div class="bg-green-50 border border-green-200 rounded-lg p-4">
+                            <h2 class="text-lg font-semibold text-green-800 mb-2">✅ Backend Status</h2>
+                            <div class="text-sm text-green-700 space-y-1">
+                                <div>• Onboarding API: Running</div>
+                                <div>• PostgreSQL: Running</div>
+                                <div>• Redis: Running</div>
+                                <div>• Kafka: Running</div>
+                                <div>• MinIO: Running</div>
+                            </div>
+                        </div>
+                        
+                        <div class="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                            <h2 class="text-lg font-semibold text-blue-800 mb-2">🔗 API Endpoints</h2>
+                            <div class="text-sm text-blue-700 space-y-1">
+                                <div><a href="/onboarding/health" class="underline">Health Check</a></div>
+                                <div><a href="/onboarding/v1/cases" class="underline">Cases API</a></div>
+                                <div><a href="/documents" class="underline">Documents</a></div>
+                                <div><a href="/risk" class="underline">Risk Assessment</a></div>
+                            </div>
+                        </div>
+                        
+                        <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                            <h2 class="text-lg font-semibold text-yellow-800 mb-2">🚀 Server Info</h2>
+                            <div class="text-sm text-yellow-700">
+                                <div>IP: 158.220.110.88</div>
+                                <div>Domain: 158.220.110.88.nip.io</div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="mt-6">
+                        <button onclick="testAPI()" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">
+                            Test API Connection
+                        </button>
+                    </div>
+                    
+                    <div id="api-result" class="mt-4 text-sm"></div>
+                </div>
+            </div>
+        </div>
+        
+        <script>
+            async function testAPI() {
+                const resultDiv = document.getElementById('api-result');
+                resultDiv.innerHTML = 'Testing API...';
+                
+                try {
+                    const response = await fetch('/onboarding/health');
+                    if (response.ok) {
+                        const data = await response.text();
+                        resultDiv.innerHTML = '<div class="text-green-600">✅ API Connected Successfully!</div>';
+                    } else {
+                        resultDiv.innerHTML = '<div class="text-red-600">❌ API Connection Failed</div>';
+                    }
+                } catch (error) {
+                    resultDiv.innerHTML = '<div class="text-red-600">❌ Error: ' + error.message + '</div>';
+                }
+            }
+        </script>
+    </body>
+    </html>
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: frontend-simple
+  namespace: business-onboarding
+spec:
+  selector:
+    app: frontend-simple
+  ports:
+  - port: 80
+    targetPort: 80

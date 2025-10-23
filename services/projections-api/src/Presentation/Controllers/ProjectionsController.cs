@@ -94,9 +94,9 @@ public class ProjectionsController : ControllerBase
     {
         // This would be implemented as a separate query in a full implementation
         var query = new GetOnboardingCasesQuery(
-            partnerId: partnerId,
-            requiresManualReview: true,
-            take: 50);
+            PartnerId: partnerId,
+            RequiresManualReview: true,
+            Take: 50);
 
         var result = await _mediator.Send(query);
         return Ok(result.Items);
@@ -160,7 +160,10 @@ public class ProjectionsController : ControllerBase
         [FromQuery] DateTime? toDate = null)
     {
         var query = new GetOnboardingCasesQuery(
-            partnerId, status, riskLevel, take: 10000); // Large limit for export
+            PartnerId: partnerId, 
+            Status: status, 
+            RiskLevel: riskLevel, 
+            Take: 10000); // Large limit for export
 
         var result = await _mediator.Send(query);
         

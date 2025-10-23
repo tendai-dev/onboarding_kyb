@@ -15,9 +15,52 @@ global:
 # ========================================
 kafka:
   enabled: true  # Set to false to use RabbitMQ instead
+  replicaCount: 1
+  persistence:
+    enabled: true
+    size: 20Gi
+    storageClass: "local-path"
+  resources:
+    requests:
+      memory: 1Gi
+      cpu: 500m
+    limits:
+      memory: 2Gi
+      cpu: 1000m
+  zookeeper:
+    persistence:
+      enabled: true
+      size: 8Gi
+      storageClass: "local-path"
+  metrics:
+    kafka:
+      enabled: true
+    jmx:
+      enabled: true
+    serviceMonitor:
+      enabled: true
 
 rabbitmq:
   enabled: false  # Set to true to use RabbitMQ instead of Kafka
+  auth:
+    username: "admin"
+    password: "rabbitmq-changeme"  # CHANGE IN PRODUCTION
+  replicaCount: 1
+  persistence:
+    enabled: true
+    size: 10Gi
+    storageClass: "local-path"
+  resources:
+    requests:
+      memory: 512Mi
+      cpu: 250m
+    limits:
+      memory: 1Gi
+      cpu: 500m
+  metrics:
+    enabled: true
+    serviceMonitor:
+      enabled: true
 
 # ========================================
 # MinIO (S3-compatible object storage)
@@ -173,58 +216,7 @@ redis:
     serviceMonitor:
       enabled: true
 
-# ========================================
-# Kafka
-# ========================================
-kafka:
-  replicaCount: 1
-  persistence:
-    enabled: true
-    size: 20Gi
-    storageClass: "local-path"
-  resources:
-    requests:
-      memory: 1Gi
-      cpu: 500m
-    limits:
-      memory: 2Gi
-      cpu: 1000m
-  zookeeper:
-    persistence:
-      enabled: true
-      size: 8Gi
-      storageClass: "local-path"
-  metrics:
-    kafka:
-      enabled: true
-    jmx:
-      enabled: true
-    serviceMonitor:
-      enabled: true
-
-# ========================================
-# RabbitMQ (alternative to Kafka)
-# ========================================
-rabbitmq:
-  auth:
-    username: "admin"
-    password: "rabbitmq-changeme"  # CHANGE IN PRODUCTION
-  replicaCount: 1
-  persistence:
-    enabled: true
-    size: 10Gi
-    storageClass: "local-path"
-  resources:
-    requests:
-      memory: 512Mi
-      cpu: 250m
-    limits:
-      memory: 1Gi
-      cpu: 500m
-  metrics:
-    enabled: true
-    serviceMonitor:
-      enabled: true
+# Duplicate kafka and rabbitmq sections removed - configurations merged above
 
 # ========================================
 # Keycloak
