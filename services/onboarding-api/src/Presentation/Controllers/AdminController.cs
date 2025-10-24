@@ -120,7 +120,6 @@ public class AdminController : ControllerBase
         var payload = new
         {
             assigneeId = request.AssigneeId,
-            assigneeName = request.AssigneeName,
             assignedBy = userId
         };
 

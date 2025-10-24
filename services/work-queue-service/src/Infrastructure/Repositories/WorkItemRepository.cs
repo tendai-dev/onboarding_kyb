@@ -29,16 +29,21 @@ public class WorkItemRepository : IWorkItemRepository
 
     public async Task<List<WorkItem>> GetByStatusAsync(string status, CancellationToken cancellationToken = default)
     {
-        return await _context.WorkItems
-            .Where(w => w.Status == status)
-            .OrderByDescending(w => w.CreatedAt)
-            .ToListAsync(cancellationToken);
+        // Parse status string to enum
+        if (Enum.TryParse<WorkItemStatus>(status, out var statusEnum))
+        {
+            return await _context.WorkItems
+                .Where(w => w.Status == statusEnum)
+                .OrderByDescending(w => w.CreatedAt)
+                .ToListAsync(cancellationToken);
+        }
+        return new List<WorkItem>();
     }
 
     public async Task<List<WorkItem>> GetByAssigneeAsync(Guid assigneeId, CancellationToken cancellationToken = default)
     {
         return await _context.WorkItems
-            .Where(w => w.AssigneeId == assigneeId)
+            .Where(w => w.AssignedTo == assigneeId)
             .OrderByDescending(w => w.CreatedAt)
             .ToListAsync(cancellationToken);
     }
@@ -53,9 +58,9 @@ public class WorkItemRepository : IWorkItemRepository
         _context.WorkItems.Update(workItem);
     }
 
-    public async Task SaveChangesAsync(CancellationToken cancellationToken = default)
+    public Task SaveChangesAsync(CancellationToken cancellationToken = default)
     {
-        await _context.SaveChangesAsync(cancellationToken);
+        return _context.SaveChangesAsync(cancellationToken);
     }
 }
 

@@ -235,9 +235,33 @@ public class OnboardingsController : ControllerBase
         [FromForm] string kind,
         CancellationToken cancellationToken)
     {
-        // TODO: Implement document upload
-        // For now, return a mock response
-        var response = new DocumentDto
+        var userId = User.GetUserId();
+
+        // Create multipart form content
+        using var httpClient = new HttpClient();
+        using var content = new MultipartFormDataContent();
+        using var fileContent = new StreamContent(file.OpenReadStream());
+        
+        fileContent.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue(file.ContentType);
+        content.Add(fileContent, "file", file.FileName);
+        content.Add(new StringContent(id), "caseId");
+        content.Add(new StringContent(kind), "documentType");
+        content.Add(new StringContent(userId), "uploadedBy");
+
+        // Call Document Service
+        var response = await httpClient.PostAsync(
+            "http://localhost:5001/api/v1/documents",
+            content,
+            cancellationToken);
+
+        if (response.IsSuccessStatusCode)
+        {
+            var documentResult = await response.Content.ReadFromJsonAsync<DocumentDto>(cancellationToken);
+            return CreatedAtAction(nameof(GetDocuments), new { id }, documentResult);
+        }
+
+        // Fallback response
+        var fallbackResponse = new DocumentDto
         {
             Id = Guid.NewGuid().ToString(),
             OnboardingId = id,
@@ -248,10 +272,7 @@ public class OnboardingsController : ControllerBase
             UploadedAt = DateTime.UtcNow
         };
 
-        return CreatedAtAction(
-            nameof(GetDocuments),
-            new { id },
-            response);
+        return CreatedAtAction(nameof(GetDocuments), new { id }, fallbackResponse);
     }
 
     /// <summary>

@@ -156,7 +156,7 @@ public class TesseractDocumentQualityValidator : IDocumentQualityValidator
         {
             // Tesseract OCR integration would go here
             // For production, install Tesseract-OCR and use Tesseract.Net wrapper
-            _logger.LogDebug("Document quality validation for {FilePath} - OCR confidence check", filePath);
+            _logger.LogDebug("Document quality validation for {FileName} - OCR confidence check", fileName);
             // For now, this is a stub that simulates OCR processing
             
             _logger.LogInformation("Performing OCR on document: {FileName}", fileName);

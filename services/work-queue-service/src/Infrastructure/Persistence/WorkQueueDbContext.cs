@@ -24,18 +24,24 @@ public class WorkQueueDbContext : DbContext
             entity.Property(e => e.Id)
                 .HasColumnName("id");
             
-            entity.Property(e => e.CaseId)
+            entity.Property(e => e.ApplicationId)
                 .IsRequired()
-                .HasColumnName("case_id");
+                .HasColumnName("application_id");
             
-            entity.Property(e => e.Title)
+            entity.Property(e => e.ApplicantName)
                 .IsRequired()
                 .HasMaxLength(500)
-                .HasColumnName("title");
+                .HasColumnName("applicant_name");
             
-            entity.Property(e => e.Description)
-                .HasMaxLength(2000)
-                .HasColumnName("description");
+            entity.Property(e => e.EntityType)
+                .IsRequired()
+                .HasMaxLength(100)
+                .HasColumnName("entity_type");
+            
+            entity.Property(e => e.Country)
+                .IsRequired()
+                .HasMaxLength(3)
+                .HasColumnName("country");
             
             entity.Property(e => e.Status)
                 .IsRequired()
@@ -47,12 +53,12 @@ public class WorkQueueDbContext : DbContext
                 .HasMaxLength(20)
                 .HasColumnName("priority");
             
-            entity.Property(e => e.AssigneeId)
-                .HasColumnName("assignee_id");
+            entity.Property(e => e.AssignedTo)
+                .HasColumnName("assigned_to");
             
-            entity.Property(e => e.AssigneeName)
+            entity.Property(e => e.AssignedToName)
                 .HasMaxLength(200)
-                .HasColumnName("assignee_name");
+                .HasColumnName("assigned_to_name");
             
             entity.Property(e => e.CreatedAt)
                 .IsRequired()
@@ -63,14 +69,11 @@ public class WorkQueueDbContext : DbContext
             
             entity.Property(e => e.DueDate)
                 .HasColumnName("due_date");
-            
-            entity.Property(e => e.CompletedAt)
-                .HasColumnName("completed_at");
 
             // Indexes
-            entity.HasIndex(e => e.CaseId);
+            entity.HasIndex(e => e.ApplicationId);
             entity.HasIndex(e => e.Status);
-            entity.HasIndex(e => e.AssigneeId);
+            entity.HasIndex(e => e.AssignedTo);
             entity.HasIndex(e => e.CreatedAt);
         });
     }

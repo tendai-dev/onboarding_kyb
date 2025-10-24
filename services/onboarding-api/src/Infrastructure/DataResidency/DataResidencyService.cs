@@ -173,10 +173,10 @@ public class DataResidencyService : IDataResidencyService
             
             // Send email to compliance team
             _logger.LogWarning(
-                "Data residency violation detected for user {UserId}. " +
-                "User country: {UserCountry}, Data location: {DataLocation}. " +
+                "Data residency violation detected. " +
+                "Expected region: {ExpectedRegion}, Actual region: {ActualRegion}. " +
                 "Compliance team should be notified.",
-                userId, userCountry, dataLocation);
+                expectedRegion, actualRegion);
             // This would integrate with notification service
         }
         catch (Exception ex)

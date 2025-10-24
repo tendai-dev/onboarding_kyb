@@ -23,8 +23,8 @@ public class MessageRepository : IMessageRepository
     public async Task<List<Message>> GetByCaseIdAsync(Guid caseId, CancellationToken cancellationToken = default)
     {
         return await _context.Messages
-            .Where(m => m.CaseId == caseId)
-            .OrderBy(m => m.CreatedAt)
+            .Where(m => m.ApplicationId == caseId)
+            .OrderBy(m => m.SentAt)
             .ToListAsync(cancellationToken);
     }
 
@@ -32,7 +32,7 @@ public class MessageRepository : IMessageRepository
     {
         return await _context.Messages
             .Where(m => m.ThreadId == threadId)
-            .OrderBy(m => m.CreatedAt)
+            .OrderBy(m => m.SentAt)
             .ToListAsync(cancellationToken);
     }
 

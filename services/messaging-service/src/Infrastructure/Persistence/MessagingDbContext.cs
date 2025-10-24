@@ -24,45 +24,42 @@ public class MessagingDbContext : DbContext
             entity.Property(e => e.Id)
                 .HasColumnName("id");
             
-            entity.Property(e => e.CaseId)
-                .HasColumnName("case_id");
+            entity.Property(e => e.ApplicationId)
+                .HasColumnName("application_id");
             
             entity.Property(e => e.ThreadId)
                 .HasColumnName("thread_id");
             
-            entity.Property(e => e.FromUserId)
+            entity.Property(e => e.SenderId)
                 .IsRequired()
-                .HasColumnName("from_user_id");
+                .HasColumnName("sender_id");
             
-            entity.Property(e => e.FromUserName)
+            entity.Property(e => e.SenderName)
                 .IsRequired()
                 .HasMaxLength(200)
-                .HasColumnName("from_user_name");
+                .HasColumnName("sender_name");
             
-            entity.Property(e => e.FromRole)
+            entity.Property(e => e.SenderRole)
                 .IsRequired()
                 .HasMaxLength(50)
-                .HasColumnName("from_role");
+                .HasColumnName("sender_role");
             
-            entity.Property(e => e.Body)
+            entity.Property(e => e.Content)
                 .IsRequired()
                 .HasMaxLength(4000)
-                .HasColumnName("body");
+                .HasColumnName("content");
             
-            entity.Property(e => e.CreatedAt)
+            entity.Property(e => e.SentAt)
                 .IsRequired()
-                .HasColumnName("created_at");
+                .HasColumnName("sent_at");
             
-            entity.Property(e => e.IsRead)
-                .HasColumnName("is_read");
-            
-            entity.Property(e => e.ReadAt)
-                .HasColumnName("read_at");
+            entity.Property(e => e.Status)
+                .HasMaxLength(50)
+                .HasColumnName("status");
 
             // Indexes
-            entity.HasIndex(e => e.CaseId);
+            entity.HasIndex(e => e.ApplicationId);
             entity.HasIndex(e => e.ThreadId);
-            entity.HasIndex(e => e.CreatedAt);
         });
     }
 }
