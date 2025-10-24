@@ -1,63 +1,120 @@
-# Spectral Linting Rules for OpenAPI Specifications
-# Enforces API design standards across all services
-
 extends: [[spectral:oas, all]]
 
 rules:
-  # ========================================
-  # Versioning Rules
-  # ========================================
-  oas3-api-servers:
-    description: Servers must include /v{N} in path
+  # Enforce ubiquitous language - use "partner" not "customer"
+  ubiquitous-language-partner:
+    description: Use 'partner' instead of 'customer' in API paths and descriptions
+    message: "{{error}} - Use 'partner' instead of 'customer' to maintain ubiquitous language"
     severity: error
-    given: $.servers[*].url
+    given: "$..paths..*~"
     then:
       function: pattern
       functionOptions:
-        match: "^https?://[^/]+/(v[0-9]+)(/.*)?$"
+        notMatch: "/customer"
   
-  # ========================================
-  # Operation Rules
-  # ========================================
-  operation-operationId:
-    description: All operations must have unique operationId
+  ubiquitous-language-application:
+    description: Use 'application' instead of 'request' for onboarding applications
+    message: "Use 'application' instead of 'request' for onboarding applications"
+    severity: warn
+    given: "$..paths..*~"
+    then:
+      function: pattern
+      functionOptions:
+        notMatch: "/request"
+  
+  # Enforce major-only versioning (v1, v2, not v1.2)
+  major-version-only:
+    description: API paths must use major versions only (/v1/, /v2/), not minor versions
+    message: "{{path}} - Use major versions only (e.g., /v1/, /v2/), not /v1.2/"
     severity: error
-    given: $.paths[*][*]
+    given: "$..paths.*~"
+    then:
+      function: pattern
+      functionOptions:
+        notMatch: "/v\\d+\\.\\d+"
+  
+  # Enforce lowercase paths with hyphens
+  path-lowercase-hyphen:
+    description: Paths must be lowercase with hyphens (kebab-case)
+    message: "{{path}} - Use lowercase with hyphens (e.g., /work-items not /WorkItems)"
+    severity: error
+    given: "$..paths.*~"
+    then:
+      function: pattern
+      functionOptions:
+        match: "^(/[a-z0-9-/{}]+|/)$"
+  
+  # Enforce plural resource names
+  path-plural-resources:
+    description: Resource names should be plural
+    message: "{{path}} - Use plural resource names (e.g., /applications not /application)"
+    severity: warn
+    given: "$..paths.*~"
+    then:
+      - function: pattern
+        functionOptions:
+          notMatch: "/v\\d+/[a-z]+-[a-z]+$"  # Don't match paths ending with singular
+  
+  # Require operation IDs
+  operation-operationId:
+    description: All operations must have an operationId
+    message: "Missing operationId for {{path}}"
+    severity: error
+    given: "$..paths..operations[*]"
     then:
       field: operationId
       function: truthy
   
-  operation-tags:
-    description: All operations must have tags
-    severity: warn
-    given: $.paths[*][*]
-    then:
-      field: tags
-      function: truthy
-  
-  operation-summary:
-    description: All operations must have summary
-    severity: warn
-    given: $.paths[*][*]
-    then:
-      field: summary
-      function: truthy
-  
+  # Require operation descriptions
   operation-description:
-    description: All operations should have description
-    severity: info
-    given: $.paths[*][*]
+    description: All operations must have a description
+    message: "Missing description for {{path}}"
+    severity: warn
+    given: "$..paths..operations[*]"
     then:
       field: description
       function: truthy
   
-  # ========================================
-  # Request/Response Rules
-  # ========================================
-  operation-post-idempotency-key:
-    description: POST operations should document Idempotency-Key header
+  # Require response examples
+  response-examples:
+    description: 200 responses should include examples
+    message: "Missing example for 200 response in {{path}}"
     severity: warn
-    given: $.paths[*].post
+    given: "$..paths..responses.200"
+    then:
+      field: content..example
+      function: truthy
+  
+  # Enforce standard error responses
+  standard-error-responses:
+    description: Operations should define 400, 401, 404, 500 error responses
+    message: "Missing standard error responses (400, 401, 404, 500) for {{path}}"
+    severity: warn
+    given: "$..paths..operations[*]"
+    then:
+      field: responses
+      function: schema
+      functionOptions:
+        schema:
+          type: object
+          required: ["400", "401", "500"]
+  
+  # Require security schemes
+  security-defined:
+    description: Operations must have security defined
+    message: "{{path}} - Missing security definition"
+    severity: error
+    given: "$..paths..operations[*]"
+    then:
+      field: security
+      function: truthy
+  
+  # Enforce request ID header
+  request-id-header:
+    description: Operations should document X-Request-Id header
+    message: "{{path}} - Document X-Request-Id header for traceability"
+    severity: warn
+    given: "$..paths..operations[*]"
     then:
       field: parameters
       function: schema
@@ -67,127 +124,67 @@ rules:
           contains:
             properties:
               name:
-                const: Idempotency-Key
-              in:
-                const: header
+                const: X-Request-Id
   
-  operation-security:
-    description: All operations except health checks must require authentication
+  # Deprecation warning
+  no-deprecated-without-sunset:
+    description: Deprecated endpoints must have Sunset header documented
+    message: "{{path}} - Deprecated endpoint must document Sunset header"
     severity: error
-    given: $.paths[?(@property != '/health/live' && @property != '/health/ready')][*]
+    given: "$..paths..operations[?(@.deprecated == true)]"
     then:
-      field: security
+      field: responses..headers.Sunset
       function: truthy
   
-  response-2xx-schema:
-    description: 2xx responses must have schema
-    severity: error
-    given: $.paths[*][*].responses[?(@property >= '200' && @property < '300')]
-    then:
-      field: content.application/json.schema
-      function: truthy
-  
-  response-4xx-error-schema:
-    description: 4xx/5xx responses must reference ErrorResponse
-    severity: error
-    given: $.paths[*][*].responses[?(@property >= '400')]
-    then:
-      field: content.application/json.schema.$ref
-      function: pattern
-      functionOptions:
-        match: ".*ErrorResponse$"
-  
-  # ========================================
-  # Naming Conventions
-  # ========================================
-  path-lowercase:
-    description: Path segments should be lowercase with hyphens
-    severity: error
-    given: $.paths.*~
-    then:
-      function: pattern
-      functionOptions:
-        match: "^/[a-z0-9/-]+$"
-  
-  schema-names-pascal-case:
-    description: Schema names should be PascalCase
+  # Pagination standard
+  pagination-parameters:
+    description: List operations should use standard pagination (page, pageSize)
+    message: "{{path}} - Use standard pagination parameters (page, pageSize)"
     severity: warn
-    given: $.components.schemas.*~
-    then:
-      function: pattern
-      functionOptions:
-        match: "^[A-Z][a-zA-Z0-9]*$"
-  
-  property-names-snake-case:
-    description: Property names should be snake_case
-    severity: warn
-    given: $.components.schemas.*.properties.*~
-    then:
-      function: pattern
-      functionOptions:
-        match: "^[a-z][a-z0-9_]*$"
-  
-  # ========================================
-  # Standard Headers
-  # ========================================
-  response-request-id-header:
-    description: Responses should include X-Request-Id header
-    severity: warn
-    given: $.paths[*][*].responses[?(@property >= '200' && @property < '300')]
-    then:
-      field: headers.X-Request-Id
-      function: truthy
-  
-  response-etag-header:
-    description: GET responses should include ETag header for caching
-    severity: info
-    given: $.paths[*].get.responses['200']
-    then:
-      field: headers.ETag
-      function: truthy
-  
-  # ========================================
-  # Pagination
-  # ========================================
-  collection-response-pagination:
-    description: Collection responses should include pagination fields
-    severity: warn
-    given: $.paths[*].get.responses['200'].content.application/json.schema.properties
+    given: "$..paths..get.parameters"
     then:
       function: schema
       functionOptions:
         schema:
-          type: object
-          required: [items, total, page, page_size]
+          type: array
+          contains:
+            anyOf:
+              - properties:
+                  name:
+                    const: page
+              - properties:
+                  name:
+                    const: pageSize
   
-  # ========================================
-  # Rate Limiting
-  # ========================================
-  response-429-retry-after:
-    description: 429 responses must include Retry-After header
-    severity: error
-    given: $.paths[*][*].responses['429']
+  # Rate limiting headers
+  rate-limit-headers:
+    description: Rate-limited endpoints should document rate limit headers
+    message: "{{path}} - Document X-RateLimit-* headers"
+    severity: info
+    given: "$..paths..operations[*].responses.429"
     then:
-      field: headers.Retry-After
-      function: truthy
-  
-  # ========================================
-  # Security
-  # ========================================
-  security-definitions:
-    description: Must define security schemes
-    severity: error
-    given: $.components.securitySchemes
-    then:
-      function: truthy
-  
-  bearer-token-format:
-    description: Bearer auth should specify JWT format
-    severity: warn
-    given: $.components.securitySchemes[?(@.type == 'http' && @.scheme == 'bearer')]
-    then:
-      field: bearerFormat
-      function: enumeration
+      field: headers
+      function: schema
       functionOptions:
-        values: [JWT]
-
+        schema:
+          type: object
+          required: ["X-RateLimit-Limit", "X-RateLimit-Remaining", "X-RateLimit-Reset"]
+  
+  # ETag for GET operations
+  etag-for-resources:
+    description: Resource GET operations should support ETag
+    message: "{{path}} - Consider adding ETag header for caching"
+    severity: info
+    given: "$..paths..get.responses.200"
+    then:
+      field: headers.ETag
+      function: truthy
+  
+  # Content-Type validation
+  content-type-required:
+    description: Request bodies must specify content type
+    message: "{{path}} - Specify Content-Type for request body"
+    severity: error
+    given: "$..paths..requestBody.content"
+    then:
+      function: truthy

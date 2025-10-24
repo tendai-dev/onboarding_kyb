@@ -132,7 +132,10 @@ public class ChecklistDbContext : DbContext
                 .HasColumnName("skip_reason");
 
             // Foreign key to Checklist
-            entity.Property<Guid>("ChecklistId")
+            entity.Property<ChecklistId>("ChecklistId")
+                .HasConversion(
+                    id => id.Value,
+                    value => ChecklistId.From(value))
                 .HasColumnName("checklist_id");
 
             // Indexes

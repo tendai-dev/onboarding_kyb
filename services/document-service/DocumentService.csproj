@@ -1,0 +1,16 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="src/Domain/DocumentService.Domain.csproj" />
+    <ProjectReference Include="src/Application/DocumentService.Application.csproj" />
+    <ProjectReference Include="src/Infrastructure/DocumentService.Infrastructure.csproj" />
+    <ProjectReference Include="src/Presentation/DocumentService.Presentation.csproj" />
+  </ItemGroup>
+
+</Project>

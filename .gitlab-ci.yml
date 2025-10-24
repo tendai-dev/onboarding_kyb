@@ -1,0 +1,262 @@
+# GitLab CI/CD Pipeline for Onboarding KYC Platform
+# Includes API contract validation with Spectral
+
+stages:
+  - validate
+  - build
+  - test
+  - deploy
+
+variables:
+  DOCKER_DRIVER: overlay2
+  DOCKER_TLS_CERTDIR: "/certs"
+
+# ==========================================
+# Stage 1: Validation
+# ==========================================
+
+api-contract-validation:
+  stage: validate
+  image: stoplight/spectral:latest
+  script:
+    - echo "🔍 Validating OpenAPI specifications..."
+    - |
+      # Find all openapi.yaml files
+      for spec in $(find services -name "openapi.yaml"); do
+        echo "Validating $spec..."
+        spectral lint "$spec" --fail-severity=error --format=stylish
+        if [ $? -ne 0 ]; then
+          echo "❌ API contract validation failed for $spec"
+          exit 1
+        fi
+      done
+    - echo "✅ All API contracts validated successfully"
+  rules:
+    - changes:
+        - services/**/openapi.yaml
+        - .spectral.yaml
+  allow_failure: false
+
+breaking-change-detection:
+  stage: validate
+  image: node:20-alpine
+  before_script:
+    - npm install -g @openapitools/openapi-diff
+  script:
+    - echo "🔍 Checking for breaking API changes..."
+    - ./scripts/check-breaking-changes.sh
+    - echo "✅ No breaking changes detected"
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+      changes:
+        - services/**/openapi.yaml
+  allow_failure: false
+
+lint-dotnet:
+  stage: validate
+  image: mcr.microsoft.com/dotnet/sdk:8.0
+  script:
+    - echo "🔍 Linting .NET code..."
+    - |
+      for sln in $(find services -name "*.sln"); do
+        echo "Linting $sln..."
+        dotnet format "$sln" --verify-no-changes --verbosity diagnostic
+      done
+    - echo "✅ .NET code style check passed"
+  rules:
+    - changes:
+        - services/**/*.cs
+  allow_failure: true
+
+lint-typescript:
+  stage: validate
+  image: node:20-alpine
+  before_script:
+    - cd frontend
+    - npm ci
+  script:
+    - echo "🔍 Linting TypeScript code..."
+    - npm run lint
+    - echo "✅ TypeScript linting passed"
+  rules:
+    - changes:
+        - frontend/**/*.ts
+        - frontend/**/*.tsx
+  allow_failure: true
+
+security-scan:
+  stage: validate
+  image: aquasec/trivy:latest
+  script:
+    - echo "🔍 Scanning for security vulnerabilities..."
+    - |
+      for dockerfile in $(find services -name "Dockerfile"); do
+        echo "Scanning $dockerfile..."
+        trivy config "$dockerfile" --severity HIGH,CRITICAL --exit-code 1
+      done
+    - echo "✅ Security scan passed"
+  allow_failure: false
+
+# ==========================================
+# Stage 2: Build
+# ==========================================
+
+build-services:
+  stage: build
+  image: docker:24-dind
+  services:
+    - docker:24-dind
+  script:
+    - echo "🔨 Building service Docker images..."
+    - |
+      for service in services/*/; do
+        service_name=$(basename "$service")
+        if [ -f "$service/Dockerfile" ]; then
+          echo "Building $service_name..."
+          docker build -t "onboarding-kyc/$service_name:$CI_COMMIT_SHA" "$service"
+          docker tag "onboarding-kyc/$service_name:$CI_COMMIT_SHA" "onboarding-kyc/$service_name:latest"
+        fi
+      done
+    - echo "✅ All services built successfully"
+  rules:
+    - if: '$CI_COMMIT_BRANCH == "main"'
+    - if: '$CI_COMMIT_BRANCH == "develop"'
+
+build-frontend:
+  stage: build
+  image: node:20-alpine
+  before_script:
+    - cd frontend
+    - npm ci
+  script:
+    - echo "🔨 Building frontend..."
+    - npm run build
+    - echo "✅ Frontend built successfully"
+  artifacts:
+    paths:
+      - frontend/.next/
+      - frontend/out/
+    expire_in: 1 day
+  rules:
+    - if: '$CI_COMMIT_BRANCH == "main"'
+    - if: '$CI_COMMIT_BRANCH == "develop"'
+
+# ==========================================
+# Stage 3: Test
+# ==========================================
+
+test-unit:
+  stage: test
+  image: mcr.microsoft.com/dotnet/sdk:8.0
+  script:
+    - echo "🧪 Running unit tests..."
+    - |
+      for test_proj in $(find services -name "*Tests.csproj"); do
+        echo "Testing $test_proj..."
+        dotnet test "$test_proj" --configuration Release --no-build --logger "trx;LogFileName=test_results.xml"
+      done
+    - echo "✅ Unit tests passed"
+  artifacts:
+    when: always
+    reports:
+      junit: "**/test_results.xml"
+
+test-integration:
+  stage: test
+  image: mcr.microsoft.com/dotnet/sdk:8.0
+  services:
+    - postgres:15-alpine
+    - redis:7-alpine
+  variables:
+    DATABASE_CONNECTION_STRING: "Host=postgres;Database=test;Username=postgres;Password=test"
+    REDIS_CONNECTION_STRING: "redis:6379"
+  script:
+    - echo "🧪 Running integration tests..."
+    - dotnet test tests/integration/ --configuration Release --logger "trx;LogFileName=integration_results.xml"
+    - echo "✅ Integration tests passed"
+  artifacts:
+    when: always
+    reports:
+      junit: "**/integration_results.xml"
+
+test-frontend:
+  stage: test
+  image: node:20-alpine
+  before_script:
+    - cd frontend
+    - npm ci
+  script:
+    - echo "🧪 Running frontend tests..."
+    - npm run test -- --coverage
+    - echo "✅ Frontend tests passed"
+  coverage: '/All files[^|]*\|[^|]*\s+([\d\.]+)/'
+  artifacts:
+    reports:
+      coverage_report:
+        coverage_format: cobertura
+        path: frontend/coverage/cobertura-coverage.xml
+
+# ==========================================
+# Stage 4: Deploy
+# ==========================================
+
+deploy-staging:
+  stage: deploy
+  image: alpine/helm:latest
+  before_script:
+    - kubectl config use-context staging
+  script:
+    - echo "🚀 Deploying to staging..."
+    - cd infra/helm
+    - helmfile -e staging apply
+    - echo "✅ Deployed to staging successfully"
+  environment:
+    name: staging
+    url: https://staging-onboarding.mukuru.com
+  rules:
+    - if: '$CI_COMMIT_BRANCH == "develop"'
+  when: manual
+
+deploy-production:
+  stage: deploy
+  image: alpine/helm:latest
+  before_script:
+    - kubectl config use-context production
+  script:
+    - echo "🚀 Deploying to production..."
+    - cd infra/helm
+    - helmfile -e production apply
+    - echo "✅ Deployed to production successfully"
+  environment:
+    name: production
+    url: https://onboarding.mukuru.com
+  rules:
+    - if: '$CI_COMMIT_BRANCH == "main"'
+  when: manual
+
+# ==========================================
+# Notification
+# ==========================================
+
+notify-success:
+  stage: .post
+  image: curlimages/curl:latest
+  script:
+    - |
+      curl -X POST https://hooks.slack.com/services/YOUR/SLACK/WEBHOOK \
+        -H 'Content-Type: application/json' \
+        -d "{\"text\":\"✅ Pipeline succeeded for $CI_PROJECT_NAME on $CI_COMMIT_BRANCH\"}"
+  rules:
+    - when: on_success
+
+notify-failure:
+  stage: .post
+  image: curlimages/curl:latest
+  script:
+    - |
+      curl -X POST https://hooks.slack.com/services/YOUR/SLACK/WEBHOOK \
+        -H 'Content-Type: application/json' \
+        -d "{\"text\":\"❌ Pipeline failed for $CI_PROJECT_NAME on $CI_COMMIT_BRANCH\"}"
+  rules:
+    - when: on_failure
+

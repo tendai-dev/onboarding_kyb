@@ -132,20 +132,5 @@ public enum RequirementType
     AuthorizedSignatories = 7 // Authorized person documents
 }
 
-public enum FieldType
-{
-    Text = 1,              // Single line text
-    TextArea = 2,          // Multi-line text
-    Email = 3,             // Email field
-    Phone = 4,             // Phone number
-    Date = 5,              // Date picker
-    Number = 6,            // Numeric input
-    Select = 7,            // Dropdown selection
-    MultiSelect = 8,       // Multiple selection
-    File = 9,              // File upload
-    Boolean = 10,          // Yes/No checkbox
-    Country = 11,          // Country selector
-    Address = 12           // Address compound field
-}
 
 

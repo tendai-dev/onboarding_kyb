@@ -1,0 +1,180 @@
+{
+  "dashboard": {
+    "title": "Circuit Breaker & Resilience Monitoring",
+    "tags": ["resilience", "circuit-breaker", "monitoring"],
+    "timezone": "UTC",
+    "schemaVersion": 16,
+    "version": 1,
+    "refresh": "30s",
+    "panels": [
+      {
+        "id": 1,
+        "title": "Circuit Breaker States",
+        "type": "graph",
+        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 0},
+        "targets": [
+          {
+            "expr": "circuit_breaker_open_total",
+            "legendFormat": "{{service}} - Open",
+            "refId": "A"
+          }
+        ],
+        "yaxes": [
+          {"format": "short", "label": "Count"},
+          {"format": "short"}
+        ],
+        "xaxis": {"mode": "time"},
+        "alert": {
+          "name": "Circuit Breaker Open Alert",
+          "conditions": [
+            {
+              "evaluator": {"params": [3], "type": "gt"},
+              "operator": {"type": "and"},
+              "query": {"params": ["A", "5m", "now"]},
+              "reducer": {"params": [], "type": "sum"},
+              "type": "query"
+            }
+          ],
+          "executionErrorState": "alerting",
+          "frequency": "1m",
+          "handler": 1,
+          "message": "Circuit breaker has opened {{service}}",
+          "noDataState": "no_data",
+          "notifications": []
+        }
+      },
+      {
+        "id": 2,
+        "title": "Retry Count by Service",
+        "type": "graph",
+        "gridPos": {"h": 8, "w": 12, "x": 12, "y": 0},
+        "targets": [
+          {
+            "expr": "rate(retry_count_total[5m])",
+            "legendFormat": "{{service}} - Attempt {{attempt}}",
+            "refId": "B"
+          }
+        ],
+        "yaxes": [
+          {"format": "short", "label": "Retries/sec"},
+          {"format": "short"}
+        ]
+      },
+      {
+        "id": 3,
+        "title": "Timeout Count",
+        "type": "graph",
+        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 8},
+        "targets": [
+          {
+            "expr": "rate(timeout_count_total[5m])",
+            "legendFormat": "{{service}} - Timeouts",
+            "refId": "C"
+          }
+        ],
+        "yaxes": [
+          {"format": "short", "label": "Timeouts/sec"},
+          {"format": "short"}
+        ]
+      },
+      {
+        "id": 4,
+        "title": "Request Duration (P95)",
+        "type": "graph",
+        "gridPos": {"h": 8, "w": 12, "x": 12, "y": 8},
+        "targets": [
+          {
+            "expr": "histogram_quantile(0.95, rate(request_duration_seconds_bucket[5m]))",
+            "legendFormat": "{{service}} - P95",
+            "refId": "D"
+          },
+          {
+            "expr": "histogram_quantile(0.99, rate(request_duration_seconds_bucket[5m]))",
+            "legendFormat": "{{service}} - P99",
+            "refId": "E"
+          }
+        ],
+        "yaxes": [
+          {"format": "s", "label": "Duration"},
+          {"format": "short"}
+        ]
+      },
+      {
+        "id": 5,
+        "title": "Circuit Breaker Status Table",
+        "type": "table",
+        "gridPos": {"h": 8, "w": 24, "x": 0, "y": 16},
+        "targets": [
+          {
+            "expr": "circuit_breaker_open_total",
+            "format": "table",
+            "instant": true,
+            "refId": "F"
+          }
+        ],
+        "styles": [
+          {
+            "alias": "Service",
+            "pattern": "service"
+          },
+          {
+            "alias": "Times Opened",
+            "pattern": "Value",
+            "type": "number"
+          }
+        ],
+        "transform": "table"
+      },
+      {
+        "id": 6,
+        "title": "Failure Rate by Service",
+        "type": "graph",
+        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 24},
+        "targets": [
+          {
+            "expr": "(rate(retry_count_total[5m]) / rate(http_requests_total[5m])) * 100",
+            "legendFormat": "{{service}} - Failure %",
+            "refId": "G"
+          }
+        ],
+        "yaxes": [
+          {"format": "percent", "label": "Failure Rate"},
+          {"format": "short"}
+        ]
+      },
+      {
+        "id": 7,
+        "title": "Service Health Score",
+        "type": "gauge",
+        "gridPos": {"h": 8, "w": 12, "x": 12, "y": 24},
+        "targets": [
+          {
+            "expr": "100 - ((rate(circuit_breaker_open_total[5m]) * 50) + (rate(timeout_count_total[5m]) * 30) + (rate(retry_count_total[5m]) / 10))",
+            "legendFormat": "{{service}}",
+            "refId": "H"
+          }
+        ],
+        "options": {
+          "showThresholdLabels": true,
+          "showThresholdMarkers": true
+        },
+        "fieldConfig": {
+          "defaults": {
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {"value": 0, "color": "red"},
+                {"value": 70, "color": "yellow"},
+                {"value": 90, "color": "green"}
+              ]
+            },
+            "min": 0,
+            "max": 100,
+            "unit": "percent"
+          }
+        }
+      }
+    ]
+  }
+}
+

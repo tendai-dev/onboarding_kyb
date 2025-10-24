@@ -101,7 +101,7 @@ public class UploadDocumentRequest
 {
     public Guid CaseId { get; set; }
     public Guid PartnerId { get; set; }
-    public DocumentService.Domain.ValueObjects.DocumentType Type { get; set; }
+    public DocumentService.Domain.Aggregates.DocumentType Type { get; set; }
     public IFormFile File { get; set; } = null!;
     public string? UploadedBy { get; set; }
 }

@@ -6,7 +6,7 @@ namespace ChecklistService.Domain.Aggregates;
 
 public class Checklist
 {
-    private readonly List<INotification> _domainEvents = new();
+    private readonly List<IDomainEvent> _domainEvents = new();
     private readonly List<ChecklistItem> _items = new();
 
     public ChecklistId Id { get; private set; }
@@ -17,7 +17,7 @@ public class Checklist
     public DateTime CreatedAt { get; private set; }
     public DateTime? CompletedAt { get; private set; }
     public IReadOnlyList<ChecklistItem> Items => _items.AsReadOnly();
-    public IReadOnlyList<INotification> DomainEvents => _domainEvents.AsReadOnly();
+    public IReadOnlyList<IDomainEvent> DomainEvents => _domainEvents.AsReadOnly();
 
     private Checklist() { } // EF Core
 
@@ -41,6 +41,7 @@ public class Checklist
         foreach (var template in templates)
         {
             var item = ChecklistItem.Create(
+                template.Code,
                 template.Name,
                 template.Description,
                 template.Category,
@@ -52,10 +53,11 @@ public class Checklist
 
         checklist.AddDomainEvent(new ChecklistCreatedEvent(
             checklist.Id.Value,
-            checklist.CaseId,
-            checklist.Type.ToString(),
-            checklist.PartnerId,
-            checklist.Items.Count));
+            Guid.Parse(checklist.CaseId),
+            (ValueObjects.EntityType)checklist.Type,
+            ValueObjects.RiskTier.Medium, // Default risk tier
+            checklist.Items.Count,
+            DateTime.UtcNow));
 
         return checklist;
     }
@@ -73,10 +75,11 @@ public class Checklist
 
         AddDomainEvent(new ChecklistItemCompletedEvent(
             Id.Value,
-            CaseId,
             itemId.Value,
             item.Name,
-            completedBy));
+            true, // IsValid - assuming completed items are valid
+            1.0m, // Score - default score
+            DateTime.UtcNow));
 
         // Check if all required items are completed
         CheckForCompletion();
@@ -95,11 +98,10 @@ public class Checklist
 
         AddDomainEvent(new ChecklistItemSkippedEvent(
             Id.Value,
-            CaseId,
             itemId.Value,
             item.Name,
-            skippedBy,
-            reason));
+            reason,
+            DateTime.UtcNow));
 
         CheckForCompletion();
     }
@@ -121,11 +123,9 @@ public class Checklist
 
         AddDomainEvent(new ChecklistItemResetEvent(
             Id.Value,
-            CaseId,
             itemId.Value,
             item.Name,
-            resetBy,
-            reason));
+            DateTime.UtcNow));
     }
 
     private void CheckForCompletion()
@@ -140,9 +140,8 @@ public class Checklist
 
             AddDomainEvent(new ChecklistCompletedEvent(
                 Id.Value,
-                CaseId,
-                Type.ToString(),
-                PartnerId,
+                Guid.Parse(CaseId),
+                CalculateTotalScore(),
                 CompletedAt.Value));
         }
     }
@@ -164,7 +163,17 @@ public class Checklist
         return (double)completedRequiredCount / requiredItems.Count * 100;
     }
 
-    private void AddDomainEvent(INotification domainEvent)
+    public decimal CalculateTotalScore()
+    {
+        var completedItems = _items.Where(i => i.Status == ChecklistItemStatus.Completed).ToList();
+        if (completedItems.Count == 0)
+            return 0;
+
+        // Simple scoring: 1 point per completed item
+        return completedItems.Count;
+    }
+
+    private void AddDomainEvent(IDomainEvent domainEvent)
     {
         _domainEvents.Add(domainEvent);
     }

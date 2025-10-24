@@ -1,0 +1,16 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="src/Domain/OnboardingApi.Domain.csproj" />
+    <ProjectReference Include="src/Application/OnboardingApi.Application.csproj" />
+    <ProjectReference Include="src/Infrastructure/OnboardingApi.Infrastructure.csproj" />
+    <ProjectReference Include="src/Presentation/OnboardingApi.Presentation.csproj" />
+  </ItemGroup>
+
+</Project>

@@ -142,6 +142,99 @@
         }
       }
     },
+    "/root/onboarding_kyc/services/document-service/src/Infrastructure/DocumentService.Infrastructure.csproj": {
+      "version": "1.0.0",
+      "restore": {
+        "projectUniqueName": "/root/onboarding_kyc/services/document-service/src/Infrastructure/DocumentService.Infrastructure.csproj",
+        "projectName": "DocumentService.Infrastructure",
+        "projectPath": "/root/onboarding_kyc/services/document-service/src/Infrastructure/DocumentService.Infrastructure.csproj",
+        "packagesPath": "/root/.nuget/packages/",
+        "outputPath": "/root/onboarding_kyc/services/document-service/src/Infrastructure/obj/",
+        "projectStyle": "PackageReference",
+        "configFilePaths": [
+          "/root/.nuget/NuGet/NuGet.Config"
+        ],
+        "originalTargetFrameworks": [
+          "net8.0"
+        ],
+        "sources": {
+          "https://api.nuget.org/v3/index.json": {}
+        },
+        "frameworks": {
+          "net8.0": {
+            "targetAlias": "net8.0",
+            "projectReferences": {
+              "/root/onboarding_kyc/services/document-service/src/Application/DocumentService.Application.csproj": {
+                "projectPath": "/root/onboarding_kyc/services/document-service/src/Application/DocumentService.Application.csproj"
+              },
+              "/root/onboarding_kyc/services/document-service/src/Domain/DocumentService.Domain.csproj": {
+                "projectPath": "/root/onboarding_kyc/services/document-service/src/Domain/DocumentService.Domain.csproj"
+              }
+            }
+          }
+        },
+        "warningProperties": {
+          "warnAsError": [
+            "NU1605"
+          ]
+        },
+        "restoreAuditProperties": {
+          "enableAudit": "true",
+          "auditLevel": "low",
+          "auditMode": "direct"
+        }
+      },
+      "frameworks": {
+        "net8.0": {
+          "targetAlias": "net8.0",
+          "dependencies": {
+            "Microsoft.EntityFrameworkCore": {
+              "target": "Package",
+              "version": "[8.0.11, )"
+            },
+            "Microsoft.EntityFrameworkCore.Design": {
+              "include": "Runtime, Build, Native, ContentFiles, Analyzers, BuildTransitive",
+              "suppressParent": "All",
+              "target": "Package",
+              "version": "[8.0.11, )"
+            },
+            "Microsoft.Extensions.Diagnostics.HealthChecks": {
+              "target": "Package",
+              "version": "[8.0.0, )"
+            },
+            "Minio": {
+              "target": "Package",
+              "version": "[6.0.3, )"
+            },
+            "Npgsql.EntityFrameworkCore.PostgreSQL": {
+              "target": "Package",
+              "version": "[8.0.11, )"
+            },
+            "Tesseract": {
+              "target": "Package",
+              "version": "[5.2.0, )"
+            }
+          },
+          "imports": [
+            "net461",
+            "net462",
+            "net47",
+            "net471",
+            "net472",
+            "net48",
+            "net481"
+          ],
+          "assetTargetFallback": true,
+          "warn": true,
+          "frameworkReferences": {
+            "Microsoft.NETCore.App": {
+              "privateAssets": "all"
+            }
+          },
+          "runtimeIdentifierGraphPath": "/root/.dotnet/sdk/8.0.415/PortableRuntimeIdentifierGraph.json"
+        }
+      }
+    },
     "/root/onboarding_kyc/services/document-service/src/Presentation/DocumentService.Presentation.csproj": {
       "version": "1.0.0",
       "restore": {
@@ -166,6 +259,9 @@
             "projectReferences": {
               "/root/onboarding_kyc/services/document-service/src/Application/DocumentService.Application.csproj": {
                 "projectPath": "/root/onboarding_kyc/services/document-service/src/Application/DocumentService.Application.csproj"
+              },
+              "/root/onboarding_kyc/services/document-service/src/Infrastructure/DocumentService.Infrastructure.csproj": {
+                "projectPath": "/root/onboarding_kyc/services/document-service/src/Infrastructure/DocumentService.Infrastructure.csproj"
               }
             }
           }

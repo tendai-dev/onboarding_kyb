@@ -1,91 +1,131 @@
 # Data Residency Configuration
-# Defines where data is stored per region and entity type
+# Defines region-specific data storage endpoints for GDPR/POPIA compliance
 
+version: 1.0
+
+# Region definitions with country mappings
 regions:
-  - id: eu-central
-    name: "Europe (Central)"
-    countries: [DE, FR, IT, ES, NL, BE, AT, CH, PL]
-    postgres:
-      host: postgresql-eu.platform-observability
+  - code: EU
+    name: European Union
+    description: EU data residency for GDPR compliance
+    countries:
+      - UK
+      - DE
+      - FR
+      - IT
+      - ES
+      - NL
+      - BE
+      - IE
+      - PT
+      - PL
+    database:
+      host: postgres-eu.mukuru.com
+      port: 5432
       database: onboarding_eu
-      schema_prefix: eu
-    minio:
-      endpoint: minio-eu.platform-observability
-      bucket_prefix: eu
-    compliance:
-      gdpr: true
-      data_localization_required: true
+      ssl: true
+    storage:
+      endpoint: minio-eu.mukuru.com:9000
+      bucket_prefix: eu-
+      ssl: true
+      region: eu-west-1
+    kafka:
+      bootstrap_servers: kafka-eu.mukuru.com:9092
     
-  - id: us-east
-    name: "United States (East)"
-    countries: [US, CA]
-    postgres:
-      host: postgresql-us.platform-observability
+  - code: ZA
+    name: Southern Africa
+    description: South African data residency for POPIA compliance
+    countries:
+      - ZA
+      - BW
+      - ZM
+      - MW
+      - MZ
+      - NA
+      - LS
+      - SZ
+    database:
+      host: postgres-za.mukuru.com
+      port: 5432
+      database: onboarding_za
+      ssl: true
+    storage:
+      endpoint: minio-za.mukuru.com:9000
+      bucket_prefix: za-
+      ssl: true
+      region: af-south-1
+    kafka:
+      bootstrap_servers: kafka-za.mukuru.com:9092
+  
+  - code: US
+    name: United States
+    description: US data residency
+    countries:
+      - US
+      - CA
+      - MX
+    database:
+      host: postgres-us.mukuru.com
+      port: 5432
       database: onboarding_us
-      schema_prefix: us
-    minio:
-      endpoint: minio-us.platform-observability
-      bucket_prefix: us
-    compliance:
-      ccpa: true
-      data_localization_required: false
+      ssl: true
+    storage:
+      endpoint: minio-us.mukuru.com:9000
+      bucket_prefix: us-
+      ssl: true
+      region: us-east-1
+    kafka:
+      bootstrap_servers: kafka-us.mukuru.com:9092
+  
+  - code: APAC
+    name: Asia Pacific
+    description: APAC data residency
+    countries:
+      - AU
+      - NZ
+      - SG
+      - IN
+      - MY
+      - PH
+    database:
+      host: postgres-apac.mukuru.com
+      port: 5432
+      database: onboarding_apac
+      ssl: true
+    storage:
+      endpoint: minio-apac.mukuru.com:9000
+      bucket_prefix: apac-
+      ssl: true
+      region: ap-southeast-1
+    kafka:
+      bootstrap_servers: kafka-apac.mukuru.com:9092
 
-  - id: ap-southeast
-    name: "Asia Pacific (Southeast)"
-    countries: [SG, MY, TH, ID, PH]
-    postgres:
-      host: postgresql-ap.platform-observability
-      database: onboarding_ap
-      schema_prefix: ap
-    minio:
-      endpoint: minio-ap.platform-observability
-      bucket_prefix: ap
-    compliance:
-      pdpa: true
-      data_localization_required: true
+# Default region for unlisted countries
+default_region: ZA
 
-# Default region for unspecified countries
-default_region: us-east
+# Retention policies per data type (in days)
+retention_policies:
+  completed_applications: 2555  # 7 years for regulatory compliance
+  declined_applications: 1825   # 5 years
+  documents: 2555               # 7 years
+  audit_logs: 3650              # 10 years (permanent)
+  work_items: 1825              # 5 years
+  messages: 1095                # 3 years
 
-# Entity-specific residency rules
-entity_rules:
-  onboarding_case:
-    determine_by: applicant_nationality
-    store_in_region: true
-    cross_region_access: compliance_team_only
-    
-  document:
-    determine_by: case_region
-    store_in_region: true
-    cross_region_access: denied
-    
-  risk_assessment:
-    determine_by: case_region
-    store_in_region: true
-    cross_region_access: risk_team_only
-
-  audit_log:
-    determine_by: action_region
-    store_in_region: true
-    cross_region_access: auditor_only
-    retention_years: 7
+# PII fields to anonymize on deletion request
+pii_fields:
+  - email
+  - phone_number
+  - name
+  - date_of_birth
+  - identification_number
+  - address
+  - bank_account_number
+  - tax_number
 
 # Audit requirements
 audit:
-  log_all_writes: true
-  log_format: |
-    {
-      "timestamp": "{{timestamp}}",
-      "entity_type": "{{entity_type}}",
-      "entity_id": "{{entity_id}}",
-      "region": "{{region}}",
-      "storage_location": "{{storage_location}}",
-      "user_id": "{{user_id}}",
-      "ip_address": "{{ip_address}}"
-    }
-  
-  alert_on_violations: true
-  alert_channels:
-    - slack: "#compliance-alerts"
-    - email: compliance@yourdomain.tld
-
+  log_all_data_access: true
+  log_cross_region_access: true
+  alert_on_residency_violation: true
+  compliance_team_email: ddhrp@mukuru.com

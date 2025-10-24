@@ -1,40 +1,91 @@
-using MediatR;
+using ChecklistService.Domain.ValueObjects;
 
 namespace ChecklistService.Domain.Events;
 
+public interface IDomainEvent
+{
+    Guid EventId { get; }
+    DateTime OccurredAt { get; }
+}
+
 public record ChecklistCreatedEvent(
     Guid ChecklistId,
-    string CaseId,
-    string Type,
-    string PartnerId,
-    int ItemCount) : INotification;
-
-public record ChecklistCompletedEvent(
-    Guid ChecklistId,
-    string CaseId,
-    string Type,
-    string PartnerId,
-    DateTime CompletedAt) : INotification;
+    Guid CaseId,
+    EntityType EntityType,
+    RiskTier RiskTier,
+    int ItemCount,
+    DateTime CreatedAt
+) : IDomainEvent
+{
+    public Guid EventId { get; } = Guid.NewGuid();
+    public DateTime OccurredAt => CreatedAt;
+}
 
 public record ChecklistItemCompletedEvent(
     Guid ChecklistId,
-    string CaseId,
     Guid ItemId,
     string ItemName,
-    string CompletedBy) : INotification;
+    bool IsValid,
+    decimal Score,
+    DateTime CompletedAt
+) : IDomainEvent
+{
+    public Guid EventId { get; } = Guid.NewGuid();
+    public DateTime OccurredAt => CompletedAt;
+}
 
 public record ChecklistItemSkippedEvent(
     Guid ChecklistId,
-    string CaseId,
     Guid ItemId,
     string ItemName,
-    string SkippedBy,
-    string Reason) : INotification;
+    string Reason,
+    DateTime SkippedAt
+) : IDomainEvent
+{
+    public Guid EventId { get; } = Guid.NewGuid();
+    public DateTime OccurredAt => SkippedAt;
+}
 
 public record ChecklistItemResetEvent(
     Guid ChecklistId,
-    string CaseId,
     Guid ItemId,
     string ItemName,
-    string ResetBy,
-    string Reason) : INotification;
+    DateTime ResetAt
+) : IDomainEvent
+{
+    public Guid EventId { get; } = Guid.NewGuid();
+    public DateTime OccurredAt => ResetAt;
+}
+
+public record ChecklistCompletedEvent(
+    Guid ChecklistId,
+    Guid CaseId,
+    decimal TotalScore,
+    DateTime CompletedAt
+) : IDomainEvent
+{
+    public Guid EventId { get; } = Guid.NewGuid();
+    public DateTime OccurredAt => CompletedAt;
+}
+
+public record ChecklistFlaggedForEDDEvent(
+    Guid ChecklistId,
+    Guid CaseId,
+    string Reason,
+    DateTime FlaggedAt
+) : IDomainEvent
+{
+    public Guid EventId { get; } = Guid.NewGuid();
+    public DateTime OccurredAt => FlaggedAt;
+}
+
+public record ChecklistFailedEvent(
+    Guid ChecklistId,
+    Guid CaseId,
+    string Reason,
+    DateTime FailedAt
+) : IDomainEvent
+{
+    public Guid EventId { get; } = Guid.NewGuid();
+    public DateTime OccurredAt => FailedAt;
+}

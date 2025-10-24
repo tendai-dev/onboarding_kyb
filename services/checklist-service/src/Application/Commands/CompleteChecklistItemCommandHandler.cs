@@ -30,7 +30,7 @@ public class CompleteChecklistItemCommandHandler : IRequestHandler<CompleteCheck
         return new CompleteChecklistItemResult(
             checklist.Id.Value,
             request.ItemId,
-            checklist.Status == ChecklistStatus.Completed,
+            checklist.Status == Domain.Aggregates.ChecklistStatus.Completed,
             checklist.GetCompletionPercentage());
     }
 }

@@ -130,7 +130,10 @@ public class RiskDbContext : DbContext
                 .HasColumnName("updated_at");
 
             // Foreign key to RiskAssessment
-            entity.Property<Guid>("RiskAssessmentId")
+            entity.Property<RiskAssessmentId>("RiskAssessmentId")
+                .HasConversion(
+                    id => id.Value,
+                    value => RiskAssessmentId.From(value))
                 .HasColumnName("risk_assessment_id");
 
             // Indexes

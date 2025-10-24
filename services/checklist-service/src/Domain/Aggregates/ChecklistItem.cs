@@ -5,6 +5,7 @@ namespace ChecklistService.Domain.Aggregates;
 public class ChecklistItem
 {
     public ChecklistItemId Id { get; private set; }
+    public string Code { get; private set; } = string.Empty;
     public string Name { get; private set; }
     public string Description { get; private set; }
     public ChecklistItemCategory Category { get; private set; }
@@ -20,6 +21,7 @@ public class ChecklistItem
     private ChecklistItem() { } // EF Core
 
     public static ChecklistItem Create(
+        string code,
         string name,
         string description,
         ChecklistItemCategory category,
@@ -29,6 +31,7 @@ public class ChecklistItem
         return new ChecklistItem
         {
             Id = ChecklistItemId.New(),
+            Code = code,
             Name = name,
             Description = description,
             Category = category,

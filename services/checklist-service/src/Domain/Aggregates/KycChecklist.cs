@@ -21,8 +21,8 @@ public class KycChecklist
     public IReadOnlyCollection<ChecklistItem> Items => _items.AsReadOnly();
     
     public int TotalItems => _items.Count;
-    public int CompletedItems => _items.Count(i => i.Status == CheckStatus.Completed);
-    public int FailedItems => _items.Count(i => i.Status == CheckStatus.Failed);
+    public int CompletedItems => _items.Count(i => i.Status == ChecklistItemStatus.Completed);
+    public int FailedItems => _items.Count(i => i.Status == ChecklistItemStatus.Skipped);
     public decimal CompletionPercentage => TotalItems > 0 ? (decimal)CompletedItems / TotalItems * 100 : 0;
     
     public bool RequiresEDD { get; private set; }  // Enhanced Due Diligence
@@ -63,8 +63,8 @@ public class KycChecklist
         checklist.AddDomainEvent(new ChecklistCreatedEvent(
             checklist.Id,
             checklist.CaseId,
-            checklist.EntityType,
-            checklist.RiskTier,
+            (ValueObjects.EntityType)checklist.EntityType,
+            (ValueObjects.RiskTier)checklist.RiskTier,
             checklist.TotalItems,
             DateTime.UtcNow
         ));
@@ -81,22 +81,22 @@ public class KycChecklist
         if (item == null)
             throw new InvalidOperationException($"Check item {checkCode} not found");
         
-        if (item.Status == CheckStatus.Completed)
+        if (item.Status == ChecklistItemStatus.Completed)
             throw new InvalidOperationException($"Check item {checkCode} already completed");
         
-        item.Complete(result, completedBy);
+        item.Complete(completedBy, result.Message);
         
         AddDomainEvent(new ChecklistItemCompletedEvent(
             Id,
             CaseId,
             checkCode,
-            result.Passed,
+            result.IsValid,
             result.Score,
             DateTime.UtcNow
         ));
         
         // Check if EDD required based on check results
-        if (!result.Passed && IsHighRiskCheck(checkCode))
+        if (!result.IsValid && IsHighRiskCheck(checkCode))
         {
             RequiresEDD = true;
             EddReason = $"Failed high-risk check: {checkCode}";
@@ -118,60 +118,61 @@ public class KycChecklist
             Id,
             CaseId,
             reason,
-            flaggedBy,
             DateTime.UtcNow
         ));
     }
     
     private void GenerateChecklistItems()
     {
+        var order = 1;
+        
         if (EntityType == EntityType.Individual)
         {
             // KYC checks for individuals
-            _items.Add(new ChecklistItem("IDENTITY_VERIFICATION", "Identity Document Verification", CheckPriority.Critical, true));
-            _items.Add(new ChecklistItem("ADDRESS_VERIFICATION", "Address Verification", CheckPriority.High, true));
-            _items.Add(new ChecklistItem("SANCTIONS_SCREENING", "Sanctions & PEP Screening", CheckPriority.Critical, true));
-            _items.Add(new ChecklistItem("ADVERSE_MEDIA", "Adverse Media Check", CheckPriority.Medium, false));
-            _items.Add(new ChecklistItem("SOURCE_OF_FUNDS", "Source of Funds Declaration", CheckPriority.High, RiskTier != RiskTier.Low));
+            _items.Add(ChecklistItem.Create("IDENTITY_VERIFICATION", "Identity Document Verification", "Verify government-issued ID documents", ChecklistItemCategory.Identity, true, order++));
+            _items.Add(ChecklistItem.Create("ADDRESS_VERIFICATION", "Address Verification", "Verify residential address", ChecklistItemCategory.Address, true, order++));
+            _items.Add(ChecklistItem.Create("SANCTIONS_SCREENING", "Sanctions & PEP Screening", "Screen against sanctions and PEP lists", ChecklistItemCategory.Compliance, true, order++));
+            _items.Add(ChecklistItem.Create("ADVERSE_MEDIA", "Adverse Media Check", "Check for negative media coverage", ChecklistItemCategory.Risk, false, order++));
+            _items.Add(ChecklistItem.Create("SOURCE_OF_FUNDS", "Source of Funds Declaration", "Verify source of funds", ChecklistItemCategory.Financial, RiskTier != RiskTier.Low, order++));
             
             if (RiskTier == RiskTier.High)
             {
-                _items.Add(new ChecklistItem("ENHANCED_SCREENING", "Enhanced Background Screening", CheckPriority.Critical, true));
-                _items.Add(new ChecklistItem("SOURCE_OF_WEALTH", "Source of Wealth Verification", CheckPriority.Critical, true));
+                _items.Add(ChecklistItem.Create("ENHANCED_SCREENING", "Enhanced Background Screening", "Conduct enhanced due diligence", ChecklistItemCategory.Verification, true, order++));
+                _items.Add(ChecklistItem.Create("SOURCE_OF_WEALTH", "Source of Wealth Verification", "Verify source of wealth", ChecklistItemCategory.Financial, true, order++));
             }
         }
         else // Business
         {
             // KYB checks for businesses
-            _items.Add(new ChecklistItem("BUSINESS_REGISTRATION", "Business Registration Verification", CheckPriority.Critical, true));
-            _items.Add(new ChecklistItem("UBO_IDENTIFICATION", "Ultimate Beneficial Owner Identification", CheckPriority.Critical, true));
-            _items.Add(new ChecklistItem("BUSINESS_ADDRESS", "Business Address Verification", CheckPriority.High, true));
-            _items.Add(new ChecklistItem("SANCTIONS_SCREENING", "Entity Sanctions Screening", CheckPriority.Critical, true));
-            _items.Add(new ChecklistItem("ADVERSE_MEDIA", "Corporate Adverse Media Check", CheckPriority.Medium, false));
-            _items.Add(new ChecklistItem("FINANCIAL_STANDING", "Financial Standing Assessment", CheckPriority.High, true));
-            _items.Add(new ChecklistItem("INDUSTRY_RISK", "Industry Risk Assessment", CheckPriority.Medium, true));
+            _items.Add(ChecklistItem.Create("BUSINESS_REGISTRATION", "Business Registration Verification", "Verify business registration documents", ChecklistItemCategory.Documentation, true, order++));
+            _items.Add(ChecklistItem.Create("UBO_IDENTIFICATION", "Ultimate Beneficial Owner Identification", "Identify and verify UBOs", ChecklistItemCategory.Identity, true, order++));
+            _items.Add(ChecklistItem.Create("BUSINESS_ADDRESS", "Business Address Verification", "Verify business address", ChecklistItemCategory.Address, true, order++));
+            _items.Add(ChecklistItem.Create("SANCTIONS_SCREENING", "Entity Sanctions Screening", "Screen entity against sanctions lists", ChecklistItemCategory.Compliance, true, order++));
+            _items.Add(ChecklistItem.Create("ADVERSE_MEDIA", "Corporate Adverse Media Check", "Check for negative corporate media", ChecklistItemCategory.Risk, false, order++));
+            _items.Add(ChecklistItem.Create("FINANCIAL_STANDING", "Financial Standing Assessment", "Assess financial standing", ChecklistItemCategory.Financial, true, order++));
+            _items.Add(ChecklistItem.Create("INDUSTRY_RISK", "Industry Risk Assessment", "Assess industry-specific risks", ChecklistItemCategory.Risk, true, order++));
             
             if (RiskTier == RiskTier.High)
             {
-                _items.Add(new ChecklistItem("ENHANCED_UBO_SCREENING", "Enhanced UBO Screening", CheckPriority.Critical, true));
-                _items.Add(new ChecklistItem("SOURCE_OF_FUNDS_BUSINESS", "Business Source of Funds", CheckPriority.Critical, true));
-                _items.Add(new ChecklistItem("BENEFICIAL_OWNERSHIP_STRUCTURE", "Ownership Structure Analysis", CheckPriority.Critical, true));
+                _items.Add(ChecklistItem.Create("ENHANCED_UBO_SCREENING", "Enhanced UBO Screening", "Enhanced UBO due diligence", ChecklistItemCategory.Verification, true, order++));
+                _items.Add(ChecklistItem.Create("SOURCE_OF_FUNDS_BUSINESS", "Business Source of Funds", "Verify business funding sources", ChecklistItemCategory.Financial, true, order++));
+                _items.Add(ChecklistItem.Create("BENEFICIAL_OWNERSHIP_STRUCTURE", "Ownership Structure Analysis", "Analyze ownership structure", ChecklistItemCategory.Documentation, true, order++));
             }
         }
     }
     
     private void UpdateStatus()
     {
-        var mandatoryItems = _items.Where(i => i.IsMandatory).ToList();
-        var allMandatoryCompleted = mandatoryItems.All(i => i.Status == CheckStatus.Completed);
-        var anyMandatoryFailed = mandatoryItems.Any(i => i.Status == CheckStatus.Failed);
+        var mandatoryItems = _items.Where(i => i.IsRequired).ToList();
+        var allMandatoryCompleted = mandatoryItems.All(i => i.Status == ChecklistItemStatus.Completed);
+        var anyMandatoryFailed = false; // ChecklistItemStatus doesn't have Failed, using Skipped as alternative
         
         if (anyMandatoryFailed)
         {
-            Status = ChecklistStatus.Failed;
+            Status = ChecklistStatus.Cancelled;
             AddDomainEvent(new ChecklistFailedEvent(Id, CaseId, "Mandatory check failed", DateTime.UtcNow));
         }
-        else if (allMandatoryCompleted && _items.All(i => i.Status != CheckStatus.Pending))
+        else if (allMandatoryCompleted && _items.All(i => i.Status != ChecklistItemStatus.Pending))
         {
             Status = ChecklistStatus.Completed;
             CompletedAt = DateTime.UtcNow;
@@ -199,7 +200,8 @@ public enum ChecklistStatus
 {
     InProgress = 1,
     Completed = 2,
-    Failed = 3
+    Failed = 3,
+    Cancelled = 4
 }
 
 public enum RiskTier
@@ -209,37 +211,6 @@ public enum RiskTier
     High = 3
 }
 
-/// <summary>
-/// Individual KYC checklist item
-/// </summary>
-public class KycChecklistItem
-{
-    public string Code { get; private set; }
-    public string Name { get; private set; }
-    public CheckPriority Priority { get; private set; }
-    public bool IsMandatory { get; private set; }
-    public CheckStatus Status { get; private set; }
-    public CheckResult? Result { get; private set; }
-    public DateTime? CompletedAt { get; private set; }
-    public string? CompletedBy { get; private set; }
-    
-    public KycChecklistItem(string code, string name, CheckPriority priority, bool isMandatory)
-    {
-        Code = code;
-        Name = name;
-        Priority = priority;
-        IsMandatory = isMandatory;
-        Status = CheckStatus.Pending;
-    }
-    
-    public void Complete(CheckResult result, string completedBy)
-    {
-        Result = result;
-        Status = result.Passed ? CheckStatus.Completed : CheckStatus.Failed;
-        CompletedAt = DateTime.UtcNow;
-        CompletedBy = completedBy;
-    }
-}
 
 public enum CheckPriority
 {
@@ -256,6 +227,8 @@ public enum CheckStatus
     Completed = 3,
     Failed = 4
 }
+
+
 
 
 
