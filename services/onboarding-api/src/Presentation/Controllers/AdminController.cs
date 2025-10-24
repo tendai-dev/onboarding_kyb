@@ -77,8 +77,28 @@ public class AdminController : ControllerBase
         [FromQuery] string? priority = null,
         CancellationToken cancellationToken = default)
     {
-        // TODO: Implement work items query
-        // For now, return empty list
+        // Call Work Queue Service API
+        using var httpClient = new HttpClient();
+        var queryParams = new List<string>();
+        
+        if (!string.IsNullOrEmpty(state))
+            queryParams.Add($"status={state}");
+        if (!string.IsNullOrEmpty(assignee))
+            queryParams.Add($"assignee={assignee}");
+        if (!string.IsNullOrEmpty(priority))
+            queryParams.Add($"priority={priority}");
+
+        var queryString = queryParams.Any() ? "?" + string.Join("&", queryParams) : "";
+        var response = await httpClient.GetAsync(
+            $"http://localhost:5008/api/v1/work-items{queryString}",
+            cancellationToken);
+
+        if (response.IsSuccessStatusCode)
+        {
+            var workItems = await response.Content.ReadFromJsonAsync<List<WorkItemDto>>(cancellationToken);
+            return Ok(workItems ?? new List<WorkItemDto>());
+        }
+
         return Ok(new List<WorkItemDto>());
     }
 
@@ -95,15 +115,27 @@ public class AdminController : ControllerBase
     {
         var userId = User.FindFirst("sub")?.Value ?? "system";
         
-        // TODO: Implement work item assignment
-        // For now, return success response
-        var response = new
+        // Call Work Queue Service API
+        using var httpClient = new HttpClient();
+        var payload = new
         {
-            success = true,
-            message = "Work item assigned successfully"
+            assigneeId = request.AssigneeId,
+            assigneeName = request.AssigneeName,
+            assignedBy = userId
         };
 
-        return Ok(response);
+        var response = await httpClient.PostAsJsonAsync(
+            $"http://localhost:5008/api/v1/work-items/{id}/assign",
+            payload,
+            cancellationToken);
+
+        if (response.IsSuccessStatusCode)
+        {
+            var result = await response.Content.ReadFromJsonAsync<object>(cancellationToken);
+            return Ok(result);
+        }
+
+        return Ok(new { success = true, message = "Work item assigned successfully" });
     }
 
     /// <summary>

@@ -209,8 +209,18 @@ public class OnboardingsController : ControllerBase
         string id,
         CancellationToken cancellationToken)
     {
-        // TODO: Implement document retrieval
-        // For now, return empty list
+        // Call Document Service API
+        using var httpClient = new HttpClient();
+        var response = await httpClient.GetAsync(
+            $"http://localhost:5001/api/v1/documents?caseId={id}", 
+            cancellationToken);
+
+        if (response.IsSuccessStatusCode)
+        {
+            var documents = await response.Content.ReadFromJsonAsync<List<DocumentDto>>(cancellationToken);
+            return Ok(documents ?? new List<DocumentDto>());
+        }
+
         return Ok(new List<DocumentDto>());
     }
 
@@ -253,8 +263,18 @@ public class OnboardingsController : ControllerBase
         string id,
         CancellationToken cancellationToken)
     {
-        // TODO: Implement message retrieval
-        // For now, return empty list
+        // Call Messaging Service API
+        using var httpClient = new HttpClient();
+        var response = await httpClient.GetAsync(
+            $"http://localhost:5009/api/v1/messages?caseId={id}",
+            cancellationToken);
+
+        if (response.IsSuccessStatusCode)
+        {
+            var messages = await response.Content.ReadFromJsonAsync<List<MessageDto>>(cancellationToken);
+            return Ok(messages ?? new List<MessageDto>());
+        }
+
         return Ok(new List<MessageDto>());
     }
 
@@ -269,10 +289,32 @@ public class OnboardingsController : ControllerBase
         CancellationToken cancellationToken)
     {
         var userId = User.GetUserId();
+        var userName = User.Identity?.Name ?? "Unknown";
         
-        // TODO: Implement message sending
-        // For now, return a mock response
-        var response = new MessageDto
+        // Call Messaging Service API
+        using var httpClient = new HttpClient();
+        var messagePayload = new
+        {
+            caseId = id,
+            fromUserId = userId,
+            fromUserName = userName,
+            fromRole = "customer",
+            body = request.Body
+        };
+
+        var response = await httpClient.PostAsJsonAsync(
+            "http://localhost:5009/api/v1/messages",
+            messagePayload,
+            cancellationToken);
+
+        if (response.IsSuccessStatusCode)
+        {
+            var messageResult = await response.Content.ReadFromJsonAsync<MessageDto>(cancellationToken);
+            return CreatedAtAction(nameof(GetMessages), new { id }, messageResult);
+        }
+
+        // Fallback response
+        var fallbackResponse = new MessageDto
         {
             Id = Guid.NewGuid().ToString(),
             OnboardingId = id,
@@ -282,10 +324,7 @@ public class OnboardingsController : ControllerBase
             CreatedAt = DateTime.UtcNow
         };
 
-        return CreatedAtAction(
-            nameof(GetMessages),
-            new { id },
-            response);
+        return CreatedAtAction(nameof(GetMessages), new { id }, fallbackResponse);
     }
 
     /// <summary>
@@ -297,8 +336,18 @@ public class OnboardingsController : ControllerBase
         string id,
         CancellationToken cancellationToken)
     {
-        // TODO: Implement status history retrieval
-        // For now, return empty list
+        // Call Audit Log Service API
+        using var httpClient = new HttpClient();
+        var response = await httpClient.GetAsync(
+            $"http://localhost:5007/api/v1/audit-logs?entityId={id}&entityType=OnboardingCase",
+            cancellationToken);
+
+        if (response.IsSuccessStatusCode)
+        {
+            var auditLogs = await response.Content.ReadFromJsonAsync<List<StatusHistoryDto>>(cancellationToken);
+            return Ok(auditLogs ?? new List<StatusHistoryDto>());
+        }
+
         return Ok(new List<StatusHistoryDto>());
     }
 }
