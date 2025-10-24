@@ -85,6 +85,20 @@ builder.Services.AddSingleton<IEventBus, KafkaEventBus>();
 builder.Services.AddScoped<IOnboardingCaseRepository, OnboardingCaseRepository>();
 
 // ========================================
+// Current User Service & Organization Mapping
+// ========================================
+builder.Services.AddHttpContextAccessor();
+builder.Services.AddScoped<ICurrentUser, OnboardingApi.Infrastructure.Services.CurrentUser>();
+builder.Services.AddScoped<IOrganizationMapper, OnboardingApi.Infrastructure.Services.OrganizationMapper>();
+
+// Add distributed cache (Redis) for organization mapping cache
+builder.Services.AddStackExchangeRedisCache(options =>
+{
+    options.Configuration = builder.Configuration.GetConnectionString("Redis");
+    options.InstanceName = "onboarding:";
+});
+
+// ========================================
 // MediatR + CQRS
 // ========================================
 builder.Services.AddMediatR(cfg =>
@@ -223,6 +237,7 @@ if (app.Environment.IsDevelopment())
 
 app.UseCors();
 app.UseAuthenticationMiddleware();
+app.UseMiddleware<OnboardingApi.Presentation.Middleware.PermissionsMiddleware>();
 app.MapControllers();
 
 // ========================================

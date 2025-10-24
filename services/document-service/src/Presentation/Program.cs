@@ -1,9 +1,18 @@
+using DocumentService.Infrastructure.Persistence;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.OpenApi.Models;
 
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container
 builder.Services.AddControllers();
+
+// Database
+var connectionString = builder.Configuration.GetConnectionString("DefaultConnection")
+    ?? "Host=localhost;Database=documents_dev;Username=postgres;Password=postgres";
+
+builder.Services.AddDbContext<DocumentDbContext>(options =>
+    options.UseNpgsql(connectionString));
 
 // MediatR
 builder.Services.AddMediatR(cfg =>
@@ -40,7 +49,8 @@ builder.Services.AddCors(options =>
 });
 
 // Health checks
-builder.Services.AddHealthChecks();
+builder.Services.AddHealthChecks()
+    .AddDbContextCheck<DocumentDbContext>("database");
 
 var app = builder.Build();
 

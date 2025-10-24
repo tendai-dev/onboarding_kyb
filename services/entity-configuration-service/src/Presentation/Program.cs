@@ -1,6 +1,7 @@
 using EntityConfigurationService.Application.Interfaces;
 using EntityConfigurationService.Infrastructure.Persistence;
 using EntityConfigurationService.Infrastructure.Repositories;
+using EntityConfigurationService.Infrastructure.ExternalData;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.OpenApi.Models;
 
@@ -25,6 +26,13 @@ builder.Services.AddMediatR(cfg =>
 // Repositories
 builder.Services.AddScoped<IEntityTypeRepository, EntityTypeRepository>();
 builder.Services.AddScoped<IRequirementRepository, RequirementRepository>();
+
+// External data services
+builder.Services.AddScoped<IExternalDataService, CompaniesHouseClient>();
+builder.Services.AddHttpClient<CompaniesHouseClient>();
+
+// Configure Companies House options
+builder.Services.Configure<CompaniesHouseOptions>(builder.Configuration.GetSection("CompaniesHouse"));
 
 // Swagger/OpenAPI
 builder.Services.AddEndpointsApiExplorer();

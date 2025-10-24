@@ -1,0 +1,41 @@
+# Build outputs
+**/bin/
+**/obj/
+**/out/
+
+# User-specific files
+*.user
+*.userosscache
+*.suo
+*.userprefs
+
+# IDE
+.vs/
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+logs/
+
+# Dependencies
+node_modules/
+**/package-lock.json
+
+# Temp files
+*.tmp
+*.temp
+*.cache
+
+# Environment
+*.env
+.env.local
+
+# Test results
+TestResults/
+*.trx
+coverage/
