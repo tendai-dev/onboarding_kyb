@@ -2,6 +2,9 @@ environments:
   dev:
     values:
       - values/dev.yaml
+  local:
+    values:
+      - values/local.yaml
 
 repositories:
   - name: bitnami

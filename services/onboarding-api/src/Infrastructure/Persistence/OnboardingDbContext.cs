@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using OnboardingApi.Application.Interfaces;
+using OnboardingApi.Application.Commands;
 using OnboardingApi.Domain.Aggregates;
 using OnboardingApi.Infrastructure.Persistence.Configurations;
 
@@ -12,6 +13,7 @@ public class OnboardingDbContext : DbContext, IUnitOfWork
 {
     public DbSet<OnboardingCase> OnboardingCases => Set<OnboardingCase>();
     public DbSet<OutboxEvent> OutboxEvents => Set<OutboxEvent>();
+    public DbSet<OnboardingApi.Application.Commands.Application> Applications => Set<OnboardingApi.Application.Commands.Application>();
 
     public OnboardingDbContext(DbContextOptions<OnboardingDbContext> options)
         : base(options)

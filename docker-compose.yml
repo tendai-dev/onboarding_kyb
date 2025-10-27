@@ -90,15 +90,15 @@ services:
       - kyc-network
 
   # Security Services
-  clamav:
-    image: clamav/clamav:1.0
-    container_name: clamav
-    ports:
-      - "3310:3310"
-    environment:
-      CLAMAV_NO_FRESHCLAMD: false
-    networks:
-      - kyc-network
+  # clamav:
+  #   image: clamav/clamav:1.0
+  #   container_name: clamav
+  #   ports:
+  #     - "3310:3310"
+  #   environment:
+  #     CLAMAV_NO_FRESHCLAMD: false
+  #   networks:
+  #     - kyc-network
 
   # Microservices (will be built and run separately)
   # onboarding-api:

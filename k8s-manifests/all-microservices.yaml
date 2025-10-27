@@ -1,0 +1,324 @@
+---
+# Document Service
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: document-service
+  namespace: business-documents
+  labels:
+    app: document-service
+    tier: business
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: document-service
+  template:
+    metadata:
+      labels:
+        app: document-service
+    spec:
+      containers:
+      - name: document-service
+        image: document-service:latest
+        imagePullPolicy: Never
+        ports:
+        - containerPort: 8080
+        env:
+        - name: ASPNETCORE_ENVIRONMENT
+          value: "Development"
+        - name: ConnectionStrings__PostgreSQL
+          value: "Host=postgresql.platform-observability.svc.cluster.local;Database=documents;Username=onboarding_user;Password=postgres-changeme"
+        - name: ConnectionStrings__Redis
+          value: "redis.platform-observability.svc.cluster.local:6379"
+        - name: Kafka__BootstrapServers
+          value: "kafka.platform-observability.svc.cluster.local:9092"
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "250m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: document-service
+  namespace: business-documents
+spec:
+  selector:
+    app: document-service
+  ports:
+  - port: 80
+    targetPort: 8080
+---
+# Risk Service
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: risk-service
+  namespace: business-risk
+  labels:
+    app: risk-service
+    tier: business
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: risk-service
+  template:
+    metadata:
+      labels:
+        app: risk-service
+    spec:
+      containers:
+      - name: risk-service
+        image: risk-service:latest
+        imagePullPolicy: Never
+        ports:
+        - containerPort: 8080
+        env:
+        - name: ASPNETCORE_ENVIRONMENT
+          value: "Development"
+        - name: ConnectionStrings__PostgreSQL
+          value: "Host=postgresql.platform-observability.svc.cluster.local;Database=risk;Username=onboarding_user;Password=postgres-changeme"
+        - name: ConnectionStrings__Redis
+          value: "redis.platform-observability.svc.cluster.local:6379"
+        - name: Kafka__BootstrapServers
+          value: "kafka.platform-observability.svc.cluster.local:9092"
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "250m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: risk-service
+  namespace: business-risk
+spec:
+  selector:
+    app: risk-service
+  ports:
+  - port: 80
+    targetPort: 8080
+---
+# Notification Service
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: notification-service
+  namespace: business-notifications
+  labels:
+    app: notification-service
+    tier: business
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: notification-service
+  template:
+    metadata:
+      labels:
+        app: notification-service
+    spec:
+      containers:
+      - name: notification-service
+        image: notification-service:latest
+        imagePullPolicy: Never
+        ports:
+        - containerPort: 8080
+        env:
+        - name: ASPNETCORE_ENVIRONMENT
+          value: "Development"
+        - name: ConnectionStrings__PostgreSQL
+          value: "Host=postgresql.platform-observability.svc.cluster.local;Database=notifications;Username=onboarding_user;Password=postgres-changeme"
+        - name: ConnectionStrings__Redis
+          value: "redis.platform-observability.svc.cluster.local:6379"
+        - name: Kafka__BootstrapServers
+          value: "kafka.platform-observability.svc.cluster.local:9092"
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "250m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: notification-service
+  namespace: business-notifications
+spec:
+  selector:
+    app: notification-service
+  ports:
+  - port: 80
+    targetPort: 8080
+---
+# Checklist Service
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: checklist-service
+  namespace: business-onboarding
+  labels:
+    app: checklist-service
+    tier: business
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: checklist-service
+  template:
+    metadata:
+      labels:
+        app: checklist-service
+    spec:
+      containers:
+      - name: checklist-service
+        image: checklist-service:latest
+        imagePullPolicy: Never
+        ports:
+        - containerPort: 8080
+        env:
+        - name: ASPNETCORE_ENVIRONMENT
+          value: "Development"
+        - name: ConnectionStrings__PostgreSQL
+          value: "Host=postgresql.platform-observability.svc.cluster.local;Database=checklist;Username=onboarding_user;Password=postgres-changeme"
+        - name: ConnectionStrings__Redis
+          value: "redis.platform-observability.svc.cluster.local:6379"
+        - name: Kafka__BootstrapServers
+          value: "kafka.platform-observability.svc.cluster.local:9092"
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "250m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: checklist-service
+  namespace: business-onboarding
+spec:
+  selector:
+    app: checklist-service
+  ports:
+  - port: 80
+    targetPort: 8080
+---
+# Webhook Dispatcher
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: webhook-dispatcher
+  namespace: business-webhooks
+  labels:
+    app: webhook-dispatcher
+    tier: business
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: webhook-dispatcher
+  template:
+    metadata:
+      labels:
+        app: webhook-dispatcher
+    spec:
+      containers:
+      - name: webhook-dispatcher
+        image: webhook-dispatcher:latest
+        imagePullPolicy: Never
+        ports:
+        - containerPort: 8080
+        env:
+        - name: ASPNETCORE_ENVIRONMENT
+          value: "Development"
+        - name: ConnectionStrings__PostgreSQL
+          value: "Host=postgresql.platform-observability.svc.cluster.local;Database=webhooks;Username=onboarding_user;Password=postgres-changeme"
+        - name: ConnectionStrings__Redis
+          value: "redis.platform-observability.svc.cluster.local:6379"
+        - name: Kafka__BootstrapServers
+          value: "kafka.platform-observability.svc.cluster.local:9092"
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "250m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: webhook-dispatcher
+  namespace: business-webhooks
+spec:
+  selector:
+    app: webhook-dispatcher
+  ports:
+  - port: 80
+    targetPort: 8080
+---
+# Projections API
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: projections-api
+  namespace: business-readmodel
+  labels:
+    app: projections-api
+    tier: business
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: projections-api
+  template:
+    metadata:
+      labels:
+        app: projections-api
+    spec:
+      containers:
+      - name: projections-api
+        image: projections-api:latest
+        imagePullPolicy: Never
+        ports:
+        - containerPort: 8080
+        env:
+        - name: ASPNETCORE_ENVIRONMENT
+          value: "Development"
+        - name: ConnectionStrings__PostgreSQL
+          value: "Host=postgresql.platform-observability.svc.cluster.local;Database=projections;Username=onboarding_user;Password=postgres-changeme"
+        - name: ConnectionStrings__Redis
+          value: "redis.platform-observability.svc.cluster.local:6379"
+        - name: Kafka__BootstrapServers
+          value: "kafka.platform-observability.svc.cluster.local:9092"
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "250m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: projections-api
+  namespace: business-readmodel
+spec:
+  selector:
+    app: projections-api
+  ports:
+  - port: 80
+    targetPort: 8080

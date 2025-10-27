@@ -22,9 +22,6 @@ RUN dotnet publish "AuditLogService.Presentation.csproj" -c Release -o /app/publ
 
 # Runtime stage
 FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS runtime
-
-# Install curl for health checks
-RUN apt-get update && apt-get install -y curl && rm -rf /var/lib/apt/lists/*
 WORKDIR /app
 
 # Create non-root user

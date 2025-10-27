@@ -137,7 +137,7 @@ using (var scope = app.Services.CreateScope())
     var context = scope.ServiceProvider.GetRequiredService<ChecklistDbContext>();
     try
     {
-        await context.Database.MigrateAsync();
+        // await context.Database.MigrateAsync(); // Temporarily disabled for Docker
         Log.Information("Database migration completed successfully");
     }
     catch (Exception ex)

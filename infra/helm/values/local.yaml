@@ -1,0 +1,128 @@
+# Local development values for kind cluster
+global:
+  domain: "localhost"
+  imageRegistry: ""
+  imageTag: "latest"
+  imagePullPolicy: "Never"  # Use local images
+
+# Infrastructure services
+kafka:
+  enabled: true
+  replicaCount: 1
+  persistence:
+    enabled: false  # Disable persistence for local dev
+  zookeeper:
+    persistence:
+      enabled: false
+
+postgresql:
+  auth:
+    username: "onboarding_user"
+    password: "postgres-changeme"
+    database: "onboarding"
+    postgresPassword: "postgres-root-changeme"
+  primary:
+    persistence:
+      enabled: false  # Disable persistence for local dev
+
+redis:
+  architecture: standalone
+  auth:
+    password: "redis-changeme"
+  master:
+    persistence:
+      enabled: false  # Disable persistence for local dev
+
+minio:
+  rootUser: "admin"
+  rootPassword: "minio-admin-changeme"
+  persistence:
+    enabled: false  # Disable persistence for local dev
+
+keycloak:
+  replicas: 1
+  auth:
+    adminUser: "admin"
+    adminPassword: "keycloak-admin-changeme"
+  postgresql:
+    enabled: true
+    auth:
+      password: "keycloak-db-changeme"
+
+# Business services - use local images
+onboarding-api:
+  image:
+    repository: onboarding-api
+    tag: latest
+    pullPolicy: Never
+  replicaCount: 1
+
+document-service:
+  image:
+    repository: document-service
+    tag: latest
+    pullPolicy: Never
+  replicaCount: 1
+
+checklist-service:
+  image:
+    repository: checklist-service
+    tag: latest
+    pullPolicy: Never
+  replicaCount: 1
+
+risk-service:
+  image:
+    repository: risk-service
+    tag: latest
+    pullPolicy: Never
+  replicaCount: 1
+
+notification-service:
+  image:
+    repository: notification-service
+    tag: latest
+    pullPolicy: Never
+  replicaCount: 1
+
+entity-configuration-service:
+  image:
+    repository: entity-configuration-service
+    tag: latest
+    pullPolicy: Never
+  replicaCount: 1
+
+messaging-service:
+  image:
+    repository: messaging-service
+    tag: latest
+    pullPolicy: Never
+  replicaCount: 1
+
+projections-api:
+  image:
+    repository: projections-api
+    tag: latest
+    pullPolicy: Never
+  replicaCount: 1
+
+auditlog-service:
+  image:
+    repository: auditlog-service
+    tag: latest
+    pullPolicy: Never
+  replicaCount: 1
+
+work-queue-service:
+  image:
+    repository: work-queue-service
+    tag: latest
+    pullPolicy: Never
+  replicaCount: 1
+
+webhook-dispatcher:
+  image:
+    repository: webhook-dispatcher
+    tag: latest
+    pullPolicy: Never
+  replicaCount: 1

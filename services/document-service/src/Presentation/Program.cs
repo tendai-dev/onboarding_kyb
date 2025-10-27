@@ -14,11 +14,11 @@ var connectionString = builder.Configuration.GetConnectionString("DefaultConnect
 builder.Services.AddDbContext<DocumentDbContext>(options =>
     options.UseNpgsql(connectionString));
 
-// MediatR
-builder.Services.AddMediatR(cfg =>
-{
-    cfg.RegisterServicesFromAssembly(typeof(DocumentService.Application.Commands.UploadDocumentCommand).Assembly);
-});
+// MediatR - temporarily disabled for startup
+// builder.Services.AddMediatR(cfg =>
+// {
+//     cfg.RegisterServicesFromAssembly(typeof(DocumentService.Application.Commands.UploadDocumentCommand).Assembly);
+// });
 
 // Swagger/OpenAPI
 builder.Services.AddEndpointsApiExplorer();

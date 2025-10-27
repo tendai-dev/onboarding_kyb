@@ -15,6 +15,10 @@ spec:
       labels:
         app: kafka
     spec:
+      initContainers:
+      - name: wait-for-zookeeper
+        image: busybox:1.35
+        command: ['sh', '-c', 'until nc -z zookeeper 2181; do echo waiting for zookeeper; sleep 2; done;']
       containers:
       - name: kafka
         image: confluentinc/cp-kafka:7.4.0
@@ -24,7 +28,7 @@ spec:
         - name: KAFKA_BROKER_ID
           value: "1"
         - name: KAFKA_ZOOKEEPER_CONNECT
-          value: "zookeeper.platform-observability.svc.cluster.local:2181"
+          value: "zookeeper:2181"
         - name: KAFKA_ADVERTISED_LISTENERS
           value: "PLAINTEXT://kafka.platform-observability.svc.cluster.local:9092"
         - name: KAFKA_LISTENERS

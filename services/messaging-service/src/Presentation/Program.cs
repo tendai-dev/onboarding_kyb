@@ -30,7 +30,7 @@ var app = builder.Build();
 using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<MessagingDbContext>();
-    db.Database.EnsureCreated();
+    // db.Database.EnsureCreated(); // Temporarily disabled for Docker
 }
 
 if (app.Environment.IsDevelopment())

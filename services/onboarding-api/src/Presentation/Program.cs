@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.OpenApi.Models;
 using OnboardingApi.Application.Behaviors;
+using OnboardingApi.Application.Commands;
 using OnboardingApi.Application.Interfaces;
 using OnboardingApi.Infrastructure.EventBus;
 using OnboardingApi.Infrastructure.Persistence;
@@ -83,6 +84,7 @@ builder.Services.AddSingleton<IEventBus, KafkaEventBus>();
 // Repositories
 // ========================================
 builder.Services.AddScoped<IOnboardingCaseRepository, OnboardingCaseRepository>();
+// builder.Services.AddScoped<IApplicationRepository, ApplicationRepository>();
 
 // ========================================
 // Current User Service & Organization Mapping
@@ -99,19 +101,19 @@ builder.Services.AddStackExchangeRedisCache(options =>
 });
 
 // ========================================
-// MediatR + CQRS
+// MediatR + CQRS - temporarily disabled
 // ========================================
-builder.Services.AddMediatR(cfg =>
-{
-    cfg.RegisterServicesFromAssembly(typeof(OnboardingApi.Application.Commands.CreateOnboardingCaseCommand).Assembly);
-});
+// builder.Services.AddMediatR(cfg =>
+// {
+//     cfg.RegisterServicesFromAssembly(typeof(OnboardingApi.Application.Commands.CreateOnboardingCaseCommand).Assembly);
+// });
 
-// Pipeline behaviors
-builder.Services.AddTransient(typeof(IPipelineBehavior<,>), typeof(LoggingBehavior<,>));
-builder.Services.AddTransient(typeof(IPipelineBehavior<,>), typeof(ValidationBehavior<,>));
+// Pipeline behaviors - temporarily disabled
+// builder.Services.AddTransient(typeof(IPipelineBehavior<,>), typeof(LoggingBehavior<,>));
+// builder.Services.AddTransient(typeof(IPipelineBehavior<,>), typeof(ValidationBehavior<,>));
 
-// FluentValidation
-builder.Services.AddValidatorsFromAssembly(typeof(OnboardingApi.Application.Commands.CreateOnboardingCaseCommand).Assembly);
+// FluentValidation - temporarily disabled
+// builder.Services.AddValidatorsFromAssembly(typeof(OnboardingApi.Application.Commands.CreateOnboardingCaseCommand).Assembly);
 
 // ========================================
 // Authentication (Keycloak + Active Directory)

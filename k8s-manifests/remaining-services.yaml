@@ -1,0 +1,216 @@
+---
+# Entity Configuration Service
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: entity-configuration-service
+  namespace: business-admin
+  labels:
+    app: entity-configuration-service
+    tier: business
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: entity-configuration-service
+  template:
+    metadata:
+      labels:
+        app: entity-configuration-service
+    spec:
+      containers:
+      - name: entity-configuration-service
+        image: entity-configuration-service:latest
+        imagePullPolicy: Never
+        ports:
+        - containerPort: 8080
+        env:
+        - name: ASPNETCORE_ENVIRONMENT
+          value: "Development"
+        - name: ConnectionStrings__PostgreSQL
+          value: "Host=postgresql.platform-observability.svc.cluster.local;Database=entityconfig;Username=onboarding_user;Password=postgres-changeme"
+        - name: ConnectionStrings__Redis
+          value: "redis.platform-observability.svc.cluster.local:6379"
+        - name: Kafka__BootstrapServers
+          value: "kafka.platform-observability.svc.cluster.local:9092"
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "250m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: entity-configuration-service
+  namespace: business-admin
+spec:
+  selector:
+    app: entity-configuration-service
+  ports:
+  - port: 80
+    targetPort: 8080
+---
+# Messaging Service
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: messaging-service
+  namespace: business-notifications
+  labels:
+    app: messaging-service
+    tier: business
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: messaging-service
+  template:
+    metadata:
+      labels:
+        app: messaging-service
+    spec:
+      containers:
+      - name: messaging-service
+        image: messaging-service:latest
+        imagePullPolicy: Never
+        ports:
+        - containerPort: 8080
+        env:
+        - name: ASPNETCORE_ENVIRONMENT
+          value: "Development"
+        - name: ConnectionStrings__PostgreSQL
+          value: "Host=postgresql.platform-observability.svc.cluster.local;Database=messaging;Username=onboarding_user;Password=postgres-changeme"
+        - name: ConnectionStrings__Redis
+          value: "redis.platform-observability.svc.cluster.local:6379"
+        - name: Kafka__BootstrapServers
+          value: "kafka.platform-observability.svc.cluster.local:9092"
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "250m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: messaging-service
+  namespace: business-notifications
+spec:
+  selector:
+    app: messaging-service
+  ports:
+  - port: 80
+    targetPort: 8080
+---
+# Audit Log Service
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: auditlog-service
+  namespace: business-admin
+  labels:
+    app: auditlog-service
+    tier: business
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: auditlog-service
+  template:
+    metadata:
+      labels:
+        app: auditlog-service
+    spec:
+      containers:
+      - name: auditlog-service
+        image: auditlog-service:latest
+        imagePullPolicy: Never
+        ports:
+        - containerPort: 8080
+        env:
+        - name: ASPNETCORE_ENVIRONMENT
+          value: "Development"
+        - name: ConnectionStrings__PostgreSQL
+          value: "Host=postgresql.platform-observability.svc.cluster.local;Database=auditlog;Username=onboarding_user;Password=postgres-changeme"
+        - name: ConnectionStrings__Redis
+          value: "redis.platform-observability.svc.cluster.local:6379"
+        - name: Kafka__BootstrapServers
+          value: "kafka.platform-observability.svc.cluster.local:9092"
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "250m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: auditlog-service
+  namespace: business-admin
+spec:
+  selector:
+    app: auditlog-service
+  ports:
+  - port: 80
+    targetPort: 8080
+---
+# Work Queue Service
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: work-queue-service
+  namespace: business-admin
+  labels:
+    app: work-queue-service
+    tier: business
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: work-queue-service
+  template:
+    metadata:
+      labels:
+        app: work-queue-service
+    spec:
+      containers:
+      - name: work-queue-service
+        image: work-queue-service:latest
+        imagePullPolicy: Never
+        ports:
+        - containerPort: 8080
+        env:
+        - name: ASPNETCORE_ENVIRONMENT
+          value: "Development"
+        - name: ConnectionStrings__PostgreSQL
+          value: "Host=postgresql.platform-observability.svc.cluster.local;Database=workqueue;Username=onboarding_user;Password=postgres-changeme"
+        - name: ConnectionStrings__Redis
+          value: "redis.platform-observability.svc.cluster.local:6379"
+        - name: Kafka__BootstrapServers
+          value: "kafka.platform-observability.svc.cluster.local:9092"
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "250m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: work-queue-service
+  namespace: business-admin
+spec:
+  selector:
+    app: work-queue-service
+  ports:
+  - port: 80
+    targetPort: 8080
