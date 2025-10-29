@@ -454,9 +454,9 @@ opentelemetry-collector:
 # ========================================
 # Business Services Configuration
 # ========================================
-onboarding-api:
+kyc-onboarding-api:
   image:
-    repository: ghcr.io/your-org/onboarding-api
+    repository: ghcr.io/your-org/kyc-onboarding-api
     tag: latest
     pullPolicy: IfNotPresent
   replicaCount: 2
@@ -479,7 +479,7 @@ onboarding-api:
     - name: Keycloak__Authority
       value: "https://keycloak.yourdomain.tld/realms/partners"
     - name: Keycloak__Audience
-      value: "onboarding-api"
+      value: "kyc-onboarding-api"
     - name: MinIO__Endpoint
       value: "minio.platform-observability:9000"
     - name: MinIO__AccessKey
@@ -489,9 +489,9 @@ onboarding-api:
     - name: OpenTelemetry__Endpoint
       value: "http://opentelemetry-collector.platform-observability:4317"
 
-document-service:
+kyc-document-api:
   image:
-    repository: ghcr.io/your-org/document-service
+    repository: ghcr.io/your-org/kyc-document-api
     tag: latest
     pullPolicy: IfNotPresent
   replicaCount: 2
@@ -503,9 +503,9 @@ document-service:
       memory: 512Mi
       cpu: 500m
 
-checklist-service:
+kyc-checklist-api:
   image:
-    repository: ghcr.io/your-org/checklist-service
+    repository: ghcr.io/your-org/kyc-checklist-api
     tag: latest
     pullPolicy: IfNotPresent
   replicaCount: 2
@@ -517,9 +517,9 @@ checklist-service:
       memory: 512Mi
       cpu: 500m
 
-risk-service:
+kyc-risk-api:
   image:
-    repository: ghcr.io/your-org/risk-service
+    repository: ghcr.io/your-org/kyc-risk-api
     tag: latest
     pullPolicy: IfNotPresent
   replicaCount: 2
@@ -531,9 +531,9 @@ risk-service:
       memory: 512Mi
       cpu: 500m
 
-notification-service:
+kyc-notification-api:
   image:
-    repository: ghcr.io/your-org/notification-service
+    repository: ghcr.io/your-org/kyc-notification-api
     tag: latest
     pullPolicy: IfNotPresent
   replicaCount: 2
@@ -545,9 +545,9 @@ notification-service:
       memory: 512Mi
       cpu: 500m
 
-webhook-dispatcher:
+kyc-webhook-handler:
   image:
-    repository: ghcr.io/your-org/webhook-dispatcher
+    repository: ghcr.io/your-org/kyc-webhook-handler
     tag: latest
     pullPolicy: IfNotPresent
   replicaCount: 2
@@ -559,9 +559,9 @@ webhook-dispatcher:
       memory: 512Mi
       cpu: 500m
 
-auditlog-service:
+kyc-audit-api:
   image:
-    repository: ghcr.io/your-org/auditlog-service
+    repository: ghcr.io/your-org/kyc-audit-api
     tag: latest
     pullPolicy: IfNotPresent
   replicaCount: 2
@@ -573,9 +573,9 @@ auditlog-service:
       memory: 512Mi
       cpu: 500m
 
-projections-api:
+kyc-projections-api:
   image:
-    repository: ghcr.io/your-org/projections-api
+    repository: ghcr.io/your-org/kyc-projections-api
     tag: latest
     pullPolicy: IfNotPresent
   replicaCount: 2

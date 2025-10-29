@@ -3,30 +3,32 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: document-service
+  name: kyc-document-api
   namespace: business-documents
   labels:
-    app: document-service
+    app: kyc-document-api
     tier: business
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: document-service
+      app: kyc-document-api
   template:
     metadata:
       labels:
-        app: document-service
+        app: kyc-document-api
     spec:
       containers:
-      - name: document-service
-        image: document-service:latest
+      - name: kyc-document-api
+        image: kyc-document-api:latest
         imagePullPolicy: Never
         ports:
         - containerPort: 8080
         env:
         - name: ASPNETCORE_ENVIRONMENT
           value: "Development"
+        - name: SERVICE_NAME
+          value: "kyc-document-api"
         - name: ConnectionStrings__PostgreSQL
           value: "Host=postgresql.platform-observability.svc.cluster.local;Database=documents;Username=onboarding_user;Password=postgres-changeme"
         - name: ConnectionStrings__Redis
@@ -44,11 +46,11 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: document-service
+  name: kyc-document-api
   namespace: business-documents
 spec:
   selector:
-    app: document-service
+    app: kyc-document-api
   ports:
   - port: 80
     targetPort: 8080
@@ -57,30 +59,32 @@ spec:
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: risk-service
+  name: kyc-risk-api
   namespace: business-risk
   labels:
-    app: risk-service
+    app: kyc-risk-api
     tier: business
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: risk-service
+      app: kyc-risk-api
   template:
     metadata:
       labels:
-        app: risk-service
+        app: kyc-risk-api
     spec:
       containers:
-      - name: risk-service
-        image: risk-service:latest
+      - name: kyc-risk-api
+        image: kyc-risk-api:latest
         imagePullPolicy: Never
         ports:
         - containerPort: 8080
         env:
         - name: ASPNETCORE_ENVIRONMENT
           value: "Development"
+        - name: SERVICE_NAME
+          value: "kyc-risk-api"
         - name: ConnectionStrings__PostgreSQL
           value: "Host=postgresql.platform-observability.svc.cluster.local;Database=risk;Username=onboarding_user;Password=postgres-changeme"
         - name: ConnectionStrings__Redis
@@ -98,11 +102,11 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: risk-service
+  name: kyc-risk-api
   namespace: business-risk
 spec:
   selector:
-    app: risk-service
+    app: kyc-risk-api
   ports:
   - port: 80
     targetPort: 8080
@@ -111,30 +115,32 @@ spec:
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: notification-service
+  name: kyc-notification-api
   namespace: business-notifications
   labels:
-    app: notification-service
+    app: kyc-notification-api
     tier: business
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: notification-service
+      app: kyc-notification-api
   template:
     metadata:
       labels:
-        app: notification-service
+        app: kyc-notification-api
     spec:
       containers:
-      - name: notification-service
-        image: notification-service:latest
+      - name: kyc-notification-api
+        image: kyc-notification-api:latest
         imagePullPolicy: Never
         ports:
         - containerPort: 8080
         env:
         - name: ASPNETCORE_ENVIRONMENT
           value: "Development"
+        - name: SERVICE_NAME
+          value: "kyc-notification-api"
         - name: ConnectionStrings__PostgreSQL
           value: "Host=postgresql.platform-observability.svc.cluster.local;Database=notifications;Username=onboarding_user;Password=postgres-changeme"
         - name: ConnectionStrings__Redis
@@ -152,11 +158,11 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: notification-service
+  name: kyc-notification-api
   namespace: business-notifications
 spec:
   selector:
-    app: notification-service
+    app: kyc-notification-api
   ports:
   - port: 80
     targetPort: 8080
@@ -165,30 +171,32 @@ spec:
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: checklist-service
+  name: kyc-checklist-api
   namespace: business-onboarding
   labels:
-    app: checklist-service
+    app: kyc-checklist-api
     tier: business
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: checklist-service
+      app: kyc-checklist-api
   template:
     metadata:
       labels:
-        app: checklist-service
+        app: kyc-checklist-api
     spec:
       containers:
-      - name: checklist-service
-        image: checklist-service:latest
+      - name: kyc-checklist-api
+        image: kyc-checklist-api:latest
         imagePullPolicy: Never
         ports:
         - containerPort: 8080
         env:
         - name: ASPNETCORE_ENVIRONMENT
           value: "Development"
+        - name: SERVICE_NAME
+          value: "kyc-checklist-api"
         - name: ConnectionStrings__PostgreSQL
           value: "Host=postgresql.platform-observability.svc.cluster.local;Database=checklist;Username=onboarding_user;Password=postgres-changeme"
         - name: ConnectionStrings__Redis
@@ -206,43 +214,45 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: checklist-service
+  name: kyc-checklist-api
   namespace: business-onboarding
 spec:
   selector:
-    app: checklist-service
+    app: kyc-checklist-api
   ports:
   - port: 80
     targetPort: 8080
 ---
-# Webhook Dispatcher
+# Webhook Handler
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: webhook-dispatcher
+  name: kyc-webhook-handler
   namespace: business-webhooks
   labels:
-    app: webhook-dispatcher
+    app: kyc-webhook-handler
     tier: business
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: webhook-dispatcher
+      app: kyc-webhook-handler
   template:
     metadata:
       labels:
-        app: webhook-dispatcher
+        app: kyc-webhook-handler
     spec:
       containers:
-      - name: webhook-dispatcher
-        image: webhook-dispatcher:latest
+      - name: kyc-webhook-handler
+        image: kyc-webhook-handler:latest
         imagePullPolicy: Never
         ports:
         - containerPort: 8080
         env:
         - name: ASPNETCORE_ENVIRONMENT
           value: "Development"
+        - name: SERVICE_NAME
+          value: "kyc-webhook-handler"
         - name: ConnectionStrings__PostgreSQL
           value: "Host=postgresql.platform-observability.svc.cluster.local;Database=webhooks;Username=onboarding_user;Password=postgres-changeme"
         - name: ConnectionStrings__Redis
@@ -260,11 +270,11 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: webhook-dispatcher
+  name: kyc-webhook-handler
   namespace: business-webhooks
 spec:
   selector:
-    app: webhook-dispatcher
+    app: kyc-webhook-handler
   ports:
   - port: 80
     targetPort: 8080
@@ -273,30 +283,32 @@ spec:
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: projections-api
+  name: kyc-projections-api
   namespace: business-readmodel
   labels:
-    app: projections-api
+    app: kyc-projections-api
     tier: business
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: projections-api
+      app: kyc-projections-api
   template:
     metadata:
       labels:
-        app: projections-api
+        app: kyc-projections-api
     spec:
       containers:
-      - name: projections-api
-        image: projections-api:latest
+      - name: kyc-projections-api
+        image: kyc-projections-api:latest
         imagePullPolicy: Never
         ports:
         - containerPort: 8080
         env:
         - name: ASPNETCORE_ENVIRONMENT
           value: "Development"
+        - name: SERVICE_NAME
+          value: "kyc-projections-api"
         - name: ConnectionStrings__PostgreSQL
           value: "Host=postgresql.platform-observability.svc.cluster.local;Database=projections;Username=onboarding_user;Password=postgres-changeme"
         - name: ConnectionStrings__Redis
@@ -314,11 +326,11 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: projections-api
+  name: kyc-projections-api
   namespace: business-readmodel
 spec:
   selector:
-    app: projections-api
+    app: kyc-projections-api
   ports:
   - port: 80
     targetPort: 8080

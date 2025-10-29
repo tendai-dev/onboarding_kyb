@@ -1,30 +1,32 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: onboarding-api
+  name: kyc-onboarding-api
   namespace: business-onboarding
   labels:
-    app: onboarding-api
+    app: kyc-onboarding-api
     tier: business
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: onboarding-api
+      app: kyc-onboarding-api
   template:
     metadata:
       labels:
-        app: onboarding-api
+        app: kyc-onboarding-api
     spec:
       containers:
-      - name: onboarding-api
-        image: onboarding-api:latest
+      - name: kyc-onboarding-api
+        image: kyc-onboarding-api:latest
         imagePullPolicy: Never
         ports:
         - containerPort: 8080
         env:
         - name: ASPNETCORE_ENVIRONMENT
           value: "Development"
+        - name: SERVICE_NAME
+          value: "kyc-onboarding-api"
         - name: ConnectionStrings__PostgreSQL
           value: "Host=postgresql.platform-observability.svc.cluster.local;Database=onboarding;Username=onboarding_user;Password=postgres-changeme"
         - name: ConnectionStrings__Redis
@@ -59,13 +61,13 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: onboarding-api
+  name: kyc-onboarding-api
   namespace: business-onboarding
   labels:
-    app: onboarding-api
+    app: kyc-onboarding-api
 spec:
   selector:
-    app: onboarding-api
+    app: kyc-onboarding-api
   ports:
   - name: http
     port: 80
@@ -76,7 +78,7 @@ spec:
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
-  name: onboarding-api
+  name: kyc-onboarding-api
   namespace: business-onboarding
   annotations:
     kubernetes.io/ingress.class: nginx
@@ -90,6 +92,6 @@ spec:
         pathType: Prefix
         backend:
           service:
-            name: onboarding-api
+            name: kyc-onboarding-api
             port:
               number: 80

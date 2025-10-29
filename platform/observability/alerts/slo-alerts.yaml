@@ -15,9 +15,9 @@ data:
           - alert: HighErrorRate
             expr: |
               (
-                sum(rate(http_requests_total{namespace=~"business-.*",status=~"5.."}[5m])) by (service)
+                sum(rate(http_requests_total{service=~"kyc-.*",status=~"5.."}[5m])) by (service)
                 /
-                sum(rate(http_requests_total{namespace=~"business-.*"}[5m])) by (service)
+                sum(rate(http_requests_total{service=~"kyc-.*"}[5m])) by (service)
               ) * 100 > 1
             for: 5m
             labels:
@@ -32,7 +32,7 @@ data:
           - alert: HighLatencyP95
             expr: |
               histogram_quantile(0.95,
-                sum(rate(http_request_duration_seconds_bucket{namespace=~"business-.*"}[5m])) by (service, le)
+                sum(rate(http_request_duration_seconds_bucket{service=~"kyc-.*"}[5m])) by (service, le)
               ) * 1000 > 500
             for: 5m
             labels:
@@ -47,7 +47,7 @@ data:
           - alert: CriticalLatencyP95
             expr: |
               histogram_quantile(0.95,
-                sum(rate(http_request_duration_seconds_bucket{namespace=~"business-.*"}[5m])) by (service, le)
+                sum(rate(http_request_duration_seconds_bucket{service=~"kyc-.*"}[5m])) by (service, le)
               ) * 1000 > 1000
             for: 2m
             labels:

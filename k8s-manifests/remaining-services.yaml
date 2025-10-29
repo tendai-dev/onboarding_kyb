@@ -57,30 +57,32 @@ spec:
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: messaging-service
+  name: kyc-messaging-api
   namespace: business-notifications
   labels:
-    app: messaging-service
+    app: kyc-messaging-api
     tier: business
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: messaging-service
+      app: kyc-messaging-api
   template:
     metadata:
       labels:
-        app: messaging-service
+        app: kyc-messaging-api
     spec:
       containers:
-      - name: messaging-service
-        image: messaging-service:latest
+      - name: kyc-messaging-api
+        image: kyc-messaging-api:latest
         imagePullPolicy: Never
         ports:
         - containerPort: 8080
         env:
         - name: ASPNETCORE_ENVIRONMENT
           value: "Development"
+        - name: SERVICE_NAME
+          value: "kyc-messaging-api"
         - name: ConnectionStrings__PostgreSQL
           value: "Host=postgresql.platform-observability.svc.cluster.local;Database=messaging;Username=onboarding_user;Password=postgres-changeme"
         - name: ConnectionStrings__Redis
@@ -98,11 +100,11 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: messaging-service
+  name: kyc-messaging-api
   namespace: business-notifications
 spec:
   selector:
-    app: messaging-service
+    app: kyc-messaging-api
   ports:
   - port: 80
     targetPort: 8080
@@ -111,30 +113,32 @@ spec:
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: auditlog-service
+  name: kyc-audit-api
   namespace: business-admin
   labels:
-    app: auditlog-service
+    app: kyc-audit-api
     tier: business
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: auditlog-service
+      app: kyc-audit-api
   template:
     metadata:
       labels:
-        app: auditlog-service
+        app: kyc-audit-api
     spec:
       containers:
-      - name: auditlog-service
-        image: auditlog-service:latest
+      - name: kyc-audit-api
+        image: kyc-audit-api:latest
         imagePullPolicy: Never
         ports:
         - containerPort: 8080
         env:
         - name: ASPNETCORE_ENVIRONMENT
           value: "Development"
+        - name: SERVICE_NAME
+          value: "kyc-audit-api"
         - name: ConnectionStrings__PostgreSQL
           value: "Host=postgresql.platform-observability.svc.cluster.local;Database=auditlog;Username=onboarding_user;Password=postgres-changeme"
         - name: ConnectionStrings__Redis
@@ -152,43 +156,45 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: auditlog-service
+  name: kyc-audit-api
   namespace: business-admin
 spec:
   selector:
-    app: auditlog-service
+    app: kyc-audit-api
   ports:
   - port: 80
     targetPort: 8080
 ---
-# Work Queue Service
+# Work Queue Worker
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: work-queue-service
+  name: kyc-work-queue-worker
   namespace: business-admin
   labels:
-    app: work-queue-service
+    app: kyc-work-queue-worker
     tier: business
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: work-queue-service
+      app: kyc-work-queue-worker
   template:
     metadata:
       labels:
-        app: work-queue-service
+        app: kyc-work-queue-worker
     spec:
       containers:
-      - name: work-queue-service
-        image: work-queue-service:latest
+      - name: kyc-work-queue-worker
+        image: kyc-work-queue-worker:latest
         imagePullPolicy: Never
         ports:
         - containerPort: 8080
         env:
         - name: ASPNETCORE_ENVIRONMENT
           value: "Development"
+        - name: SERVICE_NAME
+          value: "kyc-work-queue-worker"
         - name: ConnectionStrings__PostgreSQL
           value: "Host=postgresql.platform-observability.svc.cluster.local;Database=workqueue;Username=onboarding_user;Password=postgres-changeme"
         - name: ConnectionStrings__Redis
@@ -206,11 +212,11 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: work-queue-service
+  name: kyc-work-queue-worker
   namespace: business-admin
 spec:
   selector:
-    app: work-queue-service
+    app: kyc-work-queue-worker
   ports:
   - port: 80
     targetPort: 8080

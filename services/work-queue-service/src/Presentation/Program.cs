@@ -7,6 +7,11 @@ using MediatR;
 
 var builder = WebApplication.CreateBuilder(args);
 
+// Logging
+builder.Host.UseSerilog((context, configuration) =>
+    configuration.ReadFrom.Configuration(context.Configuration)
+        .Enrich.WithProperty("Service", Environment.GetEnvironmentVariable("SERVICE_NAME") ?? "kyc-work-queue-worker"));
+
 // Database
 builder.Services.AddDbContext<WorkQueueDbContext>(options =>
     options.UseNpgsql(builder.Configuration.GetConnectionString("PostgreSQL")));
@@ -20,7 +25,10 @@ builder.Services.AddMediatR(cfg =>
 
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen();
+builder.Services.AddSwaggerGen(c =>
+{
+    c.SwaggerDoc("v1", new() { Title = Environment.GetEnvironmentVariable("SERVICE_NAME") ?? "KYC Work Queue Worker", Version = "v1" });
+});
 
 var app = builder.Build();
 

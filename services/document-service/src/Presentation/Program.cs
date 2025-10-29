@@ -26,7 +26,7 @@ builder.Services.AddSwaggerGen(c =>
 {
     c.SwaggerDoc("v1", new OpenApiInfo
     {
-        Title = "Document Service API",
+        Title = Environment.GetEnvironmentVariable("SERVICE_NAME") ?? "KYC Document API",
         Version = "v1",
         Description = "Manages document uploads and storage for KYC processes",
         Contact = new OpenApiContact

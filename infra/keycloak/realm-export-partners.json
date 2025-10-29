@@ -69,7 +69,7 @@
       }
     ],
     "client": {
-      "onboarding-api": [
+      "kyc-onboarding-api": [
         {
           "name": "case:read",
           "description": "Read onboarding cases"
@@ -99,8 +99,8 @@
   },
   "clients": [
     {
-      "clientId": "onboarding-api",
-      "name": "Onboarding API Service",
+      "clientId": "kyc-onboarding-api",
+      "name": "KYC Onboarding API Service",
       "description": "Corporate onboarding API backend",
       "enabled": true,
       "clientAuthenticatorType": "client-secret",
@@ -231,7 +231,7 @@
       },
       "realmRoles": ["partner"],
       "clientRoles": {
-        "onboarding-api": ["case:read", "case:write", "document:read", "document:write"]
+        "kyc-onboarding-api": ["case:read", "case:write", "document:read", "document:write"]
       }
     },
     {
@@ -243,7 +243,7 @@
       "lastName": "Compliance",
       "realmRoles": ["compliance_officer"],
       "clientRoles": {
-        "onboarding-api": ["case:read", "case:write"]
+        "kyc-onboarding-api": ["case:read", "case:write"]
       }
     },
     {
@@ -255,7 +255,7 @@
       "lastName": "Admin",
       "realmRoles": ["admin"],
       "clientRoles": {
-        "onboarding-api": ["case:read", "case:write", "case:delete", "document:read", "document:write", "webhook:configure"]
+        "kyc-onboarding-api": ["case:read", "case:write", "case:delete", "document:read", "document:write", "webhook:configure"]
       }
     }
   ],

@@ -1,47 +1,61 @@
 version: '3.8'
 
 services:
-  # Infrastructure Services
-  zookeeper:
-    image: confluentinc/cp-zookeeper:7.4.0
-    container_name: zookeeper
-    ports:
-      - "2181:2181"
+  # Database
+  postgres:
+    image: postgres:14-alpine
+    container_name: postgres
     environment:
-      ZOOKEEPER_CLIENT_PORT: 2181
-      ZOOKEEPER_TICK_TIME: 2000
-    networks:
-      - kyc-network
-
-  kafka:
-    image: confluentinc/cp-kafka:7.4.0
-    container_name: kafka
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: postgres
     ports:
-      - "9092:9092"
-    depends_on:
-      - zookeeper
-    environment:
-      KAFKA_BROKER_ID: 1
-      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
-      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://localhost:9092
-      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092
-      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
-      KAFKA_AUTO_CREATE_TOPICS_ENABLE: true
-      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
-    networks:
-      - kyc-network
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./scripts/init-multiple-databases.sh:/docker-entrypoint-initdb.d/init-databases.sh
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
+  # Cache
   redis:
     image: redis:7-alpine
     container_name: redis
     ports:
       - "6379:6379"
-    command: redis-server --appendonly yes
-    volumes:
-      - redis_data:/data
-    networks:
-      - kyc-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
+  # Message Broker
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.4.0
+    container_name: zookeeper
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+    ports:
+      - "2181:2181"
+
+  kafka:
+    image: confluentinc/cp-kafka:7.4.0
+    container_name: kafka
+    depends_on:
+      - zookeeper
+    ports:
+      - "9092:9092"
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://localhost:9092
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+
+  # Object Storage
   minio:
     image: minio/minio:latest
     container_name: minio
@@ -49,74 +63,192 @@ services:
       - "9000:9000"
       - "9001:9001"
     environment:
-      MINIO_ROOT_USER: admin
-      MINIO_ROOT_PASSWORD: minio-admin-changeme
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin
     command: server /data --console-address ":9001"
     volumes:
       - minio_data:/data
-    networks:
-      - kyc-network
 
+  # Authentication
   keycloak:
-    image: quay.io/keycloak/keycloak:22.0
+    image: quay.io/keycloak/keycloak:22.0.1
     container_name: keycloak
-    ports:
-      - "8080:8080"
     environment:
+      KC_DB: postgres
+      KC_DB_URL_HOST: postgres
+      KC_DB_URL_DATABASE: keycloak
+      KC_DB_USERNAME: postgres
+      KC_DB_PASSWORD: postgres
       KEYCLOAK_ADMIN: admin
       KEYCLOAK_ADMIN_PASSWORD: admin
-      KC_DB: postgres
-      KC_DB_URL: jdbc:postgresql://postgres:5432/keycloak
-      KC_DB_USERNAME: keycloak
-      KC_DB_PASSWORD: keycloak
-    command: start-dev --import-realm
+      KC_HTTP_ENABLED: true
+      KC_HOSTNAME_STRICT_HTTPS: false
+    ports:
+      - "8080:8080"
     depends_on:
       - postgres
-    networks:
-      - kyc-network
+    command: start-dev
 
-  postgres:
-    image: postgres:15
-    container_name: postgres
+  # Microservices
+  kyc-onboarding-api:
+    build: ./services/onboarding-api
+    container_name: kyc-onboarding-api
     ports:
-      - "5432:5432"
+      - "8081:80"
     environment:
-      POSTGRES_DB: keycloak
-      POSTGRES_USER: keycloak
-      POSTGRES_PASSWORD: keycloak
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-    networks:
-      - kyc-network
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ASPNETCORE_URLS=http://+:80
+      - ConnectionStrings__DefaultConnection=Host=postgres;Database=onboarding;Username=postgres;Password=postgres
+      - SERVICE_NAME=kyc-onboarding-api
+    depends_on:
+      - postgres
+      - redis
+      - kafka
+    restart: unless-stopped
 
-  # Security Services
-  # clamav:
-  #   image: clamav/clamav:1.0
-  #   container_name: clamav
-  #   ports:
-  #     - "3310:3310"
-  #   environment:
-  #     CLAMAV_NO_FRESHCLAMD: false
-  #   networks:
-  #     - kyc-network
+  kyc-document-api:
+    build: ./services/document-service
+    container_name: kyc-document-api
+    ports:
+      - "8082:80"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ASPNETCORE_URLS=http://+:80
+      - ConnectionStrings__DefaultConnection=Host=postgres;Database=documents;Username=postgres;Password=postgres
+      - MinIO__Endpoint=minio:9000
+      - MinIO__AccessKey=minioadmin
+      - MinIO__SecretKey=minioadmin
+      - SERVICE_NAME=kyc-document-api
+    depends_on:
+      - postgres
+      - minio
+    restart: unless-stopped
 
-  # Microservices (will be built and run separately)
-  # onboarding-api:
-  #   build: ./services/onboarding-api
-  #   ports:
-  #     - "8081:8080"
-  #   depends_on:
-  #     - kafka
-  #     - redis
-  #     - postgres
-  #   networks:
-  #     - kyc-network
+  kyc-risk-api:
+    build: ./services/risk-service
+    container_name: kyc-risk-api
+    ports:
+      - "8083:80"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ASPNETCORE_URLS=http://+:80
+      - ConnectionStrings__DefaultConnection=Host=postgres;Database=risk;Username=postgres;Password=postgres
+      - SERVICE_NAME=kyc-risk-api
+    depends_on:
+      - postgres
+    restart: unless-stopped
+
+  kyc-notification-api:
+    build: ./services/notification-service
+    container_name: kyc-notification-api
+    ports:
+      - "8085:80"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ASPNETCORE_URLS=http://+:80
+      - ConnectionStrings__DefaultConnection=Host=postgres;Database=notifications;Username=postgres;Password=postgres
+      - SERVICE_NAME=kyc-notification-api
+    depends_on:
+      - postgres
+      - kafka
+    restart: unless-stopped
+
+  kyc-checklist-api:
+    build: ./services/checklist-service
+    container_name: kyc-checklist-api
+    ports:
+      - "8086:80"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ASPNETCORE_URLS=http://+:80
+      - ConnectionStrings__DefaultConnection=Host=postgres;Database=checklist;Username=postgres;Password=postgres
+      - SERVICE_NAME=kyc-checklist-api
+    depends_on:
+      - postgres
+    restart: unless-stopped
+
+  kyc-messaging-api:
+    build: ./services/messaging-service
+    container_name: kyc-messaging-api
+    ports:
+      - "8087:80"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ASPNETCORE_URLS=http://+:80
+      - ConnectionStrings__DefaultConnection=Host=postgres;Database=messaging;Username=postgres;Password=postgres
+      - Kafka__BootstrapServers=kafka:9092
+      - SERVICE_NAME=kyc-messaging-api
+    depends_on:
+      - postgres
+      - kafka
+    restart: unless-stopped
+
+  kyc-audit-api:
+    build: ./services/auditlog-service
+    container_name: kyc-audit-api
+    ports:
+      - "8088:80"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ASPNETCORE_URLS=http://+:80
+      - ConnectionStrings__DefaultConnection=Host=postgres;Database=auditlog;Username=postgres;Password=postgres
+      - SERVICE_NAME=kyc-audit-api
+    depends_on:
+      - postgres
+      - kafka
+    restart: unless-stopped
+
+  kyc-webhook-handler:
+    build: ./services/webhook-dispatcher
+    container_name: kyc-webhook-handler
+    ports:
+      - "8089:80"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ASPNETCORE_URLS=http://+:80
+      - ConnectionStrings__DefaultConnection=Host=postgres;Database=webhooks;Username=postgres;Password=postgres
+      - SERVICE_NAME=kyc-webhook-handler
+    depends_on:
+      - postgres
+    restart: unless-stopped
+
+  kyc-projections-api:
+    build: ./services/projections-api
+    container_name: kyc-projections-api
+    ports:
+      - "8090:80"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ASPNETCORE_URLS=http://+:80
+      - ConnectionStrings__DefaultConnection=Host=postgres;Database=projections;Username=postgres;Password=postgres
+      - EventStore__ConnectionString=Host=postgres;Database=events;Username=postgres;Password=postgres
+      - SERVICE_NAME=kyc-projections-api
+    depends_on:
+      - postgres
+    restart: unless-stopped
+
+  kyc-work-queue-worker:
+    build: ./services/work-queue-service
+    container_name: kyc-work-queue-worker
+    ports:
+      - "8091:80"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ASPNETCORE_URLS=http://+:80
+      - ConnectionStrings__DefaultConnection=Host=postgres;Database=workqueue;Username=postgres;Password=postgres
+      - Redis__ConnectionString=redis:6379
+      - SERVICE_NAME=kyc-work-queue-worker
+    depends_on:
+      - postgres
+      - redis
+      - kafka
+    restart: unless-stopped
 
 volumes:
-  redis_data:
-  minio_data:
   postgres_data:
+  minio_data:
 
 networks:
-  kyc-network:
+  default:
+    name: onboarding_kyc_network
     driver: bridge

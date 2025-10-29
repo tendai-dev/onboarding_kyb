@@ -30,12 +30,12 @@ Log.Logger = new LoggerConfiguration()
     .MinimumLevel.Override("Microsoft", LogEventLevel.Warning)
     .MinimumLevel.Override("Microsoft.EntityFrameworkCore", LogEventLevel.Warning)
     .Enrich.FromLogContext()
-    .Enrich.WithProperty("Service", "onboarding-api")
+    .Enrich.WithProperty("Service", Environment.GetEnvironmentVariable("SERVICE_NAME") ?? "kyc-onboarding-api")
     .Enrich.WithProperty("Environment", builder.Environment.EnvironmentName)
     .WriteTo.Console(outputTemplate: "[{Timestamp:HH:mm:ss} {Level:u3}] {Message:lj} {Properties:j}{NewLine}{Exception}")
     .WriteTo.Elasticsearch(new ElasticsearchSinkOptions(new Uri(builder.Configuration["Elasticsearch:Uri"] ?? "http://elasticsearch:9200"))
     {
-        IndexFormat = "onboarding-api-logs-{0:yyyy.MM.dd}",
+        IndexFormat = $"{Environment.GetEnvironmentVariable("SERVICE_NAME") ?? "kyc-onboarding-api"}-logs-{{0:yyyy.MM.dd}}",
         AutoRegisterTemplate = true,
         AutoRegisterTemplateVersion = AutoRegisterTemplateVersion.ESv7,
         ModifyConnectionSettings = x => x.BasicAuthentication(
@@ -97,7 +97,7 @@ builder.Services.AddScoped<IOrganizationMapper, OnboardingApi.Infrastructure.Ser
 builder.Services.AddStackExchangeRedisCache(options =>
 {
     options.Configuration = builder.Configuration.GetConnectionString("Redis");
-    options.InstanceName = "onboarding:";
+    options.InstanceName = $"{Environment.GetEnvironmentVariable("SERVICE_NAME") ?? "kyc-onboarding-api"}:";
 });
 
 // ========================================
@@ -127,7 +127,7 @@ builder.Services.AddOpenTelemetry()
     .WithTracing(tracerProviderBuilder =>
     {
         tracerProviderBuilder
-            .SetResourceBuilder(ResourceBuilder.CreateDefault().AddService("onboarding-api"))
+            .SetResourceBuilder(ResourceBuilder.CreateDefault().AddService(Environment.GetEnvironmentVariable("SERVICE_NAME") ?? "kyc-onboarding-api"))
             .AddAspNetCoreInstrumentation()
             .AddHttpClientInstrumentation()
             // .AddEntityFrameworkCoreInstrumentation() // Commented out for now
@@ -159,7 +159,7 @@ builder.Services.AddSwaggerGen(options =>
 {
     options.SwaggerDoc("v1", new OpenApiInfo
     {
-        Title = "Onboarding API",
+        Title = Environment.GetEnvironmentVariable("SERVICE_NAME") ?? "KYC Onboarding API",
         Version = "v1",
         Description = "Corporate Digital Onboarding & KYC API",
         Contact = new OpenApiContact

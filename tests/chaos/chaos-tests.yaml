@@ -7,7 +7,7 @@
 apiVersion: chaos-mesh.org/v1alpha1
 kind: PodChaos
 metadata:
-  name: onboarding-api-pod-failure
+  name: kyc-onboarding-api-pod-failure
   namespace: business-onboarding
 spec:
   action: pod-failure
@@ -17,7 +17,7 @@ spec:
     namespaces:
       - business-onboarding
     labelSelectors:
-      "app.kubernetes.io/name": "onboarding-api"
+      "app.kubernetes.io/name": "kyc-onboarding-api"
   
   # Expected: Other pod takes over, no downtime
 
@@ -35,7 +35,7 @@ spec:
     namespaces:
       - business-onboarding
     labelSelectors:
-      "app.kubernetes.io/name": "onboarding-api"
+      "app.kubernetes.io/name": "kyc-onboarding-api"
   delay:
     latency: "500ms"
     correlation: "50"
@@ -88,7 +88,7 @@ spec:
 apiVersion: chaos-mesh.org/v1alpha1
 kind: StressChaos
 metadata:
-  name: onboarding-api-cpu-stress
+  name: kyc-onboarding-api-cpu-stress
   namespace: business-onboarding
 spec:
   mode: one
@@ -96,7 +96,7 @@ spec:
     namespaces:
       - business-onboarding
     labelSelectors:
-      "app.kubernetes.io/name": "onboarding-api"
+      "app.kubernetes.io/name": "kyc-onboarding-api"
   stressors:
     cpu:
       workers: 2
@@ -113,7 +113,7 @@ spec:
 apiVersion: chaos-mesh.org/v1alpha1
 kind: StressChaos
 metadata:
-  name: onboarding-api-memory-stress
+  name: kyc-onboarding-api-memory-stress
   namespace: business-onboarding
 spec:
   mode: one
@@ -121,7 +121,7 @@ spec:
     namespaces:
       - business-onboarding
     labelSelectors:
-      "app.kubernetes.io/name": "onboarding-api"
+      "app.kubernetes.io/name": "kyc-onboarding-api"
   stressors:
     memory:
       workers: 1
@@ -173,7 +173,7 @@ data:
     
     # Test 1: Kill pod
     echo "Test 1: Pod failure"
-    POD=$(kubectl get pod -n business-onboarding -l app.kubernetes.io/name=onboarding-api -o jsonpath='{.items[0].metadata.name}')
+    POD=$(kubectl get pod -n business-onboarding -l app.kubernetes.io/name=kyc-onboarding-api -o jsonpath='{.items[0].metadata.name}')
     kubectl delete pod $POD -n business-onboarding
     sleep 5
     

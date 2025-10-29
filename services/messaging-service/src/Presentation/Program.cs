@@ -8,6 +8,11 @@ using MediatR;
 
 var builder = WebApplication.CreateBuilder(args);
 
+// Logging
+builder.Host.UseSerilog((context, configuration) =>
+    configuration.ReadFrom.Configuration(context.Configuration)
+        .Enrich.WithProperty("Service", Environment.GetEnvironmentVariable("SERVICE_NAME") ?? "kyc-messaging-api"));
+
 // Database
 builder.Services.AddDbContext<MessagingDbContext>(options =>
     options.UseNpgsql(builder.Configuration.GetConnectionString("PostgreSQL")));
@@ -21,7 +26,10 @@ builder.Services.AddMediatR(cfg =>
 
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen();
+builder.Services.AddSwaggerGen(c =>
+{
+    c.SwaggerDoc("v1", new() { Title = Environment.GetEnvironmentVariable("SERVICE_NAME") ?? "KYC Messaging API", Version = "v1" });
+});
 builder.Services.AddSignalR();
 
 var app = builder.Build();

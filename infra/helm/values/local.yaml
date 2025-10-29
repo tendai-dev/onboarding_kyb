@@ -50,37 +50,37 @@ keycloak:
       password: "keycloak-db-changeme"
 
 # Business services - use local images
-onboarding-api:
+kyc-onboarding-api:
   image:
-    repository: onboarding-api
+    repository: kyc-onboarding-api
     tag: latest
     pullPolicy: Never
   replicaCount: 1
 
-document-service:
+kyc-document-api:
   image:
-    repository: document-service
+    repository: kyc-document-api
     tag: latest
     pullPolicy: Never
   replicaCount: 1
 
-checklist-service:
+kyc-checklist-api:
   image:
-    repository: checklist-service
+    repository: kyc-checklist-api
     tag: latest
     pullPolicy: Never
   replicaCount: 1
 
-risk-service:
+kyc-risk-api:
   image:
-    repository: risk-service
+    repository: kyc-risk-api
     tag: latest
     pullPolicy: Never
   replicaCount: 1
 
-notification-service:
+kyc-notification-api:
   image:
-    repository: notification-service
+    repository: kyc-notification-api
     tag: latest
     pullPolicy: Never
   replicaCount: 1
@@ -92,37 +92,37 @@ entity-configuration-service:
     pullPolicy: Never
   replicaCount: 1
 
-messaging-service:
+kyc-messaging-api:
   image:
-    repository: messaging-service
+    repository: kyc-messaging-api
     tag: latest
     pullPolicy: Never
   replicaCount: 1
 
-projections-api:
+kyc-projections-api:
   image:
-    repository: projections-api
+    repository: kyc-projections-api
     tag: latest
     pullPolicy: Never
   replicaCount: 1
 
-auditlog-service:
+kyc-audit-api:
   image:
-    repository: auditlog-service
+    repository: kyc-audit-api
     tag: latest
     pullPolicy: Never
   replicaCount: 1
 
-work-queue-service:
+kyc-work-queue-worker:
   image:
-    repository: work-queue-service
+    repository: kyc-work-queue-worker
     tag: latest
     pullPolicy: Never
   replicaCount: 1
 
-webhook-dispatcher:
+kyc-webhook-handler:
   image:
-    repository: webhook-dispatcher
+    repository: kyc-webhook-handler
     tag: latest
     pullPolicy: Never
   replicaCount: 1

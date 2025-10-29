@@ -53,9 +53,9 @@ jobs:
         env:
           KUBECONFIG: ${{ env.KUBECONFIG_PATH }}
         run: |
-          kubectl rollout status deployment/onboarding-api -n business-onboarding --timeout=5m
-          kubectl rollout status deployment/document-service -n business-documents --timeout=5m
-          kubectl rollout status deployment/webhook-dispatcher -n business-webhooks --timeout=5m
+          kubectl rollout status deployment/kyc-onboarding-api -n business-onboarding --timeout=5m
+          kubectl rollout status deployment/kyc-document-api -n business-documents --timeout=5m
+          kubectl rollout status deployment/kyc-webhook-handler -n business-webhooks --timeout=5m
 
       - name: Run smoke tests
         env:

@@ -238,7 +238,7 @@ releases:
   # ========================================
   # Business Services
   # ========================================
-  - name: onboarding-api
+  - name: kyc-onboarding-api
     namespace: business-onboarding
     chart: charts/onboarding-api
     labels:
@@ -247,7 +247,7 @@ releases:
     values:
       - values/{{ .Environment.Name }}.yaml
 
-  - name: document-service
+  - name: kyc-document-api
     namespace: business-documents
     chart: charts/document-service
     labels:
@@ -256,7 +256,7 @@ releases:
     values:
       - values/{{ .Environment.Name }}.yaml
 
-  - name: checklist-service
+  - name: kyc-checklist-api
     namespace: business-onboarding
     chart: charts/checklist-service
     labels:
@@ -265,7 +265,7 @@ releases:
     values:
       - values/{{ .Environment.Name }}.yaml
 
-  - name: risk-service
+  - name: kyc-risk-api
     namespace: business-risk
     chart: charts/risk-service
     labels:
@@ -274,7 +274,7 @@ releases:
     values:
       - values/{{ .Environment.Name }}.yaml
 
-  - name: notification-service
+  - name: kyc-notification-api
     namespace: business-notifications
     chart: charts/notification-service
     labels:
@@ -283,7 +283,7 @@ releases:
     values:
       - values/{{ .Environment.Name }}.yaml
 
-  - name: webhook-dispatcher
+  - name: kyc-webhook-handler
     namespace: business-webhooks
     chart: charts/webhook-dispatcher
     labels:
@@ -292,7 +292,7 @@ releases:
     values:
       - values/{{ .Environment.Name }}.yaml
 
-  - name: auditlog-service
+  - name: kyc-audit-api
     namespace: business-admin
     chart: charts/auditlog-service
     labels:
@@ -301,7 +301,7 @@ releases:
     values:
       - values/{{ .Environment.Name }}.yaml
 
-  - name: projections-api
+  - name: kyc-projections-api
     namespace: business-readmodel
     chart: charts/projections-api
     labels:

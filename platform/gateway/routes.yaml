@@ -71,7 +71,7 @@ spec:
         pathType: Prefix
         backend:
           service:
-            name: onboarding-api
+            name: kyc-onboarding-api
             port:
               number: 8080
       
@@ -80,7 +80,7 @@ spec:
         pathType: Prefix
         backend:
           service:
-            name: document-service
+            name: kyc-document-api
             port:
               number: 8080
       
@@ -89,7 +89,7 @@ spec:
         pathType: Prefix
         backend:
           service:
-            name: checklist-service
+            name: kyc-checklist-api
             port:
               number: 8080
       
@@ -98,7 +98,7 @@ spec:
         pathType: Prefix
         backend:
           service:
-            name: risk-service
+            name: kyc-risk-api
             port:
               number: 8080
       
@@ -107,16 +107,16 @@ spec:
         pathType: Prefix
         backend:
           service:
-            name: notification-service
+            name: kyc-notification-api
             port:
               number: 8080
       
-      # Webhook Dispatcher
+      # Webhook Handler
       - path: /webhooks/v1
         pathType: Prefix
         backend:
           service:
-            name: webhook-dispatcher
+            name: kyc-webhook-handler
             port:
               number: 8080
       
@@ -125,7 +125,7 @@ spec:
         pathType: Prefix
         backend:
           service:
-            name: projections-api
+            name: kyc-projections-api
             port:
               number: 8080
       
@@ -134,7 +134,7 @@ spec:
         pathType: Prefix
         backend:
           service:
-            name: onboarding-api
+            name: kyc-onboarding-api
             port:
               number: 8080
       
@@ -142,7 +142,7 @@ spec:
         pathType: Prefix
         backend:
           service:
-            name: onboarding-api
+            name: kyc-onboarding-api
             port:
               number: 8080
       
@@ -150,7 +150,7 @@ spec:
         pathType: Prefix
         backend:
           service:
-            name: onboarding-api
+            name: kyc-onboarding-api
             port:
               number: 8080
 
