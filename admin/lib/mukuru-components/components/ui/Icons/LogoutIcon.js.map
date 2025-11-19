@@ -1,0 +1,1 @@
+{"version":3,"file":"LogoutIcon.js","sources":["../../../../src/components/ui/Icons/LogoutIcon.tsx"],"sourcesContent":[null],"names":["LogoutIcon","props","_jsx","width","height","viewBox","fill","xmlns","children","d"],"mappings":"8CAEaA,EAAwBC,GACnCC,SACEC,MAAM,KACNC,OAAO,KACPC,QAAQ,YACRC,KAAK,OACLC,MAAM,gCACFN,EAAKO,SAETN,EAAA,OAAA,CACEO,EAAE,q9CACFH,KAAK"}

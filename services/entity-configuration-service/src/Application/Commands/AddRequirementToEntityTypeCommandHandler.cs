@@ -24,9 +24,19 @@ public class AddRequirementToEntityTypeCommandHandler : IRequestHandler<AddRequi
         var requirement = await _requirementRepository.GetByIdAsync(request.RequirementId, cancellationToken)
             ?? throw new InvalidOperationException($"Requirement with ID '{request.RequirementId}' not found");
 
-        entityType.AddRequirement(requirement, request.IsRequired, request.DisplayOrder);
-        
-        await _entityTypeRepository.UpdateAsync(entityType, cancellationToken);
+        // Check if requirement is already added
+        if (entityType.Requirements.Any(r => r.RequirementId == requirement.Id))
+        {
+            throw new InvalidOperationException("Requirement already added to this entity type");
+        }
+
+        // Use repository method to add requirement directly
+        await _entityTypeRepository.AddRequirementAsync(
+            request.EntityTypeId,
+            request.RequirementId,
+            request.IsRequired,
+            request.DisplayOrder,
+            cancellationToken);
 
         return Unit.Value;
     }

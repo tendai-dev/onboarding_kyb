@@ -1,7 +1,7 @@
 {
-  "id": "partners",
-  "realm": "partners",
-  "displayName": "Corporate Onboarding & KYC Platform",
+  "id": "mukuru",
+  "realm": "mukuru",
+  "displayName": "Corporate Onboarding & KYB Platform",
   "enabled": true,
   "sslRequired": "external",
   "registrationAllowed": false,
@@ -158,10 +158,32 @@
       "directAccessGrantsEnabled": false,
       "redirectUris": [
         "https://portal.yourdomain.tld/*",
-        "http://localhost:3000/*"
+        "http://localhost:3000/*",
+        "http://localhost:3000/api/auth/callback/keycloak"
       ],
       "webOrigins": [
         "https://portal.yourdomain.tld",
+        "http://localhost:3000"
+      ],
+      "protocol": "openid-connect",
+      "attributes": {
+        "pkce.code.challenge.method": "S256",
+        "post.logout.redirect.uris": "+"
+      }
+    },
+    {
+      "clientId": "kyb-connect-portal",
+      "name": "KYB Connect Portal (NextAuth)",
+      "enabled": true,
+      "publicClient": true,
+      "standardFlowEnabled": true,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "redirectUris": [
+        "http://localhost:3000/api/auth/callback/keycloak",
+        "http://localhost:3000/*"
+      ],
+      "webOrigins": [
         "http://localhost:3000"
       ],
       "protocol": "openid-connect",

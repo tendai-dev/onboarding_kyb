@@ -1,0 +1,1 @@
+{"version":3,"file":"AddRecipientIcon.js","sources":["../../../../src/components/ui/Icons/AddRecipientIcon.tsx"],"sourcesContent":[null],"names":["AddRecipientIcon","props","_jsx","width","height","viewBox","fill","xmlns","children","d"],"mappings":"8CAEaA,EAA8BC,GACzCC,SACEC,MAAM,KACNC,OAAO,KACPC,QAAQ,YACRC,KAAK,OACLC,MAAM,gCACFN,EAAKO,SAETN,EAAA,OAAA,CACEO,EAAE,8iFACFH,KAAK"}

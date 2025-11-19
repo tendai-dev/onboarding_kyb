@@ -31,7 +31,11 @@ public class OnboardingCaseEventConsumer : BackgroundService
         _consumer = consumer;
         _serviceProvider = serviceProvider;
         _logger = logger;
-        _topicName = configuration["Kafka:DomainEventsTopic"] ?? "onboarding.domain-events";
+        // Subscribe to the same topic that Case API publishes to
+        // Default to kyb.case.submitted.v1 to match Case API configuration
+        _topicName = configuration["Kafka:DomainEventsTopic"] 
+                     ?? configuration["Kafka:Subscribe:CaseSubmitted"]
+                     ?? "kyb.case.submitted.v1";
     }
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
@@ -97,9 +101,9 @@ public class OnboardingCaseEventConsumer : BackgroundService
                 var traceIdHeader = result.Message.Headers.FirstOrDefault(h => 
                     h.Key.Equals("trace-id", StringComparison.OrdinalIgnoreCase) || 
                     h.Key.Equals("x-trace-id", StringComparison.OrdinalIgnoreCase));
-                if (traceIdHeader.Key != null)
+                if (traceIdHeader != null && traceIdHeader.GetValueBytes() != null)
                 {
-                    traceId = Encoding.UTF8.GetString(traceIdHeader.Value);
+                    traceId = Encoding.UTF8.GetString(traceIdHeader.GetValueBytes());
                 }
             }
 
@@ -230,27 +234,60 @@ public class OnboardingCaseEventConsumer : BackgroundService
             // Try business details if it's a business case
             if (typeStr == "Business" && root.TryGetProperty("business", out var businessProp))
             {
-                if (businessProp.TryGetProperty("legalName", out var legalName))
+                // Handle both camelCase and PascalCase
+                if (businessProp.TryGetProperty("legalName", out var legalName) || 
+                    businessProp.TryGetProperty("LegalName", out legalName))
                     applicantName = legalName.GetString() ?? applicantName;
                 
-                if (businessProp.TryGetProperty("registeredAddress", out var busAddress) && 
-                    busAddress.TryGetProperty("country", out var busCountry))
-                    country = busCountry.GetString() ?? country;
+                if (businessProp.TryGetProperty("registeredAddress", out var busAddress) || 
+                    businessProp.TryGetProperty("RegisteredAddress", out busAddress))
+                {
+                    if (busAddress.TryGetProperty("country", out var busCountry) ||
+                        busAddress.TryGetProperty("Country", out busCountry))
+                        country = busCountry.GetString() ?? country;
+                }
+            }
+            
+            // Try to extract from metadata if available (contains dynamic fields)
+            if (root.TryGetProperty("metadata", out var metadataProp) || 
+                root.TryGetProperty("Metadata", out metadataProp))
+            {
+                if (metadataProp.ValueKind == JsonValueKind.Object)
+                {
+                    // Check for country in metadata
+                    if (metadataProp.TryGetProperty("country", out var metaCountry) ||
+                        metadataProp.TryGetProperty("business_country", out metaCountry) ||
+                        metadataProp.TryGetProperty("country_of_registration", out metaCountry))
+                    {
+                        var countryValue = metaCountry.GetString();
+                        if (!string.IsNullOrEmpty(countryValue) && country == "Unknown")
+                            country = countryValue;
+                    }
+                    
+                    // Check for business name in metadata
+                    if (typeStr == "Business")
+                    {
+                        if (metadataProp.TryGetProperty("legal_name", out var metaLegalName) ||
+                            metadataProp.TryGetProperty("business_legal_name", out metaLegalName) ||
+                            metadataProp.TryGetProperty("company_name", out metaLegalName))
+                        {
+                            var nameValue = metaLegalName.GetString();
+                            if (!string.IsNullOrEmpty(nameValue) && applicantName == "Unknown Applicant")
+                                applicantName = nameValue;
+                        }
+                    }
+                }
             }
 
-            // Default to Medium risk - will be updated when risk assessment is available
-            // Check if risk level is in the event
-            var riskLevelStr = "Medium";
-            if (root.TryGetProperty("riskLevel", out var riskLevelProp))
-            {
-                riskLevelStr = riskLevelProp.GetString() ?? riskLevelStr;
-            }
+            // Risk level is now set manually by reviewers, not automatically
+            // Default to Unknown - will be updated when manual risk assessment is completed
+            var riskLevelStr = "Unknown";
 
             var command = new CreateWorkItemCommand(
                 ApplicationId: caseId,
-                ApplicantName: applicantName,
-                EntityType: entityType,
-                Country: country,
+                ApplicantName: applicantName ?? "Unknown Applicant",
+                EntityType: entityType ?? "Unknown",
+                Country: country ?? "Unknown",
                 RiskLevel: riskLevelStr,
                 CreatedBy: "system"
             );

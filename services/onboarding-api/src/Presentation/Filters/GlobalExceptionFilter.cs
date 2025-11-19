@@ -2,6 +2,7 @@ using FluentValidation;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Filters;
 using OnboardingApi.Presentation.Models;
+using Sentry;
 
 namespace OnboardingApi.Presentation.Filters;
 
@@ -82,6 +83,18 @@ public class GlobalExceptionFilter : IExceptionFilter
                 statusCode = StatusCodes.Status500InternalServerError;
                 break;
         }
+
+        // Report to Sentry with context
+        SentrySdk.WithScope(scope =>
+        {
+            scope.SetTag("request_id", requestId);
+            scope.SetTag("endpoint", context.HttpContext.Request.Path);
+            scope.SetTag("method", context.HttpContext.Request.Method);
+            scope.SetTag("exception_type", context.Exception.GetType().Name);
+            scope.SetExtra("status_code", statusCode);
+            scope.SetExtra("user", context.HttpContext.User?.Identity?.Name ?? "anonymous");
+            SentrySdk.CaptureException(context.Exception);
+        });
 
         context.Result = new ObjectResult(errorResponse)
         {

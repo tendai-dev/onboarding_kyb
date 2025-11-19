@@ -1,0 +1,2 @@
+import{jsxs as o,jsx as r}from"react/jsx-runtime";const t=t=>o("svg",{width:"21",height:"18",viewBox:"0 0 21 18",fill:"none",xmlns:"http://www.w3.org/2000/svg",...t,children:[r("path",{d:"M14 5L1 5M1 5L5 1M1 5L5 9",stroke:"currentColor",strokeWidth:"1.5",strokeLinecap:"round",strokeLinejoin:"round"}),r("path",{d:"M7 13L20 13M20 13L16 17M20 13L16 9",stroke:"currentColor",strokeWidth:"1.5",strokeLinecap:"round",strokeLinejoin:"round"})]});export{t as TransferIcon};
+//# sourceMappingURL=TransferIcon.js.map

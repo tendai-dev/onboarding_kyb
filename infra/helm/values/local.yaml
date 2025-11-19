@@ -39,15 +39,7 @@ minio:
   persistence:
     enabled: false  # Disable persistence for local dev
 
-keycloak:
-  replicas: 1
-  auth:
-    adminUser: "admin"
-    adminPassword: "keycloak-admin-changeme"
-  postgresql:
-    enabled: true
-    auth:
-      password: "keycloak-db-changeme"
+# Keycloak removed - using external authentication services
 
 # Business services - use local images
 kyc-onboarding-api:

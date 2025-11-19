@@ -47,6 +47,25 @@ public interface IObjectStorage
         string bucketName,
         string objectKey,
         CancellationToken cancellationToken = default);
+    
+    /// <summary>
+    /// Upload an object directly to storage
+    /// </summary>
+    Task UploadObjectAsync(
+        string bucketName,
+        string objectKey,
+        Stream data,
+        string contentType,
+        Dictionary<string, string>? metadata = null,
+        CancellationToken cancellationToken = default);
+    
+    /// <summary>
+    /// Download an object directly from storage
+    /// </summary>
+    Task<Stream> DownloadObjectAsync(
+        string bucketName,
+        string objectKey,
+        CancellationToken cancellationToken = default);
 }
 
 public record ObjectMetadata(

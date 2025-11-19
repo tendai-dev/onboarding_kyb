@@ -23,7 +23,8 @@ public class CreateEntityTypeCommandHandler : IRequestHandler<CreateEntityTypeCo
         var entityType = new EntityType(
             request.Code,
             request.DisplayName,
-            request.Description
+            request.Description,
+            request.Icon
         );
 
         await _repository.AddAsync(entityType, cancellationToken);

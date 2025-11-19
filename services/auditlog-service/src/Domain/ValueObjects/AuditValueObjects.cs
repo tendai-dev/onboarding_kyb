@@ -47,6 +47,7 @@ public enum ComplianceCategory
 {
     General,
     KYC,
+    KYB,
     AML,
     DataProtection,
     Financial,

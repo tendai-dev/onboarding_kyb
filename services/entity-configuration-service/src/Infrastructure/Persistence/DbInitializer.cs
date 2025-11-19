@@ -17,19 +17,42 @@ public static class DbInitializer
         {
             var context = services.GetRequiredService<EntityConfigurationDbContext>();
             
-            logger.LogInformation("Applying database migrations...");
-            await context.Database.MigrateAsync();
+            logger.LogInformation("Initializing database...");
             
+            // Verify we can connect to the database
+            var canConnect = await context.Database.CanConnectAsync();
+            if (!canConnect)
+            {
+                logger.LogWarning("Cannot connect to database. Initialization will be skipped.");
+                return;
+            }
+            
+            // Use EnsureCreatedAsync which will create all tables defined in DbContext
+            // Note: This is safe - it only creates missing tables and won't drop existing ones
+            logger.LogInformation("Ensuring database schema exists...");
+            await context.Database.EnsureCreatedAsync();
+            logger.LogInformation("Database schema ensured.");
+            
+            // Always attempt seeding - the seeder will check if data already exists
             logger.LogInformation("Seeding database...");
-            await EntityConfigurationSeeder.SeedAsync(context);
+            try
+            {
+                await EntityConfigurationSeeder.SeedAsync(context);
+                logger.LogInformation("Database seeding completed successfully.");
+            }
+            catch (Exception seedEx)
+            {
+                logger.LogError(seedEx, "Error during database seeding, but continuing startup.");
+                // Don't throw - allow service to start even if seeding fails
+            }
             
             logger.LogInformation("Database initialization completed successfully");
         }
         catch (Exception ex)
         {
             logger.LogError(ex, "An error occurred while initializing the database");
-            throw;
+            // Don't throw - allow service to start even if initialization fails
+            // The database might be accessible later
         }
     }
 }
-

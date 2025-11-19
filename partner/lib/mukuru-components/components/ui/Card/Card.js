@@ -1,0 +1,2 @@
+import{jsx as r}from"react/jsx-runtime";import{useSlotRecipe as o,Card as e}from"@chakra-ui/react";import{cardRecipe as t}from"../../../configs/themes/card.recipe.js";const i=({children:i,...c})=>{const a=o({recipe:t}),[s,p]=a.splitVariantProps(c),m=a(s);return r(e.Root,{css:m.root,...p,children:r(e.Body,{p:"0",children:i})})};i.displayName="Card";export{i as Card};
+//# sourceMappingURL=Card.js.map

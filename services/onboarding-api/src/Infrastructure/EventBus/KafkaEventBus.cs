@@ -4,6 +4,7 @@ using Microsoft.Extensions.Options;
 using OnboardingApi.Application.Interfaces;
 using OnboardingApi.Domain.Events;
 using System.Text.Json;
+using Microsoft.AspNetCore.Http;
 
 namespace OnboardingApi.Infrastructure.EventBus;
 
@@ -48,6 +49,11 @@ public class KafkaEventBus : IEventBus, IDisposable
         var eventType = @event.GetType().Name;
         var topic = _options.DomainEventsTopic;
 
+        // Extract trace ID from current context if available
+        var traceId = System.Diagnostics.Activity.Current?.Id ?? 
+                      System.Diagnostics.Activity.Current?.RootId ?? 
+                      Guid.NewGuid().ToString();
+
         var message = new Message<string, string>
         {
             Key = @event.EventId.ToString(),
@@ -56,9 +62,13 @@ public class KafkaEventBus : IEventBus, IDisposable
             {
                 { "event-type", System.Text.Encoding.UTF8.GetBytes(eventType) },
                 { "event-id", System.Text.Encoding.UTF8.GetBytes(@event.EventId.ToString()) },
-                { "occurred-at", System.Text.Encoding.UTF8.GetBytes(@event.OccurredAt.ToString("O")) }
+                { "occurred-at", System.Text.Encoding.UTF8.GetBytes(@event.OccurredAt.ToString("O")) },
+                { "trace-id", System.Text.Encoding.UTF8.GetBytes(traceId) },
+                { "x-trace-id", System.Text.Encoding.UTF8.GetBytes(traceId) }
             }
         };
+
+        _logger.LogInformation("Publishing event {EventType} with trace-id {TraceId}", eventType, traceId);
 
         try
         {

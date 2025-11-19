@@ -26,8 +26,9 @@ public class OnboardingCaseRepository : IOnboardingCaseRepository
 
     public async Task<OnboardingCase?> GetByCaseNumberAsync(string caseNumber, CancellationToken cancellationToken = default)
     {
+        // Case-insensitive lookup for case numbers
         return await _context.OnboardingCases
-            .FirstOrDefaultAsync(c => c.CaseNumber == caseNumber, cancellationToken);
+            .FirstOrDefaultAsync(c => c.CaseNumber.ToLower() == caseNumber.ToLower(), cancellationToken);
     }
 
     public async Task<IEnumerable<OnboardingCase>> GetByPartnerIdAsync(Guid partnerId, CancellationToken cancellationToken = default)

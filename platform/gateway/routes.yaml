@@ -129,6 +129,15 @@ spec:
             port:
               number: 8080
       
+      # Messaging Service
+      - path: /messaging/v1
+        pathType: Prefix
+        backend:
+          service:
+            name: kyc-messaging-api
+            port:
+              number: 8080
+      
       # Frontend-compatible API routes (mapped to onboarding-api)
       - path: /api/v1/onboardings
         pathType: Prefix

@@ -1,0 +1,2 @@
+import{jsx as t}from"react/jsx-runtime";const r=r=>t("svg",{width:"9",height:"18",viewBox:"0 0 9 18",fill:"none",xmlns:"http://www.w3.org/2000/svg",...r,children:t("path",{d:"M2.10003 17.1385V9.09662H0V6.20116H2.10003V3.72805C2.10003 1.78467 3.34053 0 6.19889 0C7.3562 0 8.21198 0.112343 8.21198 0.112343L8.14455 2.81622C8.14455 2.81622 7.27179 2.80761 6.31941 2.80761C5.28863 2.80761 5.12349 3.28861 5.12349 4.08693V6.20116H8.22648L8.09147 9.09662H5.12349V17.1385H2.10003Z",fill:"currentColor"})});export{r as FacebookIcon};
+//# sourceMappingURL=FacebookIcon.js.map

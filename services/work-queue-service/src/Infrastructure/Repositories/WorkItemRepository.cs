@@ -17,6 +17,7 @@ public class WorkItemRepository : IWorkItemRepository
     public async Task<WorkItem?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)
     {
         return await _context.WorkItems
+            .AsTracking() // Track the entity so we can update it later
             .FirstOrDefaultAsync(w => w.Id == id, cancellationToken);
     }
 
@@ -55,12 +56,36 @@ public class WorkItemRepository : IWorkItemRepository
 
     public async Task UpdateAsync(WorkItem workItem, CancellationToken cancellationToken = default)
     {
-        _context.WorkItems.Update(workItem);
+        // Check if entity is already tracked (from GetByIdAsync)
+        var entry = _context.Entry(workItem);
+        
+        if (entry.State == EntityState.Detached)
+        {
+            // Entity is not tracked - we need to attach it properly
+            // Use Update() which will mark all properties as modified
+            // This is safe because we're updating the entire entity
+            _context.WorkItems.Update(workItem);
+        }
+        // If already tracked, EF Core will automatically detect changes when SaveChanges is called
+        // No need to do anything - change tracking handles it automatically
     }
 
     public Task SaveChangesAsync(CancellationToken cancellationToken = default)
     {
         return _context.SaveChangesAsync(cancellationToken);
+    }
+
+    public async Task ClearTrackingAsync(Guid id, CancellationToken cancellationToken = default)
+    {
+        // Find any tracked entity with this ID and detach it
+        var trackedEntities = _context.ChangeTracker.Entries<WorkItem>()
+            .Where(e => e.Entity.Id == id)
+            .ToList();
+        
+        foreach (var entry in trackedEntities)
+        {
+            entry.State = EntityState.Detached;
+        }
     }
 }
 

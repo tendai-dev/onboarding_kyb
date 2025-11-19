@@ -36,7 +36,7 @@ public class ChecklistDbContext : DbContext
                 .HasColumnName("case_id");
 
             entity.Property(e => e.Type)
-                .HasConversion<string>()
+                .HasConversion(new ChecklistTypeConverter())
                 .IsRequired()
                 .HasMaxLength(50)
                 .HasColumnName("type");
@@ -131,7 +131,10 @@ public class ChecklistDbContext : DbContext
                 .HasMaxLength(1000)
                 .HasColumnName("skip_reason");
 
-            // Foreign key to Checklist
+            // Ignore navigation to avoid duplicate shadow FK generation
+            entity.Ignore(e => e.Checklist);
+
+            // Foreign key to Checklist (value object with conversion)
             entity.Property<ChecklistId>("ChecklistId")
                 .HasConversion(
                     id => id.Value,

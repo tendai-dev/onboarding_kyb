@@ -88,10 +88,7 @@ env:
         key: connection-string
   - name: Kafka__BootstrapServers
     value: "kafka.platform-observability:9092"
-  - name: Keycloak__Authority
-    value: "https://keycloak.yourdomain.tld/realms/partners"
-  - name: Keycloak__Audience
-    value: "onboarding-api"
+  # Keycloak authentication removed - using external auth services
   - name: OpenTelemetry__Endpoint
     value: "http://opentelemetry-collector.platform-observability:4317"
   - name: Elasticsearch__Uri

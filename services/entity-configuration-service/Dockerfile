@@ -17,7 +17,7 @@ COPY src/ ./
 
 # Build and publish
 WORKDIR /src/Presentation
-RUN dotnet publish -c Release -o /app/publish --no-restore
+RUN dotnet restore && dotnet publish -c Release -o /app/publish
 
 # Runtime stage
 FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS runtime
@@ -39,15 +39,15 @@ RUN chown -R appuser:appuser /app
 USER appuser
 
 # Expose port
-EXPOSE 8080
+EXPOSE 80
 
 # Set environment
-ENV ASPNETCORE_URLS=http://+:8080
+ENV ASPNETCORE_URLS=http://+:80
 ENV ASPNETCORE_ENVIRONMENT=Production
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=3s --start-period=10s --retries=3 \
-    CMD curl -f http://localhost:8080/health/live || exit 1
+    CMD curl -f http://localhost:80/health/live || exit 1
 
 # Start application
 ENTRYPOINT ["dotnet", "EntityConfigurationService.Presentation.dll"]

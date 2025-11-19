@@ -1,0 +1,3 @@
+"use client";
+import{jsxs as r,jsx as e}from"react/jsx-runtime";import{forwardRef as o}from"react";import{useSlotRecipe as t,Switch as i}from"@chakra-ui/react";import{switchSlotRecipe as c}from"../../../configs/themes/switch.recipe.js";const s=o((o,s)=>{const{rootRef:n,label:a}=o,m=t({recipe:c}),[l,p]=m.splitVariantProps(o),f=m(l);return r(i.Root,{ref:n,...p,css:f.root,children:[e(i.HiddenInput,{ref:s}),e(i.Control,{css:f.control,marginTop:1,children:e(i.Thumb,{})}),a&&e(i.Label,{css:f.label,fontSize:l?.size,children:a})]})});s.displayName="Switch";export{s as Switch};
+//# sourceMappingURL=Switch.js.map

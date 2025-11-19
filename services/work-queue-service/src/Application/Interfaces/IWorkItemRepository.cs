@@ -11,5 +11,6 @@ public interface IWorkItemRepository
     Task AddAsync(WorkItem workItem, CancellationToken cancellationToken = default);
     Task UpdateAsync(WorkItem workItem, CancellationToken cancellationToken = default);
     Task SaveChangesAsync(CancellationToken cancellationToken = default);
+    Task ClearTrackingAsync(Guid id, CancellationToken cancellationToken = default);
 }
 

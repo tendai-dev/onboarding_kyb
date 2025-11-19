@@ -63,3 +63,11 @@ public record CreateRequirementRequest(
     string? ValidationRules = null,
     string? HelpText = null
 );
+
+public record UpdateRequirementRequest(
+    string DisplayName,
+    string Description,
+    string? ValidationRules,
+    string? HelpText,
+    bool IsActive
+);

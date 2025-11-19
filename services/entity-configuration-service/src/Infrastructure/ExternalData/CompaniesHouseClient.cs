@@ -3,18 +3,22 @@ using System.Net.Http.Json;
 using System.Text;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using EntityConfigurationService.Infrastructure.Resilience;
+using Polly;
 
 namespace EntityConfigurationService.Infrastructure.ExternalData;
 
 /// <summary>
-/// Client for UK Companies House API
+/// Client for UK Companies House API with resilience patterns
 /// API Documentation: https://developer-specs.company-information.service.gov.uk/
+/// Implements retry, circuit breaker, and timeout policies for reliable external API calls
 /// </summary>
 public class CompaniesHouseClient : IExternalDataService
 {
     private readonly HttpClient _httpClient;
     private readonly ILogger<CompaniesHouseClient> _logger;
     private readonly CompaniesHouseOptions _options;
+    private readonly IAsyncPolicy<HttpResponseMessage> _resiliencePolicy;
     
     
     public CompaniesHouseClient(
@@ -27,6 +31,18 @@ public class CompaniesHouseClient : IExternalDataService
         _options = options.Value;
         
         ConfigureHttpClient();
+        
+        // Configure resilience policy for external API calls
+        _resiliencePolicy = ResiliencePolicies.GetCombinedHttpPolicy(
+            "CompaniesHouse",
+            logger,
+            new ResiliencePolicies.ResilienceOptions
+            {
+                Timeout = TimeSpan.FromSeconds(_options.TimeoutSeconds),
+                MaxRetryAttempts = 3,
+                CircuitBreakerThreshold = 5,
+                CircuitBreakerDuration = TimeSpan.FromSeconds(30)
+            });
     }
     
     private void ConfigureHttpClient()
@@ -98,9 +114,10 @@ public class CompaniesHouseClient : IExternalDataService
         {
             _logger.LogInformation("Searching Companies House for: {CompanyName}", companyName);
             
-            var response = await _httpClient.GetAsync(
-                $"/search/companies?q={Uri.EscapeDataString(companyName)}",
-                cancellationToken);
+            var response = await _resiliencePolicy.ExecuteAsync(async () =>
+                await _httpClient.GetAsync(
+                    $"/search/companies?q={Uri.EscapeDataString(companyName)}",
+                    cancellationToken));
             
             if (!response.IsSuccessStatusCode)
             {
@@ -135,9 +152,10 @@ public class CompaniesHouseClient : IExternalDataService
         string companyNumber,
         CancellationToken cancellationToken)
     {
-        var response = await _httpClient.GetAsync(
-            $"/company/{companyNumber}",
-            cancellationToken);
+        var response = await _resiliencePolicy.ExecuteAsync(async () =>
+            await _httpClient.GetAsync(
+                $"/company/{companyNumber}",
+                cancellationToken));
         
         if (!response.IsSuccessStatusCode)
         {
@@ -157,9 +175,10 @@ public class CompaniesHouseClient : IExternalDataService
     {
         try
         {
-            var response = await _httpClient.GetAsync(
-                $"/company/{companyNumber}/officers",
-                cancellationToken);
+            var response = await _resiliencePolicy.ExecuteAsync(async () =>
+                await _httpClient.GetAsync(
+                    $"/company/{companyNumber}/officers",
+                    cancellationToken));
             
             if (!response.IsSuccessStatusCode)
             {
@@ -185,9 +204,10 @@ public class CompaniesHouseClient : IExternalDataService
     {
         try
         {
-            var response = await _httpClient.GetAsync(
-                $"/company/{companyNumber}/persons-with-significant-control",
-                cancellationToken);
+            var response = await _resiliencePolicy.ExecuteAsync(async () =>
+                await _httpClient.GetAsync(
+                    $"/company/{companyNumber}/persons-with-significant-control",
+                    cancellationToken));
             
             if (!response.IsSuccessStatusCode)
             {

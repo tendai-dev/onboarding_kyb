@@ -1,4 +1,5 @@
 using ProjectionsApi.Application.Interfaces;
+using ProjectionsApi.Domain;
 using ProjectionsApi.Domain.ReadModels;
 using MediatR;
 

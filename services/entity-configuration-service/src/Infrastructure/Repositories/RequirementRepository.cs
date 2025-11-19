@@ -65,6 +65,12 @@ public class RequirementRepository : IRequirementRepository
         await _context.SaveChangesAsync(cancellationToken);
     }
 
+    public async Task DeleteAsync(Requirement requirement, CancellationToken cancellationToken = default)
+    {
+        _context.Requirements.Remove(requirement);
+        await _context.SaveChangesAsync(cancellationToken);
+    }
+
     public async Task DeleteAsync(Guid id, CancellationToken cancellationToken = default)
     {
         var requirement = await _context.Requirements.FindAsync(new object[] { id }, cancellationToken);

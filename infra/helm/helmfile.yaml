@@ -145,24 +145,8 @@ releases:
         value: "true"
 
   # ========================================
-  # Platform: Security (Keycloak)
+  # Platform: Security - Removed Keycloak (using external auth)
   # ========================================
-  - name: keycloak
-    namespace: platform-security
-    chart: codecentric/keycloak
-    version: 18.4.0
-    labels:
-      tier: platform
-      component: security
-    values:
-      - values/{{ .Environment.Name }}.yaml
-    set:
-      - name: replicas
-        value: "1"
-      - name: postgresql.enabled
-        value: "true"
-      - name: metrics.enabled
-        value: "true"
 
   # ========================================
   # Platform: Observability - Logs

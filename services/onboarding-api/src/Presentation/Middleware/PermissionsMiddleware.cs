@@ -29,6 +29,17 @@ public class PermissionsMiddleware
             return;
         }
 
+        // Get authentication scheme
+        var authScheme = httpContext.User.Identity.AuthenticationType;
+        
+        // In development mode, allow "Development" scheme to bypass permission checks
+        if (authScheme == "Development")
+        {
+            _logger.LogDebug("Development authentication scheme detected - bypassing permission checks");
+            await _next(httpContext);
+            return;
+        }
+
         var user = await currentUser.GetUserAsync();
 
         // Check if user identity is null
@@ -51,9 +62,6 @@ public class PermissionsMiddleware
             return;
         }
 
-        // Get authentication scheme
-        var authScheme = httpContext.User.Identity.AuthenticationType;
-        
         // Handle Azure AD (internal users) - check group membership
         if (authScheme == "AzureAD")
         {

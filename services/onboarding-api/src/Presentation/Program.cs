@@ -1,4 +1,6 @@
 using FluentValidation;
+using Mapster;
+using MapsterMapper;
 using MediatR;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
@@ -11,6 +13,7 @@ using OnboardingApi.Infrastructure.Persistence;
 using OnboardingApi.Infrastructure.Persistence.Repositories;
 using OnboardingApi.Presentation.Filters;
 using OnboardingApi.Presentation.Configuration;
+using OnboardingApi.Presentation.Middleware;
 using OpenTelemetry.Exporter;
 using OpenTelemetry.Resources;
 using OpenTelemetry.Trace;
@@ -19,8 +22,14 @@ using Serilog;
 using Serilog.Events;
 using Serilog.Sinks.Elasticsearch;
 using StackExchange.Redis;
+using Shared.Sentry;
 
 var builder = WebApplication.CreateBuilder(args);
+
+// ========================================
+// Sentry Error Monitoring
+// ========================================
+builder.AddSentry();
 
 // ========================================
 // Logging with Serilog
@@ -30,12 +39,12 @@ Log.Logger = new LoggerConfiguration()
     .MinimumLevel.Override("Microsoft", LogEventLevel.Warning)
     .MinimumLevel.Override("Microsoft.EntityFrameworkCore", LogEventLevel.Warning)
     .Enrich.FromLogContext()
-    .Enrich.WithProperty("Service", Environment.GetEnvironmentVariable("SERVICE_NAME") ?? "kyc-onboarding-api")
+    .Enrich.WithProperty("Service", Environment.GetEnvironmentVariable("SERVICE_NAME") ?? "kyb-onboarding-api")
     .Enrich.WithProperty("Environment", builder.Environment.EnvironmentName)
     .WriteTo.Console(outputTemplate: "[{Timestamp:HH:mm:ss} {Level:u3}] {Message:lj} {Properties:j}{NewLine}{Exception}")
     .WriteTo.Elasticsearch(new ElasticsearchSinkOptions(new Uri(builder.Configuration["Elasticsearch:Uri"] ?? "http://elasticsearch:9200"))
     {
-        IndexFormat = $"{Environment.GetEnvironmentVariable("SERVICE_NAME") ?? "kyc-onboarding-api"}-logs-{{0:yyyy.MM.dd}}",
+        IndexFormat = $"{Environment.GetEnvironmentVariable("SERVICE_NAME") ?? "kyb-onboarding-api"}-logs-{{0:yyyy.MM.dd}}",
         AutoRegisterTemplate = true,
         AutoRegisterTemplateVersion = AutoRegisterTemplateVersion.ESv7,
         ModifyConnectionSettings = x => x.BasicAuthentication(
@@ -84,7 +93,13 @@ builder.Services.AddSingleton<IEventBus, KafkaEventBus>();
 // Repositories
 // ========================================
 builder.Services.AddScoped<IOnboardingCaseRepository, OnboardingCaseRepository>();
-// builder.Services.AddScoped<IApplicationRepository, ApplicationRepository>();
+builder.Services.AddScoped<OnboardingApi.Application.Commands.IApplicationRepository, OnboardingApi.Infrastructure.Persistence.Repositories.ApplicationRepository>();
+builder.Services.AddScoped<OnboardingApi.Application.Commands.IEventPublisher, OnboardingApi.Infrastructure.EventBus.EventPublisherAdapter>();
+
+// ========================================
+// HTTP Client Factory
+// ========================================
+builder.Services.AddHttpClient();
 
 // ========================================
 // Current User Service & Organization Mapping
@@ -93,27 +108,36 @@ builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<ICurrentUser, OnboardingApi.Infrastructure.Services.CurrentUser>();
 builder.Services.AddScoped<IOrganizationMapper, OnboardingApi.Infrastructure.Services.OrganizationMapper>();
 
+// ========================================
+// Entity Configuration Service
+// ========================================
+builder.Services.AddScoped<OnboardingApi.Infrastructure.Services.IEntityConfigurationService, OnboardingApi.Infrastructure.Services.EntityConfigurationService>();
+
 // Add distributed cache (Redis) for organization mapping cache
 builder.Services.AddStackExchangeRedisCache(options =>
 {
     options.Configuration = builder.Configuration.GetConnectionString("Redis");
-    options.InstanceName = $"{Environment.GetEnvironmentVariable("SERVICE_NAME") ?? "kyc-onboarding-api"}:";
+    options.InstanceName = $"{Environment.GetEnvironmentVariable("SERVICE_NAME") ?? "kyb-onboarding-api"}:";
 });
 
 // ========================================
-// MediatR + CQRS - temporarily disabled
+// MediatR + CQRS
 // ========================================
-// builder.Services.AddMediatR(cfg =>
-// {
-//     cfg.RegisterServicesFromAssembly(typeof(OnboardingApi.Application.Commands.CreateOnboardingCaseCommand).Assembly);
-// });
+builder.Services.AddMediatR(cfg =>
+{
+    cfg.RegisterServicesFromAssembly(typeof(OnboardingApi.Application.Commands.CreateOnboardingCaseCommand).Assembly);
+});
 
-// Pipeline behaviors - temporarily disabled
-// builder.Services.AddTransient(typeof(IPipelineBehavior<,>), typeof(LoggingBehavior<,>));
-// builder.Services.AddTransient(typeof(IPipelineBehavior<,>), typeof(ValidationBehavior<,>));
+// Pipeline behaviors
+builder.Services.AddTransient(typeof(IPipelineBehavior<,>), typeof(LoggingBehavior<,>));
+builder.Services.AddTransient(typeof(IPipelineBehavior<,>), typeof(ValidationBehavior<,>));
 
-// FluentValidation - temporarily disabled
-// builder.Services.AddValidatorsFromAssembly(typeof(OnboardingApi.Application.Commands.CreateOnboardingCaseCommand).Assembly);
+// FluentValidation
+builder.Services.AddValidatorsFromAssembly(typeof(OnboardingApi.Application.Commands.CreateOnboardingCaseCommand).Assembly);
+
+// Mapster
+OnboardingApi.Application.Mapping.MapsterConfig.Configure();
+builder.Services.AddSingleton<IMapper>(sp => new MapsterMapper.Mapper(TypeAdapterConfig.GlobalSettings));
 
 // ========================================
 // Authentication (Keycloak + Active Directory)
@@ -127,7 +151,7 @@ builder.Services.AddOpenTelemetry()
     .WithTracing(tracerProviderBuilder =>
     {
         tracerProviderBuilder
-            .SetResourceBuilder(ResourceBuilder.CreateDefault().AddService(Environment.GetEnvironmentVariable("SERVICE_NAME") ?? "kyc-onboarding-api"))
+            .SetResourceBuilder(ResourceBuilder.CreateDefault().AddService(Environment.GetEnvironmentVariable("SERVICE_NAME") ?? "kyb-onboarding-api"))
             .AddAspNetCoreInstrumentation()
             .AddHttpClientInstrumentation()
             // .AddEntityFrameworkCoreInstrumentation() // Commented out for now
@@ -159,9 +183,9 @@ builder.Services.AddSwaggerGen(options =>
 {
     options.SwaggerDoc("v1", new OpenApiInfo
     {
-        Title = Environment.GetEnvironmentVariable("SERVICE_NAME") ?? "KYC Onboarding API",
+        Title = Environment.GetEnvironmentVariable("SERVICE_NAME") ?? "KYB Onboarding API",
         Version = "v1",
-        Description = "Corporate Digital Onboarding & KYC API",
+        Description = "Corporate Digital Onboarding & KYB API",
         Contact = new OpenApiContact
         {
             Name = "Platform Team",
@@ -207,7 +231,18 @@ builder.Services.AddCors(options =>
     });
 });
 
+// ========================================
+// Health Checks
+// ========================================
+builder.Services.AddHealthChecks()
+    .AddDbContextCheck<OnboardingDbContext>();
+
 var app = builder.Build();
+
+// ========================================
+// Sentry Middleware
+// ========================================
+app.UseSentry();
 
 // ========================================
 // Middleware Pipeline
@@ -217,14 +252,29 @@ var app = builder.Build();
 app.UseMetricServer();
 app.UseHttpMetrics();
 
-// Request ID middleware
+// Trace ID middleware - propagate trace ID across all services
 app.Use(async (context, next) =>
 {
-    if (!context.Request.Headers.ContainsKey("X-Request-Id"))
+    // Extract or generate trace ID
+    var traceId = context.Request.Headers["X-Trace-Id"].FirstOrDefault() ??
+                  context.Request.Headers["x-trace-id"].FirstOrDefault() ??
+                  context.Request.Headers["X-Request-Id"].FirstOrDefault() ??
+                  Guid.NewGuid().ToString();
+
+    // Set in response headers
+    context.Response.Headers["X-Trace-Id"] = traceId;
+    context.Response.Headers["X-Request-Id"] = traceId;
+
+    // Set in Activity for OpenTelemetry
+    if (System.Diagnostics.Activity.Current != null)
     {
-        context.Request.Headers["X-Request-Id"] = Guid.NewGuid().ToString();
+        System.Diagnostics.Activity.Current.SetTag("trace.id", traceId);
+        System.Diagnostics.Activity.Current.SetTag("http.trace_id", traceId);
     }
-    context.Response.Headers["X-Request-Id"] = context.Request.Headers["X-Request-Id"].ToString();
+
+    // Store in context for use in event publishing
+    context.Items["TraceId"] = traceId;
+
     await next();
 });
 
@@ -238,9 +288,31 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseCors();
+app.UseDevelopmentAuth(); // Enable development authentication for service-to-service calls
 app.UseAuthenticationMiddleware();
 app.UseMiddleware<OnboardingApi.Presentation.Middleware.PermissionsMiddleware>();
 app.MapControllers();
+app.MapHealthChecks("/health");
+app.MapHealthChecks("/health/live", new Microsoft.AspNetCore.Diagnostics.HealthChecks.HealthCheckOptions
+{
+    Predicate = _ => false // Liveness check doesn't include database
+});
+
+// ========================================
+// Database Migration
+// ========================================
+using var scope = app.Services.CreateScope();
+var onboardingContext = scope.ServiceProvider.GetRequiredService<OnboardingDbContext>();
+try
+{
+    await onboardingContext.Database.EnsureCreatedAsync();
+    Log.Information("Onboarding database migration completed successfully");
+}
+catch (Exception ex)
+{
+    Log.Error(ex, "Onboarding database migration failed: {Error}", ex.Message);
+    throw;
+}
 
 // ========================================
 // Run Application

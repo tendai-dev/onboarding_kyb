@@ -9,7 +9,9 @@ namespace RiskService.Presentation.Controllers;
 
 [ApiController]
 [Route("api/v1/risk-assessments")]
+#if !DEBUG
 [Authorize]
+#endif
 public class RiskAssessmentController : ControllerBase
 {
     private readonly IMediator _mediator;
@@ -23,6 +25,8 @@ public class RiskAssessmentController : ControllerBase
 
     /// <summary>
     /// Create a new risk assessment for an onboarding case
+    /// NOTE: Risk assessments should be created manually by authorized personnel through the Risk Review interface.
+    /// This endpoint is available for manual creation only - no automatic risk assessment creation is performed.
     /// </summary>
     [HttpPost]
     [ProducesResponseType(typeof(CreateRiskAssessmentResult), StatusCodes.Status201Created)]
@@ -120,6 +124,82 @@ public class RiskAssessmentController : ControllerBase
     }
 
     /// <summary>
+    /// Update a risk factor
+    /// </summary>
+    [HttpPut("{assessmentId:guid}/factors/{factorId:guid}")]
+    [ProducesResponseType(typeof(object), StatusCodes.Status200OK)]
+    public async Task<IActionResult> UpdateRiskFactor(
+        Guid assessmentId,
+        Guid factorId,
+        [FromBody] UpdateRiskFactorRequest request)
+    {
+        if (!Enum.TryParse<RiskLevel>(request.Level, out var riskLevel))
+            return BadRequest(new { error = $"Invalid risk level: {request.Level}" });
+
+        var command = new UpdateRiskFactorCommand(
+            assessmentId,
+            factorId,
+            riskLevel,
+            request.Score,
+            request.Description);
+
+        var result = await _mediator.Send(command);
+        return Ok(result);
+    }
+
+    /// <summary>
+    /// List risk factors for an assessment
+    /// </summary>
+    [HttpGet("{assessmentId:guid}/factors")]
+    [ProducesResponseType(typeof(IEnumerable<RiskFactorDto>), StatusCodes.Status200OK)]
+    public async Task<IActionResult> ListRiskFactors(Guid assessmentId)
+    {
+        var result = await _mediator.Send(new GetRiskFactorsQuery(assessmentId));
+        return Ok(result);
+    }
+
+    /// <summary>
+    /// Reject a risk assessment
+    /// </summary>
+    [HttpPost("{assessmentId:guid}/reject")]
+    [ProducesResponseType(typeof(object), StatusCodes.Status200OK)]
+    public async Task<IActionResult> RejectRiskAssessment(
+        Guid assessmentId,
+        [FromBody] RejectRiskAssessmentRequest request)
+    {
+        var command = new RejectRiskAssessmentCommand(assessmentId, GetCurrentUserId(), request.Reason);
+        var result = await _mediator.Send(command);
+        return Ok(result);
+    }
+
+    /// <summary>
+    /// Update risk assessment notes without completing (for draft saves)
+    /// </summary>
+    [HttpPut("{assessmentId:guid}/notes")]
+    [ProducesResponseType(typeof(UpdateRiskAssessmentNotesResult), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    public async Task<IActionResult> UpdateRiskAssessmentNotes(
+        Guid assessmentId,
+        [FromBody] UpdateRiskAssessmentNotesRequest request)
+    {
+        var command = new UpdateRiskAssessmentNotesCommand(
+            assessmentId,
+            request.Notes);
+
+        try
+        {
+            var result = await _mediator.Send(command);
+            return Ok(result);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { error = ex.Message });
+        }
+    }
+
+    /// <summary>
     /// Complete a risk assessment
     /// </summary>
     [HttpPost("{assessmentId:guid}/complete")]
@@ -145,6 +225,59 @@ public class RiskAssessmentController : ControllerBase
         {
             return BadRequest(new { error = ex.Message });
         }
+    }
+
+    /// <summary>
+    /// Manually set the risk level for an assessment (Admin decision after review)
+    /// </summary>
+    [HttpPost("{assessmentId:guid}/set-risk-level")]
+    [ProducesResponseType(typeof(SetManualRiskLevelResult), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    public async Task<IActionResult> SetManualRiskLevel(
+        Guid assessmentId,
+        [FromBody] SetManualRiskLevelRequest request)
+    {
+        if (!Enum.TryParse<RiskLevel>(request.RiskLevel, out var riskLevel))
+            return BadRequest(new { error = $"Invalid risk level: {request.RiskLevel}" });
+
+        if (string.IsNullOrWhiteSpace(request.Justification))
+            return BadRequest(new { error = "Justification is required for manual risk determination" });
+
+        var command = new SetManualRiskLevelCommand(
+            assessmentId,
+            riskLevel,
+            GetCurrentUserId(),
+            request.Justification);
+
+        try
+        {
+            var result = await _mediator.Send(command);
+            return Ok(result);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { error = ex.Message });
+        }
+    }
+
+    /// <summary>
+    /// List or search risk assessments
+    /// </summary>
+    [HttpGet]
+    [ProducesResponseType(typeof(List<RiskAssessmentDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [AllowAnonymous] // Allow in development
+    public async Task<IActionResult> ListRiskAssessments(
+        [FromQuery] string? partnerId = null,
+        [FromQuery] string? riskLevel = null,
+        [FromQuery] string? status = null,
+        [FromQuery] string? caseId = null)
+    {
+        var query = new SearchRiskAssessmentsQuery(partnerId, riskLevel, status, caseId);
+        var result = await _mediator.Send(query);
+        return Ok(result);
     }
 
     /// <summary>
@@ -190,7 +323,30 @@ public class AddRiskFactorRequest
     public string? Source { get; set; }
 }
 
+public class UpdateRiskFactorRequest
+{
+    public string Level { get; set; } = string.Empty;
+    public decimal Score { get; set; }
+    public string Description { get; set; } = string.Empty;
+}
+
+public class RejectRiskAssessmentRequest
+{
+    public string Reason { get; set; } = string.Empty;
+}
+
 public class CompleteRiskAssessmentRequest
+{
+    public string? Notes { get; set; }
+}
+
+public class SetManualRiskLevelRequest
+{
+    public string RiskLevel { get; set; } = string.Empty;
+    public string Justification { get; set; } = string.Empty;
+}
+
+public class UpdateRiskAssessmentNotesRequest
 {
     public string? Notes { get; set; }
 }

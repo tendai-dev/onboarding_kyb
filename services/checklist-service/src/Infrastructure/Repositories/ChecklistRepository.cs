@@ -55,15 +55,35 @@ public class ChecklistRepository : IChecklistRepository
         return checklists;
     }
 
+    public async Task<List<Checklist>> GetAllAsync(CancellationToken cancellationToken = default)
+    {
+        var checklists = await _context.Checklists
+            .OrderByDescending(c => c.CreatedAt)
+            .ToListAsync(cancellationToken);
+
+        foreach (var checklist in checklists)
+        {
+            try
+            {
+                await LoadItemsAsync(checklist, cancellationToken);
+            }
+            catch
+            {
+                // Skip checklists that fail to load items
+            }
+        }
+
+        return checklists;
+    }
+
     public async Task AddAsync(Checklist checklist, CancellationToken cancellationToken = default)
     {
         _context.Checklists.Add(checklist);
         
-        // Add items separately
+        // Add items separately - let EF Core handle the relationship
         foreach (var item in checklist.Items)
         {
             _context.ChecklistItems.Add(item);
-            _context.Entry(item).Property("ChecklistId").CurrentValue = checklist.Id.Value;
         }
     }
 
@@ -86,7 +106,7 @@ public class ChecklistRepository : IChecklistRepository
     private async Task LoadItemsAsync(Checklist checklist, CancellationToken cancellationToken)
     {
         var items = await _context.ChecklistItems
-            .Where(i => EF.Property<Guid>(i, "ChecklistId") == checklist.Id.Value)
+            .Where(i => EF.Property<ChecklistId>(i, "ChecklistId") == checklist.Id)
             .OrderBy(i => i.Order)
             .ToListAsync(cancellationToken);
 

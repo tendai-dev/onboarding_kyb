@@ -25,6 +25,11 @@ public record GetMyThreadsQuery(
     int PageSize = 20
 ) : IRequest<PagedResult<MessageThreadDto>>;
 
+public record GetAllThreadsQuery(
+    int Page = 1,
+    int PageSize = 20
+) : IRequest<PagedResult<MessageThreadDto>>;
+
 // DTOs
 public record MessageDto
 {
@@ -41,6 +46,23 @@ public record MessageDto
     public DateTime SentAt { get; init; }
     public DateTime? ReadAt { get; init; }
     public bool IsRead { get; init; }
+    public Guid? ReplyToMessageId { get; init; }
+    public bool IsStarred { get; init; }
+    public List<MessageAttachmentDto>? Attachments { get; init; }
+}
+
+public record MessageAttachmentDto
+{
+    public Guid Id { get; init; }
+    public Guid MessageId { get; init; }
+    public string FileName { get; init; } = string.Empty;
+    public string ContentType { get; init; } = string.Empty;
+    public long FileSizeBytes { get; init; }
+    public string StorageKey { get; init; } = string.Empty;
+    public string StorageUrl { get; init; } = string.Empty;
+    public Guid? DocumentId { get; init; }
+    public string? Description { get; init; }
+    public DateTime UploadedAt { get; init; }
 }
 
 public record MessageThreadDto
@@ -53,6 +75,8 @@ public record MessageThreadDto
     public Guid? AssignedAdminId { get; init; }
     public string? AssignedAdminName { get; init; }
     public bool IsActive { get; init; }
+    public bool IsArchived { get; init; }
+    public bool IsStarred { get; init; }
     public DateTime CreatedAt { get; init; }
     public DateTime LastMessageAt { get; init; }
     public int MessageCount { get; init; }

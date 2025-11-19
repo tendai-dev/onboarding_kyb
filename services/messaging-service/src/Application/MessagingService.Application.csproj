@@ -8,12 +8,14 @@
 
   <ItemGroup>
     <ProjectReference Include="../Domain/MessagingService.Domain.csproj" />
+    <ProjectReference Include="../Infrastructure/MessagingService.Infrastructure.csproj" />
   </ItemGroup>
 
   <ItemGroup>
     <PackageReference Include="MediatR" Version="12.2.0" />
     <PackageReference Include="FluentValidation" Version="11.8.1" />
     <PackageReference Include="FluentValidation.DependencyInjectionExtensions" Version="11.8.1" />
+    <PackageReference Include="Mapster" Version="7.4.0" />
   </ItemGroup>
 
 </Project>

@@ -9,7 +9,9 @@ namespace ChecklistService.Presentation.Controllers;
 
 [ApiController]
 [Route("api/v1/checklists")]
+#if !DEBUG
 [Authorize]
+#endif
 public class ChecklistController : ControllerBase
 {
     private readonly IMediator _mediator;
@@ -41,6 +43,19 @@ public class ChecklistController : ControllerBase
             nameof(GetChecklist),
             new { id = result.ChecklistId },
             result);
+    }
+
+    /// <summary>
+    /// List all checklists
+    /// </summary>
+    [HttpGet]
+    [ProducesResponseType(typeof(IEnumerable<ChecklistDto>), StatusCodes.Status200OK)]
+    [AllowAnonymous]
+    public async Task<IActionResult> GetAllChecklists()
+    {
+        var query = new GetAllChecklistsQuery();
+        var result = await _mediator.Send(query);
+        return Ok(result);
     }
 
     /// <summary>
@@ -80,6 +95,18 @@ public class ChecklistController : ControllerBase
     }
 
     /// <summary>
+    /// List checklists by partner id
+    /// </summary>
+    [HttpGet("partner/{partnerId}")]
+    [ProducesResponseType(typeof(IEnumerable<ChecklistDto>), StatusCodes.Status200OK)]
+    public async Task<IActionResult> ListByPartner(string partnerId)
+    {
+        var query = new GetChecklistsByPartnerQuery(partnerId);
+        var result = await _mediator.Send(query);
+        return Ok(result);
+    }
+
+    /// <summary>
     /// Complete a checklist item
     /// </summary>
     [HttpPost("{checklistId:guid}/items/{itemId:guid}/complete")]
@@ -107,6 +134,78 @@ public class ChecklistController : ControllerBase
         {
             return BadRequest(new { error = ex.Message });
         }
+    }
+
+    /// <summary>
+    /// Skip a checklist item (non-required only)
+    /// </summary>
+    [HttpPost("{checklistId:guid}/items/{itemId:guid}/skip")]
+    [ProducesResponseType(typeof(object), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    public async Task<IActionResult> SkipChecklistItem(
+        Guid checklistId,
+        Guid itemId,
+        [FromBody] SkipChecklistItemRequest request)
+    {
+        var command = new SkipChecklistItemCommand(
+            checklistId,
+            itemId,
+            GetCurrentUserId(),
+            request.Reason ?? "No reason provided");
+
+        try
+        {
+            var result = await _mediator.Send(command);
+            return Ok(result);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { error = ex.Message });
+        }
+    }
+
+    /// <summary>
+    /// Reset a checklist item to pending
+    /// </summary>
+    [HttpPost("{checklistId:guid}/items/{itemId:guid}/reset")]
+    [ProducesResponseType(typeof(object), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    public async Task<IActionResult> ResetChecklistItem(
+        Guid checklistId,
+        Guid itemId,
+        [FromBody] ResetChecklistItemRequest request)
+    {
+        var command = new ResetChecklistItemCommand(
+            checklistId,
+            itemId,
+            GetCurrentUserId(),
+            request.Reason ?? "Reset requested");
+
+        try
+        {
+            var result = await _mediator.Send(command);
+            return Ok(result);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { error = ex.Message });
+        }
+    }
+
+    /// <summary>
+    /// Get checklist progress summary
+    /// </summary>
+    [HttpGet("{checklistId:guid}/progress")]
+    [ProducesResponseType(typeof(object), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> GetProgress(Guid checklistId)
+    {
+        var result = await _mediator.Send(new GetChecklistProgressQuery(checklistId));
+        return Ok(result);
     }
 
     /// <summary>
@@ -147,4 +246,14 @@ public class CreateChecklistRequest
 public class CompleteChecklistItemRequest
 {
     public string? Notes { get; set; }
+}
+
+public class SkipChecklistItemRequest
+{
+    public string? Reason { get; set; }
+}
+
+public class ResetChecklistItemRequest
+{
+    public string? Reason { get; set; }
 }

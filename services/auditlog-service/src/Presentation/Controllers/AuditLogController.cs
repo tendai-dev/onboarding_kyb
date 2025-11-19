@@ -10,7 +10,6 @@ namespace AuditLogService.Presentation.Controllers;
 
 [ApiController]
 [Route("api/v1/audit-logs")]
-[Authorize]
 public class AuditLogController : ControllerBase
 {
     private readonly IMediator _mediator;
@@ -124,6 +123,7 @@ public class AuditLogController : ControllerBase
     [ProducesResponseType(typeof(AuditLogSearchResult), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [AllowAnonymous]
     public async Task<IActionResult> SearchAuditLogs([FromBody] AuditLogSearchRequest request)
     {
         var criteria = new AuditLogSearchCriteria

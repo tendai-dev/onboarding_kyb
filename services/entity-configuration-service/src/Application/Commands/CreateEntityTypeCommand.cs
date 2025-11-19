@@ -5,7 +5,8 @@ namespace EntityConfigurationService.Application.Commands;
 public record CreateEntityTypeCommand(
     string Code,
     string DisplayName,
-    string Description
+    string Description,
+    string? Icon = null
 ) : IRequest<CreateEntityTypeResult>;
 
 public record CreateEntityTypeResult(

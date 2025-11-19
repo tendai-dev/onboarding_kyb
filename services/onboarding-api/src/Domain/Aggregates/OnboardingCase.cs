@@ -5,7 +5,7 @@ namespace OnboardingApi.Domain.Aggregates;
 
 /// <summary>
 /// Onboarding Case Aggregate Root
-/// Represents a customer/business onboarding journey
+/// Represents a partner/business onboarding journey
 /// </summary>
 public class OnboardingCase
 {
@@ -96,12 +96,16 @@ public class OnboardingCase
         UpdatedAt = DateTime.UtcNow;
         UpdatedBy = submittedBy;
         
+        // Include metadata and details in event for downstream services
         AddDomainEvent(new OnboardingCaseSubmittedEvent(
             Id,
             CaseNumber,
             Type,
             PartnerId,
-            DateTime.UtcNow
+            DateTime.UtcNow,
+            Metadata: Metadata.Count > 0 ? new Dictionary<string, string>(Metadata) : null,
+            Applicant: Applicant,
+            Business: Business
         ));
     }
     

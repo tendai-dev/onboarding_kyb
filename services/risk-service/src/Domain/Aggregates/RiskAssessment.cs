@@ -24,6 +24,11 @@ public class RiskAssessment
 
     private RiskAssessment() { } // EF Core
 
+    /// <summary>
+    /// Create a new risk assessment
+    /// NOTE: Risk assessments are created manually by authorized personnel.
+    /// The assessment starts with Unknown risk level until manually classified.
+    /// </summary>
     public static RiskAssessment Create(string caseId, string partnerId)
     {
         var assessment = new RiskAssessment
@@ -31,8 +36,8 @@ public class RiskAssessment
             Id = RiskAssessmentId.New(),
             CaseId = caseId,
             PartnerId = partnerId,
-            OverallRiskLevel = RiskLevel.Unknown,
-            RiskScore = 0,
+            OverallRiskLevel = RiskLevel.Unknown, // Default to Unknown - must be manually classified
+            RiskScore = 0, // No automatic scoring
             Status = RiskAssessmentStatus.InProgress,
             CreatedAt = DateTime.UtcNow
         };
@@ -50,7 +55,8 @@ public class RiskAssessment
         var factor = RiskFactor.Create(type, level, score, description, source);
         _factors.Add(factor);
 
-        RecalculateRiskScore();
+        // NOTE: Risk score is no longer automatically calculated
+        // Risk level must be set manually by authorized personnel
 
         AddDomainEvent(new RiskFactorAddedEvent(
             Id.Value,
@@ -68,7 +74,9 @@ public class RiskAssessment
             throw new InvalidOperationException($"Risk factor {factorId} not found");
 
         factor.Update(level, score, description);
-        RecalculateRiskScore();
+        
+        // NOTE: Risk score is no longer automatically calculated
+        // Risk level must be set manually by authorized personnel
 
         AddDomainEvent(new RiskFactorUpdatedEvent(
             Id.Value,
@@ -76,6 +84,15 @@ public class RiskAssessment
             factor.Id.Value,
             factor.Level.ToString(),
             factor.Score));
+    }
+
+    /// <summary>
+    /// Update notes without completing the assessment (for draft saves)
+    /// </summary>
+    public void UpdateNotes(string? notes = null)
+    {
+        Notes = notes;
+        // Don't change status or completion date - this is just a draft save
     }
 
     public void CompleteAssessment(string assessedBy, string? notes = null)
@@ -112,47 +129,46 @@ public class RiskAssessment
             reason));
     }
 
-    private void RecalculateRiskScore()
+    /// <summary>
+    /// Set the risk level manually - this is the ONLY way to set risk level.
+    /// All risk classifications must be done by authorized personnel through manual review.
+    /// </summary>
+    public void SetManualRiskLevel(RiskLevel riskLevel, string assessedBy, string justification)
     {
-        if (!_factors.Any())
-        {
-            RiskScore = 0;
-            OverallRiskLevel = RiskLevel.Unknown;
-            return;
-        }
-
-        // Weighted average calculation
-        var totalWeightedScore = _factors.Sum(f => f.Score * GetFactorWeight(f.Type));
-        var totalWeight = _factors.Sum(f => GetFactorWeight(f.Type));
+        if (string.IsNullOrWhiteSpace(assessedBy))
+            throw new ArgumentException("AssessedBy cannot be empty", nameof(assessedBy));
         
-        RiskScore = totalWeight > 0 ? totalWeightedScore / totalWeight : 0;
+        if (string.IsNullOrWhiteSpace(justification))
+            throw new ArgumentException("Justification is required for manual risk determination", nameof(justification));
 
-        // Determine overall risk level based on score
-        OverallRiskLevel = RiskScore switch
+        var previousLevel = OverallRiskLevel;
+        OverallRiskLevel = riskLevel;
+        
+        // Set score based on manual level for display purposes only
+        // This is NOT an automatic calculation - it's just for UI consistency
+        RiskScore = riskLevel switch
         {
-            >= 80 => RiskLevel.High,
-            >= 60 => RiskLevel.MediumHigh,
-            >= 40 => RiskLevel.Medium,
-            >= 20 => RiskLevel.MediumLow,
-            > 0 => RiskLevel.Low,
-            _ => RiskLevel.Unknown
+            RiskLevel.High => 90m,
+            RiskLevel.MediumHigh => 70m,
+            RiskLevel.Medium => 50m,
+            RiskLevel.MediumLow => 30m,
+            RiskLevel.Low => 10m,
+            _ => 0m
         };
-    }
 
-    private static decimal GetFactorWeight(RiskFactorType type)
-    {
-        return type switch
-        {
-            RiskFactorType.PEP => 1.5m,
-            RiskFactorType.Sanctions => 2.0m,
-            RiskFactorType.AdverseMedia => 1.2m,
-            RiskFactorType.Geography => 1.0m,
-            RiskFactorType.Industry => 0.8m,
-            RiskFactorType.TransactionPattern => 1.3m,
-            RiskFactorType.CustomerProfile => 0.9m,
-            RiskFactorType.DocumentRisk => 1.1m,
-            _ => 1.0m
-        };
+        AssessedBy = assessedBy;
+        CompletedAt = DateTime.UtcNow;
+        Status = RiskAssessmentStatus.Completed;
+        Notes = $"MANUAL CLASSIFICATION: {justification}";
+
+        AddDomainEvent(new RiskLevelManuallySetEvent(
+            Id.Value,
+            CaseId,
+            PartnerId,
+            previousLevel.ToString(),
+            riskLevel.ToString(),
+            assessedBy,
+            justification));
     }
 
     private void AddDomainEvent(INotification domainEvent)

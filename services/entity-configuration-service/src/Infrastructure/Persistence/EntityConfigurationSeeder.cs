@@ -10,9 +10,16 @@ public static class EntityConfigurationSeeder
 {
     public static async Task SeedAsync(EntityConfigurationDbContext context)
     {
-        // Skip if already seeded
-        if (context.EntityTypes.Any() || context.Requirements.Any())
-            return;
+        // Skip if already seeded - check safely
+        try
+        {
+            if (context.EntityTypes.Any() || context.Requirements.Any())
+                return;
+        }
+        catch (Exception)
+        {
+            // Tables don't exist yet, continue with seeding
+        }
 
         // ============================================
         // STEP 1: Create all Requirements
@@ -543,6 +550,76 @@ public static class EntityConfigurationSeeder
         trust.AddRequirement(signatoryProofOfAddressReq, true, trustOrder++);
         trust.AddRequirement(bankStatementReq, true, trustOrder++);
 
+        // 7. Government / State-Owned Entity / Organ of State
+        var governmentEntity = new EntityType(
+            "GOVERNMENT_ENTITY",
+            "Government / State-Owned Entity / Organ of State",
+            "Government entities, state-owned enterprises, and organs of state"
+        );
+        
+        var govOrder = 1;
+        governmentEntity.AddRequirement(legalNameReq, true, govOrder++);
+        governmentEntity.AddRequirement(registrationNumberReq, true, govOrder++);
+        governmentEntity.AddRequirement(countryOfIncorporationReq, true, govOrder++);
+        governmentEntity.AddRequirement(incorporationDateReq, true, govOrder++);
+        governmentEntity.AddRequirement(businessAddressReq, true, govOrder++);
+        governmentEntity.AddRequirement(businessNatureReq, true, govOrder++);
+        governmentEntity.AddRequirement(taxIdReq, false, govOrder++);
+        governmentEntity.AddRequirement(contactPersonReq, true, govOrder++);
+        governmentEntity.AddRequirement(contactEmailReq, true, govOrder++);
+        governmentEntity.AddRequirement(contactPhoneReq, true, govOrder++);
+        governmentEntity.AddRequirement(registrationCertificateReq, true, govOrder++);
+        governmentEntity.AddRequirement(proofOfAddressReq, true, govOrder++);
+        governmentEntity.AddRequirement(directorsRegisterReq, true, govOrder++);
+        governmentEntity.AddRequirement(boardResolutionReq, true, govOrder++);
+        governmentEntity.AddRequirement(authorizedSignatoriesReq, true, govOrder++);
+        governmentEntity.AddRequirement(signatoryIdReq, true, govOrder++);
+        governmentEntity.AddRequirement(signatoryProofOfAddressReq, true, govOrder++);
+        governmentEntity.AddRequirement(bankStatementReq, true, govOrder++);
+
+        // 8. Non-Registered Association / Society / Charity / Foundation
+        var nonRegisteredAssociation = new EntityType(
+            "NON_REGISTERED_ASSOCIATION",
+            "Non-Registered Association / Society / Charity / Foundation",
+            "Unregistered associations, societies, charities, and foundations"
+        );
+        
+        var nraOrder = 1;
+        nonRegisteredAssociation.AddRequirement(legalNameReq, true, nraOrder++);
+        nonRegisteredAssociation.AddRequirement(countryOfIncorporationReq, true, nraOrder++);
+        nonRegisteredAssociation.AddRequirement(businessAddressReq, true, nraOrder++);
+        nonRegisteredAssociation.AddRequirement(businessNatureReq, true, nraOrder++);
+        nonRegisteredAssociation.AddRequirement(contactPersonReq, true, nraOrder++);
+        nonRegisteredAssociation.AddRequirement(contactEmailReq, true, nraOrder++);
+        nonRegisteredAssociation.AddRequirement(contactPhoneReq, true, nraOrder++);
+        nonRegisteredAssociation.AddRequirement(ngoConstitutionReq, true, nraOrder++); // Constitution or mission statement
+        nonRegisteredAssociation.AddRequirement(proofOfAddressReq, true, nraOrder++);
+        nonRegisteredAssociation.AddRequirement(directorsRegisterReq, true, nraOrder++);
+        nonRegisteredAssociation.AddRequirement(authorizedSignatoriesReq, true, nraOrder++);
+        nonRegisteredAssociation.AddRequirement(signatoryIdReq, true, nraOrder++);
+        nonRegisteredAssociation.AddRequirement(signatoryProofOfAddressReq, true, nraOrder++);
+        nonRegisteredAssociation.AddRequirement(bankStatementReq, false, nraOrder++);
+
+        // 9. Supranational / Inter-Governmental / Sovereign Organisation
+        var supranationalEntity = new EntityType(
+            "SUPRANATIONAL_ENTITY",
+            "Supranational / Inter-Governmental / Sovereign Organisation",
+            "International organizations, supranational entities, and inter-governmental bodies"
+        );
+        
+        var supranationalOrder = 1;
+        supranationalEntity.AddRequirement(legalNameReq, true, supranationalOrder++);
+        supranationalEntity.AddRequirement(countryOfIncorporationReq, true, supranationalOrder++);
+        supranationalEntity.AddRequirement(businessAddressReq, true, supranationalOrder++);
+        supranationalEntity.AddRequirement(businessNatureReq, true, supranationalOrder++);
+        supranationalEntity.AddRequirement(contactPersonReq, true, supranationalOrder++);
+        supranationalEntity.AddRequirement(contactEmailReq, true, supranationalOrder++);
+        supranationalEntity.AddRequirement(contactPhoneReq, true, supranationalOrder++);
+        supranationalEntity.AddRequirement(ngoConstitutionReq, true, supranationalOrder++); // Constitutional document
+        supranationalEntity.AddRequirement(authorizedSignatoriesReq, true, supranationalOrder++);
+        supranationalEntity.AddRequirement(signatoryIdReq, true, supranationalOrder++);
+        supranationalEntity.AddRequirement(boardResolutionReq, true, supranationalOrder++); // Resolution/mandate
+
         // Add all entity types to context
         var allEntityTypes = new List<EntityType>
         {
@@ -551,7 +628,10 @@ public static class EntityConfigurationSeeder
             partnership,
             soleProprietor,
             ngo,
-            trust
+            trust,
+            governmentEntity,
+            nonRegisteredAssociation,
+            supranationalEntity
         };
 
         await context.EntityTypes.AddRangeAsync(allEntityTypes);

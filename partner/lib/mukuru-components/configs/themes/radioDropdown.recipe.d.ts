@@ -1,0 +1,2 @@
+export declare const radioDropdownRecipe: import("@chakra-ui/react").SlotRecipeDefinition<"root" | "indicator" | "content" | "radioGroup" | "separator" | "trigger" | "clearButton" | "radioItem" | "radioItemSelected" | "groupLabel", import("@chakra-ui/react").SlotRecipeVariantRecord<"root" | "indicator" | "content" | "radioGroup" | "separator" | "trigger" | "clearButton" | "radioItem" | "radioItemSelected" | "groupLabel">>;
+//# sourceMappingURL=radioDropdown.recipe.d.ts.map

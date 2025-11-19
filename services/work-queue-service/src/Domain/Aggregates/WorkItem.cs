@@ -385,12 +385,15 @@ public class WorkItem
     
     private static WorkItemPriority DeterminePriority(ValueObjects.RiskLevel riskLevel)
     {
+        // Priority is determined by manually assessed risk level
+        // Unknown risk level defaults to Medium priority until manually assessed
         return riskLevel switch
         {
             ValueObjects.RiskLevel.Critical => WorkItemPriority.Critical,
             ValueObjects.RiskLevel.High => WorkItemPriority.High,
             ValueObjects.RiskLevel.Medium => WorkItemPriority.Medium,
             ValueObjects.RiskLevel.Low => WorkItemPriority.Low,
+            ValueObjects.RiskLevel.Unknown => WorkItemPriority.Medium, // Default until manually assessed
             _ => WorkItemPriority.Medium
         };
     }
@@ -419,6 +422,7 @@ public enum WorkItemPriority
 
 public enum RiskLevel
 {
+    Unknown = 0,  // Default until manually assessed by reviewer
     Low = 1,
     Medium = 2,
     High = 3,

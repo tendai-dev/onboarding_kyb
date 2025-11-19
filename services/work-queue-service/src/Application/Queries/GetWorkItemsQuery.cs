@@ -8,6 +8,7 @@ public record GetWorkItemsQuery(
     RiskLevel? RiskLevel = null,
     string? Country = null,
     bool? IsOverdue = null,
+    string? SearchTerm = null,
     int Page = 1,
     int PageSize = 20
 ) : IRequest<PagedResult<WorkItemDto>>;
@@ -65,6 +66,7 @@ public record WorkItemDto
     public DateTime DueDate { get; init; }
     public bool IsOverdue { get; init; }
     public DateTime? NextRefreshDate { get; init; }
+    public DateTime? LastRefreshedAt { get; init; }
     public int RefreshCount { get; init; }
     public DateTime CreatedAt { get; init; }
     public DateTime? UpdatedAt { get; init; }

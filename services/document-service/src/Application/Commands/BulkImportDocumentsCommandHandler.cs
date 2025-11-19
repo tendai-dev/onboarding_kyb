@@ -3,6 +3,7 @@ using DocumentService.Domain.Aggregates;
 using DocumentService.Domain.ValueObjects;
 using MediatR;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Configuration;
 using System.Security.Cryptography;
 
 namespace DocumentService.Application.Commands;
@@ -18,18 +19,21 @@ public class BulkImportDocumentsCommandHandler : IRequestHandler<BulkImportDocum
     private readonly IVirusScanner _virusScanner;
     private readonly IContentHashDeduplicator _deduplicator;
     private readonly ILogger<BulkImportDocumentsCommandHandler> _logger;
+    private readonly IConfiguration _configuration;
 
     public BulkImportDocumentsCommandHandler(
         IDocumentRepository repository,
         IObjectStorage objectStorage,
         IVirusScanner virusScanner,
         IContentHashDeduplicator deduplicator,
+        IConfiguration configuration,
         ILogger<BulkImportDocumentsCommandHandler> logger)
     {
         _repository = repository;
         _objectStorage = objectStorage;
         _virusScanner = virusScanner;
         _deduplicator = deduplicator;
+        _configuration = configuration;
         _logger = logger;
     }
 
@@ -166,9 +170,24 @@ public class BulkImportDocumentsCommandHandler : IRequestHandler<BulkImportDocum
         // Upload to MinIO
         fileStream.Position = 0;
         var storageKey = $"imports/{command.ImportBatchId}/{entry.LegacyDocumentId}/{entry.FileName}";
-        var bucketName = "documents";
+        // Use configured bucket name (defaults to "kyb-docs" from configuration)
+        var bucketName = _configuration["Storage:BucketName"] ?? "kyb-docs";
 
-        // Upload implementation here...
+        // Actually upload the file to MinIO
+        await _objectStorage.UploadObjectAsync(
+            bucketName,
+            storageKey,
+            fileStream,
+            contentType,
+            new Dictionary<string, string>
+            {
+                ["CaseId"] = entry.CaseId.ToString(),
+                ["FileName"] = entry.FileName,
+                ["ContentHash"] = contentHash,
+                ["LegacyDocumentId"] = entry.LegacyDocumentId,
+                ["ImportBatchId"] = command.ImportBatchId.ToString()
+            },
+            cancellationToken);
 
         // Create document record
         var metadata = new DocumentMetadata

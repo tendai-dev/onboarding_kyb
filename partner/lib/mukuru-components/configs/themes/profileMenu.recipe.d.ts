@@ -1,0 +1,2 @@
+export declare const profileMenuRecipe: import("@chakra-ui/react").SlotRecipeDefinition<"content" | "avatar" | "item" | "fullName" | "avatarFallback", import("@chakra-ui/react").SlotRecipeVariantRecord<"content" | "avatar" | "item" | "fullName" | "avatarFallback">>;
+//# sourceMappingURL=profileMenu.recipe.d.ts.map

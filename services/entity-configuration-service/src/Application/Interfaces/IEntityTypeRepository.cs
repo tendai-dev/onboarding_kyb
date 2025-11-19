@@ -10,6 +10,8 @@ public interface IEntityTypeRepository
     Task<List<EntityType>> GetAllWithRequirementsAsync(bool includeInactive = false, CancellationToken cancellationToken = default);
     Task AddAsync(EntityType entityType, CancellationToken cancellationToken = default);
     Task UpdateAsync(EntityType entityType, CancellationToken cancellationToken = default);
+    Task AddRequirementAsync(Guid entityTypeId, Guid requirementId, bool isRequired, int displayOrder, CancellationToken cancellationToken = default);
+    Task DeleteAsync(EntityType entityType, CancellationToken cancellationToken = default);
     Task DeleteAsync(Guid id, CancellationToken cancellationToken = default);
 }
 

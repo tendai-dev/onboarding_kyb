@@ -3,35 +3,35 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: kyc-document-api
+  name: kyb-document-api
   namespace: business-documents
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: kyc-document-api
+      app: kyb-document-api
   template:
     metadata:
       labels:
-        app: kyc-document-api
+        app: kyb-document-api
     spec:
       containers:
-      - name: kyc-document-api
+      - name: kyb-document-api
         image: nginx:alpine
         ports:
         - containerPort: 80
         env:
         - name: SERVICE_NAME
-          value: "kyc-document-api"
+          value: "kyb-document-api"
 ---
 apiVersion: v1
 kind: Service
 metadata:
-  name: kyc-document-api
+  name: kyb-document-api
   namespace: business-documents
 spec:
   selector:
-    app: kyc-document-api
+    app: kyb-document-api
   ports:
   - port: 80
     targetPort: 80
@@ -40,35 +40,35 @@ spec:
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: kyc-risk-api
+  name: kyb-risk-api
   namespace: business-risk
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: kyc-risk-api
+      app: kyb-risk-api
   template:
     metadata:
       labels:
-        app: kyc-risk-api
+        app: kyb-risk-api
     spec:
       containers:
-      - name: kyc-risk-api
+      - name: kyb-risk-api
         image: nginx:alpine
         ports:
         - containerPort: 80
         env:
         - name: SERVICE_NAME
-          value: "kyc-risk-api"
+          value: "kyb-risk-api"
 ---
 apiVersion: v1
 kind: Service
 metadata:
-  name: kyc-risk-api
+  name: kyb-risk-api
   namespace: business-risk
 spec:
   selector:
-    app: kyc-risk-api
+    app: kyb-risk-api
   ports:
   - port: 80
     targetPort: 80
@@ -77,35 +77,35 @@ spec:
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: kyc-notification-api
+  name: kyb-notification-api
   namespace: business-notifications
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: kyc-notification-api
+      app: kyb-notification-api
   template:
     metadata:
       labels:
-        app: kyc-notification-api
+        app: kyb-notification-api
     spec:
       containers:
-      - name: kyc-notification-api
+      - name: kyb-notification-api
         image: nginx:alpine
         ports:
         - containerPort: 80
         env:
         - name: SERVICE_NAME
-          value: "kyc-notification-api"
+          value: "kyb-notification-api"
 ---
 apiVersion: v1
 kind: Service
 metadata:
-  name: kyc-notification-api
+  name: kyb-notification-api
   namespace: business-notifications
 spec:
   selector:
-    app: kyc-notification-api
+    app: kyb-notification-api
   ports:
   - port: 80
     targetPort: 80
@@ -114,35 +114,35 @@ spec:
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: kyc-checklist-api
+  name: kyb-checklist-api
   namespace: business-onboarding
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: kyc-checklist-api
+      app: kyb-checklist-api
   template:
     metadata:
       labels:
-        app: kyc-checklist-api
+        app: kyb-checklist-api
     spec:
       containers:
-      - name: kyc-checklist-api
+      - name: kyb-checklist-api
         image: nginx:alpine
         ports:
         - containerPort: 80
         env:
         - name: SERVICE_NAME
-          value: "kyc-checklist-api"
+          value: "kyb-checklist-api"
 ---
 apiVersion: v1
 kind: Service
 metadata:
-  name: kyc-checklist-api
+  name: kyb-checklist-api
   namespace: business-onboarding
 spec:
   selector:
-    app: kyc-checklist-api
+    app: kyb-checklist-api
   ports:
   - port: 80
     targetPort: 80

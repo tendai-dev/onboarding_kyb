@@ -26,11 +26,15 @@ import {
   FiClock,
   FiSettings
 } from "react-icons/fi";
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useRef } from "react";
 import AdminSidebar from "../../components/AdminSidebar";
-import { migrationApiService, MigrationJobDto } from "../../services/migrationApi";
+import { SweetAlert } from "../../utils/sweetAlert";
+import { migrationApi, MigrationJobDto } from "../../services/migrationApi";
+import { checklistApiService } from "../../services/checklistApi";
+import { entityConfigApiService, EntityType } from "../../services/entityConfigApi";
 
-// MigrationJob interface matches MigrationJobDto from API
+// MigrationJob matches MigrationJobDto from backend
+type MigrationJob = MigrationJobDto;
 
 interface Checklist {
   id: string;
@@ -52,94 +56,97 @@ interface ChecklistItem {
 export default function DataMigrationPage() {
   const [migrationJobs, setMigrationJobs] = useState<MigrationJob[]>([]);
   const [checklists, setChecklists] = useState<Checklist[]>([]);
+  const [entityTypes, setEntityTypes] = useState<EntityType[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [migrationName, setMigrationName] = useState("");
   const [selectedEntityType, setSelectedEntityType] = useState("");
+  const [startingMigration, setStartingMigration] = useState(false);
+  const pollingIntervalRef = useRef<NodeJS.Timeout | null>(null);
+
+  const loadMigrationJobs = async () => {
+    try {
+      setError(null);
+      const jobs = await migrationApi.getMigrationJobs();
+      setMigrationJobs(jobs);
+    } catch (err) {
+      console.error('Error loading migration jobs:', err);
+      setError(err instanceof Error ? err.message : 'Failed to load migration jobs');
+    }
+  };
+
+  const loadChecklists = async () => {
+    try {
+      const allChecklists = await checklistApiService.getAllChecklists();
+      // Map checklist DTOs to the format expected by the page
+      const mappedChecklists: Checklist[] = allChecklists.map(checklist => ({
+        id: checklist.id,
+        name: checklist.name || `${checklist.entityType} Checklist`,
+        entityType: checklist.entityType || 'Unknown',
+        description: checklist.description || '',
+        lastUpdated: checklist.lastUpdated || new Date().toISOString(),
+        isActive: true,
+        items: checklist.items.map(item => ({
+          id: item.id,
+          description: item.description || '',
+          isRequired: item.isRequired,
+          category: item.category || 'General'
+        }))
+      }));
+      setChecklists(mappedChecklists);
+    } catch (err) {
+      console.error('Error loading checklists:', err);
+      // Don't set error for checklists - it's not critical
+    }
+  };
+
+  const loadEntityTypes = async () => {
+    try {
+      const types = await entityConfigApiService.getEntityTypes(false, false); // Only active, no requirements
+      setEntityTypes(types);
+    } catch (err) {
+      console.error('Error loading entity types:', err);
+      // Don't set error for entity types - it's not critical, will show empty dropdown
+    }
+  };
 
   useEffect(() => {
-    // Simulate API call
-    setTimeout(() => {
-      setMigrationJobs([
-        {
-          id: "MIG-001",
-          name: "Legacy Partner Data Import",
-          status: "COMPLETED",
-          progress: 100,
-          totalRecords: 1500,
-          processedRecords: 1500,
-          failedRecords: 12,
-          startTime: "2024-01-10T09:00:00Z",
-          endTime: "2024-01-10T11:30:00Z",
-          entityType: "Private Company",
-          source: "Legacy Database"
-        },
-        {
-          id: "MIG-002",
-          name: "PDF Forms OCR Processing",
-          status: "IN_PROGRESS",
-          progress: 65,
-          totalRecords: 800,
-          processedRecords: 520,
-          failedRecords: 8,
-          startTime: "2024-01-15T14:00:00Z",
-          entityType: "NPO",
-          source: "PDF Files"
-        },
-        {
-          id: "MIG-003",
-          name: "Customer Data Migration",
-          status: "FAILED",
-          progress: 30,
-          totalRecords: 2000,
-          processedRecords: 600,
-          failedRecords: 45,
-          startTime: "2024-01-12T10:00:00Z",
-          endTime: "2024-01-12T12:15:00Z",
-          errorMessage: "Data validation failed: Invalid email formats detected",
-          entityType: "All Types",
-          source: "CRM System"
-        }
-      ]);
-
-      setChecklists([
-        {
-          id: "CHECKLIST-001",
-          name: "Private Company Checklist",
-          entityType: "Private Company",
-          description: "Comprehensive checklist for private company onboarding",
-          lastUpdated: "2024-01-10",
-          isActive: true,
-          items: [
-            { id: "ITEM-001", description: "Certificate of Incorporation", isRequired: true, category: "Legal Documents" },
-            { id: "ITEM-002", description: "Memorandum of Association", isRequired: true, category: "Legal Documents" },
-            { id: "ITEM-003", description: "Articles of Association", isRequired: true, category: "Legal Documents" },
-            { id: "ITEM-004", description: "Tax Clearance Certificate", isRequired: true, category: "Tax Documents" },
-            { id: "ITEM-005", description: "Bank Statements (3 months)", isRequired: true, category: "Financial Documents" }
-          ]
-        },
-        {
-          id: "CHECKLIST-002",
-          name: "NPO Checklist",
-          entityType: "NPO",
-          description: "Non-profit organization onboarding checklist",
-          lastUpdated: "2024-01-08",
-          isActive: true,
-          items: [
-            { id: "ITEM-006", description: "NPO Registration Certificate", isRequired: true, category: "Legal Documents" },
-            { id: "ITEM-007", description: "Constitution", isRequired: true, category: "Legal Documents" },
-            { id: "ITEM-008", description: "Trust Deed", isRequired: false, category: "Legal Documents" },
-            { id: "ITEM-009", description: "Financial Statements", isRequired: true, category: "Financial Documents" }
-          ]
-        }
-      ]);
-
+    const loadData = async () => {
+      setLoading(true);
+      await Promise.all([loadMigrationJobs(), loadChecklists(), loadEntityTypes()]);
       setLoading(false);
-    }, 1000);
+    };
+    loadData();
   }, []);
 
+  // Poll for in-progress jobs every 5 seconds
+  useEffect(() => {
+    const hasInProgressJobs = migrationJobs.some(job => 
+      job.status.toUpperCase() === 'IN_PROGRESS' || 
+      job.status.toUpperCase() === 'PENDING'
+    );
+    
+    if (hasInProgressJobs) {
+      pollingIntervalRef.current = setInterval(() => {
+        loadMigrationJobs();
+      }, 5000);
+    } else {
+      if (pollingIntervalRef.current) {
+        clearInterval(pollingIntervalRef.current);
+        pollingIntervalRef.current = null;
+      }
+    }
+
+    return () => {
+      if (pollingIntervalRef.current) {
+        clearInterval(pollingIntervalRef.current);
+      }
+    };
+  }, [migrationJobs]);
+
   const getStatusColor = (status: string) => {
-    switch (status) {
+    switch (status.toUpperCase()) {
       case 'PENDING': return 'orange';
       case 'IN_PROGRESS': return 'blue';
       case 'COMPLETED': return 'green';
@@ -149,28 +156,56 @@ export default function DataMigrationPage() {
     }
   };
 
-  const handleFileUpload = () => {
+  const formatStatus = (status: string) => {
+    return status.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+  };
+
+  const formatDate = (dateString?: string) => {
+    if (!dateString) return 'N/A';
+    try {
+      return new Date(dateString).toLocaleString();
+    } catch {
+      return dateString;
+    }
+  };
+
+  const handleFileUpload = async () => {
     if (!selectedFile || !migrationName || !selectedEntityType) {
-      alert('Please fill in all fields and select a file');
+      await SweetAlert.warning('Validation Error', 'Please fill in all fields and select a file');
       return;
     }
 
-    const newJob: MigrationJob = {
-      id: `MIG-${Date.now()}`,
-      name: migrationName,
-      status: 'PENDING',
-      progress: 0,
-      totalRecords: 0,
-      processedRecords: 0,
-      failedRecords: 0,
-      entityType: selectedEntityType,
-      source: selectedFile.name
-    };
+    setStartingMigration(true);
+    try {
+      const newJob = await migrationApi.startMigration(
+        migrationName,
+        selectedEntityType,
+        selectedFile,
+        selectedFile.name
+      );
 
-    setMigrationJobs(prev => [newJob, ...prev]);
-    setSelectedFile(null);
-    setMigrationName("");
-    setSelectedEntityType("");
+      // Reload jobs to get the latest from backend (includes the new job)
+      await loadMigrationJobs();
+      
+      // Clear form
+      setSelectedFile(null);
+      setMigrationName("");
+      setSelectedEntityType("");
+
+      await SweetAlert.success('Migration Started', `Migration job "${migrationName}" has been started successfully.`);
+      
+      // Start polling if not already polling
+      if (!pollingIntervalRef.current) {
+        pollingIntervalRef.current = setInterval(() => {
+          loadMigrationJobs();
+        }, 5000);
+      }
+    } catch (err) {
+      console.error('Error starting migration:', err);
+      await SweetAlert.error('Migration Failed', err instanceof Error ? err.message : 'Failed to start migration. Please try again.');
+    } finally {
+      setStartingMigration(false);
+    }
   };
 
   if (loading) {
@@ -207,6 +242,16 @@ export default function DataMigrationPage() {
               <Button
                 variant="outline"
                 size="sm"
+                onClick={loadMigrationJobs}
+              >
+                <HStack gap="2">
+                  <Icon as={FiSearch} />
+                  <Text>Refresh</Text>
+                </HStack>
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
               >
                 <HStack gap="2">
                   <Icon as={FiSettings} />
@@ -215,6 +260,19 @@ export default function DataMigrationPage() {
               </Button>
             </HStack>
           </Flex>
+
+          {/* Error Alert */}
+          {error && (
+            <Box bg="red.50" p="4" borderRadius="md" border="1px" borderColor="red.200">
+              <HStack gap="2">
+                <Icon as={FiAlertTriangle} boxSize="5" color="red.500" />
+                <VStack align="start" gap="1">
+                  <Text fontWeight="semibold" color="red.700">Error loading data</Text>
+                  <Text fontSize="sm" color="red.600">{error}</Text>
+                </VStack>
+              </HStack>
+            </Box>
+          )}
 
           {/* Migration Jobs */}
           <Box bg="white" p="6" borderRadius="lg" boxShadow="sm">
@@ -229,6 +287,10 @@ export default function DataMigrationPage() {
                   _hover={{ bg: "#E55A2B" }}
                   _active={{ bg: "#CC4A1F" }}
                   size="sm"
+                  onClick={() => {
+                    // Scroll to the "Start New Migration" section
+                    document.getElementById('start-migration-section')?.scrollIntoView({ behavior: 'smooth' });
+                  }}
                 >
                   <HStack gap="2">
                     <Icon as={FiUpload} />
@@ -237,8 +299,28 @@ export default function DataMigrationPage() {
                 </Button>
               </Flex>
 
-              <SimpleGrid columns={{ base: 1, lg: 2 }} gap="4">
-                {migrationJobs.map((job) => (
+              {migrationJobs.length === 0 ? (
+                <Box
+                  p="8"
+                  textAlign="center"
+                  border="2px dashed"
+                  borderColor="gray.300"
+                  borderRadius="lg"
+                  bg="gray.50"
+                >
+                  <VStack gap="3">
+                    <Icon as={FiUpload} boxSize="8" color="gray.400" />
+                    <Text fontSize="md" color="gray.600" fontWeight="medium">
+                      No migration jobs found
+                    </Text>
+                    <Text fontSize="sm" color="gray.500">
+                      Start a new migration to import partner/customer data
+                    </Text>
+                  </VStack>
+                </Box>
+              ) : (
+                <SimpleGrid columns={{ base: 1, lg: 2 }} gap="4">
+                  {migrationJobs.map((job) => (
                   <Box
                     key={job.id}
                     p="4"
@@ -253,6 +335,9 @@ export default function DataMigrationPage() {
                           <Text fontSize="md" fontWeight="semibold" color="gray.800">
                             {job.name}
                           </Text>
+                          <Text fontSize="xs" color="gray.500" fontFamily="mono">
+                            {job.id}
+                          </Text>
                           <Text fontSize="sm" color="gray.600">
                             {job.entityType} • {job.source}
                           </Text>
@@ -263,8 +348,9 @@ export default function DataMigrationPage() {
                           color="white"
                           variant="solid"
                           fontSize="xs"
+                          textTransform="capitalize"
                         >
-                          {job.status.replace('_', ' ')}
+                          {formatStatus(job.status)}
                         </Badge>
                       </Flex>
 
@@ -308,25 +394,28 @@ export default function DataMigrationPage() {
                         </Box>
                       )}
 
-                      <HStack justify="space-between">
-                        <Text fontSize="xs" color="gray.500">
-                          Started: {job.startTime ? new Date(job.startTime).toLocaleString() : 'Not started'}
-                        </Text>
+                      <HStack justify="space-between" fontSize="xs" color="gray.500">
+                        <VStack align="start" gap="0">
+                          <Text fontWeight="medium">Started:</Text>
+                          <Text>{formatDate(job.startTime)}</Text>
+                        </VStack>
                         {job.endTime && (
-                          <Text fontSize="xs" color="gray.500">
-                            Completed: {new Date(job.endTime).toLocaleString()}
-                          </Text>
+                          <VStack align="end" gap="0">
+                            <Text fontWeight="medium">Completed:</Text>
+                            <Text>{formatDate(job.endTime)}</Text>
+                          </VStack>
                         )}
                       </HStack>
                     </VStack>
                   </Box>
-                ))}
-              </SimpleGrid>
+                  ))}
+                </SimpleGrid>
+              )}
             </VStack>
           </Box>
 
           {/* New Migration Form */}
-          <Box bg="white" p="6" borderRadius="lg" boxShadow="sm">
+          <Box id="start-migration-section" bg="white" p="6" borderRadius="lg" boxShadow="sm">
             <VStack gap="4" align="stretch">
               <Text fontSize="lg" fontWeight="semibold" color="gray.800">
                 Start New Migration
@@ -357,16 +446,25 @@ export default function DataMigrationPage() {
                         padding: "8px 12px",
                         borderRadius: "6px",
                         border: "1px solid #E2E8F0",
-                        backgroundColor: "white"
+                        backgroundColor: "white",
+                        color: "#1A202C"
                       }}
+                      disabled={entityTypes.length === 0}
                     >
-                      <option value="">Select entity type</option>
-                      <option value="Private Company">Private Company</option>
-                      <option value="Publicly Listed">Publicly Listed</option>
-                      <option value="NPO">NPO</option>
-                      <option value="Government">Government</option>
-                      <option value="All Types">All Types</option>
+                      <option value="">
+                        {entityTypes.length === 0 ? "Loading entity types..." : "Select entity type"}
+                      </option>
+                      {entityTypes.map((entityType) => (
+                        <option key={entityType.id} value={entityType.displayName}>
+                          {entityType.displayName}
+                        </option>
+                      ))}
                     </select>
+                    {entityTypes.length === 0 && (
+                      <Text fontSize="xs" color="gray.500" mt="1">
+                        No entity types found. Please configure entity types first.
+                      </Text>
+                    )}
                   </Box>
                 </VStack>
                 
@@ -395,7 +493,9 @@ export default function DataMigrationPage() {
                     _hover={{ bg: "#E55A2B" }}
                     _active={{ bg: "#CC4A1F" }}
                     onClick={handleFileUpload}
-                    disabled={!selectedFile || !migrationName || !selectedEntityType}
+                    disabled={!selectedFile || !migrationName || !selectedEntityType || startingMigration}
+                    loading={startingMigration}
+                    loadingText="Starting..."
                   >
                     <HStack gap="2">
                       <Icon as={FiUpload} />

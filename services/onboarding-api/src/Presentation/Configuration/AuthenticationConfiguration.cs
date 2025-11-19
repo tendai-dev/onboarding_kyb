@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using System.Security.Claims;
+using Microsoft.AspNetCore.Hosting;
 
 namespace OnboardingApi.Presentation.Configuration;
 
@@ -13,10 +14,17 @@ public static class AuthenticationConfiguration
         {
             options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
             options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+            // In development, allow anonymous if development headers are present
+            // This will be handled by DevelopmentAuthMiddleware
+            if (configuration.GetValue<string>("ASPNETCORE_ENVIRONMENT") == "Development" || 
+                Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") == "Development")
+            {
+                // We'll handle this in the event handlers
+            }
         })
         .AddJwtBearer("Keycloak", options =>
         {
-            var keycloakUrl = configuration["Authentication:Keycloak:Authority"] ?? "http://keycloak.158.220.110.88.nip.io/realms/kyc-platform";
+            var keycloakUrl = configuration["Authentication:Keycloak:Authority"] ?? "http://keycloak.158.220.110.88.nip.io/realms/kyb-platform";
             
             options.Authority = keycloakUrl;
             options.Audience = configuration["Authentication:Keycloak:Audience"] ?? "account";
@@ -24,14 +32,18 @@ public static class AuthenticationConfiguration
             options.SaveToken = true;
             
             // Configure metadata address to use internal service for key retrieval
-            options.MetadataAddress = "http://keycloak.keycloak.svc.cluster.local:8080/realms/kyc-platform/.well-known/openid_configuration";
+            options.MetadataAddress = "http://keycloak.keycloak.svc.cluster.local:8080/realms/kyb-platform/.well-known/openid_configuration";
+            
+            // In development, make authentication more lenient
+            var isDevelopment = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") == "Development" ||
+                                 configuration.GetValue<string>("ASPNETCORE_ENVIRONMENT") == "Development";
             
             options.TokenValidationParameters = new TokenValidationParameters
             {
                 ValidateIssuer = true,
                 ValidateAudience = false, // Keycloak doesn't always include audience
-                ValidateLifetime = true,
-                ValidateIssuerSigningKey = true,
+                ValidateLifetime = !isDevelopment, // In development, don't validate lifetime if development headers are present
+                ValidateIssuerSigningKey = !isDevelopment, // In development, be more lenient
                 ClockSkew = TimeSpan.FromMinutes(5),
                 NameClaimType = ClaimTypes.Name,
                 RoleClaimType = ClaimTypes.Role
@@ -42,6 +54,21 @@ public static class AuthenticationConfiguration
                 OnAuthenticationFailed = context =>
                 {
                     var logger = context.HttpContext.RequestServices.GetRequiredService<ILogger<Program>>();
+                    var env = context.HttpContext.RequestServices.GetRequiredService<IWebHostEnvironment>();
+                    
+                    // In development mode, if development headers are present, don't fail authentication
+                    // The DevelopmentAuthMiddleware will handle authentication
+                    if (env.IsDevelopment())
+                    {
+                        var hasDevHeaders = !string.IsNullOrEmpty(context.HttpContext.Request.Headers["X-User-Email"].FirstOrDefault());
+                        if (hasDevHeaders)
+                        {
+                            logger.LogDebug("JWT Authentication failed in development, but development headers present - allowing to continue");
+                            context.NoResult(); // Don't fail, let DevelopmentAuthMiddleware handle it
+                            return Task.CompletedTask;
+                        }
+                    }
+                    
                     logger.LogError(context.Exception, "JWT Authentication failed");
                     return Task.CompletedTask;
                 },
@@ -55,8 +82,46 @@ public static class AuthenticationConfiguration
                 OnChallenge = context =>
                 {
                     var logger = context.HttpContext.RequestServices.GetRequiredService<ILogger<Program>>();
+                    var env = context.HttpContext.RequestServices.GetRequiredService<IWebHostEnvironment>();
+                    
+                    // In development mode, if development headers are present, skip the challenge
+                    // The DevelopmentAuthMiddleware will handle authentication
+                    if (env.IsDevelopment())
+                    {
+                        var userEmail = context.HttpContext.Request.Headers["X-User-Email"].FirstOrDefault();
+                        var hasDevHeaders = !string.IsNullOrEmpty(userEmail);
+                        
+                        logger.LogDebug("JWT Challenge (Keycloak) - Development: {IsDev}, HasDevHeaders: {HasHeaders}, X-User-Email: {Email}", 
+                            env.IsDevelopment(), hasDevHeaders, userEmail);
+                        
+                        if (hasDevHeaders)
+                        {
+                            logger.LogInformation("JWT Challenge triggered in development, but development headers present - skipping challenge");
+                            context.HandleResponse(); // Skip the challenge, let DevelopmentAuthMiddleware handle it
+                            // Don't set response status - let the request continue
+                            return Task.CompletedTask;
+                        }
+                    }
+                    
                     logger.LogWarning("JWT Challenge triggered. Error: {Error}, Description: {Description}", 
                         context.Error, context.ErrorDescription);
+                    return Task.CompletedTask;
+                },
+                OnMessageReceived = context =>
+                {
+                    // In development, if no token is present but development headers are, don't require token
+                    var env = context.HttpContext.RequestServices.GetRequiredService<IWebHostEnvironment>();
+                    if (env.IsDevelopment())
+                    {
+                        var hasDevHeaders = !string.IsNullOrEmpty(context.HttpContext.Request.Headers["X-User-Email"].FirstOrDefault());
+                        var hasAuthHeader = !string.IsNullOrEmpty(context.Request.Headers["Authorization"].FirstOrDefault());
+                        
+                        if (hasDevHeaders && !hasAuthHeader)
+                        {
+                            // Skip token validation - DevelopmentAuthMiddleware will handle it
+                            context.Token = null;
+                        }
+                    }
                     return Task.CompletedTask;
                 }
             };
@@ -67,7 +132,7 @@ public static class AuthenticationConfiguration
             var adfsUrl = configuration["Authentication:ActiveDirectory:Authority"] ?? "https://your-adfs-server.com/adfs";
             
             options.Authority = adfsUrl;
-            options.Audience = configuration["Authentication:ActiveDirectory:Audience"] ?? "kyc-platform";
+            options.Audience = configuration["Authentication:ActiveDirectory:Audience"] ?? "kyb-platform";
             options.RequireHttpsMetadata = true;
             options.SaveToken = true;
             
@@ -82,6 +147,7 @@ public static class AuthenticationConfiguration
                 RoleClaimType = "http://schemas.microsoft.com/ws/2008/06/identity/claims/role"
             };
         })
+        .AddScheme<Microsoft.AspNetCore.Authentication.AuthenticationSchemeOptions, DevelopmentAuthenticationHandler>("Development", options => { })
         .AddJwtBearer("AzureAD", options =>
         {
             // Entra AD (Azure AD) configuration
@@ -129,11 +195,25 @@ public static class AuthenticationConfiguration
                 },
                 OnChallenge = context =>
                 {
+                    var logger = context.HttpContext.RequestServices.GetRequiredService<ILogger<Program>>();
+                    var env = context.HttpContext.RequestServices.GetRequiredService<IWebHostEnvironment>();
+                    
+                    // In development mode, if development headers are present, skip the challenge
+                    if (env.IsDevelopment())
+                    {
+                        var hasDevHeaders = !string.IsNullOrEmpty(context.HttpContext.Request.Headers["X-User-Email"].FirstOrDefault());
+                        if (hasDevHeaders)
+                        {
+                            logger.LogDebug("Azure AD Challenge triggered in development, but development headers present - skipping challenge");
+                            context.HandleResponse();
+                            return Task.CompletedTask;
+                        }
+                    }
+                    
                     context.HandleResponse();
                     context.Response.StatusCode = 401;
                     context.Response.ContentType = "application/json";
                     
-                    var logger = context.HttpContext.RequestServices.GetRequiredService<ILogger<Program>>();
                     logger.LogError("Azure AD Authentication failed: {Error}, Exception: {Exception}", 
                         context.ErrorDescription, context.Error);
                     
@@ -147,6 +227,23 @@ public static class AuthenticationConfiguration
                     });
                     
                     return context.Response.WriteAsync(result);
+                },
+                OnMessageReceived = context =>
+                {
+                    // In development, if no token is present but development headers are, don't require token
+                    var env = context.HttpContext.RequestServices.GetRequiredService<IWebHostEnvironment>();
+                    if (env.IsDevelopment())
+                    {
+                        var hasDevHeaders = !string.IsNullOrEmpty(context.HttpContext.Request.Headers["X-User-Email"].FirstOrDefault());
+                        var hasAuthHeader = !string.IsNullOrEmpty(context.Request.Headers["Authorization"].FirstOrDefault());
+                        
+                        if (hasDevHeaders && !hasAuthHeader)
+                        {
+                            // Skip token validation - DevelopmentAuthMiddleware will handle it
+                            context.Token = null;
+                        }
+                    }
+                    return Task.CompletedTask;
                 }
             };
         });
@@ -155,13 +252,23 @@ public static class AuthenticationConfiguration
         services.AddAuthorization(options =>
         {
             // Default policy requires authentication
-            options.DefaultPolicy = new Microsoft.AspNetCore.Authorization.AuthorizationPolicyBuilder()
+            // In development, also allow "Development" scheme (from DevelopmentAuthMiddleware)
+            var policyBuilder = new Microsoft.AspNetCore.Authorization.AuthorizationPolicyBuilder()
                 .RequireAuthenticatedUser()
-                .AddAuthenticationSchemes("Keycloak", "ActiveDirectory", "AzureAD")
-                .Build();
+                .AddAuthenticationSchemes("Keycloak", "ActiveDirectory", "AzureAD");
+            
+            // In development, also allow Development scheme
+            var isDevelopment = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") == "Development" ||
+                                 configuration.GetValue<string>("ASPNETCORE_ENVIRONMENT") == "Development";
+            if (isDevelopment)
+            {
+                policyBuilder.AddAuthenticationSchemes("Development");
+            }
+            
+            options.DefaultPolicy = policyBuilder.Build();
 
-            // Customer policy (external users via Keycloak)
-            options.AddPolicy("CustomerPolicy", policy =>
+            // Partner policy (external users via Keycloak)
+            options.AddPolicy("PartnerPolicy", policy =>
                 policy.RequireAuthenticatedUser()
                       .RequireAssertion(context => context.User.IsExternalUser())
                       .AddAuthenticationSchemes("Keycloak"));

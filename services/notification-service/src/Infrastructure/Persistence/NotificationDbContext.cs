@@ -11,10 +11,101 @@ public class NotificationDbContext : DbContext
     }
 
     public DbSet<Notification> Notifications { get; set; }
+    public DbSet<NotificationTemplate> NotificationTemplates { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
+
+        // NotificationTemplate configuration
+        modelBuilder.Entity<NotificationTemplate>(entity =>
+        {
+            entity.ToTable("notification_templates");
+            
+            entity.HasKey(e => e.Id);
+            
+            entity.Property(e => e.Id)
+                .HasConversion(
+                    id => id.Value,
+                    value => NotificationTemplateId.From(value))
+                .HasColumnName("id");
+
+            entity.Property(e => e.Name)
+                .IsRequired()
+                .HasMaxLength(200)
+                .HasColumnName("name");
+
+            entity.Property(e => e.Description)
+                .IsRequired()
+                .HasMaxLength(1000)
+                .HasColumnName("description");
+
+            entity.Property(e => e.Type)
+                .HasConversion<string>()
+                .IsRequired()
+                .HasMaxLength(50)
+                .HasColumnName("type");
+
+            entity.Property(e => e.Channel)
+                .HasConversion<string>()
+                .IsRequired()
+                .HasMaxLength(50)
+                .HasColumnName("channel");
+
+            entity.Property(e => e.Subject)
+                .IsRequired()
+                .HasMaxLength(500)
+                .HasColumnName("subject");
+
+            entity.Property(e => e.Content)
+                .IsRequired()
+                .HasColumnType("text")
+                .HasColumnName("content");
+
+            entity.Property(e => e.Recipients)
+                .HasConversion(
+                    list => string.Join(",", list),
+                    str => string.IsNullOrEmpty(str) ? new List<string>() : str.Split(',', StringSplitOptions.RemoveEmptyEntries).ToList())
+                .HasColumnType("text")
+                .HasColumnName("recipients");
+
+            entity.Property(e => e.Trigger)
+                .IsRequired()
+                .HasMaxLength(200)
+                .HasColumnName("trigger");
+
+            entity.Property(e => e.Priority)
+                .HasConversion<string>()
+                .IsRequired()
+                .HasMaxLength(50)
+                .HasColumnName("priority");
+
+            entity.Property(e => e.IsActive)
+                .IsRequired()
+                .HasColumnName("is_active");
+
+            entity.Property(e => e.Frequency)
+                .HasConversion<string>()
+                .IsRequired()
+                .HasMaxLength(50)
+                .HasColumnName("frequency");
+
+            entity.Property(e => e.CreatedAt)
+                .IsRequired()
+                .HasColumnName("created_at");
+
+            entity.Property(e => e.UpdatedAt)
+                .IsRequired()
+                .HasColumnName("updated_at");
+
+            entity.Property(e => e.CreatedBy)
+                .HasMaxLength(200)
+                .HasColumnName("created_by");
+
+            entity.HasIndex(e => e.IsActive);
+            entity.HasIndex(e => e.Type);
+            entity.HasIndex(e => e.Channel);
+        });
 
         // Notification configuration
         modelBuilder.Entity<Notification>(entity =>

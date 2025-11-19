@@ -1,3 +1,4 @@
+using Mapster;
 using MediatR;
 using Microsoft.Extensions.Logging;
 using OnboardingApi.Application.Interfaces;
@@ -32,9 +33,9 @@ public class CreateOnboardingCaseCommandHandler : IRequestHandler<CreateOnboardi
             request.PartnerId,
             request.Type);
 
-        // Map DTOs to value objects
-        var applicant = MapToApplicantDetails(request.Applicant);
-        var business = request.Business != null ? MapToBusinessDetails(request.Business) : null;
+        // Map DTOs to value objects using Mapster
+        var applicant = request.Applicant.Adapt<ApplicantDetails>();
+        var business = request.Business?.Adapt<BusinessDetails>();
 
         // Create aggregate
         var onboardingCase = OnboardingCase.Create(
@@ -63,58 +64,6 @@ public class CreateOnboardingCaseCommandHandler : IRequestHandler<CreateOnboardi
             onboardingCase.CaseNumber);
 
         return new CreateOnboardingCaseResult(onboardingCase.Id, onboardingCase.CaseNumber);
-    }
-
-    private static ApplicantDetails MapToApplicantDetails(ApplicantDetailsDto dto)
-    {
-        return new ApplicantDetails
-        {
-            FirstName = dto.FirstName,
-            LastName = dto.LastName,
-            MiddleName = dto.MiddleName,
-            DateOfBirth = dto.DateOfBirth,
-            Email = dto.Email,
-            PhoneNumber = dto.PhoneNumber,
-            ResidentialAddress = MapToAddress(dto.ResidentialAddress),
-            Nationality = dto.Nationality,
-            TaxId = dto.TaxId,
-            PassportNumber = dto.PassportNumber,
-            DriversLicenseNumber = dto.DriversLicenseNumber
-        };
-    }
-
-    private static BusinessDetails MapToBusinessDetails(BusinessDetailsDto dto)
-    {
-        return new BusinessDetails
-        {
-            LegalName = dto.LegalName,
-            TradeName = dto.TradeName,
-            RegistrationNumber = dto.RegistrationNumber,
-            RegistrationCountry = dto.RegistrationCountry,
-            IncorporationDate = dto.IncorporationDate,
-            BusinessType = dto.BusinessType,
-            Industry = dto.Industry,
-            RegisteredAddress = MapToAddress(dto.RegisteredAddress),
-            OperatingAddress = dto.OperatingAddress != null ? MapToAddress(dto.OperatingAddress) : null,
-            TaxId = dto.TaxId,
-            VatNumber = dto.VatNumber,
-            Website = dto.Website,
-            NumberOfEmployees = dto.NumberOfEmployees,
-            EstimatedAnnualRevenue = dto.EstimatedAnnualRevenue
-        };
-    }
-
-    private static Address MapToAddress(AddressDto dto)
-    {
-        return new Address
-        {
-            Street = dto.Street,
-            Street2 = dto.Street2,
-            City = dto.City,
-            State = dto.State,
-            PostalCode = dto.PostalCode,
-            Country = dto.Country
-        };
     }
 }
 

@@ -1,6 +1,7 @@
 using EntityConfigurationService.Application.Commands;
 using EntityConfigurationService.Application.Queries;
 using EntityConfigurationService.Presentation.Models;
+using Mapster;
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
 
@@ -33,7 +34,7 @@ public class EntityTypesController : ControllerBase
         var query = new GetAllEntityTypesQuery(includeInactive, includeRequirements);
         var entityTypes = await _mediator.Send(query, cancellationToken);
 
-        var dtos = entityTypes.Select(EntityTypeDto.FromDomain).ToList();
+        var dtos = entityTypes.Select(et => et.Adapt<EntityTypeDto>()).ToList();
         return Ok(dtos);
     }
 
@@ -51,7 +52,32 @@ public class EntityTypesController : ControllerBase
         if (entityType == null)
             return NotFound(new { message = $"Entity type with ID '{id}' not found" });
 
-        return Ok(EntityTypeDto.FromDomain(entityType));
+        return Ok(entityType.Adapt<EntityTypeDto>());
+    }
+
+    /// <summary>
+    /// Get entity type by code
+    /// </summary>
+    [HttpGet("by-code/{code}")]
+    [ProducesResponseType(typeof(EntityTypeDto), 200)]
+    [ProducesResponseType(404)]
+    public async Task<IActionResult> GetByCode(string code, CancellationToken cancellationToken = default)
+    {
+        _logger.LogInformation("GetByCode called with code: '{Code}' (length: {Length})", code, code?.Length ?? 0);
+        
+        var query = new GetEntityTypeByCodeQuery(code);
+        var entityType = await _mediator.Send(query, cancellationToken);
+
+        if (entityType == null)
+        {
+            _logger.LogWarning("Entity type with code '{Code}' not found in database", code);
+            return NotFound(new { message = $"Entity type with code '{code}' not found" });
+        }
+
+        _logger.LogInformation("Found entity type: {Code} (ID: {Id}, DisplayName: {DisplayName})", 
+            entityType.Code, entityType.Id, entityType.DisplayName);
+        
+        return Ok(entityType.Adapt<EntityTypeDto>());
     }
 
     /// <summary>
@@ -67,7 +93,8 @@ public class EntityTypesController : ControllerBase
         var command = new CreateEntityTypeCommand(
             request.Code,
             request.DisplayName,
-            request.Description
+            request.Description,
+            request.Icon
         );
 
         var result = await _mediator.Send(command, cancellationToken);
@@ -77,6 +104,67 @@ public class EntityTypesController : ControllerBase
             new { id = result.Id },
             result
         );
+    }
+
+    /// <summary>
+    /// Update an entity type
+    /// </summary>
+    [HttpPut("{id}")]
+    [ProducesResponseType(typeof(UpdateEntityTypeResult), 200)]
+    [ProducesResponseType(400)]
+    [ProducesResponseType(404)]
+    public async Task<IActionResult> Update(
+        Guid id,
+        [FromBody] UpdateEntityTypeRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        var command = new UpdateEntityTypeCommand(
+            id,
+            request.DisplayName,
+            request.Description,
+            request.IsActive,
+            request.Icon
+        );
+
+        var result = await _mediator.Send(command, cancellationToken);
+        return Ok(result);
+    }
+
+    /// <summary>
+    /// Delete an entity type
+    /// </summary>
+    [HttpDelete("{id}")]
+    [ProducesResponseType(204)]
+    [ProducesResponseType(400)]
+    [ProducesResponseType(404)]
+    public async Task<IActionResult> Delete(Guid id, CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            var command = new DeleteEntityTypeCommand(id);
+            var result = await _mediator.Send(command, cancellationToken);
+
+            if (!result)
+                return NotFound(new { message = $"Entity type with ID '{id}' not found" });
+
+            return NoContent();
+        }
+        catch (InvalidOperationException ex)
+        {
+            _logger.LogWarning(ex, "Cannot delete entity type {EntityTypeId}", id);
+            return BadRequest(new { 
+                error = "Cannot delete entity type", 
+                message = ex.Message 
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error deleting entity type {EntityTypeId}", id);
+            return StatusCode(500, new { 
+                error = "An error occurred while deleting the entity type", 
+                message = ex.Message 
+            });
+        }
     }
 
     /// <summary>
@@ -99,6 +187,26 @@ public class EntityTypesController : ControllerBase
         );
 
         await _mediator.Send(command, cancellationToken);
+
+        return NoContent();
+    }
+
+    /// <summary>
+    /// Remove a requirement from an entity type
+    /// </summary>
+    [HttpDelete("{entityTypeId}/requirements/{requirementId}")]
+    [ProducesResponseType(204)]
+    [ProducesResponseType(404)]
+    public async Task<IActionResult> RemoveRequirement(
+        Guid entityTypeId,
+        Guid requirementId,
+        CancellationToken cancellationToken = default)
+    {
+        var command = new RemoveRequirementFromEntityTypeCommand(entityTypeId, requirementId);
+        var result = await _mediator.Send(command, cancellationToken);
+
+        if (!result)
+            return NotFound(new { message = $"Entity type or requirement not found" });
 
         return NoContent();
     }

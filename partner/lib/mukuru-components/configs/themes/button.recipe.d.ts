@@ -1,0 +1,161 @@
+export declare const buttonRecipe: import("@chakra-ui/react").RecipeDefinition<{
+    size: {
+        sm: {
+            borderRadius: "36px";
+            height: "32px";
+            fontSize: "14px";
+            minW: "117px";
+            px: "16px";
+            py: "4px";
+            gap: "10px";
+            "--madera-offset": "-1.5px";
+            "--helvetica-offset": "0px";
+            "--arial-offset": "0px";
+            "& span": {
+                transform: "translateY(var(--madera-offset))";
+                display: "inline-block";
+                lineHeight: "1";
+            };
+            "& svg": {
+                flexShrink: number;
+                transform: "translateY(1px)";
+            };
+        };
+        md: {
+            borderRadius: "36px";
+            height: "48px";
+            fontSize: "18px";
+            px: "20px";
+            py: "14px";
+            gap: "10px";
+            "--madera-offset": "-3px";
+            "--helvetica-offset": "0px";
+            "--arial-offset": "0px";
+            "& span": {
+                transform: "translateY(var(--madera-offset))";
+                display: "inline-block";
+                lineHeight: "1";
+            };
+            "& svg": {
+                flexShrink: number;
+                transform: "translateY(2px)";
+            };
+        };
+        icon: {
+            borderRadius: "50%";
+            width: "36px";
+            height: "36px";
+            p: "0";
+            gap: "0";
+        };
+    };
+    variant: {
+        primary: {
+            backgroundColor: "mukuru.primary";
+            color: "mukuru.white";
+            border: "2px solid transparent";
+            _hover: {
+                backgroundColor: "mukuru.buttons.inactive.orange";
+                color: "mukuru.white";
+                border: "2px solid inherit";
+                _disabled: {
+                    backgroundColor: "mukuru.grey.light";
+                    color: "mukuru.grey.mediumDark";
+                    border: "2px solid transparent";
+                };
+                _dark: {
+                    color: "mukuru.primary";
+                };
+            };
+            _focusVisible: {
+                boxShadow: "inset 0 0 0 3px mukuru.buttons.inactive.orange";
+                outline: "none";
+            };
+            _active: {
+                backgroundColor: "#D13F11";
+            };
+            _disabled: {
+                backgroundColor: "mukuru.grey.light";
+                color: "mukuru.grey.medium";
+                border: "2px solid transparent";
+                cursor: "not-allowed";
+                opacity: number;
+            };
+            _dark: {
+                backgroundColor: "mukuru.white";
+                color: "mukuru.primary";
+            };
+        };
+        secondary: {
+            backgroundColor: "inherit";
+            color: "mukuru.primary";
+            border: "2px solid #FC4F1E";
+            _hover: {
+                backgroundColor: "mukuru.buttons.inactive.orange";
+                color: "mukuru.primary";
+                border: "2px solid mukuru.primary";
+                _disabled: {
+                    backgroundColor: "mukuru.grey.light";
+                    color: "mukuru.grey.medium";
+                    border: "2px solid #F4F4F4";
+                };
+                _dark: {
+                    border: "1px solid white";
+                };
+            };
+            _active: {
+                backgroundColor: "mukuru.primary";
+                color: "mukuru.white";
+                border: "2px solid #E74A1F";
+            };
+            _focusVisible: {
+                boxShadow: "0 0 0 3px rgba(252, 79, 30, 0.5)";
+                outline: "none";
+            };
+            _disabled: {
+                backgroundColor: "mukuru.lighterGrey";
+                color: "mukuru.darkGrey";
+                border: "2px solid #F4F4F4";
+                cursor: "not-allowed";
+                opacity: number;
+            };
+            _dark: {
+                backgroundColor: "inherit";
+                color: "mukuru.white";
+                border: "1px solid white";
+            };
+        };
+        ghost: {
+            backgroundColor: "transparent";
+            color: "mukuru.grey.mediumDark";
+            border: "1.5px solid #1A1A1A";
+            _hover: {
+                backgroundColor: "#ECECEC80";
+                color: "mukuru.black";
+                borderColor: "transparent";
+                _disabled: {
+                    backgroundColor: "mukuru.grey.light";
+                    color: "mukuru.grey.medium";
+                    borderColor: "transparent";
+                };
+            };
+            _active: {
+                backgroundColor: "#E0E0E0";
+                color: "mukuru.black";
+                border: "1.5px solid #1A1A1A";
+            };
+            _focusVisible: {
+                boxShadow: "0 0 0 2px rgba(0, 0, 0, 0.3)";
+                outline: "none";
+            };
+            _disabled: {
+                backgroundColor: "#DADADA";
+                color: "#989898";
+                border: "2px solid transparent";
+                cursor: "not-allowed";
+                opacity: number;
+            };
+        };
+    };
+}>;
+//# sourceMappingURL=button.recipe.d.ts.map

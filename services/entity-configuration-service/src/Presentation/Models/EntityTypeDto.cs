@@ -7,6 +7,7 @@ public record EntityTypeDto(
     string Code,
     string DisplayName,
     string Description,
+    string? Icon,
     bool IsActive,
     DateTime CreatedAt,
     DateTime UpdatedAt,
@@ -20,6 +21,7 @@ public record EntityTypeDto(
             entityType.Code,
             entityType.DisplayName,
             entityType.Description,
+            entityType.Icon,
             entityType.IsActive,
             entityType.CreatedAt,
             entityType.UpdatedAt,
@@ -51,7 +53,15 @@ public record EntityTypeRequirementDto(
 public record CreateEntityTypeRequest(
     string Code,
     string DisplayName,
-    string Description
+    string Description,
+    string? Icon = null
+);
+
+public record UpdateEntityTypeRequest(
+    string DisplayName,
+    string Description,
+    bool IsActive,
+    string? Icon = null
 );
 
 public record AddRequirementRequest(

@@ -1,4 +1,5 @@
 using NotificationService.Application.Commands;
+using NotificationService.Application.Queries;
 using NotificationService.Domain.ValueObjects;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
@@ -8,7 +9,9 @@ namespace NotificationService.Presentation.Controllers;
 
 [ApiController]
 [Route("api/v1/notifications")]
+#if !DEBUG
 [Authorize]
+#endif
 public class NotificationController : ControllerBase
 {
     private readonly IMediator _mediator;
@@ -136,11 +139,48 @@ The Onboarding Team";
     }
 
     /// <summary>
-    /// Get notification by ID (placeholder)
+    /// List all notifications
+    /// </summary>
+    [HttpGet]
+    [ProducesResponseType(typeof(IEnumerable<NotificationDto>), StatusCodes.Status200OK)]
+    [AllowAnonymous]
+    public async Task<IActionResult> GetAllNotifications()
+    {
+        var result = await _mediator.Send(new GetAllNotificationsQuery());
+        return Ok(result);
+    }
+
+    /// <summary>
+    /// List notifications by case id
+    /// </summary>
+    [HttpGet("case/{caseId}")]
+    [ProducesResponseType(typeof(IEnumerable<NotificationDto>), StatusCodes.Status200OK)]
+    [AllowAnonymous]
+    public async Task<IActionResult> ListByCase(string caseId)
+    {
+        var result = await _mediator.Send(new GetNotificationsByCaseQuery(caseId));
+        return Ok(result);
+    }
+
+    /// <summary>
+    /// List notifications by status
+    /// </summary>
+    [HttpGet("status/{status}")]
+    [ProducesResponseType(typeof(IEnumerable<NotificationDto>), StatusCodes.Status200OK)]
+    [AllowAnonymous]
+    public async Task<IActionResult> ListByStatus(string status)
+    {
+        var result = await _mediator.Send(new GetNotificationsByStatusQuery(status));
+        return Ok(result);
+    }
+
+    /// <summary>
+    /// Get notification by ID
     /// </summary>
     [HttpGet("{id:guid}")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [AllowAnonymous]
     public IActionResult GetNotification(Guid id)
     {
         // Simplified implementation

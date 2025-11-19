@@ -67,4 +67,27 @@ public class NotificationRepository : INotificationRepository
     {
         await _context.SaveChangesAsync(cancellationToken);
     }
+
+    public async Task<List<Notification>> ListByCaseIdAsync(string caseId, CancellationToken cancellationToken = default)
+    {
+        return await _context.Notifications
+            .Where(n => n.CaseId == caseId)
+            .OrderByDescending(n => n.CreatedAt)
+            .ToListAsync(cancellationToken);
+    }
+
+    public async Task<List<Notification>> ListByStatusAsync(string status, CancellationToken cancellationToken = default)
+    {
+        return await _context.Notifications
+            .Where(n => n.Status.ToString() == status)
+            .OrderByDescending(n => n.CreatedAt)
+            .ToListAsync(cancellationToken);
+    }
+
+    public async Task<List<Notification>> GetAllAsync(CancellationToken cancellationToken = default)
+    {
+        return await _context.Notifications
+            .OrderByDescending(n => n.CreatedAt)
+            .ToListAsync(cancellationToken);
+    }
 }

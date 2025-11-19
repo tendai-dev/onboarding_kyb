@@ -36,3 +36,12 @@ public record RiskFactorUpdatedEvent(
     Guid FactorId,
     string RiskLevel,
     decimal Score) : INotification;
+
+public record RiskLevelManuallySetEvent(
+    Guid AssessmentId,
+    string CaseId,
+    string PartnerId,
+    string PreviousRiskLevel,
+    string NewRiskLevel,
+    string AssessedBy,
+    string Justification) : INotification;

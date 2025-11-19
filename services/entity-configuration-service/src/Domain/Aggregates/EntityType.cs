@@ -9,6 +9,7 @@ public class EntityType
     public string Code { get; private set; } // e.g., "PRIVATE_COMPANY", "LLC", "NGO"
     public string DisplayName { get; private set; } // e.g., "Private Company / Limited Liability Company"
     public string Description { get; private set; }
+    public string? Icon { get; private set; } // Icon name from react-icons (e.g., "FiBriefcase", "FiHome")
     public bool IsActive { get; private set; }
     public DateTime CreatedAt { get; private set; }
     public DateTime UpdatedAt { get; private set; }
@@ -22,21 +23,24 @@ public class EntityType
     public EntityType(
         string code,
         string displayName,
-        string description)
+        string description,
+        string? icon = null)
     {
         Id = Guid.NewGuid();
         Code = code ?? throw new ArgumentNullException(nameof(code));
         DisplayName = displayName ?? throw new ArgumentNullException(nameof(displayName));
         Description = description ?? throw new ArgumentNullException(nameof(description));
+        Icon = icon;
         IsActive = true;
         CreatedAt = DateTime.UtcNow;
         UpdatedAt = DateTime.UtcNow;
     }
 
-    public void UpdateDetails(string displayName, string description)
+    public void UpdateDetails(string displayName, string description, string? icon = null)
     {
         DisplayName = displayName ?? throw new ArgumentNullException(nameof(displayName));
         Description = description ?? throw new ArgumentNullException(nameof(description));
+        Icon = icon;
         UpdatedAt = DateTime.UtcNow;
     }
 

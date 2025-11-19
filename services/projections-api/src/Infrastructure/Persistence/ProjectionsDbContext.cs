@@ -198,6 +198,51 @@ public class ProjectionsDbContext : DbContext
                 .HasMaxLength(2000)
                 .HasColumnName("compliance_notes");
 
+            // Business Information
+            entity.Property(e => e.BusinessLegalName)
+                .HasMaxLength(255)
+                .HasColumnName("business_legal_name");
+
+            entity.Property(e => e.BusinessRegistrationNumber)
+                .HasMaxLength(100)
+                .HasColumnName("business_registration_number");
+
+            entity.Property(e => e.BusinessTaxId)
+                .HasMaxLength(50)
+                .HasColumnName("business_tax_id");
+
+            entity.Property(e => e.BusinessCountryOfRegistration)
+                .HasMaxLength(10)
+                .HasColumnName("business_country_of_registration");
+
+            entity.Property(e => e.BusinessAddress)
+                .HasMaxLength(500)
+                .HasColumnName("business_address");
+
+            entity.Property(e => e.BusinessCity)
+                .HasMaxLength(100)
+                .HasColumnName("business_city");
+
+            entity.Property(e => e.BusinessIndustry)
+                .HasMaxLength(100)
+                .HasColumnName("business_industry");
+
+            entity.Property(e => e.BusinessNumberOfEmployees)
+                .HasColumnName("business_number_of_employees");
+
+            entity.Property(e => e.BusinessAnnualRevenue)
+                .HasPrecision(18, 2)
+                .HasColumnName("business_annual_revenue");
+
+            entity.Property(e => e.BusinessWebsite)
+                .HasMaxLength(255)
+                .HasColumnName("business_website");
+
+            // Metadata for dynamic fields from Entity Configuration Service
+            entity.Property(e => e.MetadataJson)
+                .HasColumnName("metadata")
+                .HasColumnType("jsonb");
+
             // Ignore calculated properties
             entity.Ignore(e => e.StatusBadgeColor);
             entity.Ignore(e => e.RiskBadgeColor);

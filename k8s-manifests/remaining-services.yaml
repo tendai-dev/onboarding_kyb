@@ -57,24 +57,24 @@ spec:
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: kyc-messaging-api
+  name: kyb-messaging-api
   namespace: business-notifications
   labels:
-    app: kyc-messaging-api
+    app: kyb-messaging-api
     tier: business
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: kyc-messaging-api
+      app: kyb-messaging-api
   template:
     metadata:
       labels:
-        app: kyc-messaging-api
+        app: kyb-messaging-api
     spec:
       containers:
-      - name: kyc-messaging-api
-        image: kyc-messaging-api:latest
+      - name: kyb-messaging-api
+        image: kyb-messaging-api:latest
         imagePullPolicy: Never
         ports:
         - containerPort: 8080
@@ -82,7 +82,7 @@ spec:
         - name: ASPNETCORE_ENVIRONMENT
           value: "Development"
         - name: SERVICE_NAME
-          value: "kyc-messaging-api"
+          value: "kyb-messaging-api"
         - name: ConnectionStrings__PostgreSQL
           value: "Host=postgresql.platform-observability.svc.cluster.local;Database=messaging;Username=onboarding_user;Password=postgres-changeme"
         - name: ConnectionStrings__Redis
@@ -100,11 +100,11 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: kyc-messaging-api
+  name: kyb-messaging-api
   namespace: business-notifications
 spec:
   selector:
-    app: kyc-messaging-api
+    app: kyb-messaging-api
   ports:
   - port: 80
     targetPort: 8080
@@ -113,24 +113,24 @@ spec:
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: kyc-audit-api
+  name: kyb-audit-api
   namespace: business-admin
   labels:
-    app: kyc-audit-api
+    app: kyb-audit-api
     tier: business
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: kyc-audit-api
+      app: kyb-audit-api
   template:
     metadata:
       labels:
-        app: kyc-audit-api
+        app: kyb-audit-api
     spec:
       containers:
-      - name: kyc-audit-api
-        image: kyc-audit-api:latest
+      - name: kyb-audit-api
+        image: kyb-audit-api:latest
         imagePullPolicy: Never
         ports:
         - containerPort: 8080
@@ -138,7 +138,7 @@ spec:
         - name: ASPNETCORE_ENVIRONMENT
           value: "Development"
         - name: SERVICE_NAME
-          value: "kyc-audit-api"
+          value: "kyb-audit-api"
         - name: ConnectionStrings__PostgreSQL
           value: "Host=postgresql.platform-observability.svc.cluster.local;Database=auditlog;Username=onboarding_user;Password=postgres-changeme"
         - name: ConnectionStrings__Redis
@@ -156,11 +156,11 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: kyc-audit-api
+  name: kyb-audit-api
   namespace: business-admin
 spec:
   selector:
-    app: kyc-audit-api
+    app: kyb-audit-api
   ports:
   - port: 80
     targetPort: 8080
@@ -169,24 +169,24 @@ spec:
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: kyc-work-queue-worker
+  name: kyb-work-queue-worker
   namespace: business-admin
   labels:
-    app: kyc-work-queue-worker
+    app: kyb-work-queue-worker
     tier: business
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: kyc-work-queue-worker
+      app: kyb-work-queue-worker
   template:
     metadata:
       labels:
-        app: kyc-work-queue-worker
+        app: kyb-work-queue-worker
     spec:
       containers:
-      - name: kyc-work-queue-worker
-        image: kyc-work-queue-worker:latest
+      - name: kyb-work-queue-worker
+        image: kyb-work-queue-worker:latest
         imagePullPolicy: Never
         ports:
         - containerPort: 8080
@@ -194,7 +194,7 @@ spec:
         - name: ASPNETCORE_ENVIRONMENT
           value: "Development"
         - name: SERVICE_NAME
-          value: "kyc-work-queue-worker"
+          value: "kyb-work-queue-worker"
         - name: ConnectionStrings__PostgreSQL
           value: "Host=postgresql.platform-observability.svc.cluster.local;Database=workqueue;Username=onboarding_user;Password=postgres-changeme"
         - name: ConnectionStrings__Redis
@@ -212,11 +212,11 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: kyc-work-queue-worker
+  name: kyb-work-queue-worker
   namespace: business-admin
 spec:
   selector:
-    app: kyc-work-queue-worker
+    app: kyb-work-queue-worker
   ports:
   - port: 80
     targetPort: 8080

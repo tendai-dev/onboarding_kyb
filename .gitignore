@@ -32,8 +32,8 @@ node_modules/
 *.cache
 
 # Environment
-*.env
-.env.local
+# *.env
+# .env.local
 
 # Test results
 TestResults/

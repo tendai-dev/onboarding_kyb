@@ -219,36 +219,9 @@ redis:
 # Duplicate kafka and rabbitmq sections removed - configurations merged above
 
 # ========================================
-# Keycloak
+# Authentication - Using external services
 # ========================================
-keycloak:
-  replicas: 1
-  auth:
-    adminUser: "admin"
-    adminPassword: "keycloak-admin-changeme"  # CHANGE IN PRODUCTION
-  postgresql:
-    enabled: true
-    auth:
-      password: "keycloak-db-changeme"
-  extraEnvVars:
-    - name: KC_HOSTNAME
-      value: "keycloak.yourdomain.tld"
-    - name: KC_PROXY
-      value: "edge"
-  ingress:
-    enabled: true
-    ingressClassName: nginx
-    annotations:
-      cert-manager.io/cluster-issuer: "letsencrypt-http01"
-    hostname: "keycloak.yourdomain.tld"
-    tls: true
-  resources:
-    requests:
-      memory: 512Mi
-      cpu: 250m
-    limits:
-      memory: 1Gi
-      cpu: 500m
+# Keycloak removed - using Azure AD for admin and Mukuru Keycloak for partners
 
 # ========================================
 # Elasticsearch
@@ -476,10 +449,7 @@ kyc-onboarding-api:
       value: "redis.platform-observability:6379,password=redis-changeme"
     - name: Kafka__BootstrapServers
       value: "kafka.platform-observability:9092"
-    - name: Keycloak__Authority
-      value: "https://keycloak.yourdomain.tld/realms/partners"
-    - name: Keycloak__Audience
-      value: "kyc-onboarding-api"
+    # Keycloak authentication removed - using external auth services
     - name: MinIO__Endpoint
       value: "minio.platform-observability:9000"
     - name: MinIO__AccessKey

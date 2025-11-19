@@ -1,0 +1,85 @@
+// This file configures the initialization of Sentry on the client.
+// The config you add here will be used whenever a users loads a page in their browser.
+// https://docs.sentry.io/platforms/javascript/guides/nextjs/
+
+import * as Sentry from "@sentry/nextjs";
+
+Sentry.init({
+  dsn: process.env.NEXT_PUBLIC_SENTRY_DSN,
+  
+  // Adjust this value in production, or use tracesSampler for greater control
+  tracesSampleRate: process.env.NODE_ENV === "production" ? 0.1 : 1.0,
+  
+  // Setting this option to true will print useful information to the console while you're setting up Sentry.
+  debug: process.env.NODE_ENV === "development",
+  
+  // Enable capturing unhandled promise rejections
+  captureUnhandledRejections: true,
+  
+  // Enable capturing uncaught exceptions
+  captureUncaughtExceptions: true,
+  
+  // Set environment
+  environment: process.env.NODE_ENV || "development",
+  
+  // Release tracking
+  release: process.env.NEXT_PUBLIC_SENTRY_RELEASE,
+  
+  // Filter out certain errors
+  ignoreErrors: [
+    // Browser extensions
+    "top.GLOBALS",
+    "originalCreateNotification",
+    "canvas.contentDocument",
+    "MyApp_RemoveAllHighlights",
+    "atomicFindClose",
+    "fb_xd_fragment",
+    "bmi_SafeAddOnload",
+    "EBCallBackMessageReceived",
+    "conduitPage",
+    // Network errors that are expected
+    "NetworkError",
+    "Failed to fetch",
+    "Network request failed",
+    // Ignore specific error messages
+    "ResizeObserver loop limit exceeded",
+    "Non-Error promise rejection captured",
+  ],
+  
+  // Filter out certain URLs
+  denyUrls: [
+    // Chrome extensions
+    /extensions\//i,
+    /^chrome:\/\//i,
+    /^chrome-extension:\/\//i,
+  ],
+  
+  // Configure integrations
+  integrations: [
+    new Sentry.BrowserTracing({
+      // Set sampling rate for performance monitoring
+      tracePropagationTargets: ["localhost", /^https:\/\/.*\.mukuru\.com/],
+    }),
+    new Sentry.Replay({
+      // Set sampling rate for session replay
+      maskAllText: true,
+      blockAllMedia: true,
+    }),
+  ],
+  
+  // Before sending event to Sentry
+  beforeSend(event, hint) {
+    // Don't send events in development unless explicitly enabled
+    if (process.env.NODE_ENV === "development" && !process.env.NEXT_PUBLIC_SENTRY_ENABLED) {
+      return null;
+    }
+    
+    // Add additional context
+    if (event.user) {
+      // User context is already set
+    }
+    
+    return event;
+  },
+});
+

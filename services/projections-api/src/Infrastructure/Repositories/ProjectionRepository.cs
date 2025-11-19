@@ -1,5 +1,5 @@
 using ProjectionsApi.Application.Interfaces;
-using ProjectionsApi.Application.Queries;
+using ProjectionsApi.Domain;
 using ProjectionsApi.Domain.ReadModels;
 using ProjectionsApi.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
@@ -159,40 +159,40 @@ public class ProjectionRepository : IProjectionRepository
             PartnerId = partnerId ?? "ALL",
             Cases = new CaseStatistics
             {
-                TotalCases = result.total_cases,
-                ActiveCases = result.active_cases,
-                CompletedCases = result.completed_cases,
-                RejectedCases = result.rejected_cases,
-                PendingReviewCases = result.pending_review_cases,
-                OverdueCases = result.overdue_cases,
-                IndividualCases = result.individual_cases,
-                CorporateCases = result.corporate_cases,
-                TrustCases = result.trust_cases,
-                PartnershipCases = result.partnership_cases,
-                NewCasesThisMonth = result.new_cases_this_month,
-                NewCasesLastMonth = result.new_cases_last_month,
-                CompletedCasesThisMonth = result.completed_cases_this_month,
-                CompletedCasesLastMonth = result.completed_cases_last_month,
-                NewCasesGrowthPercentage = CalculateGrowthPercentage(result.new_cases_this_month, result.new_cases_last_month),
-                CompletedCasesGrowthPercentage = CalculateGrowthPercentage(result.completed_cases_this_month, result.completed_cases_last_month)
+                TotalCases = (int)(result.total_cases ?? 0),
+                ActiveCases = (int)(result.active_cases ?? 0),
+                CompletedCases = (int)(result.completed_cases ?? 0),
+                RejectedCases = (int)(result.rejected_cases ?? 0),
+                PendingReviewCases = (int)(result.pending_review_cases ?? 0),
+                OverdueCases = (int)(result.overdue_cases ?? 0),
+                IndividualCases = (int)(result.individual_cases ?? 0),
+                CorporateCases = (int)(result.corporate_cases ?? 0),
+                TrustCases = (int)(result.trust_cases ?? 0),
+                PartnershipCases = (int)(result.partnership_cases ?? 0),
+                NewCasesThisMonth = (int)(result.new_cases_this_month ?? 0),
+                NewCasesLastMonth = (int)(result.new_cases_last_month ?? 0),
+                CompletedCasesThisMonth = (int)(result.completed_cases_this_month ?? 0),
+                CompletedCasesLastMonth = (int)(result.completed_cases_last_month ?? 0),
+                NewCasesGrowthPercentage = CalculateGrowthPercentage((int)(result.new_cases_this_month ?? 0), (int)(result.new_cases_last_month ?? 0)),
+                CompletedCasesGrowthPercentage = CalculateGrowthPercentage((int)(result.completed_cases_this_month ?? 0), (int)(result.completed_cases_last_month ?? 0))
             },
             Performance = new PerformanceMetrics
             {
                 AverageCompletionTimeHours = result.avg_completion_time_hours ?? 0,
                 ApprovalRate = result.approval_rate ?? 0,
-                CompletionRate = result.total_cases > 0 ? (decimal)result.completed_cases / result.total_cases * 100 : 0
+                CompletionRate = (result.total_cases ?? 0) > 0 ? (decimal)(result.completed_cases ?? 0) / (decimal)(result.total_cases ?? 1) * 100 : 0
             },
             Risk = new RiskMetrics
             {
-                HighRiskCases = result.high_risk_cases,
-                MediumRiskCases = result.medium_risk_cases,
-                LowRiskCases = result.low_risk_cases,
-                AverageRiskScore = result.average_risk_score ?? 0,
-                CasesRequiringManualReview = result.cases_requiring_manual_review
+                HighRiskCases = (int)(result.high_risk_cases ?? 0),
+                MediumRiskCases = (int)(result.medium_risk_cases ?? 0),
+                LowRiskCases = (int)(result.low_risk_cases ?? 0),
+                AverageRiskScore = (decimal)(result.average_risk_score ?? 0),
+                CasesRequiringManualReview = (int)(result.cases_requiring_manual_review ?? 0)
             },
             Compliance = new ComplianceMetrics
             {
-                DocumentsAwaitingVerification = result.pending_review_cases // Simplified
+                DocumentsAwaitingVerification = (int)(result.pending_review_cases ?? 0) // Simplified
             },
             RecentActivities = recentActivities,
             DailyTrends = dailyTrends

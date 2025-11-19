@@ -6,7 +6,7 @@ namespace ComplianceRefresh;
 
 /// <summary>
 /// Compliance refresh background job
-/// Refreshes KYC/KYB checks based on risk tier and regulatory cadence
+/// Refreshes KYB checks based on risk tier and regulatory cadence
 /// </summary>
 public class ComplianceRefreshWorker
 {
@@ -82,7 +82,7 @@ public class ComplianceRefreshWorker
                 id, 
                 case_number, 
                 risk_tier, 
-                last_kyc_refresh_at,
+                last_kyb_refresh_at,
                 CASE 
                     WHEN risk_tier = 'high' THEN 90
                     WHEN risk_tier = 'medium' THEN 180
@@ -91,8 +91,8 @@ public class ComplianceRefreshWorker
             FROM onboarding.onboarding_cases
             WHERE status = 'Approved'
                 AND (
-                    last_kyc_refresh_at IS NULL
-                    OR last_kyc_refresh_at < CURRENT_DATE - INTERVAL '1 day' * 
+                    last_kyb_refresh_at IS NULL
+                    OR last_kyb_refresh_at < CURRENT_DATE - INTERVAL '1 day' * 
                         CASE 
                             WHEN risk_tier = 'high' THEN 90
                             WHEN risk_tier = 'medium' THEN 180
@@ -105,7 +105,7 @@ public class ComplianceRefreshWorker
                     WHEN 'medium' THEN 2
                     ELSE 3
                 END,
-                last_kyc_refresh_at NULLS FIRST
+                last_kyb_refresh_at NULLS FIRST
             LIMIT @BatchSize";
 
         await using var command = new NpgsqlCommand(sql, connection);
@@ -200,7 +200,7 @@ public class ComplianceRefreshWorker
         // Update last refresh timestamp
         var updateSql = @"
             UPDATE onboarding.onboarding_cases
-            SET last_kyc_refresh_at = @RefreshAt
+            SET last_kyb_refresh_at = @RefreshAt
             WHERE id = @Id";
 
         await using var updateCommand = new NpgsqlCommand(updateSql, connection);

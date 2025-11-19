@@ -9,8 +9,20 @@ public record SendMessageCommand(
     string SenderName,
     UserRole SenderRole,
     string Content,
-    Guid? ReceiverId = null
+    Guid? ReceiverId = null,
+    Guid? ReplyToMessageId = null,
+    IEnumerable<AttachmentInfo>? Attachments = null
 ) : IRequest<SendMessageResult>;
+
+public record AttachmentInfo(
+    string FileName,
+    string ContentType,
+    long FileSizeBytes,
+    string StorageKey,
+    string StorageUrl,
+    Guid? DocumentId = null,
+    string? Description = null
+);
 
 public record SendMessageResult
 {

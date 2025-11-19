@@ -78,15 +78,15 @@ data:
     <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>KYC Onboarding Platform</title>
+        <title>KYB Onboarding Platform</title>
         <script src="https://cdn.tailwindcss.com"></script>
     </head>
     <body class="bg-gray-100">
         <div class="min-h-screen flex items-center justify-center">
             <div class="max-w-md w-full bg-white rounded-lg shadow-md p-6">
                 <div class="text-center">
-                    <h1 class="text-3xl font-bold text-gray-900 mb-4">🏢 KYC Platform</h1>
-                    <p class="text-gray-600 mb-6">Corporate Digital Onboarding & KYC Platform</p>
+                    <h1 class="text-3xl font-bold text-gray-900 mb-4">🏢 KYB Platform</h1>
+                    <p class="text-gray-600 mb-6">Corporate Digital Onboarding & KYB Platform</p>
                     
                     <div class="space-y-4">
                         <div class="bg-green-50 border border-green-200 rounded-lg p-4">

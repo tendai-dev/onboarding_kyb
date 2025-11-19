@@ -10,6 +10,7 @@ public interface IRequirementRepository
     Task<List<Requirement>> GetByTypeAsync(RequirementType type, CancellationToken cancellationToken = default);
     Task AddAsync(Requirement requirement, CancellationToken cancellationToken = default);
     Task UpdateAsync(Requirement requirement, CancellationToken cancellationToken = default);
+    Task DeleteAsync(Requirement requirement, CancellationToken cancellationToken = default);
     Task DeleteAsync(Guid id, CancellationToken cancellationToken = default);
 }
 

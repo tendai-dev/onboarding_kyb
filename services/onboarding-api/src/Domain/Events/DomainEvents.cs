@@ -1,4 +1,5 @@
 using OnboardingApi.Domain.Aggregates;
+using OnboardingApi.Domain.ValueObjects;
 
 namespace OnboardingApi.Domain.Events;
 
@@ -34,13 +35,17 @@ public record OnboardingCaseCreatedEvent(
 
 /// <summary>
 /// Event raised when an onboarding case is submitted
+/// Includes metadata for downstream services (Work Queue, Risk, etc.)
 /// </summary>
 public record OnboardingCaseSubmittedEvent(
     Guid CaseId,
     string CaseNumber,
     OnboardingType Type,
     Guid PartnerId,
-    DateTime SubmittedAt
+    DateTime SubmittedAt,
+    Dictionary<string, string>? Metadata = null,
+    ApplicantDetails? Applicant = null,
+    BusinessDetails? Business = null
 ) : DomainEvent;
 
 /// <summary>

@@ -17,6 +17,9 @@ public class ChecklistItem
     public string? CompletedBy { get; private set; }
     public string? Notes { get; private set; }
     public string? SkipReason { get; private set; }
+    
+    // Navigation property for EF Core
+    public Checklist? Checklist { get; private set; }
 
     private ChecklistItem() { } // EF Core
 

@@ -26,6 +26,11 @@ public class Message
     // Message content
     public string Content { get; private set; } = string.Empty;
     public MessageType Type { get; private set; }
+    public Guid? ReplyToMessageId { get; private set; } // For reply functionality
+    
+    // Attachments
+    private readonly List<MessageAttachment> _attachments = new();
+    public IReadOnlyCollection<MessageAttachment> Attachments => _attachments.AsReadOnly();
     
     // Status
     public MessageStatus Status { get; private set; }
@@ -36,6 +41,7 @@ public class Message
     // Metadata
     public bool IsRead => ReadAt.HasValue;
     public bool IsDeleted => DeletedAt.HasValue;
+    public bool IsStarred { get; private set; } // For star functionality
     
     public IReadOnlyCollection<IDomainEvent> DomainEvents => _domainEvents.AsReadOnly();
     
@@ -49,10 +55,13 @@ public class Message
         UserRole senderRole,
         string content,
         Guid? receiverId = null,
-        string? receiverName = null)
+        string? receiverName = null,
+        Guid? replyToMessageId = null,
+        IEnumerable<MessageAttachment>? attachments = null)
     {
-        if (string.IsNullOrWhiteSpace(content))
-            throw new ArgumentException("Message content cannot be empty", nameof(content));
+        // Allow empty content if there are attachments
+        if (string.IsNullOrWhiteSpace(content) && (attachments == null || !attachments.Any()))
+            throw new ArgumentException("Message content cannot be empty if no attachments provided", nameof(content));
         
         if (content.Length > 5000)
             throw new ArgumentException("Message content cannot exceed 5000 characters", nameof(content));
@@ -67,11 +76,22 @@ public class Message
             SenderRole = senderRole,
             ReceiverId = receiverId,
             ReceiverName = receiverName,
-            Content = content,
+            Content = content ?? string.Empty,
+            ReplyToMessageId = replyToMessageId,
             Type = MessageType.Text,
             Status = MessageStatus.Sent,
-            SentAt = DateTime.UtcNow
+            SentAt = DateTime.UtcNow,
+            IsStarred = false
         };
+        
+        // Add attachments if provided
+        if (attachments != null)
+        {
+            foreach (var attachment in attachments)
+            {
+                message._attachments.Add(attachment);
+            }
+        }
         
         message.AddDomainEvent(new MessageSentEvent(
             message.Id,
@@ -83,6 +103,22 @@ public class Message
         ));
         
         return message;
+    }
+    
+    public void AddAttachment(MessageAttachment attachment)
+    {
+        if (attachment == null)
+            throw new ArgumentNullException(nameof(attachment));
+        
+        if (attachment.MessageId != Id)
+            throw new ArgumentException("Attachment must belong to this message", nameof(attachment));
+        
+        _attachments.Add(attachment);
+    }
+    
+    public void ToggleStar()
+    {
+        IsStarred = !IsStarred;
     }
     
     public void MarkAsRead(Guid readByUserId)
@@ -162,6 +198,8 @@ public class MessageThread
     
     // Status
     public bool IsActive { get; private set; }
+    public bool IsArchived { get; private set; } // For archive functionality
+    public bool IsStarred { get; private set; } // For star functionality
     public DateTime CreatedAt { get; private set; }
     public DateTime? ClosedAt { get; private set; }
     public DateTime LastMessageAt { get; private set; }
@@ -187,6 +225,8 @@ public class MessageThread
             ApplicantId = applicantId,
             ApplicantName = applicantName,
             IsActive = true,
+            IsArchived = false,
+            IsStarred = false,
             CreatedAt = DateTime.UtcNow,
             LastMessageAt = DateTime.UtcNow,
             MessageCount = 0,
@@ -227,6 +267,21 @@ public class MessageThread
     {
         IsActive = false;
         ClosedAt = DateTime.UtcNow;
+    }
+    
+    public void Archive()
+    {
+        IsArchived = true;
+    }
+    
+    public void Unarchive()
+    {
+        IsArchived = false;
+    }
+    
+    public void ToggleStar()
+    {
+        IsStarred = !IsStarred;
     }
 }
 

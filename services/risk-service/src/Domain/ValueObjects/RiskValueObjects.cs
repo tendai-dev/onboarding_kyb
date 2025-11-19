@@ -50,7 +50,7 @@ public enum RiskFactorType
     Geography,              // Country/jurisdiction risk
     Industry,               // Business sector risk
     TransactionPattern,     // Unusual transaction patterns
-    CustomerProfile,        // Customer behavior/profile
+    PartnerProfile,        // Partner behavior/profile
     DocumentRisk,           // Document authenticity/quality
     Other
 }

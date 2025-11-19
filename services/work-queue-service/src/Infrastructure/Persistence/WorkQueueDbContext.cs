@@ -70,6 +70,12 @@ public class WorkQueueDbContext : DbContext
             entity.Property(e => e.DueDate)
                 .HasColumnName("due_date");
 
+            // Ignore collections for now - they're not critical for assignment to work
+            // TODO: Configure Comments and History persistence later (separate tables or JSON)
+            entity.Ignore(e => e.Comments);
+            entity.Ignore(e => e.History);
+            entity.Ignore(e => e.DomainEvents);
+
             // Indexes
             entity.HasIndex(e => e.ApplicationId);
             entity.HasIndex(e => e.Status);

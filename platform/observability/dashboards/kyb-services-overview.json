@@ -1,0 +1,168 @@
+{
+  "dashboard": {
+    "title": "KYB Services Overview",
+    "tags": ["kyb", "microservices", "overview"],
+    "timezone": "UTC",
+    "schemaVersion": 16,
+    "version": 1,
+    "refresh": "30s",
+    "panels": [
+      {
+        "id": 1,
+        "title": "KYB Services Health Status",
+        "type": "stat",
+        "gridPos": {"h": 4, "w": 24, "x": 0, "y": 0},
+        "targets": [
+          {
+            "expr": "up{job=~\"kyb-.*\"}",
+            "legendFormat": "{{instance}}",
+            "refId": "A"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "mappings": [
+              {
+                "options": {
+                  "0": {"color": "red", "text": "DOWN"},
+                  "1": {"color": "green", "text": "UP"}
+                },
+                "type": "value"
+              }
+            ],
+            "thresholds": {
+              "steps": [
+                {"color": "red", "value": 0},
+                {"color": "green", "value": 1}
+              ]
+            }
+          }
+        }
+      },
+      {
+        "id": 2,
+        "title": "Request Rate by KYB Service",
+        "type": "graph",
+        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 4},
+        "targets": [
+          {
+            "expr": "sum(rate(http_requests_total{service=~\"kyb-.*\"}[5m])) by (service)",
+            "legendFormat": "{{service}}",
+            "refId": "A"
+          }
+        ],
+        "yaxes": [
+          {"format": "reqps", "label": "Requests/sec"},
+          {"format": "short"}
+        ],
+        "xaxis": {"mode": "time"}
+      },
+      {
+        "id": 3,
+        "title": "Error Rate by KYB Service",
+        "type": "graph",
+        "gridPos": {"h": 8, "w": 12, "x": 12, "y": 4},
+        "targets": [
+          {
+            "expr": "sum(rate(http_requests_total{service=~\"kyb-.*\",status=~\"5..\"}[5m])) by (service) / sum(rate(http_requests_total{service=~\"kyb-.*\"}[5m])) by (service) * 100",
+            "legendFormat": "{{service}}",
+            "refId": "A"
+          }
+        ],
+        "yaxes": [
+          {"format": "percent", "label": "Error %", "max": 10},
+          {"format": "short"}
+        ],
+        "xaxis": {"mode": "time"},
+        "alert": {
+          "conditions": [
+            {
+              "evaluator": {"params": [1], "type": "gt"},
+              "operator": {"type": "and"},
+              "query": {"params": ["A", "5m", "now"]},
+              "reducer": {"params": [], "type": "avg"},
+              "type": "query"
+            }
+          ],
+          "name": "High Error Rate Alert"
+        }
+      },
+      {
+        "id": 4,
+        "title": "Response Time P95 by KYB Service",
+        "type": "graph",
+        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 12},
+        "targets": [
+          {
+            "expr": "histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket{service=~\"kyb-.*\"}[5m])) by (service, le)) * 1000",
+            "legendFormat": "{{service}} P95",
+            "refId": "A"
+          }
+        ],
+        "yaxes": [
+          {"format": "ms", "label": "Response Time (ms)"},
+          {"format": "short"}
+        ],
+        "xaxis": {"mode": "time"}
+      },
+      {
+        "id": 5,
+        "title": "Active Connections by KYB Service",
+        "type": "graph",
+        "gridPos": {"h": 8, "w": 12, "x": 12, "y": 12},
+        "targets": [
+          {
+            "expr": "sum(go_goroutines{service=~\"kyb-.*\"}) by (service)",
+            "legendFormat": "{{service}}",
+            "refId": "A"
+          }
+        ],
+        "yaxes": [
+          {"format": "short", "label": "Goroutines"},
+          {"format": "short"}
+        ],
+        "xaxis": {"mode": "time"}
+      },
+      {
+        "id": 6,
+        "title": "KYB Service Status Table",
+        "type": "table",
+        "gridPos": {"h": 8, "w": 24, "x": 0, "y": 20},
+        "targets": [
+          {
+            "expr": "up{job=~\"kyb-.*\"}",
+            "format": "table",
+            "refId": "A"
+          }
+        ],
+        "columns": [
+          {"text": "Service", "value": "instance"},
+          {"text": "Status", "value": "Value"},
+          {"text": "Job", "value": "job"}
+        ],
+        "transformations": [
+          {
+            "id": "organize",
+            "options": {
+              "excludeByName": {"__name__": true, "Time": true},
+              "indexByName": {},
+              "renameByName": {
+                "instance": "Service",
+                "Value": "Status",
+                "job": "Job"
+              }
+            }
+          }
+        ]
+      }
+    ],
+    "time": {
+      "from": "now-1h",
+      "to": "now"
+    },
+    "timepicker": {
+      "refresh_intervals": ["5s", "10s", "30s", "1m", "5m", "15m", "30m", "1h", "2h", "1d"],
+      "time_options": ["5m", "15m", "1h", "6h", "12h", "24h", "2d", "7d", "30d"]
+    }
+  }
+}

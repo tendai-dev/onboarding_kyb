@@ -68,6 +68,20 @@ public class GetWorkItemsQueryHandler : IRequestHandler<GetWorkItemsQuery, Paged
             filtered = filtered.Where(w => w.DueDate < DateTime.UtcNow && w.Status != Domain.Aggregates.WorkItemStatus.Approved && w.Status != Domain.Aggregates.WorkItemStatus.Completed);
         }
 
+        // Apply search term filter
+        if (!string.IsNullOrWhiteSpace(request.SearchTerm))
+        {
+            var searchLower = request.SearchTerm.ToLower();
+            filtered = filtered.Where(w =>
+                w.WorkItemNumber.ToLower().Contains(searchLower) ||
+                w.ApplicantName.ToLower().Contains(searchLower) ||
+                w.EntityType.ToLower().Contains(searchLower) ||
+                w.Country.ToLower().Contains(searchLower) ||
+                w.ApplicationId.ToString().ToLower().Contains(searchLower) ||
+                (w.AssignedToName != null && w.AssignedToName.ToLower().Contains(searchLower))
+            );
+        }
+
         var totalCount = filtered.Count();
         
         // Apply pagination
@@ -368,6 +382,7 @@ public class GetItemsDueForRefreshQueryHandler : IRequestHandler<GetItemsDueForR
             DueDate = item.DueDate,
             IsOverdue = item.DueDate < DateTime.UtcNow && item.Status != Domain.Aggregates.WorkItemStatus.Approved && item.Status != Domain.Aggregates.WorkItemStatus.Completed,
             NextRefreshDate = item.NextRefreshDate,
+            LastRefreshedAt = item.LastRefreshedAt,
             RefreshCount = item.RefreshCount,
             CreatedAt = item.CreatedAt,
             UpdatedAt = item.UpdatedAt
@@ -380,6 +395,64 @@ public class GetItemsDueForRefreshQueryHandler : IRequestHandler<GetItemsDueForR
             Page = request.Page,
             PageSize = request.PageSize
         };
+    }
+}
+
+/// <summary>
+/// Handler for GetWorkItemHistoryQuery
+/// </summary>
+public class GetWorkItemHistoryQueryHandler : IRequestHandler<GetWorkItemHistoryQuery, List<WorkItemHistoryDto>>
+{
+    private readonly IWorkItemRepository _repository;
+
+    public GetWorkItemHistoryQueryHandler(IWorkItemRepository repository)
+    {
+        _repository = repository;
+    }
+
+    public async Task<List<WorkItemHistoryDto>> Handle(GetWorkItemHistoryQuery request, CancellationToken cancellationToken)
+    {
+        var workItem = await _repository.GetByIdAsync(request.WorkItemId, cancellationToken);
+        if (workItem == null)
+            return new List<WorkItemHistoryDto>();
+
+        return workItem.History.Select(h => new WorkItemHistoryDto
+        {
+            Id = h.Id,
+            Action = h.Action,
+            PerformedBy = h.PerformedBy,
+            PerformedAt = h.PerformedAt,
+            Status = WorkItemStatusMapper.MapStatusToApiString(h.Status)
+        }).ToList();
+    }
+}
+
+/// <summary>
+/// Handler for GetWorkItemCommentsQuery
+/// </summary>
+public class GetWorkItemCommentsQueryHandler : IRequestHandler<GetWorkItemCommentsQuery, List<WorkItemCommentDto>>
+{
+    private readonly IWorkItemRepository _repository;
+
+    public GetWorkItemCommentsQueryHandler(IWorkItemRepository repository)
+    {
+        _repository = repository;
+    }
+
+    public async Task<List<WorkItemCommentDto>> Handle(GetWorkItemCommentsQuery request, CancellationToken cancellationToken)
+    {
+        var workItem = await _repository.GetByIdAsync(request.WorkItemId, cancellationToken);
+        if (workItem == null)
+            return new List<WorkItemCommentDto>();
+
+        return workItem.Comments.Select(c => new WorkItemCommentDto
+        {
+            Id = c.Id,
+            Text = c.Text,
+            AuthorId = c.AuthorId,
+            AuthorName = c.AuthorName,
+            CreatedAt = c.CreatedAt
+        }).ToList();
     }
 }
 

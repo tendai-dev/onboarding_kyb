@@ -92,7 +92,7 @@ public class CurrentUser : ICurrentUser
                 if (realmAccess.Contains("admin")) roles.Add("admin");
                 if (realmAccess.Contains("reviewer")) roles.Add("reviewer");
                 if (realmAccess.Contains("approver")) roles.Add("approver");
-                if (realmAccess.Contains("customer")) roles.Add("customer");
+                if (realmAccess.Contains("partner")) roles.Add("partner");
             }
 
             return roles.Distinct();

@@ -1,0 +1,2 @@
+export declare const cardRecipe: import("@chakra-ui/react").SlotRecipeDefinition<"root" | "body" | "footer" | "header" | "title" | "description", import("@chakra-ui/react").SlotRecipeVariantRecord<"root" | "body" | "footer" | "header" | "title" | "description">>;
+//# sourceMappingURL=card.recipe.d.ts.map
