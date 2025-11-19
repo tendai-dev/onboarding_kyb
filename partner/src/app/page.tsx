@@ -17,8 +17,7 @@ import { motion, useScroll, useTransform, useInView } from "framer-motion";
 import { useRef, useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { startAuthorization } from "@/lib/auth/pkce";
-import { authConfig } from "@/config/auth";
+import { signIn } from "next-auth/react";
 // Removed: isAuthenticated import - using NextAuth session via useAuth() hook
 import { useAuth } from "@/contexts/AuthContext";
 import { 
@@ -232,7 +231,12 @@ export default function Home() {
               <motion.div variants={itemVariants}>
                   <MotionButton
                     onClick={async () => {
-                      await startAuthorization(authConfig, { register: true });
+                      // Use NextAuth signIn instead of legacy PKCE flow
+                      // NextAuth handles OAuth flow and token storage in Redis
+                      await signIn("keycloak", { 
+                        callbackUrl: "/partner/dashboard",
+                        redirect: true 
+                      });
                     }}
                     variant="solid"
                     size="xl"

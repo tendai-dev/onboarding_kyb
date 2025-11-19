@@ -1,12 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getToken } from 'next-auth/jwt';
-import { getTokenSession } from '@/lib/redis-session';
+import { getServerSession } from 'next-auth';
+import { authOptions } from '@/lib/auth';
 
-const ONBOARDING_API_BASE = process.env.ONBOARDING_API_BASE_URL || 'http://localhost:8001';
-const PROJECTIONS_API_BASE = process.env.PROJECTIONS_API_BASE_URL || 'http://localhost:8007';
 const ENTITY_CONFIG_API_BASE = process.env.NEXT_PUBLIC_ENTITY_CONFIG_API_BASE_URL || process.env.ENTITY_CONFIG_API_BASE_URL || 'http://localhost:8003';
 
-// Proxy to backend APIs - get tokens from Redis (not from client)
+/**
+ * Case details API route - routes through centralized proxy for BFF pattern
+ * All token handling is done by the proxy, ensuring sessionId never exposed to client
+ */
 export async function GET(
   request: NextRequest,
   { params }: { params: { id: string } }
@@ -21,133 +22,106 @@ export async function GET(
   const guidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
   const isGuid = guidRegex.test(id);
   
-  // SECURITY: Get user email from NextAuth session (not from headers)
-  // Try to get user info from session token
-  let userEmail = '';
-  let userPartnerId: string | null = null;
   try {
-    const token = await getToken({ req: request, secret: process.env.NEXTAUTH_SECRET });
-    if (token?.user) {
-      userEmail = (token.user as any).email || '';
+    const session = await getServerSession(authOptions);
+    
+    // Get user email from session for ownership validation
+    let userEmail = '';
+    let userPartnerId: string | null = null;
+    if (session?.user) {
+      userEmail = session.user.email || '';
     }
-  } catch (error) {
-    console.warn('Failed to get user from session:', error);
-  }
-  
-  // Fallback to headers if session doesn't have email (for compatibility)
-  if (!userEmail) {
-    userEmail = request.headers.get('X-User-Email') || 
-                request.headers.get('x-user-email') || 
-                '';
-  }
-  
-  // Generate partnerId from email if available (for ownership validation)
-  if (userEmail) {
-    // Use the same UUID v5 generation as frontend
-    const crypto = require('crypto');
-    const NAMESPACE_UUID = '6ba7b810-9dad-11d1-80b4-00c04fd430c8';
-    const namespaceBytes = Buffer.from(NAMESPACE_UUID.replace(/-/g, ''), 'hex');
-    const emailBytes = Buffer.from(userEmail.toLowerCase(), 'utf8');
-    const hash = crypto.createHash('sha1').update(Buffer.concat([namespaceBytes, emailBytes])).digest();
-    hash[6] = (hash[6] & 0x0f) | 0x50; // Version 5
-    hash[8] = (hash[8] & 0x3f) | 0x80; // Variant
-    userPartnerId = [
-      hash.toString('hex', 0, 4),
-      hash.toString('hex', 4, 6),
-      hash.toString('hex', 6, 8),
-      hash.toString('hex', 8, 10),
-      hash.toString('hex', 10, 16)
-    ].join('-');
-    console.log('[API Route] 👤 User identification:', { email: userEmail, partnerId: userPartnerId });
-  }
+    
+    // Fallback to headers if session doesn't have email (for compatibility)
+    if (!userEmail) {
+      userEmail = request.headers.get('X-User-Email') || 
+                  request.headers.get('x-user-email') || 
+                  '';
+    }
+    
+    // Generate partnerId from email if available (for ownership validation)
+    if (userEmail) {
+      // Use the same UUID v5 generation as frontend
+      const crypto = require('crypto');
+      const NAMESPACE_UUID = '6ba7b810-9dad-11d1-80b4-00c04fd430c8';
+      const namespaceBytes = Buffer.from(NAMESPACE_UUID.replace(/-/g, ''), 'hex');
+      const emailBytes = Buffer.from(userEmail.toLowerCase(), 'utf8');
+      const hash = crypto.createHash('sha1').update(Buffer.concat([namespaceBytes, emailBytes])).digest();
+      hash[6] = (hash[6] & 0x0f) | 0x50; // Version 5
+      hash[8] = (hash[8] & 0x3f) | 0x80; // Variant
+      userPartnerId = [
+        hash.toString('hex', 0, 4),
+        hash.toString('hex', 4, 6),
+        hash.toString('hex', 6, 8),
+        hash.toString('hex', 8, 10),
+        hash.toString('hex', 10, 16)
+      ].join('-');
+      console.log('[API Route] 👤 User identification:', { email: userEmail, partnerId: userPartnerId });
+    }
 
-  // Try Projections API first (has more complete data), then fallback to Onboarding API
-  let targetUrl: string;
-  if (isGuid) {
-    targetUrl = `${PROJECTIONS_API_BASE}/api/v1/cases/${id}`;
-  } else {
-    // For case numbers, try by-number endpoint
-    targetUrl = `${PROJECTIONS_API_BASE}/api/v1/cases/by-number/${encodeURIComponent(id)}`;
-  }
+    // Build headers
+    const headers: HeadersInit = {
+      'Content-Type': 'application/json',
+    };
 
-  // Build headers
-  const headers: Record<string, string> = {
-    'Content-Type': 'application/json',
-  };
-
-  // SECURITY: Get token from Redis (not from client request)
-  let accessToken: string | null = null;
-  try {
-    const token = await getToken({ req: request, secret: process.env.NEXTAUTH_SECRET });
-    if (token?.sessionId) {
-      const tokenSession = await getTokenSession(token.sessionId as string);
-      if (tokenSession) {
-        // Check if token needs refresh (within 60 seconds of expiry)
-        if (tokenSession.accessTokenExpiryTime && Date.now() < tokenSession.accessTokenExpiryTime - 60 * 1000) {
-          accessToken = tokenSession.accessToken;
-        } else {
-          // Token expired or expiring soon - use it anyway and let backend handle 401
-          accessToken = tokenSession.accessToken;
-        }
+    // Add user identification headers (proxy will inject token from Redis)
+    if (session?.user) {
+      const user = session.user as any;
+      if (user.email) headers['X-User-Email'] = user.email;
+      if (user.name) headers['X-User-Name'] = user.name;
+      if (user.id) headers['X-User-Id'] = user.id;
+    }
+    
+    // Forward user identification headers from request
+    const userHeaders = ['X-User-Id', 'X-User-Email', 'X-User-Name', 'X-User-Role'];
+    for (const headerName of userHeaders) {
+      const value = request.headers.get(headerName) || request.headers.get(headerName.toLowerCase());
+      if (value) {
+        headers[headerName] = value;
       }
     }
-  } catch (error) {
-    console.warn('Failed to get token from session:', error);
-    // Continue without token - backend will return 401 if auth required
-  }
 
-  // Inject Authorization header from Redis-stored token (do NOT forward from client)
-  if (accessToken) {
-    headers['Authorization'] = `Bearer ${accessToken}`;
-  }
-
-  // Forward development headers for authentication middleware
-  const userHeaders = ['X-User-Id', 'X-User-Email', 'X-User-Name', 'X-User-Role'];
-  for (const headerName of userHeaders) {
-    const value = request.headers.get(headerName) || request.headers.get(headerName.toLowerCase());
-    if (value) {
-      headers[headerName] = value;
+    // Try Projections API first via proxy
+    let proxyPath: string;
+    if (isGuid) {
+      proxyPath = `/api/proxy/projections/v1/cases/${id}`;
+    } else {
+      // For case numbers, try by-number endpoint
+      proxyPath = `/api/proxy/projections/v1/cases/by-number/${encodeURIComponent(id)}`;
     }
-  }
-  
-  // In development mode, add test headers if not present and no auth token from Redis
-  if (process.env.NODE_ENV === 'development') {
-    headers['X-User-Id'] = 'test-user-id';
-    headers['X-User-Email'] = 'tendai@kurasika.tech';
-    headers['X-User-Name'] = 'Test User';
-    headers['X-User-Role'] = 'Partner';
-    // Override with test auth token if none provided from Redis
-    if (!accessToken) {
-      headers['Authorization'] = 'Bearer development-token';
-    }
-  }
-
-  try {
+    
+    const proxyUrl = new URL(proxyPath, request.url);
+    
     // Add timeout to prevent hanging requests
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
     
     try {
-      // Try Projections API first
-      let response = await fetch(targetUrl, { 
+      // Try Projections API first via proxy (proxy handles token from httpOnly cookie)
+      let response = await fetch(proxyUrl.toString(), { 
+        method: 'GET',
         headers,
+        cache: 'no-store',
         signal: controller.signal 
       });
       
       clearTimeout(timeoutId);
       
-      // If Projections API returns 404, try Onboarding API as fallback
+      // If Projections API returns 404, try Onboarding API as fallback via proxy
       if (response.status === 404) {
-        const onboardingUrl = isGuid
-          ? `${ONBOARDING_API_BASE}/api/v1/cases/${id}`
-          : `${ONBOARDING_API_BASE}/api/v1/cases/by-number/${encodeURIComponent(id)}`;
+        const onboardingProxyPath = isGuid
+          ? `/api/proxy/api/v1/cases/${id}`
+          : `/api/proxy/api/v1/cases/by-number/${encodeURIComponent(id)}`;
         
+        const onboardingProxyUrl = new URL(onboardingProxyPath, request.url);
         const onboardingController = new AbortController();
         const onboardingTimeoutId = setTimeout(() => onboardingController.abort(), 10000);
         
         try {
-          response = await fetch(onboardingUrl, { 
+          response = await fetch(onboardingProxyUrl.toString(), { 
+            method: 'GET',
             headers,
+            cache: 'no-store',
             signal: onboardingController.signal 
           });
           clearTimeout(onboardingTimeoutId);
@@ -368,12 +342,8 @@ export async function GET(
       
       return NextResponse.json({
         error: 'Backend service unavailable',
-        details: `Cannot connect to backend services at ${PROJECTIONS_API_BASE} or ${ONBOARDING_API_BASE}. Please ensure they are running.`,
+        details: `Cannot connect to backend services. Please ensure they are running.`,
         originalError: errorMessage,
-        serviceUrls: {
-          projectionsApi: PROJECTIONS_API_BASE,
-          onboardingApi: ONBOARDING_API_BASE
-        }
       }, { status: 503 });
     }
     
