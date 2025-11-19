@@ -70,6 +70,21 @@ public class OnboardingCaseProjection
     public bool HasComplianceIssues { get; set; }
     public string? ComplianceNotes { get; set; }
     
+    // Dynamic Fields - Metadata from Entity Configuration Service (JSON)
+    public string MetadataJson { get; set; } = string.Empty;
+    
+    // Business Information (for KYB cases)
+    public string BusinessLegalName { get; set; } = string.Empty;
+    public string BusinessRegistrationNumber { get; set; } = string.Empty;
+    public string BusinessTaxId { get; set; } = string.Empty;
+    public string BusinessCountryOfRegistration { get; set; } = string.Empty;
+    public string BusinessAddress { get; set; } = string.Empty;
+    public string BusinessCity { get; set; } = string.Empty;
+    public string BusinessIndustry { get; set; } = string.Empty;
+    public int? BusinessNumberOfEmployees { get; set; }
+    public decimal? BusinessAnnualRevenue { get; set; }
+    public string BusinessWebsite { get; set; } = string.Empty;
+    
     // Calculated Properties for Frontend
     public string StatusBadgeColor => Status switch
     {
