@@ -287,9 +287,11 @@ export const authOptions: NextAuthOptions = {
     },
     async session({ session, token }) {
       try {
-        // DO NOT expose accessToken to frontend - only user info
+        // DO NOT expose accessToken or sessionId to frontend - BFF pattern
+        // sessionId is stored in httpOnly JWT cookie only, never exposed to client-side JS
         session.user = token.user as any;
         session.error = token.error as string | undefined;
+        // session.sessionId is REMOVED - sessionId only exists in httpOnly JWT cookie
         // session.accessToken is removed - tokens are only in Redis
         
         // Log session creation for debugging

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getToken } from 'next-auth/jwt';
-import { getTokenSession } from '@/lib/redis-session';
+import { getTokenSession, storeTokenSession } from '@/lib/redis-session';
 
 const DEFAULT_TARGET = process.env.PROXY_TARGET || 'http://localhost:8090';
 const MESSAGING_TARGET = process.env.PROXY_TARGET_MESSAGING || process.env.MESSAGING_TARGET || 'http://localhost:8087';
@@ -52,6 +52,25 @@ function resolveUpstream(pathname: string, search: string) {
     return `${PROJECTIONS_TARGET}${afterProxy}${search}`;
   }
 
+  // Route /api/v1/risk-assessments to risk service
+  if (afterProxy.startsWith('/api/v1/risk-assessments') || afterProxy.startsWith('/risk-assessments')) {
+    const riskPath = afterProxy.replace('/api/v1', '');
+    return `${RISK_TARGET}/api/v1${riskPath}${search}`;
+  }
+
+  // Route /api/v1/entitytypes, /api/v1/requirements, /api/v1/wizardconfigurations to entity config service
+  if (afterProxy.startsWith('/api/v1/entitytypes') || 
+      afterProxy.startsWith('/api/v1/requirements') || 
+      afterProxy.startsWith('/api/v1/wizardconfigurations')) {
+    return `${ENTITY_CONFIG_TARGET}${afterProxy}${search}`;
+  }
+
+  // Route /projections/v1 to projections API
+  if (afterProxy.startsWith('/projections/v1')) {
+    const trimmed = afterProxy.replace('/projections/v1', '/api/v1');
+    return `${PROJECTIONS_TARGET}${trimmed}${search}`;
+  }
+
   return `${DEFAULT_TARGET}${afterProxy}${search}`;
 }
 
@@ -65,20 +84,64 @@ async function forward(req: NextRequest) {
 
   const headers: Record<string, string> = {};
   
-  // Get NextAuth session token from cookie
+  // Get NextAuth session token from httpOnly cookie (BFF pattern)
+  // sessionId is stored in JWT cookie, never exposed to client-side JS
   let accessToken: string | null = null;
   try {
     const token = await getToken({ req, secret: process.env.NEXTAUTH_SECRET });
     if (token?.sessionId) {
-      // Fetch tokens from Redis using sessionId
+      // Fetch tokens from Redis using sessionId from httpOnly JWT cookie
       const tokenSession = await getTokenSession(token.sessionId as string);
       if (tokenSession) {
         // Check if token needs refresh (within 60 seconds of expiry)
-        if (tokenSession.accessTokenExpiryTime && Date.now() < tokenSession.accessTokenExpiryTime - 60 * 1000) {
-          accessToken = tokenSession.accessToken;
+        const needsRefresh = !tokenSession.accessTokenExpiryTime || 
+                            Date.now() >= tokenSession.accessTokenExpiryTime - 60 * 1000;
+        
+        if (needsRefresh && tokenSession.refreshToken) {
+          // Token expired or expiring soon - refresh it automatically
+          try {
+            const tokenUrl = process.env.KEYCLOAK_TOKEN_URL || 
+                           'https://keycloak-staging.app-stg.mukuru.io/realms/mukuru/protocol/openid-connect/token';
+            
+            const refreshResponse = await fetch(tokenUrl, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+              },
+              body: new URLSearchParams({
+                client_id: process.env.KEYCLOAK_CLIENT_ID || 'kyb-connect-portal',
+                grant_type: 'refresh_token',
+                refresh_token: tokenSession.refreshToken,
+                client_secret: process.env.KEYCLOAK_CLIENT_SECRET || '',
+              }),
+            });
+
+            if (refreshResponse.ok) {
+              const refreshedTokens = await refreshResponse.json();
+              const newAccessToken = refreshedTokens.access_token;
+              const newRefreshToken = refreshedTokens.refresh_token ?? tokenSession.refreshToken;
+              const newExpiryTime = Date.now() + (refreshedTokens.expires_in * 1000);
+
+              // Update Redis with new tokens
+              await storeTokenSession(token.sessionId, {
+                ...tokenSession,
+                accessToken: newAccessToken,
+                refreshToken: newRefreshToken,
+                accessTokenExpiryTime: newExpiryTime,
+              });
+
+              accessToken = newAccessToken;
+            } else {
+              // Refresh failed - use existing token and let backend handle 401
+              accessToken = tokenSession.accessToken;
+            }
+          } catch (refreshError) {
+            // Refresh failed - use existing token
+            console.warn('[Proxy] Token refresh failed:', refreshError);
+            accessToken = tokenSession.accessToken;
+          }
         } else {
-          // Token expired or expiring soon - would need refresh logic here
-          // For now, use the token anyway and let backend handle 401
+          // Token still valid
           accessToken = tokenSession.accessToken;
         }
       }
