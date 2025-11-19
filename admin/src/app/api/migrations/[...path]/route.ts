@@ -1,13 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
-import { getServerAccessToken } from '@/lib/get-server-token';
 
-// Use onboarding API URL (port 8001) for migrations
-const ONBOARDING_API_BASE_URL = process.env.ONBOARDING_API_BASE_URL || 
-                                 process.env.NEXT_PUBLIC_ONBOARDING_API_BASE_URL ||
-                                 'http://127.0.0.1:8001';
-
+/**
+ * Migration API route - routes through centralized proxy for BFF pattern
+ * All token handling is done by the proxy, ensuring sessionId never exposed to client
+ */
 async function forwardRequest(
   request: NextRequest,
   method: string,
@@ -16,38 +14,25 @@ async function forwardRequest(
   try {
     const session = await getServerSession(authOptions);
     
-    // Get access token from Redis (not from session)
-    const accessToken = await getServerAccessToken(request);
-
     // Get the path segments from route params or pathname
     const pathSegments = params?.path || [];
     const searchParams = request.nextUrl.searchParams;
     const queryString = searchParams.toString();
     
     // Build the service path
-    // If pathSegments is empty, we're at /api/migrations (root)
-    // Otherwise, join the segments with '/'
     let servicePath = '';
     if (pathSegments.length > 0) {
       servicePath = '/' + pathSegments.join('/');
     }
     
-    const url = `${ONBOARDING_API_BASE_URL}/api/v1/migrations${servicePath}${queryString ? `?${queryString}` : ''}`;
-    
-    console.log(`[Migration API] ${method} ${url}`, {
-      pathSegments,
-      servicePath,
-      hasAuth: !!accessToken
-    });
+    // Build proxy URL - proxy will handle token injection and refresh
+    const proxyPath = `/api/proxy/api/v1/migrations${servicePath}${queryString ? `?${queryString}` : ''}`;
+    const proxyUrl = new URL(proxyPath, request.url);
     
     // Prepare headers
     const headers: HeadersInit = {};
 
-    // Add Azure AD token from Redis if available
-    if (accessToken) {
-      headers['Authorization'] = `Bearer ${accessToken}`;
-    }
-
+    // Add user identification headers (proxy will inject token from Redis)
     if (session?.user) {
       const user = session.user as any;
       if (user.email) headers['X-User-Email'] = user.email;
@@ -73,7 +58,8 @@ async function forwardRequest(
       }
     }
     
-    const response = await fetch(url, {
+    // Forward request through proxy (proxy handles token from httpOnly cookie)
+    const response = await fetch(proxyUrl.toString(), {
       method,
       headers,
       body,

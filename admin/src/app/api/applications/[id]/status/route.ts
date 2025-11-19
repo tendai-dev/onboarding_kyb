@@ -1,9 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
-import { getServerAccessToken } from '@/lib/get-server-token';
 
-const ONBOARDING_API_BASE = process.env.ONBOARDING_API_BASE_URL || 'http://localhost:8001';
+/**
+ * Application Status API route - routes through centralized proxy for BFF pattern
+ * All token handling is done by the proxy, ensuring sessionId never exposed to client
+ */
 
 // Proxy to update application status
 export async function PUT(
@@ -25,20 +27,12 @@ export async function PUT(
       return NextResponse.json({ error: 'Status is required' }, { status: 400 });
     }
 
-    // Get access token from Redis (not from session)
-    const accessToken = await getServerAccessToken(request);
-
     // Build headers
-    const headers: Record<string, string> = {
+    const headers: HeadersInit = {
       'Content-Type': 'application/json',
     };
 
-    // Add Azure AD token from Redis if available
-    if (accessToken) {
-      headers['Authorization'] = `Bearer ${accessToken}`;
-    }
-
-    // Forward development headers for authentication middleware
+    // Add user identification headers (proxy will inject token from Redis)
     if (session?.user) {
       const user = session.user as any;
       if (user.email) headers['X-User-Email'] = user.email;
@@ -55,10 +49,11 @@ export async function PUT(
     if (!isGuid) {
       // It's a caseId, need to find the GUID
       try {
-        const PROJECTIONS_API_BASE = process.env.PROJECTIONS_API_BASE_URL || 'http://localhost:8007';
-        const searchUrl = `${PROJECTIONS_API_BASE}/api/v1/cases?searchTerm=${encodeURIComponent(id)}&take=1`;
+        // Route through proxy
+        const searchPath = `/api/proxy/projections/v1/cases?searchTerm=${encodeURIComponent(id)}&take=1`;
+        const searchUrl = new URL(searchPath, request.url);
         
-        const searchResponse = await fetch(searchUrl, {
+        const searchResponse = await fetch(searchUrl.toString(), {
           method: 'GET',
           headers,
           cache: 'no-store',
@@ -94,27 +89,27 @@ export async function PUT(
     
     const backendStatus = statusMap[status] || status;
 
-    // Use appropriate endpoint based on status
-    let url: string;
+    // Use appropriate endpoint based on status - route through proxy
+    let proxyPath: string;
     let requestBody: any;
 
     if (backendStatus === 'Approved') {
       // Use approve endpoint
-      url = `${ONBOARDING_API_BASE}/api/v1/cases/${caseGuid}/approve`;
+      proxyPath = `/api/proxy/api/v1/cases/${caseGuid}/approve`;
       requestBody = {
         approvedBy: session?.user?.email || session?.user?.name || 'system',
         notes: notes || ''
       };
     } else if (backendStatus === 'Rejected') {
       // Use reject endpoint
-      url = `${ONBOARDING_API_BASE}/api/v1/cases/${caseGuid}/reject`;
+      proxyPath = `/api/proxy/api/v1/cases/${caseGuid}/reject`;
       requestBody = {
         rejectedBy: session?.user?.email || session?.user?.name || 'system',
         reason: reason || notes || 'No reason provided'
       };
     } else {
       // Use status update endpoint
-      url = `${ONBOARDING_API_BASE}/api/v1/cases/${caseGuid}/status`;
+      proxyPath = `/api/proxy/api/v1/cases/${caseGuid}/status`;
       requestBody = {
         status: backendStatus,
         updatedBy: session?.user?.email || session?.user?.name || 'system',
@@ -123,7 +118,8 @@ export async function PUT(
       };
     }
 
-    const response = await fetch(url, {
+    const proxyUrl = new URL(proxyPath, request.url);
+    const response = await fetch(proxyUrl.toString(), {
       method: 'PUT',
       headers,
       body: JSON.stringify(requestBody),

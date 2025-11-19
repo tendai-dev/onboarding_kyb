@@ -1,10 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
-import { getServerAccessToken } from '@/lib/get-server-token';
 
-const PROJECTIONS_API_BASE = process.env.PROJECTIONS_API_BASE_URL || 'http://localhost:8007';
-const ONBOARDING_API_BASE = process.env.ONBOARDING_API_BASE_URL || 'http://localhost:8001';
+/**
+ * Application Details API route - routes through centralized proxy for BFF pattern
+ * All token handling is done by the proxy, ensuring sessionId never exposed to client
+ */
 
 // Proxy to backend APIs to get full application details
 export async function GET(
@@ -20,49 +21,31 @@ export async function GET(
   try {
     const session = await getServerSession(authOptions);
     
-    // Get access token from Redis (not from session)
-    const accessToken = await getServerAccessToken(request);
-    
     // Build headers
-    const headers: Record<string, string> = {
+    const headers: HeadersInit = {
       'Content-Type': 'application/json',
     };
 
-    // Add Azure AD token from Redis if available
-    if (accessToken) {
-      headers['Authorization'] = `Bearer ${accessToken}`;
-    }
-
-    // Forward development headers for authentication middleware
-    const userHeaders = ['X-User-Id', 'X-User-Email', 'X-User-Name', 'X-User-Role'];
-    for (const headerName of userHeaders) {
-      const value = request.headers.get(headerName) || request.headers.get(headerName.toLowerCase());
-      if (value) {
-        headers[headerName] = value;
-      } else if (session?.user) {
-        const user = session.user as any;
-        if (headerName === 'X-User-Email' && user.email) headers[headerName] = user.email;
-        if (headerName === 'X-User-Name' && user.name) headers[headerName] = user.name;
-        if (headerName === 'X-User-Id' && user.id) headers[headerName] = user.id;
-        if (headerName === 'X-User-Role' && user.role) headers[headerName] = user.role;
-      }
+    // Add user identification headers (proxy will inject token from Redis)
+    if (session?.user) {
+      const user = session.user as any;
+      if (user.email) headers['X-User-Email'] = user.email;
+      if (user.name) headers['X-User-Name'] = user.name;
+      if (user.id) headers['X-User-Id'] = user.id;
+      if (user.role) headers['X-User-Role'] = user.role;
     }
 
     // Try to get by GUID first (if id is a GUID format)
     const isGuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
     
-    // First, try projections API (read model - faster, but might not be synced yet)
-    if (isGuid) {
-      // Try direct GET by ID first (projections API searches by caseId, not GUID)
-      // So we'll skip this and go to search
-    }
-
     // Use the projections API search endpoint which works for both caseId and GUID
-    const searchUrl = `${PROJECTIONS_API_BASE}/api/v1/cases?searchTerm=${encodeURIComponent(id)}&take=10`;
+    // Route through proxy
+    const searchPath = `/api/proxy/projections/v1/cases?searchTerm=${encodeURIComponent(id)}&take=10`;
+    const searchUrl = new URL(searchPath, request.url);
     
-    console.log(`[Admin Application Details] Searching projections API: ${searchUrl}`);
+    console.log(`[Admin Application Details] Searching projections API via proxy: ${searchUrl}`);
 
-    let response = await fetch(searchUrl, {
+    let response = await fetch(searchUrl.toString(), {
       method: 'GET',
       headers,
       cache: 'no-store',
@@ -106,10 +89,12 @@ export async function GET(
     // This handles cases where the projection hasn't synced yet
     if (isGuid) {
       try {
-        console.log(`[Admin Application Details] Not found in projections, trying onboarding API: ${ONBOARDING_API_BASE}/api/v1/cases/${id}`);
+        console.log(`[Admin Application Details] Not found in projections, trying onboarding API via proxy: /api/proxy/api/v1/cases/${id}`);
         
-        const onboardingUrl = `${ONBOARDING_API_BASE}/api/v1/cases/${id}`;
-        const onboardingResponse = await fetch(onboardingUrl, {
+        // Route through proxy
+        const onboardingPath = `/api/proxy/api/v1/cases/${id}`;
+        const onboardingUrl = new URL(onboardingPath, request.url);
+        const onboardingResponse = await fetch(onboardingUrl.toString(), {
           method: 'GET',
           headers,
           cache: 'no-store',

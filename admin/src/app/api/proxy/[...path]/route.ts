@@ -28,7 +28,7 @@ function resolveUpstream(pathname: string, search: string) {
   }
 
   if (afterProxy.startsWith('/projections/v1')) {
-    const trimmed = afterProxy.replace('/projections/v1', '');
+    const trimmed = afterProxy.replace('/projections/v1', '/api/v1');
     return `${PROJECTIONS_TARGET}${trimmed}${search}`;
   }
   

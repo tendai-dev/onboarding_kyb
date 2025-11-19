@@ -1,44 +1,38 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
-import { getServerAccessToken } from '@/lib/get-server-token';
 
-// Use 127.0.0.1 instead of localhost for better Node.js compatibility
-const PROJECTIONS_API_BASE_URL = process.env.PROJECTIONS_API_BASE_URL || process.env.NEXT_PUBLIC_PROJECTIONS_API_BASE_URL || 'http://127.0.0.1:8007';
-
+/**
+ * Trends API route - routes through centralized proxy for BFF pattern
+ * All token handling is done by the proxy, ensuring sessionId never exposed to client
+ */
 export async function GET(request: NextRequest) {
   try {
-    // Get the session for user info
     const session = await getServerSession(authOptions);
-    
-    // Get access token from Redis (not from session)
-    const accessToken = await getServerAccessToken(request);
-
     const searchParams = request.nextUrl.searchParams;
     const partnerId = searchParams.get('partnerId');
     const days = searchParams.get('days') || '7';
     
-    const url = `${PROJECTIONS_API_BASE_URL}/api/v1/trends${partnerId ? `?partnerId=${partnerId}` : ''}`;
+    // Build proxy URL - proxy will handle token injection and refresh
+    const proxyPath = `/api/proxy/projections/v1/trends${partnerId ? `?partnerId=${partnerId}` : ''}`;
+    const proxyUrl = new URL(proxyPath, request.url);
     
-    // Prepare headers with authentication token
+    // Prepare headers
     const headers: HeadersInit = {
       'Content-Type': 'application/json',
     };
 
-    // Add Azure AD token from Redis if available
-    if (accessToken) {
-      headers['Authorization'] = `Bearer ${accessToken}`;
-    }
-
-    // Forward user identification headers if available
+    // Add user identification headers (proxy will inject token from Redis)
     if (session?.user) {
       const user = session.user as any;
       if (user.email) headers['X-User-Email'] = user.email;
       if (user.name) headers['X-User-Name'] = user.name;
       if (user.id) headers['X-User-Id'] = user.id;
+      if (user.role) headers['X-User-Role'] = user.role;
     }
     
-    const response = await fetch(url, {
+    // Forward request through proxy (proxy handles token from httpOnly cookie)
+    const response = await fetch(proxyUrl.toString(), {
       method: 'GET',
       headers,
       cache: 'no-store',

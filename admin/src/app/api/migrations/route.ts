@@ -1,38 +1,25 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
-import { getServerAccessToken } from '@/lib/get-server-token';
 
-// Use onboarding API URL (port 8001) for migrations
-const ONBOARDING_API_BASE_URL = process.env.ONBOARDING_API_BASE_URL || 
-                                 process.env.NEXT_PUBLIC_ONBOARDING_API_BASE_URL ||
-                                 'http://127.0.0.1:8001';
-
+/**
+ * Migration API route - routes through centralized proxy for BFF pattern
+ * All token handling is done by the proxy, ensuring sessionId never exposed to client
+ */
 async function forwardRequest(request: NextRequest, method: string) {
   try {
     const session = await getServerSession(authOptions);
-    
-    // Get access token from Redis (not from session)
-    const accessToken = await getServerAccessToken(request);
-
     const searchParams = request.nextUrl.searchParams;
     const queryString = searchParams.toString();
     
-    // Root path: /api/migrations -> /api/v1/migrations
-    const url = `${ONBOARDING_API_BASE_URL}/api/v1/migrations${queryString ? `?${queryString}` : ''}`;
-    
-    console.log(`[Migration API] ${method} ${url}`, {
-      hasAuth: !!accessToken
-    });
+    // Build proxy URL - proxy will handle token injection and refresh
+    const proxyPath = `/api/proxy/api/v1/migrations${queryString ? `?${queryString}` : ''}`;
+    const proxyUrl = new URL(proxyPath, request.url);
     
     // Prepare headers
     const headers: HeadersInit = {};
 
-    // Add Azure AD token from Redis if available
-    if (accessToken) {
-      headers['Authorization'] = `Bearer ${accessToken}`;
-    }
-
+    // Add user identification headers (proxy will inject token from Redis)
     if (session?.user) {
       const user = session.user as any;
       if (user.email) headers['X-User-Email'] = user.email;
@@ -58,7 +45,8 @@ async function forwardRequest(request: NextRequest, method: string) {
       }
     }
     
-    const response = await fetch(url, {
+    // Forward request through proxy (proxy handles token from httpOnly cookie)
+    const response = await fetch(proxyUrl.toString(), {
       method,
       headers,
       body,
@@ -94,7 +82,7 @@ async function forwardRequest(request: NextRequest, method: string) {
       return NextResponse.json(
         { 
           error: 'Backend service unavailable', 
-          details: `Cannot connect to ${ONBOARDING_API_BASE_URL}/api/v1/migrations. Please ensure the onboarding API service is running on port 8001.`,
+          details: `Cannot connect to migrations API. Please ensure the onboarding API service is running.`,
           originalError: errorMessage
         },
         { status: 503 }
