@@ -37,7 +37,8 @@ Sentry.init({
   
   // Configure integrations
   integrations: [
-    new Sentry.Integrations.Http({ tracing: true }),
+    // Http integration is automatically included in @sentry/nextjs
+    // No need to manually add it
   ],
   
   // Before sending event to Sentry

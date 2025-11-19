@@ -72,6 +72,60 @@ builder.Services.AddDbContext<OnboardingDbContext>(options =>
 });
 
 // ========================================
+// Audit Module Database Context
+// ========================================
+builder.Services.AddDbContext<OnboardingApi.Infrastructure.Persistence.Audit.AuditLogDbContext>(options =>
+{
+    options.UseNpgsql(
+        builder.Configuration.GetConnectionString("PostgreSQL") ?? builder.Configuration.GetConnectionString("AuditLog:PostgreSQL"),
+        npgsqlOptions =>
+        {
+            npgsqlOptions.EnableRetryOnFailure(
+                maxRetryCount: 5,
+                maxRetryDelay: TimeSpan.FromSeconds(10),
+                errorCodesToAdd: null);
+            // Use audit schema
+            npgsqlOptions.MigrationsHistoryTable("__EFMigrationsHistory", "audit");
+        });
+});
+
+// ========================================
+// Checklist Module Database Context
+// ========================================
+builder.Services.AddDbContext<OnboardingApi.Infrastructure.Persistence.Checklist.ChecklistDbContext>(options =>
+{
+    options.UseNpgsql(
+        builder.Configuration.GetConnectionString("PostgreSQL") ?? builder.Configuration.GetConnectionString("Checklist:PostgreSQL"),
+        npgsqlOptions =>
+        {
+            npgsqlOptions.EnableRetryOnFailure(
+                maxRetryCount: 5,
+                maxRetryDelay: TimeSpan.FromSeconds(10),
+                errorCodesToAdd: null);
+            // Use checklist schema
+            npgsqlOptions.MigrationsHistoryTable("__EFMigrationsHistory", "checklist");
+        });
+});
+
+// ========================================
+// Notification Module Database Context
+// ========================================
+builder.Services.AddDbContext<OnboardingApi.Infrastructure.Persistence.Notification.NotificationDbContext>(options =>
+{
+    options.UseNpgsql(
+        builder.Configuration.GetConnectionString("PostgreSQL") ?? builder.Configuration.GetConnectionString("Notification:PostgreSQL"),
+        npgsqlOptions =>
+        {
+            npgsqlOptions.EnableRetryOnFailure(
+                maxRetryCount: 5,
+                maxRetryDelay: TimeSpan.FromSeconds(10),
+                errorCodesToAdd: null);
+            // Use notification schema
+            npgsqlOptions.MigrationsHistoryTable("__EFMigrationsHistory", "notification");
+        });
+});
+
+// ========================================
 // Redis (Cache + Idempotency)
 // ========================================
 builder.Services.AddSingleton<IConnectionMultiplexer>(sp =>
@@ -95,6 +149,26 @@ builder.Services.AddSingleton<IEventBus, KafkaEventBus>();
 builder.Services.AddScoped<IOnboardingCaseRepository, OnboardingCaseRepository>();
 builder.Services.AddScoped<OnboardingApi.Application.Commands.IApplicationRepository, OnboardingApi.Infrastructure.Persistence.Repositories.ApplicationRepository>();
 builder.Services.AddScoped<OnboardingApi.Application.Commands.IEventPublisher, OnboardingApi.Infrastructure.EventBus.EventPublisherAdapter>();
+
+// ========================================
+// Audit Module Repositories
+// ========================================
+builder.Services.AddScoped<OnboardingApi.Application.Audit.Interfaces.IAuditLogRepository, OnboardingApi.Infrastructure.Persistence.Audit.AuditLogRepository>();
+
+// ========================================
+// Checklist Module Repositories & Services
+// ========================================
+builder.Services.AddScoped<OnboardingApi.Application.Checklist.Interfaces.IChecklistRepository, OnboardingApi.Infrastructure.Persistence.Checklist.ChecklistRepository>();
+builder.Services.AddScoped<OnboardingApi.Application.Checklist.Interfaces.IChecklistTemplateService, OnboardingApi.Infrastructure.Services.ChecklistTemplateService>();
+
+// ========================================
+// Notification Module Repositories & Services
+// ========================================
+builder.Services.AddScoped<OnboardingApi.Application.Notification.Interfaces.INotificationRepository, OnboardingApi.Infrastructure.Persistence.Notification.NotificationRepository>();
+builder.Services.AddScoped<OnboardingApi.Application.Notification.Interfaces.INotificationSender, OnboardingApi.Infrastructure.Services.NotificationSender>();
+builder.Services.AddScoped<OnboardingApi.Application.Notification.Interfaces.IEmailSender, OnboardingApi.Infrastructure.Services.EmailSender>();
+builder.Services.AddScoped<OnboardingApi.Application.Notification.Interfaces.ISmsSender, OnboardingApi.Infrastructure.Services.SmsSender>();
+builder.Services.AddScoped<OnboardingApi.Application.Notification.Interfaces.INotificationService, OnboardingApi.Infrastructure.Services.NotificationServiceImpl>();
 
 // ========================================
 // HTTP Client Factory
@@ -126,6 +200,12 @@ builder.Services.AddStackExchangeRedisCache(options =>
 builder.Services.AddMediatR(cfg =>
 {
     cfg.RegisterServicesFromAssembly(typeof(OnboardingApi.Application.Commands.CreateOnboardingCaseCommand).Assembly);
+    // Register Audit module handlers
+    cfg.RegisterServicesFromAssembly(typeof(OnboardingApi.Application.Audit.Commands.CreateAuditLogEntryCommand).Assembly);
+    // Register Checklist module handlers
+    cfg.RegisterServicesFromAssembly(typeof(OnboardingApi.Application.Checklist.Commands.CreateChecklistCommand).Assembly);
+    // Register Notification module handlers
+    cfg.RegisterServicesFromAssembly(typeof(OnboardingApi.Application.Notification.Commands.SendNotificationCommand).Assembly);
 });
 
 // Pipeline behaviors
@@ -311,6 +391,45 @@ try
 catch (Exception ex)
 {
     Log.Error(ex, "Onboarding database migration failed: {Error}", ex.Message);
+    throw;
+}
+
+// Audit module database migration
+var auditContext = scope.ServiceProvider.GetRequiredService<OnboardingApi.Infrastructure.Persistence.Audit.AuditLogDbContext>();
+try
+{
+    await auditContext.Database.EnsureCreatedAsync();
+    Log.Information("Audit log database migration completed successfully");
+}
+catch (Exception ex)
+{
+    Log.Error(ex, "Audit log database migration failed: {Error}", ex.Message);
+    throw;
+}
+
+// Checklist module database migration
+var checklistContext = scope.ServiceProvider.GetRequiredService<OnboardingApi.Infrastructure.Persistence.Checklist.ChecklistDbContext>();
+try
+{
+    await checklistContext.Database.EnsureCreatedAsync();
+    Log.Information("Checklist database migration completed successfully");
+}
+catch (Exception ex)
+{
+    Log.Error(ex, "Checklist database migration failed: {Error}", ex.Message);
+    throw;
+}
+
+// Notification module database migration
+var notificationContext = scope.ServiceProvider.GetRequiredService<OnboardingApi.Infrastructure.Persistence.Notification.NotificationDbContext>();
+try
+{
+    await notificationContext.Database.EnsureCreatedAsync();
+    Log.Information("Notification database migration completed successfully");
+}
+catch (Exception ex)
+{
+    Log.Error(ex, "Notification database migration failed: {Error}", ex.Message);
     throw;
 }
 

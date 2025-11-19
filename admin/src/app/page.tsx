@@ -28,7 +28,29 @@ export default function AdminLoginPage() {
 
   useEffect(() => {
     if (status === "authenticated" && session) {
-      router.push("/dashboard");
+      // Check for callbackUrl in query params, otherwise default to dashboard
+      const urlParams = new URLSearchParams(window.location.search);
+      const callbackUrl = urlParams.get('callbackUrl');
+      
+      if (callbackUrl) {
+        try {
+          const decodedUrl = decodeURIComponent(callbackUrl);
+          // If it's a full URL, extract the path
+          if (decodedUrl.startsWith('http://') || decodedUrl.startsWith('https://')) {
+            const url = new URL(decodedUrl);
+            router.push(url.pathname + url.search);
+          } else {
+            // It's already a path
+            router.push(decodedUrl);
+          }
+        } catch (e) {
+          // If URL parsing fails, just use the decoded string as path
+          router.push(decodeURIComponent(callbackUrl));
+        }
+      } else {
+        router.push('/dashboard');
+      }
+      return;
     }
     
     // Check for error in URL parameters (from NextAuth error redirect)

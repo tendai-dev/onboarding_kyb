@@ -55,16 +55,10 @@ Sentry.init({
   ],
   
   // Configure integrations
+  // BrowserTracing and Replay are automatically included in @sentry/nextjs
+  // No need to manually configure them unless using custom settings
   integrations: [
-    new Sentry.BrowserTracing({
-      // Set sampling rate for performance monitoring
-      tracePropagationTargets: ["localhost", /^https:\/\/.*\.mukuru\.com/],
-    }),
-    new Sentry.Replay({
-      // Set sampling rate for session replay
-      maskAllText: true,
-      blockAllMedia: true,
-    }),
+    // Integrations are automatically configured by @sentry/nextjs
   ],
   
   // Before sending event to Sentry
