@@ -573,11 +573,83 @@ export default function ApplicationDetailsPage() {
   };
 
   // Handle edit toggle with save functionality
-  const handleEditToggle = () => {
+  const handleEditToggle = async () => {
     if (isEditing) {
       // If currently editing, save the changes
-      console.log('Saving form data:', formData);
-      // TODO: Call backend API to save the application data
+      setSaving(true);
+      try {
+        const applicationId = params.id as string;
+        if (!applicationId) {
+          throw new Error('Application ID is required');
+        }
+
+        // Determine if it's a GUID or case number
+        const guidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+        const isGuid = guidRegex.test(applicationId);
+        
+        // Build the update payload from form data
+        const updatePayload: any = {
+          metadata: formData,
+        };
+
+        // If we have structured data, include it
+        if (formData.applicantFirstName || formData.applicantLastName) {
+          updatePayload.applicant = {
+            first_name: formData.applicantFirstName,
+            last_name: formData.applicantLastName,
+            email: formData.applicantEmail || application?.rawData?.applicantEmail,
+            phone_number: formData.applicantPhone || application?.rawData?.applicantPhone,
+          };
+        }
+
+        if (formData.businessLegalName) {
+          updatePayload.business = {
+            legal_name: formData.businessLegalName,
+            registration_number: formData.businessRegistrationNumber,
+            tax_id: formData.businessTaxId,
+          };
+        }
+
+        // Call backend API to update the application
+        const endpoint = isGuid 
+          ? `/api/proxy/api/v1/cases/${applicationId}`
+          : `/api/proxy/api/v1/cases/by-number/${encodeURIComponent(applicationId)}`;
+        
+        const response = await fetch(endpoint, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          credentials: 'include',
+          body: JSON.stringify(updatePayload),
+        });
+
+        if (!response.ok) {
+          const errorText = await response.text();
+          throw new Error(errorText || `Failed to save application: ${response.status}`);
+        }
+
+        const updatedData = await response.json();
+        
+        // Update local state with the response
+        if (updatedData) {
+          setApplication((prev: any) => ({
+            ...prev,
+            ...updatedData,
+            metadata: { ...prev?.metadata, ...formData },
+            rawData: { ...prev?.rawData, ...updatePayload.applicant, ...updatePayload.business },
+          }));
+        }
+
+        await SweetAlert.success('Application Updated', 'Your application has been saved successfully!');
+        setIsEditing(false);
+      } catch (err) {
+        console.error('Error saving application:', err);
+        const errorMessage = err instanceof Error ? err.message : 'Failed to save application. Please try again.';
+        await SweetAlert.error('Save Failed', errorMessage);
+      } finally {
+        setSaving(false);
+      }
     } else {
       // If not editing, enter edit mode
       setIsEditing(true);

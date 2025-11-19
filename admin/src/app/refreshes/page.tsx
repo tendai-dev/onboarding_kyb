@@ -29,6 +29,7 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import AdminSidebar from "../../components/AdminSidebar";
 import { workQueueApi, WorkItemDto } from "../../lib/workQueueApi";
+import { SweetAlert } from "../../utils/sweetAlert";
 
 interface Refresh {
   id: string;
@@ -789,14 +790,27 @@ export default function RefreshesPage() {
                   onClick={async () => {
                     setSavingSettings(true);
                     try {
-                      // TODO: Save settings to backend when API is available
-                      // await refreshSettingsApi.saveSettings(settings);
-                      await new Promise(resolve => setTimeout(resolve, 500)); // Simulate API call
-                      alert('Refresh settings saved successfully!');
+                      // Save refresh settings to backend via API proxy
+                      const response = await fetch('/api/proxy/api/v1/refresh-settings', {
+                        method: 'PUT',
+                        headers: {
+                          'Content-Type': 'application/json',
+                        },
+                        credentials: 'include',
+                        body: JSON.stringify(settings),
+                      });
+
+                      if (!response.ok) {
+                        const errorText = await response.text();
+                        throw new Error(errorText || `Failed to save settings: ${response.status}`);
+                      }
+
+                      await SweetAlert.success('Settings Saved', 'Refresh settings have been saved successfully!');
                       setSettingsModalOpen(false);
                     } catch (err) {
                       console.error('Error saving settings:', err);
-                      alert('Failed to save settings. Please try again.');
+                      const errorMessage = err instanceof Error ? err.message : 'Failed to save settings. Please try again.';
+                      await SweetAlert.error('Save Failed', errorMessage);
                     } finally {
                       setSavingSettings(false);
                     }
