@@ -1,2 +1,0 @@
-import{defineSlotRecipe as r}from"@chakra-ui/react";import{cardAnatomy as a}from"@chakra-ui/react/anatomy";const e=r({slots:a.keys(),className:"mukuru-card",base:{root:{fontFamily:"'Madera', 'Helvetica Neue', 'Arial', sans-serif",fontWeight:"400",fontSize:"14px",lineHeight:"22px",width:"352px",height:"165px",px:"33px",py:"32px",borderRadius:"20px",border:"1px solid rgba(151, 151, 151, 0.30)",_hover:{boxShadow:"0px 8px 12px 8px #DFDFDF60",cursor:"pointer"}}}});export{e as cardRecipe};
-//# sourceMappingURL=card.recipe.js.map

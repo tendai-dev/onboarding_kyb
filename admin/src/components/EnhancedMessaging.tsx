@@ -6,7 +6,6 @@ import {
   HStack,
   Text,
   Button,
-  Input,
   Textarea,
   Badge,
   Flex,
@@ -23,6 +22,7 @@ import {
   Checkbox,
   SimpleGrid
 } from "@chakra-ui/react";
+import { Search } from "@/lib/mukuruImports";
 import { useState, useEffect, useRef } from "react";
 import {
   FiSend,
@@ -287,17 +287,12 @@ export function EnhancedMessaging({
             
             {/* Search and Filters */}
             <VStack gap="2" align="stretch">
-              <HStack>
-                <Input
+              <Box flex="1" maxW="300px">
+                <Search
                   placeholder="Search conversations..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  size="sm"
+                  onSearchChange={(query) => setSearchTerm(query)}
                 />
-                <Button size="sm" variant="outline">
-                  <Icon as={FiSearch} />
-                </Button>
-              </HStack>
+              </Box>
               
               <HStack gap="2">
                 <select

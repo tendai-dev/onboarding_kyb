@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth';
+import { auth } from '@/lib/auth';
 
 /**
  * Work Queue API route - routes through centralized proxy for BFF pattern
@@ -8,14 +7,14 @@ import { authOptions } from '@/lib/auth';
  */
 async function forwardRequest(request: NextRequest, method: string) {
   try {
-    const session = await getServerSession(authOptions);
+    const session = await auth();
     const pathname = request.nextUrl.pathname;
     const pathAfterWorkqueue = pathname.replace('/api/workqueue', '') || '';
     const searchParams = request.nextUrl.searchParams;
     const queryString = searchParams.toString();
     
     // Build proxy URL - proxy will handle token injection and refresh
-    const proxyPath = `/api/proxy/api/workqueue${pathAfterWorkqueue}${queryString ? `?${queryString}` : ''}`;
+    const proxyPath = `/api/proxy/api/v1/workqueue${pathAfterWorkqueue}${queryString ? `?${queryString}` : ''}`;
     const proxyUrl = new URL(proxyPath, request.url);
     
     // Prepare headers

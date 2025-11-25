@@ -4,13 +4,11 @@ import {
   Box, 
   VStack, 
   HStack,
-  Text,
   SimpleGrid,
   Flex,
-  Input,
-  Spinner,
-  Icon
+  Spinner
 } from "@chakra-ui/react";
+import { Search, Typography, Input, IconWrapper } from "@/lib/mukuruImports";
 import { useState, useEffect, useCallback } from "react";
 import AdminSidebar from "../../components/AdminSidebar";
 import { FiSearch, FiTrendingUp, FiShield, FiAlertCircle } from "react-icons/fi";
@@ -27,7 +25,6 @@ export default function AuditLogPage() {
   });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [searchDebounceTimer, setSearchDebounceTimer] = useState<NodeJS.Timeout | null>(null);
 
   // Calculate summary statistics from audit events
   const calculateSummary = useCallback((events: AuditLogEntryDto[]) => {
@@ -102,23 +99,8 @@ export default function AuditLogPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Debounced search
-  useEffect(() => {
-    if (searchDebounceTimer) {
-      clearTimeout(searchDebounceTimer);
-    }
-
-    const timer = setTimeout(() => {
-      fetchAuditLogs(searchTerm);
-    }, 500); // 500ms debounce
-
-    setSearchDebounceTimer(timer);
-
-    return () => {
-      if (timer) clearTimeout(timer);
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [searchTerm]);
+  // Search changes are handled by Search component's onSearchChange callback
+  // No need for manual debouncing - Search component handles it internally
 
   // Helper function to get action color based on action type
   const getActionColor = (action: string) => {
@@ -145,7 +127,7 @@ export default function AuditLogPage() {
       <Box flex="1" ml="240px">
         {/* Top Header */}
         <Box bg="white" borderBottom="1px" borderColor="gray.200" py="4" px="6" boxShadow="sm">
-          <Text fontSize="xl" fontWeight="bold" color="gray.900">Audit Log</Text>
+          <Typography fontSize="xl" fontWeight="bold" color="gray.900">Audit Log</Typography>
         </Box>
 
         {/* Main Content Area */}
@@ -157,35 +139,18 @@ export default function AuditLogPage() {
                 <VStack align="start" gap="2">
                   <HStack gap="2">
                     <FiShield size={20} color="#374151" />
-                    <Text fontSize="xl" fontWeight="bold" color="gray.900">Audit Trail</Text>
+                    <Typography fontSize="xl" fontWeight="bold" color="gray.900">Audit Trail</Typography>
                   </HStack>
-                  <Text fontSize="md" color="gray.600" fontWeight="medium">Complete history of all system activities and changes</Text>
+                  <Typography fontSize="md" color="gray.600" fontWeight="medium">Complete history of all system activities and changes</Typography>
                 </VStack>
                 
                 {/* Search Bar */}
-                <Box position="relative" width="300px">
-                  <FiSearch 
-                    size={16}
-                    color="#9CA3AF"
-                    style={{
-                      position: "absolute",
-                      left: "12px",
-                      top: "50%",
-                      transform: "translateY(-50%)",
-                      zIndex: 1
-                    }}
-                  />
-                  <Input
+                <Box width="300px">
+                  <Search
                     placeholder="Search audit events..."
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    bg="white"
-                    border="1px"
-                    borderColor="gray.300"
-                    pl="10"
-                    _focus={{
-                      borderColor: "orange.500",
-                      boxShadow: "0 0 0 1px orange.500"
+                    onSearchChange={(query) => {
+                      setSearchTerm(query);
+                      fetchAuditLogs(query);
                     }}
                   />
                 </Box>
@@ -208,8 +173,8 @@ export default function AuditLogPage() {
                         <FiTrendingUp size={20} color="#3182ce" />
                       </Box>
                       <VStack align="start" gap="1">
-                        <Text fontSize="3xl" fontWeight="bold" color="gray.900">{auditSummary.totalEvents}</Text>
-                        <Text fontSize="sm" color="gray.600" fontWeight="medium">Total Events</Text>
+                        <Typography fontSize="3xl" fontWeight="bold" color="gray.900">{auditSummary.totalEvents}</Typography>
+                        <Typography fontSize="sm" color="gray.600" fontWeight="medium">Total Events</Typography>
                       </VStack>
                     </HStack>
                   </VStack>
@@ -231,8 +196,8 @@ export default function AuditLogPage() {
                         <FiTrendingUp size={20} color="#38a169" />
                       </Box>
                       <VStack align="start" gap="1">
-                        <Text fontSize="3xl" fontWeight="bold" color="green.500">{auditSummary.created}</Text>
-                        <Text fontSize="sm" color="gray.600" fontWeight="medium">Created</Text>
+                        <Typography fontSize="3xl" fontWeight="bold" color="green.500">{auditSummary.created}</Typography>
+                        <Typography fontSize="sm" color="gray.600" fontWeight="medium">Created</Typography>
                       </VStack>
                     </HStack>
                   </VStack>
@@ -254,8 +219,8 @@ export default function AuditLogPage() {
                         <FiTrendingUp size={20} color="#dd6b20" />
                       </Box>
                       <VStack align="start" gap="1">
-                        <Text fontSize="3xl" fontWeight="bold" color="orange.500">{auditSummary.updated}</Text>
-                        <Text fontSize="sm" color="gray.600" fontWeight="medium">Updated</Text>
+                        <Typography fontSize="3xl" fontWeight="bold" color="orange.500">{auditSummary.updated}</Typography>
+                        <Typography fontSize="sm" color="gray.600" fontWeight="medium">Updated</Typography>
                       </VStack>
                     </HStack>
                   </VStack>
@@ -277,8 +242,8 @@ export default function AuditLogPage() {
                         <FiTrendingUp size={20} color="#805ad5" />
                       </Box>
                       <VStack align="start" gap="1">
-                        <Text fontSize="3xl" fontWeight="bold" color="purple.500">{auditSummary.approved}</Text>
-                        <Text fontSize="sm" color="gray.600" fontWeight="medium">Approved</Text>
+                        <Typography fontSize="3xl" fontWeight="bold" color="purple.500">{auditSummary.approved}</Typography>
+                        <Typography fontSize="sm" color="gray.600" fontWeight="medium">Approved</Typography>
                       </VStack>
                     </HStack>
                   </VStack>
@@ -289,8 +254,8 @@ export default function AuditLogPage() {
             {/* Activity Log Section */}
             <Box>
               <VStack align="start" gap="2" mb="6">
-                <Text fontSize="2xl" fontWeight="bold" color="gray.800">Activity Log</Text>
-                <Text fontSize="lg" color="gray.600">Append-only record of all actions performed in the system</Text>
+                <Typography fontSize="2xl" fontWeight="bold" color="gray.800">Activity Log</Typography>
+                <Typography fontSize="lg" color="gray.600">Append-only record of all actions performed in the system</Typography>
               </VStack>
               
               <Box bg="white" borderRadius="lg" boxShadow="sm" border="1px" borderColor="gray.200" overflow="hidden">
@@ -310,7 +275,7 @@ export default function AuditLogPage() {
                   <Box p="8" display="flex" justifyContent="center">
                     <VStack gap="2">
                       <Spinner size="md" color="orange.500" />
-                      <Text color="gray.600" fontSize="sm">Loading audit logs...</Text>
+                      <Typography color="gray.600" fontSize="sm">Loading audit logs...</Typography>
                     </VStack>
                   </Box>
                 ) : error ? (
@@ -323,17 +288,17 @@ export default function AuditLogPage() {
                       p="4"
                     >
                       <HStack gap="2">
-                        <Icon as={FiAlertCircle} boxSize="5" color="red.600" />
+                        <IconWrapper><FiAlertCircle size={20} color="#E53E3E" /></IconWrapper>
                         <VStack align="start" gap="1" flex="1">
-                          <Text fontWeight="semibold" color="red.700">Error loading audit logs</Text>
-                          <Text fontSize="sm" color="red.600">{error}</Text>
+                          <Typography fontWeight="semibold" color="red.700">Error loading audit logs</Typography>
+                          <Typography fontSize="sm" color="red.600">{error}</Typography>
                         </VStack>
                       </HStack>
                     </Box>
                   </Box>
                 ) : auditEvents.length === 0 ? (
                   <Box p="8" textAlign="center">
-                    <Text color="gray.500">No audit log entries found.</Text>
+                    <Typography color="gray.500">No audit log entries found.</Typography>
                   </Box>
                 ) : (
                   <VStack gap="0" align="stretch">
@@ -349,18 +314,18 @@ export default function AuditLogPage() {
                         >
                           <HStack gap="4" fontSize="sm">
                             <Box width="200px">
-                              <Text color="gray.600">
+                              <Typography color="gray.600">
                                 {new Date(event.timestamp).toLocaleString()}
-                              </Text>
+                              </Typography>
                             </Box>
                             <Box width="200px">
-                              <Text color="gray.800" fontWeight="medium">
+                              <Typography color="gray.800" fontWeight="medium">
                                 {getUserDisplayName(event)}
-                              </Text>
+                              </Typography>
                               {event.userRole && (
-                                <Text color="gray.500" fontSize="xs">
+                                <Typography color="gray.500" fontSize="xs">
                                   {event.userRole}
-                                </Text>
+                                </Typography>
                               )}
                             </Box>
                             <Box width="150px">
@@ -378,12 +343,12 @@ export default function AuditLogPage() {
                               </Box>
                             </Box>
                             <Box width="100px">
-                              <Text color="gray.600">{event.entityType}</Text>
+                              <Typography color="gray.600">{event.entityType}</Typography>
                             </Box>
                             <Box width="100px">
-                              <Text color="gray.600" fontFamily="mono" fontSize="xs">
+                              <Typography color="gray.600" fontFamily="mono" fontSize="xs">
                                 {event.entityId}
-                              </Text>
+                              </Typography>
                             </Box>
                           </HStack>
                         </Box>

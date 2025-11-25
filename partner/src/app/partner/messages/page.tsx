@@ -23,7 +23,7 @@ import { getMyThreads, getThreadMessages, sendMessage, markMessageRead, getUnrea
 import { signalRService } from "@/lib/signalRService";
 import { uploadFileToDocumentService } from "@/lib/documentUpload";
 
-const MotionBox = motion(Box);
+const MotionBox = motion.create(Box);
 
 export default function CustomerMessagesPage() {
   const [currentUserName, setCurrentUserName] = useState<string>("User");
@@ -192,8 +192,11 @@ export default function CustomerMessagesPage() {
           signalRService.disconnect();
         };
       } catch (error) {
-        console.error('[Partner Messages] Failed to connect SignalR:', error);
+        // SignalR is optional - messaging will work without real-time updates
+        console.warn('[Partner Messages] SignalR not available (non-critical):', error);
+        console.warn('[Partner Messages] Messaging will work without real-time updates');
         setSignalRConnected(false);
+        // Continue - messaging page works without SignalR
       }
     };
 
@@ -272,6 +275,12 @@ export default function CustomerMessagesPage() {
           }
         }
       } catch (e) {
+        // Log error details for debugging
+        console.error('[Messages] Error loading threads:', e);
+        if (e instanceof Error) {
+          console.error('[Messages] Error message:', e.message);
+          console.error('[Messages] Error stack:', e.stack);
+        }
         // Keep empty state on error
         setConversations([]);
       }
@@ -408,7 +417,12 @@ export default function CustomerMessagesPage() {
       try {
         const r = await getUnreadCount();
         if (active) setUnreadTotal(r.count ?? 0);
-      } catch {}
+      } catch (error) {
+        console.error('[Messages] Failed to refresh unread count:', error);
+        if (error instanceof Error) {
+          console.error('[Messages] Error details:', error.message);
+        }
+      }
     };
     refreshUnread();
     const id = setInterval(refreshUnread, 10000);

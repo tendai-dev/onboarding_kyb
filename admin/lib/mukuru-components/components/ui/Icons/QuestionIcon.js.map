@@ -1,1 +1,0 @@
-{"version":3,"file":"QuestionIcon.js","sources":["../../../../src/components/ui/Icons/QuestionIcon.tsx"],"sourcesContent":[null],"names":["QuestionIcon","props","_jsx","width","height","viewBox","fill","xmlns","children","d"],"mappings":"8CAEaA,EAA0BC,GACrCC,SACEC,MAAM,KACNC,OAAO,KACPC,QAAQ,YACRC,KAAK,OACLC,MAAM,gCACFN,EAAKO,SAETN,EAAA,OAAA,CACEO,EAAE,wgDACFH,KAAK"}

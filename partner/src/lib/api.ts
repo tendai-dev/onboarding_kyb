@@ -46,7 +46,7 @@ export type DashboardSummary = {
 // Route via Next.js proxy to avoid CORS
 // Proxy will automatically inject tokens from Redis based on session cookie
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE || "http://localhost:3000/api/proxy";
-const MESSAGING_PREFIX = "/messaging"; // handled in proxy route to target messaging service
+const MESSAGING_PREFIX = "/api/v1"; // Messaging is part of unified onboarding-api
 
 // Tokens are no longer accessed from localStorage - proxy handles authentication
 
@@ -137,21 +137,32 @@ async function apiRequest<T>(
   // DO NOT set Authorization header - proxy will inject it from Redis
   // All requests must include credentials to send session cookie
   // Try to get user info from NextAuth session for user identification headers
+  // These headers are critical for backend to identify the user
   try {
     const response = await fetch('/api/auth/session');
-    const session = await response.json();
-    if (session?.user) {
-      headers["X-User-Name"] = session.user.name || session.user.email || "Partner User";
-      headers["X-User-Role"] = "Applicant";
-      if (session.user.email) {
-        headers["X-User-Email"] = session.user.email;
-        // Generate a consistent GUID from email for user identification
-        const userId = generateUserIdFromEmail(session.user.email);
-        headers["X-User-Id"] = userId;
+    if (response.ok) {
+      const session = await response.json();
+      if (session?.user) {
+        headers["X-User-Name"] = session.user.name || session.user.email || "Partner User";
+        headers["X-User-Role"] = "Applicant";
+        if (session.user.email) {
+          headers["X-User-Email"] = session.user.email;
+          // Generate a consistent GUID from email for user identification
+          const userId = generateUserIdFromEmail(session.user.email);
+          headers["X-User-Id"] = userId;
+          console.log('[API] User headers set:', { 
+            email: session.user.email, 
+            userId,
+            name: headers["X-User-Name"]
+          });
+        }
       }
+    } else {
+      console.warn('[API] Failed to get session:', response.status, response.statusText);
     }
-  } catch {
-    // Ignore if auth session not available
+  } catch (error) {
+    // Log error but continue - backend will handle missing headers
+    console.warn('[API] Error fetching session for user headers:', error);
   }
   
   const fetchOptions: RequestInit = {
@@ -251,8 +262,8 @@ async function apiDelete<T>(path: string): Promise<T> {
 
 export async function getDashboard(partnerId?: string): Promise<DashboardSummary> {
   const qs = partnerId ? `?partnerId=${encodeURIComponent(partnerId)}` : "";
-  // Align with gateway mapping: /projections/v1 -> projections service root
-  return apiGet<DashboardSummary>(`/projections/v1/api/v1/dashboard${qs}`);
+  // Backend route: /api/v1/projections/dashboard
+  return apiGet<DashboardSummary>(`/api/v1/projections/dashboard${qs}`);
 }
 
 export async function findUserCaseByEmail(email: string): Promise<UserCase | null> {
@@ -290,7 +301,7 @@ export async function findUserCaseByEmail(email: string): Promise<UserCase | nul
       metadataJson?: string;
       businessLegalName?: string;
       businessCountryOfRegistration?: string;
-    }> }>(`/projections/v1/api/v1/cases?${params.toString()}`);
+    }> }>(`/api/v1/projections/cases?${params.toString()}`);
     
     // Filter results to ensure they match the user's email and partner ID
     // This provides an extra layer of security in case the API doesn't filter correctly
@@ -464,7 +475,7 @@ export async function getCaseById(caseId: string): Promise<UserCase | null> {
       metadataJson?: string;
       businessLegalName?: string;
       businessCountryOfRegistration?: string;
-    }>(`/projections/v1/api/v1/cases/${encodeURIComponent(caseId)}`);
+    }>(`/api/v1/projections/cases/${encodeURIComponent(caseId)}`);
     
     // Map to UserCase format with metadata
     return {
@@ -535,7 +546,7 @@ export type PagedResult<T> = {
 
 export async function getMyThreads(page = 1, pageSize = 20) {
   const qs = new URLSearchParams({ page: String(page), pageSize: String(pageSize) }).toString();
-  return apiGet<PagedResult<MessageThreadDto>>(`${MESSAGING_PREFIX}/api/v1/messages/threads/my?${qs}`);
+  return apiGet<PagedResult<MessageThreadDto>>(`${MESSAGING_PREFIX}/messages/threads/my?${qs}`);
 }
 
 export async function getThreadByApplication(applicationId: string) {
@@ -549,7 +560,7 @@ export async function getThreadByApplication(applicationId: string) {
       const caseData = await apiGet<{
         id: string;
         caseId: string;
-      }>(`/projections/v1/api/v1/cases/${encodeURIComponent(applicationId)}`);
+      }>(`/api/v1/projections/cases/${encodeURIComponent(applicationId)}`);
       
       if (caseData?.id) {
         applicationGuid = caseData.id;
@@ -562,12 +573,12 @@ export async function getThreadByApplication(applicationId: string) {
     }
   }
   
-  return apiGet<MessageThreadDto>(`${MESSAGING_PREFIX}/api/v1/messages/threads/application/${encodeURIComponent(applicationGuid)}`);
+  return apiGet<MessageThreadDto>(`${MESSAGING_PREFIX}/messages/threads/application/${encodeURIComponent(applicationGuid)}`);
 }
 
 export async function getThreadMessages(threadId: string, page = 1, pageSize = 50) {
   const qs = new URLSearchParams({ page: String(page), pageSize: String(pageSize) }).toString();
-  return apiGet<PagedResult<MessageDto>>(`${MESSAGING_PREFIX}/api/v1/messages/threads/${encodeURIComponent(threadId)}/messages?${qs}`);
+  return apiGet<PagedResult<MessageDto>>(`${MESSAGING_PREFIX}/messages/threads/${encodeURIComponent(threadId)}/messages?${qs}`);
 }
 
 export async function sendMessage(
@@ -587,7 +598,7 @@ export async function sendMessage(
       const caseData = await apiGet<{
         id: string;
         caseId: string;
-      }>(`/projections/v1/api/v1/cases/${encodeURIComponent(applicationId)}`);
+      }>(`/api/v1/projections/cases/${encodeURIComponent(applicationId)}`);
       
       if (caseData?.id) {
         applicationGuid = caseData.id;
@@ -617,12 +628,12 @@ export async function sendMessage(
       Description: a.description
     }));
   }
-  return apiPost<{ Success?: boolean; success?: boolean; MessageId?: string; messageId?: string; ThreadId?: string; threadId?: string }>(`${MESSAGING_PREFIX}/api/v1/messages`, body);
+  return apiPost<{ Success?: boolean; success?: boolean; MessageId?: string; messageId?: string; ThreadId?: string; threadId?: string }>(`${MESSAGING_PREFIX}/messages`, body);
 }
 
 export async function deleteMessage(messageId: string): Promise<{ success: boolean; errorMessage?: string }> {
   try {
-    await apiDelete(`${MESSAGING_PREFIX}/api/v1/messages/${encodeURIComponent(messageId)}`);
+    await apiDelete(`${MESSAGING_PREFIX}/messages/${encodeURIComponent(messageId)}`);
     return { success: true };
   } catch (error) {
     return { 
@@ -634,7 +645,7 @@ export async function deleteMessage(messageId: string): Promise<{ success: boole
 
 export async function starMessage(messageId: string): Promise<{ success: boolean; isStarred: boolean; errorMessage?: string }> {
   try {
-    const response = await apiPut<{ Success?: boolean; IsStarred?: boolean; success?: boolean; isStarred?: boolean; ErrorMessage?: string }>(`${MESSAGING_PREFIX}/api/v1/messages/${encodeURIComponent(messageId)}/star`);
+    const response = await apiPut<{ Success?: boolean; IsStarred?: boolean; success?: boolean; isStarred?: boolean; ErrorMessage?: string }>(`${MESSAGING_PREFIX}/messages/${encodeURIComponent(messageId)}/star`);
     return {
       success: response.Success ?? response.success ?? false,
       isStarred: response.IsStarred ?? response.isStarred ?? false,
@@ -651,7 +662,7 @@ export async function starMessage(messageId: string): Promise<{ success: boolean
 
 export async function archiveThread(threadId: string, archive: boolean = true): Promise<{ success: boolean; isArchived: boolean; errorMessage?: string }> {
   try {
-    const response = await apiPut<{ Success?: boolean; IsArchived?: boolean; success?: boolean; isArchived?: boolean; ErrorMessage?: string }>(`${MESSAGING_PREFIX}/api/v1/messages/threads/${encodeURIComponent(threadId)}/archive`, { Archive: archive });
+    const response = await apiPut<{ Success?: boolean; IsArchived?: boolean; success?: boolean; isArchived?: boolean; ErrorMessage?: string }>(`${MESSAGING_PREFIX}/messages/threads/${encodeURIComponent(threadId)}/archive`, { Archive: archive });
     return {
       success: response.Success ?? response.success ?? false,
       isArchived: response.IsArchived ?? response.isArchived ?? false,
@@ -681,7 +692,7 @@ export async function forwardMessage(
       newMessageId?: string;
       newThreadId?: string;
       ErrorMessage?: string;
-    }>(`${MESSAGING_PREFIX}/api/v1/messages/${encodeURIComponent(messageId)}/forward`, {
+    }>(`${MESSAGING_PREFIX}/messages/${encodeURIComponent(messageId)}/forward`, {
       ToApplicationId: toApplicationId,
       ToReceiverId: toReceiverId,
       AdditionalContent: additionalContent
@@ -701,11 +712,11 @@ export async function forwardMessage(
 }
 
 export async function getUnreadCount() {
-  return apiGet<{ count: number }>(`${MESSAGING_PREFIX}/api/v1/messages/unread/count`);
+  return apiGet<{ count: number }>(`${MESSAGING_PREFIX}/messages/unread/count`);
 }
 
 export async function markMessageRead(messageId: string) {
-  return apiPut(`${MESSAGING_PREFIX}/api/v1/messages/${encodeURIComponent(messageId)}/read`);
+  return apiPut(`${MESSAGING_PREFIX}/messages/${encodeURIComponent(messageId)}/read`);
 }
 
 // Application sections and documents for context
@@ -746,7 +757,7 @@ export async function getApplicationSections(applicationId: string): Promise<App
         requirement: string;
         status: string;
       }>;
-    }>(`/projections/v1/api/v1/cases/${encodeURIComponent(applicationId)}`);
+    }>(`/api/v1/projections/cases/${encodeURIComponent(applicationId)}`);
     
     // If sections are directly available
     if (app?.sections) {
@@ -819,7 +830,7 @@ export async function getApplicationDocuments(applicationId: string): Promise<Ap
     console.error('Failed to fetch application documents:', error);
     // Try alternative endpoint format
     try {
-      const caseData = await apiGet<{ documents?: ApplicationDocument[] }>(`/projections/v1/api/v1/cases/${encodeURIComponent(applicationId)}`);
+      const caseData = await apiGet<{ documents?: ApplicationDocument[] }>(`/api/v1/projections/cases/${encodeURIComponent(applicationId)}`);
       if (caseData?.documents) {
         return caseData.documents;
       }
@@ -1071,11 +1082,10 @@ export async function changePassword(request: ChangePasswordRequest): Promise<{ 
 // Download user data (GDPR compliance)
 export async function downloadUserData(): Promise<Blob> {
   try {
+    // Proxy handles authentication - no need for manual token
     const response = await fetch(`${API_BASE}/api/users/me/data-export`, {
       method: 'GET',
-      headers: {
-        'Authorization': `Bearer ${await getToken()}`,
-      }
+      credentials: 'include', // Include session cookie
     });
 
     if (!response.ok) {

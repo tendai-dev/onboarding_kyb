@@ -1,6 +1,32 @@
 @import "tailwindcss";
 @import "sweetalert2/dist/sweetalert2.min.css";
 
+/* Madera font - loaded from Mukuru components package */
+/* The Mukuru components use Madera as primary font with fallbacks */
+@font-face {
+  font-family: 'Madera';
+  src: url('/fonts/Madera/Monotype-Madera-Regular.otf') format('opentype');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Madera';
+  src: url('/fonts/Madera/Monotype-Madera-Bold.otf') format('opentype');
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Madera';
+  src: url('/fonts/Madera/Monotype-Madera-ExtraBold.otf') format('opentype');
+  font-weight: 800;
+  font-style: normal;
+  font-display: swap;
+}
+
 :root {
   --background: #ffffff;
   --foreground: #171717;
@@ -24,4 +50,2214 @@ body {
   background: var(--background);
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
+}
+
+/* Fix white text visibility in DataTable and other components - Comprehensive overrides */
+/* Table headers - all variations */
+th,
+thead th,
+table th,
+[role="columnheader"],
+[data-part="table"] th,
+[data-part="thead"] th,
+.chakra-table th,
+[class*="table"] th,
+[class*="Table"] th {
+  color: #374151 !important; /* gray.700 */
+  font-weight: 600 !important;
+}
+
+/* Table cells - all variations */
+td,
+tbody td,
+table td,
+[role="cell"],
+[data-part="table"] td,
+[data-part="tbody"] td,
+.chakra-table td,
+[class*="table"] td,
+[class*="Table"] td {
+  color: #1F2937 !important; /* gray.800 */
+}
+
+/* Ensure all text in white backgrounds is visible */
+.bg-white,
+[data-bg="white"],
+[class*="bg-white"],
+[style*="background-color: white"],
+[style*="background-color: #fff"],
+[style*="background-color: #ffffff"],
+[style*="background: white"],
+[style*="background: #fff"],
+[style*="background: #ffffff"] {
+  color: #111827 !important; /* gray.900 */
+}
+
+/* Override any white text colors - make them dark - comprehensive patterns */
+/* BUT EXCLUDE primary buttons - they need white text on orange background */
+[style*="color: white"]:not(.mukuru-primary-button):not(.mukuru-primary-button *):not([data-variant="primary"]):not([data-variant="primary"] *),
+[style*="color: #fff"]:not(.mukuru-primary-button):not(.mukuru-primary-button *):not([data-variant="primary"]):not([data-variant="primary"] *),
+[style*="color: #ffffff"]:not(.mukuru-primary-button):not(.mukuru-primary-button *):not([data-variant="primary"]):not([data-variant="primary"] *),
+[style*="color:white"]:not(.mukuru-primary-button):not(.mukuru-primary-button *):not([data-variant="primary"]):not([data-variant="primary"] *),
+[style*="color:#fff"]:not(.mukuru-primary-button):not(.mukuru-primary-button *):not([data-variant="primary"]):not([data-variant="primary"] *),
+[style*="color:#ffffff"]:not(.mukuru-primary-button):not(.mukuru-primary-button *):not([data-variant="primary"]):not([data-variant="primary"] *),
+[style*="color: rgb(255, 255, 255)"]:not(.mukuru-primary-button):not(.mukuru-primary-button *):not([data-variant="primary"]):not([data-variant="primary"] *),
+[style*="color:rgb(255,255,255)"]:not(.mukuru-primary-button):not(.mukuru-primary-button *):not([data-variant="primary"]):not([data-variant="primary"] *) {
+  color: #111827 !important; /* gray.900 */
+}
+
+/* Force white text on primary buttons - override the above rule */
+.mukuru-primary-button,
+.mukuru-primary-button *,
+.mukuru-primary-button span,
+button[data-variant="primary"],
+button[data-variant="primary"] *,
+button[data-variant="primary"] span,
+[data-variant="primary"],
+[data-variant="primary"] *,
+[data-variant="primary"] span {
+  color: white !important;
+  -webkit-text-fill-color: white !important;
+}
+
+/* Fix DataTable component specific styling - multiple selectors */
+[data-part="root"][data-scope="data-table"],
+[data-scope="data-table"],
+[data-part="table"],
+[class*="data-table"],
+[class*="DataTable"] {
+  color: #111827 !important;
+}
+
+[data-part="root"][data-scope="data-table"] *,
+[data-scope="data-table"] *,
+[data-part="table"] *,
+[class*="data-table"] *,
+[class*="DataTable"] * {
+  color: inherit;
+}
+
+/* Ensure table headers are always visible in DataTable */
+[data-part="root"][data-scope="data-table"] th,
+[data-scope="data-table"] th,
+[data-part="table"] th,
+[class*="data-table"] th,
+[class*="DataTable"] th,
+[data-part="root"][data-scope="data-table"] [role="columnheader"],
+[data-scope="data-table"] [role="columnheader"] {
+  color: #374151 !important; /* gray.700 */
+  font-weight: 600 !important;
+}
+
+/* Ensure table cells are always visible in DataTable */
+[data-part="root"][data-scope="data-table"] td,
+[data-scope="data-table"] td,
+[data-part="table"] td,
+[class*="data-table"] td,
+[class*="DataTable"] td,
+[data-part="root"][data-scope="data-table"] [role="cell"],
+[data-scope="data-table"] [role="cell"] {
+  color: #1F2937 !important; /* gray.800 */
+}
+
+/* Ensure DataTable has light/white background */
+[data-part="root"][data-scope="data-table"],
+[data-scope="data-table"],
+[data-part="table"],
+[class*="data-table"],
+[class*="DataTable"],
+[data-part="root"][data-scope="data-table"] table,
+[data-scope="data-table"] table,
+[data-part="table"] table {
+  background-color: white !important;
+  background: white !important;
+}
+
+/* Ensure table body has white background */
+[data-part="root"][data-scope="data-table"] tbody,
+[data-scope="data-table"] tbody,
+[data-part="tbody"],
+[class*="data-table"] tbody,
+[class*="DataTable"] tbody {
+  background-color: white !important;
+  background: white !important;
+}
+
+/* Ensure table rows have white/light background */
+[data-part="root"][data-scope="data-table"] tr,
+[data-scope="data-table"] tr,
+[data-part="table"] tr,
+[class*="data-table"] tr,
+[class*="DataTable"] tr {
+  background-color: white !important;
+  background: white !important;
+}
+
+/* Ensure table header has light background */
+[data-part="root"][data-scope="data-table"] thead,
+[data-scope="data-table"] thead,
+[data-part="thead"],
+[class*="data-table"] thead,
+[class*="DataTable"] thead {
+  background-color: #F9FAFB !important; /* gray.50 */
+  background: #F9FAFB !important;
+}
+
+/* Work Queue Table - Ensure light background */
+.work-queue-table-wrapper {
+  background-color: white !important;
+}
+
+.work-queue-table-wrapper [data-part="root"][data-scope="data-table"],
+.work-queue-table-wrapper [data-scope="data-table"],
+.work-queue-table-wrapper [data-part="table"],
+.work-queue-table-wrapper table,
+.work-queue-table-wrapper tbody,
+.work-queue-table-wrapper thead,
+.work-queue-table-wrapper tr,
+.work-queue-table-wrapper td,
+.work-queue-table-wrapper th {
+  background-color: white !important;
+  background: white !important;
+}
+
+.work-queue-table-wrapper thead {
+  background-color: #F9FAFB !important; /* Light gray for header */
+}
+
+.work-queue-table-wrapper tbody tr:hover {
+  background-color: #F9FAFB !important; /* Light gray on hover */
+}
+
+/* Work Queue Table - Expand to fit content */
+.work-queue-table-wrapper {
+  width: 100% !important;
+  min-width: 100% !important;
+  overflow-x: auto !important;
+}
+
+.work-queue-table-wrapper table {
+  width: 100% !important;
+  min-width: 100% !important;
+  table-layout: auto !important;
+}
+
+.work-queue-table-wrapper [data-part="table"] {
+  width: 100% !important;
+  min-width: 100% !important;
+}
+
+/* Ensure table doesn't overlap and uses full width */
+.work-queue-table-wrapper [data-scope="data-table"],
+.work-queue-table-wrapper [data-part="root"][data-scope="data-table"] {
+  width: 100% !important;
+  min-width: 100% !important;
+  overflow-x: auto !important;
+}
+
+/* Make action column sticky and always visible */
+.work-queue-table-wrapper th:last-child,
+.work-queue-table-wrapper td:last-child,
+.work-queue-table-wrapper [data-part="table"] th:last-child,
+.work-queue-table-wrapper [data-part="table"] td:last-child,
+.work-queue-table-wrapper [data-scope="data-table"] th:last-child,
+.work-queue-table-wrapper [data-scope="data-table"] td:last-child {
+  position: sticky !important;
+  right: 0 !important;
+  background-color: white !important;
+  background: white !important;
+  z-index: 10 !important;
+  box-shadow: -2px 0 4px rgba(0, 0, 0, 0.1) !important;
+}
+
+.work-queue-table-wrapper thead th:last-child {
+  background-color: #F9FAFB !important;
+  background: #F9FAFB !important;
+  z-index: 11 !important;
+}
+
+.work-queue-table-wrapper tbody tr:hover td:last-child {
+  background-color: #F9FAFB !important;
+  background: #F9FAFB !important;
+}
+
+/* Work Queue Buttons - Primary buttons with mukuru.primary and white text - NUCLEAR OPTION */
+.mukuru-primary-button,
+.mukuru-primary-button *,
+button[data-variant="primary"],
+button[data-variant="primary"] *,
+[data-variant="primary"],
+[data-variant="primary"] *,
+button.variant-primary,
+button.variant-primary *,
+[data-scope="button"][data-variant="primary"],
+[data-scope="button"][data-variant="primary"] *,
+button[class*="primary"],
+button[class*="primary"] *,
+Button[variant="primary"],
+Button[variant="primary"] *,
+[data-part*="button"][data-variant="primary"],
+[data-part*="button"][data-variant="primary"] *,
+button.mukuru-primary-button,
+button.mukuru-primary-button * {
+  background-color: #F05423 !important; /* mukuru.primary */
+  background: #F05423 !important;
+  border: none !important;
+  border-width: 0 !important;
+  border-style: none !important;
+  border-color: transparent !important;
+  border-top: none !important;
+  border-right: none !important;
+  border-bottom: none !important;
+  border-left: none !important;
+  outline: none !important;
+  outline-width: 0 !important;
+  outline-style: none !important;
+  outline-color: transparent !important;
+  box-shadow: none !important;
+  -webkit-box-shadow: none !important;
+  -moz-box-shadow: none !important;
+  text-shadow: none !important;
+  box-sizing: border-box !important;
+}
+
+/* Remove any pseudo-element borders (::before, ::after) */
+.mukuru-primary-button::before,
+.mukuru-primary-button::after,
+.mukuru-secondary-button::before,
+.mukuru-secondary-button::after,
+button.mukuru-primary-button::before,
+button.mukuru-primary-button::after,
+button.mukuru-secondary-button::before,
+button.mukuru-secondary-button::after {
+  display: none !important;
+  content: none !important;
+  border: none !important;
+  outline: none !important;
+  box-shadow: none !important;
+}
+
+/* NUCLEAR OPTION - Target ALL possible button elements and their children */
+.mukuru-primary-button,
+.mukuru-secondary-button,
+button.mukuru-primary-button,
+button.mukuru-secondary-button,
+[data-scope="button"].mukuru-primary-button,
+[data-scope="button"].mukuru-secondary-button,
+[data-part*="button"].mukuru-primary-button,
+[data-part*="button"].mukuru-secondary-button,
+.mukuru-primary-button *,
+.mukuru-secondary-button *,
+button.mukuru-primary-button *,
+button.mukuru-secondary-button *,
+[data-scope="button"].mukuru-primary-button *,
+[data-scope="button"].mukuru-secondary-button *,
+[data-part*="button"].mukuru-primary-button *,
+[data-part*="button"].mukuru-secondary-button * {
+  border: 0 !important;
+  border-width: 0 !important;
+  border-style: none !important;
+  border-color: transparent !important;
+  border-top: 0 !important;
+  border-right: 0 !important;
+  border-bottom: 0 !important;
+  border-left: 0 !important;
+  outline: 0 !important;
+  outline-width: 0 !important;
+  outline-style: none !important;
+  outline-color: transparent !important;
+  box-shadow: none !important;
+  -webkit-box-shadow: none !important;
+  -moz-box-shadow: none !important;
+  text-shadow: none !important;
+  box-sizing: border-box !important;
+}
+
+/* Target Chakra UI button specific parts */
+[data-scope="button"][data-variant="primary"],
+[data-scope="button"][data-variant="secondary"],
+[data-part="root"][data-scope="button"],
+[data-part="root"][data-scope="button"] *,
+button[data-scope="button"],
+button[data-scope="button"] * {
+  border: 0 !important;
+  border-width: 0 !important;
+  border-style: none !important;
+  border-color: transparent !important;
+  outline: 0 !important;
+  outline-width: 0 !important;
+  outline-style: none !important;
+  outline-color: transparent !important;
+  box-shadow: none !important;
+  -webkit-box-shadow: none !important;
+  -moz-box-shadow: none !important;
+  text-shadow: none !important;
+}
+
+/* ABSOLUTE NUCLEAR OPTION - Target every single button element */
+button,
+button *,
+[role="button"],
+[role="button"] *,
+[data-scope="button"],
+[data-scope="button"] *,
+[data-part*="button"],
+[data-part*="button"] * {
+  border: 0 !important;
+  border-width: 0 !important;
+  border-style: none !important;
+  border-color: transparent !important;
+  outline: 0 !important;
+  outline-width: 0 !important;
+  outline-style: none !important;
+  outline-color: transparent !important;
+}
+
+/* But only apply background removal to status filter buttons */
+.mukuru-primary-button,
+.mukuru-secondary-button,
+.mukuru-primary-button:focus,
+.mukuru-primary-button:focus-visible,
+.mukuru-primary-button:active,
+.mukuru-primary-button:hover,
+.mukuru-secondary-button:focus,
+.mukuru-secondary-button:focus-visible,
+.mukuru-secondary-button:active,
+.mukuru-secondary-button:hover {
+  border: 0 !important;
+  border-width: 0 !important;
+  border-style: none !important;
+  border-color: transparent !important;
+  outline: 0 !important;
+  outline-width: 0 !important;
+  outline-style: none !important;
+  outline-color: transparent !important;
+  box-shadow: none !important;
+  -webkit-box-shadow: none !important;
+  -moz-box-shadow: none !important;
+  text-shadow: none !important;
+  box-sizing: border-box !important;
+  background-clip: padding-box !important;
+  -webkit-appearance: none !important;
+  -moz-appearance: none !important;
+  appearance: none !important;
+}
+
+/* Remove focus rings completely */
+.mukuru-primary-button:focus,
+.mukuru-primary-button:focus-visible,
+.mukuru-secondary-button:focus,
+.mukuru-secondary-button:focus-visible {
+  outline: 0 !important;
+  outline-offset: 0 !important;
+  outline-width: 0 !important;
+  outline-style: none !important;
+  outline-color: transparent !important;
+  box-shadow: none !important;
+  -webkit-box-shadow: none !important;
+  -moz-box-shadow: none !important;
+}
+
+/* Remove any ring or focus indicator */
+.mukuru-primary-button:focus-visible::before,
+.mukuru-primary-button:focus-visible::after,
+.mukuru-secondary-button:focus-visible::before,
+.mukuru-secondary-button:focus-visible::after {
+  display: none !important;
+  content: none !important;
+}
+
+/* ABSOLUTE FINAL NUCLEAR OPTION - Target every single possible element */
+button[class*="mukuru"],
+button[class*="primary"],
+button[class*="secondary"],
+[class*="mukuru"][class*="button"],
+[class*="primary"][class*="button"],
+[class*="secondary"][class*="button"] {
+  border: 0 !important;
+  border-width: 0 !important;
+  border-style: none !important;
+  border-color: transparent !important;
+  border-top: 0 !important;
+  border-right: 0 !important;
+  border-bottom: 0 !important;
+  border-left: 0 !important;
+  outline: 0 !important;
+  outline-width: 0 !important;
+  outline-style: none !important;
+  outline-color: transparent !important;
+  outline-offset: 0 !important;
+  box-shadow: none !important;
+  -webkit-box-shadow: none !important;
+  -moz-box-shadow: none !important;
+  text-shadow: none !important;
+  box-sizing: border-box !important;
+  background-clip: padding-box !important;
+  -webkit-appearance: none !important;
+  -moz-appearance: none !important;
+  appearance: none !important;
+}
+
+/* Remove borderRadius if it's causing visual artifacts */
+.mukuru-primary-button,
+.mukuru-secondary-button {
+  border-radius: 8px !important;
+  overflow: hidden !important;
+}
+
+/* Target any child elements that might have borders */
+.mukuru-primary-button > *,
+.mukuru-secondary-button > *,
+.mukuru-primary-button > * > *,
+.mukuru-secondary-button > * > * {
+  border: 0 !important;
+  outline: 0 !important;
+  box-shadow: none !important;
+}
+
+/* FINAL NUCLEAR OPTION - Target the actual rendered button element with all possible selectors */
+button[class*="mukuru-primary-button"],
+button[class*="mukuru-secondary-button"],
+[data-scope="button"][class*="mukuru-primary-button"],
+[data-scope="button"][class*="mukuru-secondary-button"],
+[data-part*="button"][class*="mukuru-primary-button"],
+[data-part*="button"][class*="mukuru-secondary-button"],
+button[data-variant="primary"][class*="mukuru"],
+button[data-variant="secondary"][class*="mukuru"] {
+  border: 0 !important;
+  border-width: 0 !important;
+  border-style: none !important;
+  border-color: transparent !important;
+  border-top: 0 !important;
+  border-right: 0 !important;
+  border-bottom: 0 !important;
+  border-left: 0 !important;
+  outline: 0 !important;
+  outline-width: 0 !important;
+  outline-style: none !important;
+  outline-color: transparent !important;
+  outline-offset: 0 !important;
+  box-shadow: none !important;
+  -webkit-box-shadow: none !important;
+  -moz-box-shadow: none !important;
+  text-shadow: none !important;
+  box-sizing: border-box !important;
+  background-clip: padding-box !important;
+  -webkit-appearance: none !important;
+  -moz-appearance: none !important;
+  appearance: none !important;
+}
+
+/* Also target all states */
+button[class*="mukuru-primary-button"]:focus,
+button[class*="mukuru-primary-button"]:focus-visible,
+button[class*="mukuru-primary-button"]:active,
+button[class*="mukuru-primary-button"]:hover,
+button[class*="mukuru-secondary-button"]:focus,
+button[class*="mukuru-secondary-button"]:focus-visible,
+button[class*="mukuru-secondary-button"]:active,
+button[class*="mukuru-secondary-button"]:hover {
+  border: 0 !important;
+  outline: 0 !important;
+  box-shadow: none !important;
+  -webkit-box-shadow: none !important;
+  -moz-box-shadow: none !important;
+}
+
+/* ULTIMATE FIX - Target the actual button element with all possible selectors */
+button,
+button[type="button"],
+button[role="button"],
+[role="button"],
+[data-scope="button"],
+[data-part*="button"],
+button.mukuru-primary-button,
+button.mukuru-secondary-button,
+.mukuru-primary-button,
+.mukuru-secondary-button {
+  border: 0 !important;
+  border-width: 0 !important;
+  border-style: none !important;
+  border-color: transparent !important;
+  border-top: 0 !important;
+  border-right: 0 !important;
+  border-bottom: 0 !important;
+  border-left: 0 !important;
+  outline: 0 !important;
+  outline-width: 0 !important;
+  outline-style: none !important;
+  outline-color: transparent !important;
+  outline-offset: 0 !important;
+  box-shadow: none !important;
+  -webkit-box-shadow: none !important;
+  -moz-box-shadow: none !important;
+  text-shadow: none !important;
+}
+
+/* Target any potential wrapper or container */
+.HStack button,
+[class*="HStack"] button,
+[data-part*="stack"] button {
+  border: 0 !important;
+  outline: 0 !important;
+  box-shadow: none !important;
+}
+
+/* SPECIFIC FIX for status filter buttons - target the exact location */
+[data-scope="work-queue"] button,
+.work-queue-page button,
+main button,
+[role="main"] button {
+  border: 0 !important;
+  border-width: 0 !important;
+  border-style: none !important;
+  border-color: transparent !important;
+  outline: 0 !important;
+  outline-width: 0 !important;
+  outline-style: none !important;
+  outline-color: transparent !important;
+  box-shadow: none !important;
+  -webkit-box-shadow: none !important;
+  -moz-box-shadow: none !important;
+}
+
+/* Target buttons that are children of HStack with gap="2" */
+HStack[gap="2"] button,
+[data-part*="stack"][gap="2"] button {
+  border: 0 !important;
+  border-width: 0 !important;
+  border-style: none !important;
+  border-color: transparent !important;
+  outline: 0 !important;
+  box-shadow: none !important;
+}
+
+/* FINAL FIX - Plain div elements with matching border color to hide white lines */
+.status-filter-buttons,
+.status-filter-buttons *,
+.status-filter-buttons div[role="button"],
+.status-filter-buttons div[role="button"]:focus,
+.status-filter-buttons div[role="button"]:active,
+.status-filter-buttons div[role="button"]:hover,
+.status-filter-buttons div[role="button"]:focus-visible,
+.status-filter-buttons div[role="button"] *,
+.status-filter-buttons div[role="button"] span,
+.status-filter-btn,
+.status-filter-btn:focus,
+.status-filter-btn:active,
+.status-filter-btn:hover,
+.status-filter-btn:focus-visible,
+.status-filter-btn *,
+.status-filter-btn span,
+div.status-filter-btn,
+div.status-filter-btn:focus,
+div.status-filter-btn:active,
+div.status-filter-btn:hover,
+div.status-filter-btn:focus-visible,
+div.status-filter-btn *,
+div.status-filter-btn span {
+  outline: none !important;
+  outline-width: 0 !important;
+  outline-style: none !important;
+  outline-color: transparent !important;
+  outline-offset: 0 !important;
+  box-shadow: none !important;
+  -webkit-box-shadow: none !important;
+  -moz-box-shadow: none !important;
+  text-shadow: none !important;
+  color: white !important;
+  -webkit-text-fill-color: white !important;
+  background-clip: border-box !important;
+  -webkit-tap-highlight-color: transparent !important;
+}
+
+/* Remove any pseudo-elements that might create borders */
+.status-filter-buttons *::before,
+.status-filter-buttons *::after,
+.status-filter-btn::before,
+.status-filter-btn::after {
+  content: none !important;
+  border: none !important;
+  outline: none !important;
+  box-shadow: none !important;
+}
+
+/* Ensure background extends fully to edges */
+.status-filter-buttons div[role="button"],
+div.status-filter-btn {
+  background-size: 100% 100% !important;
+  background-repeat: no-repeat !important;
+  background-position: center !important;
+  background-origin: border-box !important;
+  -webkit-background-size: 100% 100% !important;
+  -moz-background-size: 100% 100% !important;
+}
+
+/* Force solid background with no gaps */
+.status-filter-buttons div[role="button"]:not(:hover):not(:focus):not(:active),
+div.status-filter-btn:not(:hover):not(:focus):not(:active) {
+  background-image: none !important;
+}
+
+/* SPECIFIC TARGET for status filter buttons container - ABSOLUTE NUCLEAR OPTION */
+.status-filter-buttons,
+.status-filter-buttons *,
+.status-filter-buttons *::before,
+.status-filter-buttons *::after,
+.status-filter-buttons button,
+.status-filter-buttons button *,
+.status-filter-buttons button::before,
+.status-filter-buttons button::after,
+.status-filter-buttons [data-scope="button"],
+.status-filter-buttons [data-scope="button"] *,
+.status-filter-buttons [data-part*="button"],
+.status-filter-buttons [data-part*="button"] * {
+  border: 0 !important;
+  border-width: 0 !important;
+  border-style: none !important;
+  border-color: transparent !important;
+  border-top: 0 !important;
+  border-right: 0 !important;
+  border-bottom: 0 !important;
+  border-left: 0 !important;
+  outline: 0 !important;
+  outline-width: 0 !important;
+  outline-style: none !important;
+  outline-color: transparent !important;
+  outline-offset: 0 !important;
+  box-shadow: none !important;
+  -webkit-box-shadow: none !important;
+  -moz-box-shadow: none !important;
+  text-shadow: none !important;
+  /* Remove any potential visual artifacts */
+  clip-path: none !important;
+  filter: none !important;
+  -webkit-filter: none !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
+.status-filter-buttons button:focus,
+.status-filter-buttons button:focus-visible,
+.status-filter-buttons button:active,
+.status-filter-buttons button:hover,
+.status-filter-buttons button:visited,
+.status-filter-buttons [data-scope="button"]:focus,
+.status-filter-buttons [data-scope="button"]:focus-visible,
+.status-filter-buttons [data-scope="button"]:active,
+.status-filter-buttons [data-scope="button"]:hover {
+  border: 0 !important;
+  border-width: 0 !important;
+  border-style: none !important;
+  border-color: transparent !important;
+  outline: 0 !important;
+  outline-width: 0 !important;
+  outline-style: none !important;
+  outline-color: transparent !important;
+  box-shadow: none !important;
+  -webkit-box-shadow: none !important;
+  -moz-box-shadow: none !important;
+  text-shadow: none !important;
+}
+
+/* Target the actual rendered button element - most specific possible */
+.status-filter-buttons > button,
+.status-filter-buttons > * > button,
+.status-filter-buttons button[class*="mukuru"],
+.status-filter-buttons button[data-variant] {
+  all: unset;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  border: 0 !important;
+  border-width: 0 !important;
+  border-style: none !important;
+  border-color: transparent !important;
+  outline: 0 !important;
+  outline-width: 0 !important;
+  outline-style: none !important;
+  outline-color: transparent !important;
+  box-shadow: none !important;
+  -webkit-box-shadow: none !important;
+  -moz-box-shadow: none !important;
+  text-shadow: none !important;
+  box-sizing: border-box !important;
+  background-clip: padding-box !important;
+  -webkit-appearance: none !important;
+  -moz-appearance: none !important;
+  appearance: none !important;
+}
+
+/* Remove borders on hover and focus states - ALL POSSIBLE STATES */
+.mukuru-primary-button:hover,
+.mukuru-primary-button:focus,
+.mukuru-primary-button:active,
+.mukuru-primary-button:focus-visible,
+.mukuru-primary-button:focus-within,
+button[data-variant="primary"]:hover,
+button[data-variant="primary"]:focus,
+button[data-variant="primary"]:active,
+button[data-variant="primary"]:focus-visible,
+button[data-variant="primary"]:focus-within,
+[data-variant="primary"]:hover,
+[data-variant="primary"]:focus,
+[data-variant="primary"]:active,
+[data-variant="primary"]:focus-visible,
+[data-variant="primary"]:focus-within,
+[data-scope="button"][data-variant="primary"]:hover,
+[data-scope="button"][data-variant="primary"]:focus,
+[data-scope="button"][data-variant="primary"]:active,
+[data-scope="button"][data-variant="primary"]:focus-visible,
+[data-scope="button"][data-variant="primary"]:focus-within,
+button[class*="primary"]:hover,
+button[class*="primary"]:focus,
+button[class*="primary"]:active,
+button[class*="primary"]:focus-visible,
+button[class*="primary"]:focus-within {
+  border: none !important;
+  border-width: 0 !important;
+  border-style: none !important;
+  border-color: transparent !important;
+  border-top: none !important;
+  border-right: none !important;
+  border-bottom: none !important;
+  border-left: none !important;
+  outline: none !important;
+  outline-width: 0 !important;
+  outline-style: none !important;
+  outline-color: transparent !important;
+  box-shadow: none !important;
+  -webkit-box-shadow: none !important;
+  -moz-box-shadow: none !important;
+  text-shadow: none !important;
+}
+
+/* Target any wrapper or container around buttons */
+.mukuru-primary-button > *,
+button[data-variant="primary"] > *,
+[data-variant="primary"] > * {
+  border: none !important;
+  border-width: 0 !important;
+  border-style: none !important;
+  outline: none !important;
+  box-shadow: none !important;
+}
+
+.mukuru-primary-button *,
+.mukuru-primary-button span,
+.mukuru-primary-button p,
+.mukuru-primary-button div,
+.mukuru-primary-button svg,
+.mukuru-primary-button path,
+button[data-variant="primary"] *,
+button[data-variant="primary"] span,
+button[data-variant="primary"] p,
+button[data-variant="primary"] div,
+button[data-variant="primary"] svg,
+button[data-variant="primary"] path,
+[data-variant="primary"] *,
+[data-variant="primary"] span,
+[data-variant="primary"] p,
+[data-variant="primary"] div,
+[data-variant="primary"] svg,
+[data-variant="primary"] path {
+  color: white !important;
+  fill: white !important;
+  stroke: white !important;
+  -webkit-text-fill-color: white !important;
+}
+
+/* Ensure all primary variant buttons have white text */
+[data-scope="button"][data-variant="primary"],
+[data-scope="button"][data-variant="primary"] *,
+[data-scope="button"][data-variant="primary"] span,
+[data-scope="button"][data-variant="primary"] p,
+[data-scope="button"][data-variant="primary"] div,
+[data-scope="button"][data-variant="primary"] svg,
+[data-scope="button"][data-variant="primary"] path {
+  color: white !important;
+  fill: white !important;
+  stroke: white !important;
+  -webkit-text-fill-color: white !important;
+}
+
+/* Wizard Configuration Buttons - Ensure proper centering and mukuru.primary color */
+button[data-variant="primary"],
+[data-variant="primary"] {
+  background-color: #F05423 !important; /* mukuru.primary */
+  background: #F05423 !important;
+  border-color: #F05423 !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  text-align: center !important;
+}
+
+button[data-variant="primary"] *,
+[data-variant="primary"] *,
+button[data-variant="primary"] span,
+[data-variant="primary"] span,
+button[data-variant="primary"] p,
+[data-variant="primary"] p,
+button[data-variant="primary"] div,
+[data-variant="primary"] div,
+button[data-variant="primary"] typography,
+[data-variant="primary"] typography {
+  color: #FFFFFF !important;
+  -webkit-text-fill-color: #FFFFFF !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  text-align: center !important;
+}
+
+button[data-variant="primary"] svg,
+[data-variant="primary"] svg,
+button[data-variant="primary"] path,
+[data-variant="primary"] path,
+button[data-variant="primary"] IconWrapper,
+[data-variant="primary"] IconWrapper,
+button[data-variant="primary"] IconWrapper *,
+[data-variant="primary"] IconWrapper * {
+  fill: #FFFFFF !important;
+  stroke: #FFFFFF !important;
+  color: #FFFFFF !important;
+}
+
+/* Ensure button content is centered */
+button[data-variant="primary"],
+[data-variant="primary"] {
+  text-align: center !important;
+  justify-content: center !important;
+  align-items: center !important;
+}
+
+/* Force white text on all primary button text elements */
+button[data-variant="primary"] span,
+button[data-variant="primary"] p,
+button[data-variant="primary"] div,
+button[data-variant="primary"] typography,
+[data-variant="primary"] span,
+[data-variant="primary"] p,
+[data-variant="primary"] div,
+[data-variant="primary"] typography,
+.active-button-text {
+  color: #FFFFFF !important;
+  -webkit-text-fill-color: #FFFFFF !important;
+  fill: #FFFFFF !important;
+}
+
+/* Work Queue Secondary Buttons - Black background with white text for unselected status filter buttons */
+.mukuru-secondary-button,
+button.mukuru-secondary-button,
+[data-variant="secondary"].mukuru-secondary-button {
+  background-color: #111827 !important;
+  background: #111827 !important;
+  border: none !important;
+  border-width: 0 !important;
+  border-style: none !important;
+  border-color: transparent !important;
+  border-top: none !important;
+  border-right: none !important;
+  border-bottom: none !important;
+  border-left: none !important;
+  color: white !important;
+  outline: none !important;
+  outline-width: 0 !important;
+  outline-style: none !important;
+  outline-color: transparent !important;
+  box-shadow: none !important;
+  -webkit-box-shadow: none !important;
+  -moz-box-shadow: none !important;
+  text-shadow: none !important;
+  box-sizing: border-box !important;
+}
+
+.mukuru-secondary-button *,
+button.mukuru-secondary-button *,
+[data-variant="secondary"].mukuru-secondary-button *,
+.mukuru-secondary-button span,
+button.mukuru-secondary-button span {
+  color: white !important;
+  fill: white !important;
+  stroke: white !important;
+  -webkit-text-fill-color: white !important;
+}
+
+/* Work Queue Secondary Buttons - Default (for other secondary buttons) */
+button[data-variant="secondary"],
+[data-variant="secondary"],
+button.variant-secondary,
+[data-scope="button"][data-variant="secondary"] {
+  background-color: white !important;
+  background: white !important;
+  border-color: #E5E7EB !important; /* gray.200 */
+  color: #111827 !important; /* gray.900 - black text */
+}
+
+button[data-variant="secondary"] *,
+button[data-variant="secondary"] span,
+button[data-variant="secondary"] p,
+button[data-variant="secondary"] div,
+[data-variant="secondary"] *,
+[data-variant="secondary"] span,
+[data-variant="secondary"] p,
+[data-variant="secondary"] div,
+[data-scope="button"][data-variant="secondary"] *,
+[data-scope="button"][data-variant="secondary"] span,
+[data-scope="button"][data-variant="secondary"] p,
+[data-scope="button"][data-variant="secondary"] div {
+  color: #111827 !important; /* gray.900 - black text */
+  -webkit-text-fill-color: #111827 !important;
+}
+
+button[data-variant="secondary"] svg,
+button[data-variant="secondary"] path,
+[data-variant="secondary"] svg,
+[data-variant="secondary"] path,
+[data-scope="button"][data-variant="secondary"] svg,
+[data-scope="button"][data-variant="secondary"] path {
+  color: #111827 !important; /* gray.900 - black text */
+  fill: #111827 !important;
+  stroke: #111827 !important;
+}
+
+/* Ensure DataTable has light/white background */
+[data-part="root"][data-scope="data-table"],
+[data-scope="data-table"],
+[data-part="table"],
+[class*="data-table"],
+[class*="DataTable"],
+[data-part="root"][data-scope="data-table"] table,
+[data-scope="data-table"] table,
+[data-part="table"] table {
+  background-color: white !important;
+  background: white !important;
+}
+
+/* Ensure table body has white background */
+[data-part="root"][data-scope="data-table"] tbody,
+[data-scope="data-table"] tbody,
+[data-part="tbody"],
+[class*="data-table"] tbody,
+[class*="DataTable"] tbody {
+  background-color: white !important;
+  background: white !important;
+}
+
+/* Ensure table rows have white/light background */
+[data-part="root"][data-scope="data-table"] tr,
+[data-scope="data-table"] tr,
+[data-part="table"] tr,
+[class*="data-table"] tr,
+[class*="DataTable"] tr {
+  background-color: white !important;
+  background: white !important;
+}
+
+/* Ensure table header has light background */
+[data-part="root"][data-scope="data-table"] thead,
+[data-scope="data-table"] thead,
+[data-part="thead"],
+[class*="data-table"] thead,
+[class*="DataTable"] thead {
+  background-color: #F9FAFB !important; /* gray.50 */
+  background: #F9FAFB !important;
+}
+
+/* Global override for any element with white text color */
+* {
+  color: inherit;
+}
+
+/* Force dark text on any element that might have white text */
+div[style*="color"],
+span[style*="color"],
+p[style*="color"],
+td[style*="color"],
+th[style*="color"] {
+  color: #1F2937 !important; /* gray.800 - default to dark */
+}
+
+/* But allow specific overrides for headers */
+th[style*="color"],
+[role="columnheader"][style*="color"] {
+  color: #374151 !important; /* gray.700 */
+}
+
+/* ============================================
+   SIDEBAR TEXT COLORS - MUKURU PRIMARY ORANGE
+   ============================================ */
+
+/* NUCLEAR OPTION: Force ALL text in sidebar area to be visible */
+aside *,
+nav *,
+[role="navigation"] *,
+[data-scope*="sidebar"] *,
+[data-scope*="navigation"] * {
+  color: #F05423 !important; /* mukuru.primary */
+  opacity: 1 !important;
+  visibility: visible !important;
+}
+
+/* ACTIVE ITEMS: White text */
+[data-state="active"] *,
+[aria-current="page"] *,
+[aria-selected="true"] * {
+  color: white !important;
+  opacity: 1 !important;
+  visibility: visible !important;
+}
+
+/* Specific PortalNavigationSidebar selectors */
+[data-scope="portal-navigation-sidebar"],
+[data-scope="portal-navigation-sidebar"] *,
+[data-scope="portal-navigation-sidebar"] button,
+[data-scope="portal-navigation-sidebar"] span,
+[data-scope="portal-navigation-sidebar"] div,
+[data-scope="portal-navigation-sidebar"] p,
+[data-scope="portal-navigation-sidebar"] a,
+[data-scope="portal-navigation-sidebar"] label {
+  color: #111827 !important;
+  opacity: 1 !important;
+  visibility: visible !important;
+}
+
+/* Navigation items */
+[data-part*="navigation"],
+[data-part*="navigation"] *,
+[data-part*="navigation"] button,
+[data-part*="navigation"] span,
+[data-part*="navigation"] div,
+[data-part*="navigation"] p,
+[data-part*="navigation"] label {
+  color: #111827 !important;
+  opacity: 1 !important;
+  visibility: visible !important;
+}
+
+/* ACTIVE navigation items - white */
+[data-state="active"] [data-part*="navigation"],
+[data-state="active"] [data-part*="navigation"] *,
+[data-state="active"] [data-part*="navigation"] button,
+[data-state="active"] [data-part*="navigation"] span,
+[data-state="active"] [data-part*="navigation"] div,
+[data-state="active"] [data-part*="navigation"] p {
+  color: white !important;
+  opacity: 1 !important;
+  visibility: visible !important;
+}
+
+/* Help Centre */
+[data-part*="help"],
+[data-part*="help"] * {
+  color: #F05423 !important; /* mukuru.primary */
+  opacity: 1 !important;
+  visibility: visible !important;
+}
+
+/* Logo - orange */
+[data-part*="logo"],
+[data-part*="logo"] * {
+  color: #F05423 !important; /* mukuru.primary */
+  opacity: 1 !important;
+  visibility: visible !important;
+}
+
+/* Override ANY inline styles that set white text or hide text */
+[style*="color: white"],
+[style*="color:#fff"],
+[style*="color:#ffffff"],
+[style*="color:white"],
+[style*="opacity: 0"],
+[style*="opacity:0"],
+[style*="visibility: hidden"],
+[style*="visibility:hidden"] {
+  color: #111827 !important;
+  opacity: 1 !important;
+  visibility: visible !important;
+}
+
+/* Except active items */
+[data-state="active"] [style*="color"] {
+  color: white !important;
+  opacity: 1 !important;
+  visibility: visible !important;
+}
+
+/* Ensure sidebar has proper background */
+[data-scope="portal-navigation-sidebar"] {
+  background-color: #F9FAFB !important; /* Light gray background */
+}
+
+/* Header text colors - match sidebar (mukuru.primary) */
+.portal-header,
+.portal-header *,
+.portal-header [data-part],
+.portal-header button,
+.portal-header span,
+.portal-header div,
+.portal-header label,
+.portal-header p {
+  color: #F05423 !important; /* mukuru.primary - match sidebar */
+}
+
+/* Header icons and chevrons should be mukuru.primary */
+.portal-header [data-scope="services-menu"] svg,
+.portal-header svg,
+.portal-header .icon-wrapper svg,
+.portal-header [data-scope="services-menu"] * svg {
+  color: #F05423 !important; /* mukuru.primary */
+}
+
+/* ServicesMenu labels should be mukuru.primary to match sidebar */
+.portal-header [data-scope="services-menu"] *:not(svg) {
+  color: #F05423 !important; /* mukuru.primary */
+}
+
+/* ProfileMenu avatar should have mukuru.primary border */
+.portal-header [data-scope="profile-menu"] button,
+.portal-header [data-scope="profile-menu"] [data-part*="avatar"],
+.portal-header [data-scope="profile-menu"] [role="button"] {
+  border: 2px solid #F05423 !important; /* mukuru.primary */
+  border-radius: 50% !important;
+}
+
+/* ServicesMenu and ProfileMenu text should be mukuru.primary to match sidebar */
+[data-scope="services-menu"] *,
+[data-scope="profile-menu"] * {
+  color: #F05423 !important; /* mukuru.primary */
+}
+
+/* Header border - improved styling */
+.portal-header {
+  border-bottom: 1px solid rgba(55, 58, 54, 0.15) !important; /* #373A36 with 15% opacity - subtle */
+  box-shadow: none !important;
+  box-sizing: border-box !important;
+}
+
+/* Force header border to be visible */
+.portal-header[style*="border"] {
+  border-bottom: 1px solid rgba(55, 58, 54, 0.15) !important;
+}
+
+/* Ensure header doesn't overlap sidebar - proper alignment */
+.portal-header {
+  margin-left: 0 !important;
+  padding-left: 0 !important;
+}
+
+/* Sidebar wrapper - improved styling */
+.sidebar-wrapper {
+  border-right: 1px solid rgba(55, 58, 54, 0.15) !important; /* #373A36 with 15% opacity - subtle */
+  box-sizing: border-box !important;
+}
+
+/* Ensure sidebar is positioned correctly */
+[data-scope="portal-navigation-sidebar"] {
+  position: relative !important; /* Changed from fixed since wrapper is now fixed */
+  z-index: 1 !important;
+  width: 100% !important;
+  height: 100% !important;
+}
+
+/* Remove any conflicting borders from PortalNavigationSidebar */
+[data-scope="portal-navigation-sidebar"] {
+  border-right: none !important;
+  border: none !important;
+}
+
+/* Header should be below sidebar in z-index */
+.portal-header {
+  z-index: 999 !important;
+  box-sizing: border-box !important;
+}
+
+/* Collapse button styling - remove borders and improve appearance */
+.portal-header button[aria-label="Toggle sidebar"] {
+  border: none !important;
+  box-shadow: none !important;
+  outline: none !important;
+  z-index: 1001 !important;
+  position: relative !important;
+}
+
+.portal-header button[aria-label="Toggle sidebar"]:focus,
+.portal-header button[aria-label="Toggle sidebar"]:focus-visible {
+  border: none !important;
+  box-shadow: none !important;
+  outline: none !important;
+}
+
+.portal-header button[aria-label="Toggle sidebar"]:hover {
+  border: none !important;
+  box-shadow: none !important;
+}
+
+/* Ensure proper alignment - no gaps between sidebar and header */
+.sidebar-wrapper + .portal-header,
+.sidebar-wrapper ~ .portal-header {
+  margin-left: 0 !important;
+  padding-left: 0 !important;
+}
+
+/* Ensure content area aligns properly */
+main,
+[role="main"],
+.main-content {
+  margin-left: 0 !important;
+  padding-left: 0 !important;
+}
+
+/* Dashboard text colors - ensure all text is visible */
+.dashboard-content,
+.dashboard-content * {
+  color: inherit;
+}
+
+/* Ensure card text is always dark */
+[data-part="card"] *,
+.card * {
+  color: inherit;
+}
+
+/* Force dark text on Typography components in cards */
+.card [data-part="typography"],
+.card .chakra-text {
+  color: #111827 !important;
+}
+
+/* Force white text and icons on mukuru primary buttons and tags */
+.mukuru-primary-button,
+.mukuru-primary-button * {
+  color: white !important;
+}
+
+.mukuru-primary-button svg,
+.mukuru-primary-button path {
+  color: white !important;
+  fill: white !important;
+  stroke: white !important;
+}
+
+.mukuru-primary-tag,
+.mukuru-primary-tag *,
+.mukuru-primary-tag span,
+.mukuru-primary-tag p,
+.mukuru-primary-tag div,
+p.mukuru-primary-tag {
+  color: white !important;
+}
+
+.mukuru-primary-tag svg,
+.mukuru-primary-tag path {
+  color: white !important;
+  fill: white !important;
+  stroke: white !important;
+}
+
+/* Additional selectors for Tag component - Tag renders as <p> */
+[data-variant="warning"].mukuru-primary-tag,
+[data-variant="warning"].mukuru-primary-tag *,
+[data-variant="warning"].mukuru-primary-tag span,
+[data-variant="warning"].mukuru-primary-tag p,
+[data-variant="warning"].mukuru-primary-tag div,
+p[data-variant="warning"].mukuru-primary-tag {
+  color: white !important;
+}
+
+/* Target all possible Tag text elements */
+span.mukuru-primary-tag,
+p.mukuru-primary-tag,
+span[style*="background-color: #F05423"],
+span[style*="background-color:#F05423"],
+p[style*="background-color: #F05423"],
+p[style*="background-color:#F05423"] {
+  color: white !important;
+}
+
+span.mukuru-primary-tag *,
+p.mukuru-primary-tag *,
+span[style*="background-color: #F05423"] *,
+span[style*="background-color:#F05423"] *,
+p[style*="background-color: #F05423"] *,
+p[style*="background-color:#F05423"] * {
+  color: white !important;
+}
+
+/* Most aggressive selector - target any p element with the class or style */
+p.mukuru-primary-tag,
+p[class*="mukuru-primary-tag"] {
+  color: white !important;
+}
+
+p.mukuru-primary-tag *,
+p[class*="mukuru-primary-tag"] * {
+  color: white !important;
+}
+
+/* Ultra-aggressive selectors for Tag component - override everything */
+[data-variant="warning"][style*="#F05423"],
+[data-variant="warning"][style*="#F05423"] *,
+[data-variant="warning"][style*="background-color: #F05423"],
+[data-variant="warning"][style*="background-color: #F05423"] *,
+[data-variant="warning"][style*="background-color:#F05423"],
+[data-variant="warning"][style*="background-color:#F05423"] * {
+  color: white !important;
+}
+
+/* Target any element with mukuru-primary-tag class regardless of element type */
+.mukuru-primary-tag,
+.mukuru-primary-tag *,
+.mukuru-primary-tag::before,
+.mukuru-primary-tag::after {
+  color: white !important;
+}
+
+/* Force white on all text nodes within tags */
+.mukuru-primary-tag {
+  -webkit-text-fill-color: white !important;
+}
+
+/* Target Typography components inside tags */
+.mukuru-primary-tag [data-part="typography"],
+.mukuru-primary-tag .chakra-text,
+.mukuru-primary-tag p,
+.mukuru-primary-tag span,
+.mukuru-primary-tag div {
+  color: white !important;
+  -webkit-text-fill-color: white !important;
+}
+
+/* Ultra-specific selector for any text content */
+.mukuru-primary-tag,
+.mukuru-primary-tag > *,
+.mukuru-primary-tag > * > *,
+.mukuru-primary-tag > * > * > * {
+  color: white !important;
+  -webkit-text-fill-color: white !important;
+}
+
+/* Direct text node targeting - most aggressive */
+.mukuru-primary-tag {
+  color: white !important;
+  -webkit-text-fill-color: white !important;
+}
+
+/* Force white on all possible text elements */
+p.mukuru-primary-tag,
+span.mukuru-primary-tag,
+div.mukuru-primary-tag,
+.mukuru-primary-tag p,
+.mukuru-primary-tag span,
+.mukuru-primary-tag div {
+  color: white !important;
+  -webkit-text-fill-color: white !important;
+}
+
+/* Back button styling */
+.back-button,
+.back-button * {
+  color: #F05423 !important;
+  border: none !important;
+}
+
+.back-button:hover,
+.back-button:hover * {
+  color: #F05423 !important;
+  border: none !important;
+}
+
+.back-button:focus,
+.back-button:focus-visible,
+.back-button:active {
+  border: none !important;
+  box-shadow: none !important;
+  outline: none !important;
+}
+
+/* Stats Cards Hover Effect */
+.stats-card {
+  transition: all 0.2s ease;
+  border-left: 4px solid transparent;
+}
+
+.stats-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05) !important;
+}
+
+.stats-card:nth-child(1) {
+  border-left-color: #9CA3AF;
+}
+
+/* Mukuru Dropdown text visibility fixes */
+.mukuru-dropdown-wrapper [data-part="menu-trigger"],
+.mukuru-dropdown-wrapper [data-part="menu-trigger"] *,
+.mukuru-dropdown-wrapper [data-part="menu-trigger"] button,
+.mukuru-dropdown-wrapper [data-part="menu-trigger"] span,
+.mukuru-dropdown-wrapper [data-part="menu-trigger"] div,
+.mukuru-dropdown-wrapper [data-part="menu-trigger"] p,
+.mukuru-dropdown-wrapper [data-part="menu-trigger"] label,
+.mukuru-dropdown-wrapper [data-part="menu-trigger"] input,
+.mukuru-dropdown-wrapper [data-part="menu-trigger"] textarea {
+  color: #111827 !important;
+  -webkit-text-fill-color: #111827 !important;
+  font-weight: 500 !important;
+}
+
+/* Force black text on dropdown trigger - even more specific */
+.mukuru-dropdown-wrapper button[data-part="menu-trigger"],
+.mukuru-dropdown-wrapper button[data-part="menu-trigger"] *,
+.mukuru-dropdown-wrapper [role="button"][data-part="menu-trigger"],
+.mukuru-dropdown-wrapper [role="button"][data-part="menu-trigger"] * {
+  color: #111827 !important;
+  -webkit-text-fill-color: #111827 !important;
+  font-weight: 500 !important;
+}
+
+.mukuru-dropdown-wrapper [data-part="menu-trigger"]:has([data-part="menu-trigger-text"]) {
+  color: #111827 !important;
+}
+
+.mukuru-dropdown-wrapper [data-part="menu-trigger-text"],
+.mukuru-dropdown-wrapper [data-part="menu-trigger-text"] *,
+.mukuru-dropdown-wrapper [data-part="menu-trigger-text"] span,
+.mukuru-dropdown-wrapper [data-part="menu-trigger-text"] div,
+.mukuru-dropdown-wrapper [data-part="menu-trigger-text"] p,
+.mukuru-dropdown-wrapper [data-part="menu-trigger-text"] label {
+  color: #111827 !important;
+  -webkit-text-fill-color: #111827 !important;
+  font-weight: 500 !important;
+}
+
+/* Selected value text in dropdown trigger */
+.mukuru-dropdown-wrapper [data-part="menu-trigger"] [data-selected="true"],
+.mukuru-dropdown-wrapper [data-part="menu-trigger"] [data-selected="true"] *,
+.mukuru-dropdown-wrapper [data-part="menu-trigger"] [aria-selected="true"],
+.mukuru-dropdown-wrapper [data-part="menu-trigger"] [aria-selected="true"] * {
+  color: #111827 !important;
+  -webkit-text-fill-color: #111827 !important;
+  font-weight: 500 !important;
+}
+
+/* Dropdown placeholder text */
+.mukuru-dropdown-wrapper [data-part="menu-trigger"]:has([data-placeholder="true"]) {
+  color: #6B7280 !important;
+}
+
+.mukuru-dropdown-wrapper [data-part="menu-trigger"]:has([data-placeholder="true"]) * {
+  color: #6B7280 !important;
+  -webkit-text-fill-color: #6B7280 !important;
+}
+
+/* Dropdown menu content container */
+.mukuru-dropdown-wrapper [data-part="menu-content"],
+.mukuru-dropdown-wrapper [data-part="menu-content"] *,
+.mukuru-dropdown-wrapper [data-part="content"],
+.mukuru-dropdown-wrapper [data-part="content"] * {
+  color: #111827 !important;
+  -webkit-text-fill-color: #111827 !important;
+  background-color: white !important;
+  opacity: 1 !important;
+  visibility: visible !important;
+}
+
+/* Dropdown menu items */
+.mukuru-dropdown-wrapper [data-part="menu-item"],
+.mukuru-dropdown-wrapper [data-part="menu-item"] *,
+.mukuru-dropdown-wrapper [data-part="item"],
+.mukuru-dropdown-wrapper [data-part="item"] * {
+  color: #111827 !important;
+  -webkit-text-fill-color: #111827 !important;
+  background-color: white !important;
+  opacity: 1 !important;
+  visibility: visible !important;
+}
+
+/* Dropdown menu item text */
+.mukuru-dropdown-wrapper [data-part="menu-item-text"],
+.mukuru-dropdown-wrapper [data-part="menu-item-text"] *,
+.mukuru-dropdown-wrapper [data-part="item-text"],
+.mukuru-dropdown-wrapper [data-part="item-text"] * {
+  color: #111827 !important;
+  -webkit-text-fill-color: #111827 !important;
+  opacity: 1 !important;
+  visibility: visible !important;
+}
+
+/* Dropdown menu item label */
+.mukuru-dropdown-wrapper [data-part="menu-item-label"],
+.mukuru-dropdown-wrapper [data-part="menu-item-label"] *,
+.mukuru-dropdown-wrapper [data-part="item-label"],
+.mukuru-dropdown-wrapper [data-part="item-label"] * {
+  color: #111827 !important;
+  -webkit-text-fill-color: #111827 !important;
+  opacity: 1 !important;
+  visibility: visible !important;
+}
+
+/* Dropdown label */
+.mukuru-dropdown-wrapper [data-part="field-label"],
+.mukuru-dropdown-wrapper [data-part="field-label"] *,
+.mukuru-dropdown-wrapper [data-part="field-label"] span,
+.mukuru-dropdown-wrapper [data-part="field-label"] div {
+  color: #111827 !important;
+  font-weight: 600 !important;
+}
+
+/* Dropdown help text */
+.mukuru-dropdown-wrapper [data-part="field-description"],
+.mukuru-dropdown-wrapper [data-part="field-description"] *,
+.mukuru-dropdown-wrapper [data-part="field-description"] span,
+.mukuru-dropdown-wrapper [data-part="field-description"] div {
+  color: #6B7280 !important;
+  font-weight: 400 !important;
+}
+
+/* Global dropdown styles (fallback) */
+[data-part="menu-trigger"],
+[data-part="menu-trigger"] *,
+[data-part="menu-trigger"] button,
+[data-part="menu-trigger"] span,
+[data-part="menu-trigger"] div,
+[data-part="menu-trigger"] p {
+  color: #111827 !important;
+  -webkit-text-fill-color: #111827 !important;
+  font-weight: 500 !important;
+}
+
+[data-part="menu-trigger-text"],
+[data-part="menu-trigger-text"] *,
+[data-part="menu-trigger-text"] span,
+[data-part="menu-trigger-text"] div {
+  color: #111827 !important;
+  -webkit-text-fill-color: #111827 !important;
+  font-weight: 500 !important;
+}
+
+[data-part="field-label"],
+[data-part="field-label"] *,
+[data-part="field-label"] span,
+[data-part="field-label"] div {
+  color: #111827 !important;
+  font-weight: 600 !important;
+}
+
+[data-part="field-description"],
+[data-part="field-description"] *,
+[data-part="field-description"] span,
+[data-part="field-description"] div {
+  color: #6B7280 !important;
+  font-weight: 400 !important;
+}
+
+/* Global dropdown menu styles - ensure menu items are visible */
+[data-part="menu-content"],
+[data-part="menu-content"] *,
+[data-part="content"],
+[data-part="content"] * {
+  color: #111827 !important;
+  -webkit-text-fill-color: #111827 !important;
+  background-color: white !important;
+  opacity: 1 !important;
+  visibility: visible !important;
+}
+
+[data-part="menu-item"],
+[data-part="menu-item"] *,
+[data-part="item"],
+[data-part="item"] * {
+  color: #111827 !important;
+  -webkit-text-fill-color: #111827 !important;
+  background-color: white !important;
+  opacity: 1 !important;
+  visibility: visible !important;
+}
+
+[data-part="menu-item-text"],
+[data-part="menu-item-text"] *,
+[data-part="item-text"],
+[data-part="item-text"] * {
+  color: #111827 !important;
+  -webkit-text-fill-color: #111827 !important;
+  opacity: 1 !important;
+  visibility: visible !important;
+}
+
+/* Ensure dropdown menu has proper z-index and positioning */
+[data-part="menu-content"],
+[data-part="content"] {
+  z-index: 1000 !important;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06) !important;
+  border: 1px solid #E5E7EB !important;
+  border-radius: 6px !important;
+  background-color: white !important;
+}
+
+/* Force all text inside dropdown menus to be visible */
+[data-part*="menu"] *,
+[data-part*="item"] * {
+  color: #111827 !important;
+  -webkit-text-fill-color: #111827 !important;
+  opacity: 1 !important;
+  visibility: visible !important;
+}
+
+/* Aggressive selectors for dropdown menu - catch all possible structures */
+[data-scope*="menu"] [data-part*="item"],
+[data-scope*="menu"] [data-part*="item"] *,
+[data-scope*="menu"] [data-part*="content"] *,
+[data-scope*="menu"] button,
+[data-scope*="menu"] span,
+[data-scope*="menu"] div,
+[data-scope*="menu"] p {
+  color: #111827 !important;
+  -webkit-text-fill-color: #111827 !important;
+  opacity: 1 !important;
+  visibility: visible !important;
+}
+
+/* Dropdown menu container - ensure it's visible */
+[data-scope*="menu"] [data-part*="content"],
+[data-scope*="menu"] [data-part*="positioner"],
+[data-scope*="menu"] [role="menu"],
+[data-scope*="menu"] [role="menuitem"] {
+  background-color: white !important;
+  color: #111827 !important;
+  opacity: 1 !important;
+  visibility: visible !important;
+  z-index: 1000 !important;
+}
+
+/* Any element inside a menu that might contain text */
+[data-scope*="menu"] * {
+  color: #111827 !important;
+  -webkit-text-fill-color: #111827 !important;
+}
+
+/* Override any white text in menus */
+[data-scope*="menu"] [style*="color: white"],
+[data-scope*="menu"] [style*="color:#fff"],
+[data-scope*="menu"] [style*="color:#ffffff"],
+[data-scope*="menu"] [style*="opacity: 0"],
+[data-scope*="menu"] [style*="visibility: hidden"] {
+  color: #111827 !important;
+  opacity: 1 !important;
+  visibility: visible !important;
+}
+
+/* Nuclear option - target absolutely everything in dropdown menus */
+div[role="menu"],
+div[role="menuitem"],
+ul[role="menu"],
+li[role="menuitem"],
+[role="menu"] *,
+[role="menuitem"] * {
+  color: #111827 !important;
+  -webkit-text-fill-color: #111827 !important;
+  background-color: white !important;
+  opacity: 1 !important;
+  visibility: visible !important;
+}
+
+/* Target any popover or portal that might contain the menu */
+[data-portal],
+[data-portal] *,
+[data-popper],
+[data-popper] * {
+  color: #111827 !important;
+  -webkit-text-fill-color: #111827 !important;
+}
+
+/* Ensure menu backdrop doesn't hide content */
+[data-part*="backdrop"] {
+  opacity: 0.5 !important;
+  background-color: rgba(0, 0, 0, 0.5) !important;
+}
+
+.stats-card:nth-child(2) {
+  border-left-color: #3182CE;
+}
+
+.stats-card:nth-child(3) {
+  border-left-color: #DD6B20;
+}
+
+.stats-card:nth-child(4) {
+  border-left-color: #E53E3E;
+}
+
+.stats-card:nth-child(5) {
+  border-left-color: #38A169;
+}
+
+.stats-card:nth-child(6) {
+  border-left-color: #C53030;
+}
+
+/* Force visibility on ALL possible dropdown menu structures - nuclear option */
+.mukuru-dropdown-wrapper [data-scope*="menu"] [data-part*="item"],
+.mukuru-dropdown-wrapper [data-scope*="menu"] [data-part*="item"] *,
+.mukuru-dropdown-wrapper [data-scope*="menu"] [data-part*="content"] *,
+.mukuru-dropdown-wrapper [data-scope*="menu"] button,
+.mukuru-dropdown-wrapper [data-scope*="menu"] span,
+.mukuru-dropdown-wrapper [data-scope*="menu"] div,
+.mukuru-dropdown-wrapper [data-scope*="menu"] p,
+.mukuru-dropdown-wrapper [data-scope*="menu"] li,
+.mukuru-dropdown-wrapper [data-scope*="menu"] ul {
+  color: #111827 !important;
+  -webkit-text-fill-color: #111827 !important;
+  background-color: white !important;
+  opacity: 1 !important;
+  visibility: visible !important;
+  display: block !important;
+}
+
+/* Ensure all Typography text in Basic Information section is dark */
+.basic-information-section [data-part="typography"],
+.basic-information-section .chakra-text,
+.basic-information-section p,
+.basic-information-section span,
+.basic-information-section div {
+  color: #111827 !important;
+  -webkit-text-fill-color: #111827 !important;
+}
+
+/* Override white text in Basic Information section */
+.basic-information-section [style*="color: white"],
+.basic-information-section [style*="color:#fff"],
+.basic-information-section [style*="color:#ffffff"] {
+  color: #111827 !important;
+  -webkit-text-fill-color: #111827 !important;
+}
+
+/* Ensure checkboxes are clickable */
+[data-part="checkbox-root"],
+[data-part="checkbox-control"],
+[data-scope="checkbox"] {
+  pointer-events: auto !important;
+  cursor: pointer !important;
+  z-index: 10 !important;
+}
+
+/* Ensure checkbox wrapper boxes are clickable */
+[data-part="checkbox-root"] *,
+[data-scope="checkbox"] * {
+  pointer-events: auto !important;
+}
+
+/* Override any pointer-events: none on checkboxes */
+[style*="pointer-events: none"][data-part*="checkbox"],
+[style*="pointer-events:none"][data-part*="checkbox"] {
+  pointer-events: auto !important;
+}
+
+/* Ensure all checkboxes in wizard configuration are clickable and properly positioned */
+.mukuru-dropdown-wrapper ~ [data-scope="checkbox"],
+[data-scope="checkbox"] {
+  position: relative !important;
+  z-index: 1 !important;
+  pointer-events: auto !important;
+}
+
+[data-scope="checkbox"] [data-part="root"],
+[data-scope="checkbox"] [data-part="control"],
+[data-scope="checkbox"] [data-part="label"] {
+  position: relative !important;
+  z-index: 2 !important;
+  pointer-events: auto !important;
+  cursor: pointer !important;
+}
+
+/* Ensure checkbox labels are clickable */
+[data-scope="checkbox"] label,
+[data-scope="checkbox"] [data-part="label"],
+[data-scope="checkbox"] [data-part="label"] * {
+  pointer-events: auto !important;
+  cursor: pointer !important;
+  z-index: 2 !important;
+}
+
+/* Target any element that might contain item text */
+.mukuru-dropdown-wrapper [data-scope*="menu"] * {
+  color: #111827 !important;
+  -webkit-text-fill-color: #111827 !important;
+}
+
+/* Override any inline styles that might hide text */
+.mukuru-dropdown-wrapper [data-scope*="menu"] [style*="color: white"],
+.mukuru-dropdown-wrapper [data-scope*="menu"] [style*="color:#fff"],
+.mukuru-dropdown-wrapper [data-scope*="menu"] [style*="color:#ffffff"],
+.mukuru-dropdown-wrapper [data-scope*="menu"] [style*="opacity: 0"],
+.mukuru-dropdown-wrapper [data-scope*="menu"] [style*="visibility: hidden"],
+.mukuru-dropdown-wrapper [data-scope*="menu"] [style*="display: none"] {
+  color: #111827 !important;
+  opacity: 1 !important;
+  visibility: visible !important;
+  display: block !important;
+}
+
+/* Force black text on dropdown trigger - override ALL white text styles */
+.mukuru-dropdown-wrapper [data-part="menu-trigger"] [style*="color: white"],
+.mukuru-dropdown-wrapper [data-part="menu-trigger"] [style*="color:#fff"],
+.mukuru-dropdown-wrapper [data-part="menu-trigger"] [style*="color:#ffffff"],
+.mukuru-dropdown-wrapper [data-part="menu-trigger"] [style*="color:white"],
+.mukuru-dropdown-wrapper [data-part="menu-trigger-text"] [style*="color: white"],
+.mukuru-dropdown-wrapper [data-part="menu-trigger-text"] [style*="color:#fff"],
+.mukuru-dropdown-wrapper [data-part="menu-trigger-text"] [style*="color:#ffffff"],
+.mukuru-dropdown-wrapper [data-part="menu-trigger-text"] [style*="color:white"] {
+  color: #111827 !important;
+  -webkit-text-fill-color: #111827 !important;
+}
+
+/* Nuclear option for dropdown trigger text - target everything except icons */
+.mukuru-dropdown-wrapper [data-part="menu-trigger"] *:not([data-part="menu-trigger-icon"]):not(svg):not(path):not([class*="icon"]) {
+  color: #111827 !important;
+  -webkit-text-fill-color: #111827 !important;
+}
+
+/* EXTREMELY AGGRESSIVE - Force black text on ALL dropdown trigger content */
+.mukuru-dropdown-wrapper button,
+.mukuru-dropdown-wrapper button *,
+.mukuru-dropdown-wrapper [role="button"],
+.mukuru-dropdown-wrapper [role="button"] *,
+.mukuru-dropdown-wrapper [data-part="menu-trigger"] button,
+.mukuru-dropdown-wrapper [data-part="menu-trigger"] button *,
+.mukuru-dropdown-wrapper [data-part="menu-trigger"] [role="button"],
+.mukuru-dropdown-wrapper [data-part="menu-trigger"] [role="button"] * {
+  color: #111827 !important;
+  -webkit-text-fill-color: #111827 !important;
+}
+
+/* Target the actual text content inside the trigger button */
+.mukuru-dropdown-wrapper [data-part="menu-trigger"] > *,
+.mukuru-dropdown-wrapper [data-part="menu-trigger"] > * > *,
+.mukuru-dropdown-wrapper [data-part="menu-trigger"] span,
+.mukuru-dropdown-wrapper [data-part="menu-trigger"] div,
+.mukuru-dropdown-wrapper [data-part="menu-trigger"] p,
+.mukuru-dropdown-wrapper [data-part="menu-trigger"] label {
+  color: #111827 !important;
+  -webkit-text-fill-color: #111827 !important;
+  font-weight: 500 !important;
+}
+
+/* Override ANY color style attribute on dropdown trigger elements */
+.mukuru-dropdown-wrapper [data-part="menu-trigger"][style*="color"],
+.mukuru-dropdown-wrapper [data-part="menu-trigger"] *[style*="color"],
+.mukuru-dropdown-wrapper [data-part="menu-trigger-text"][style*="color"],
+.mukuru-dropdown-wrapper [data-part="menu-trigger-text"] *[style*="color"] {
+  color: #111827 !important;
+  -webkit-text-fill-color: #111827 !important;
+}
+
+/* ABSOLUTE NUCLEAR OPTION - Target every possible element in dropdown wrapper */
+.mukuru-dropdown-wrapper * {
+  color: #111827 !important;
+  -webkit-text-fill-color: #111827 !important;
+}
+
+/* But allow icons to keep their color */
+.mukuru-dropdown-wrapper svg,
+.mukuru-dropdown-wrapper path,
+.mukuru-dropdown-wrapper [data-part*="icon"],
+.mukuru-dropdown-wrapper [class*="icon"],
+.mukuru-dropdown-wrapper [aria-label*="icon"] {
+  color: inherit !important;
+  -webkit-text-fill-color: inherit !important;
+}
+
+/* Force text color on all text nodes */
+.mukuru-dropdown-wrapper [data-part="menu-trigger"] {
+  color: #111827 !important;
+  -webkit-text-fill-color: #111827 !important;
+}
+
+.mukuru-dropdown-wrapper [data-part="menu-trigger"] * {
+  color: #111827 !important;
+  -webkit-text-fill-color: #111827 !important;
+}
+
+/* Tabs Styling - Match Exact Design */
+[data-scope="tabs"] [data-part="list"] {
+  border-bottom: 1px solid #E5E7EB !important;
+  display: flex !important;
+  position: relative !important;
+}
+
+[data-scope="tabs"] [data-part="trigger"] {
+  color: #111827 !important; /* black for inactive */
+  background: transparent !important;
+  border: none !important;
+  padding: 20px 24px 22px 24px !important;
+  font-size: 16px !important;
+  line-height: 14px !important;
+  font-weight: 400 !important;
+  position: relative !important;
+  transition: all 0.2s ease !important;
+}
+
+[data-scope="tabs"] [data-part="trigger"]:hover {
+  color: #F05423 !important;
+}
+
+[data-scope="tabs"] [data-part="trigger"][data-selected="true"] {
+  color: #F05423 !important; /* orange for active */
+  background: white !important;
+  font-weight: 500 !important;
+}
+
+[data-scope="tabs"] [data-part="trigger"][data-selected="true"]::after {
+  content: '' !important;
+  position: absolute !important;
+  bottom: -1px !important;
+  left: 0 !important;
+  right: 0 !important;
+  height: 2px !important;
+  background: #F05423 !important; /* orange underline */
+  z-index: 1 !important;
+}
+
+[data-scope="tabs"] [data-part="indicator"] {
+  display: none !important; /* Hide default indicator, using ::after instead */
+}
+
+/* Rules and Permissions - Current Permissions Section - Force black text visibility */
+.current-permissions-list,
+.current-permissions-list *,
+.current-permissions-list span,
+.current-permissions-list p,
+.current-permissions-list div,
+.current-permissions-list typography,
+[data-permission-item],
+[data-permission-item] *,
+[data-permission-item] span,
+[data-permission-item] p,
+[data-permission-item] div,
+[data-permission-item] typography {
+  color: #000000 !important;
+  -webkit-text-fill-color: #000000 !important;
+  fill: #000000 !important;
+  stroke: #000000 !important;
+}
+
+/* Override any white or transparent text in permission items */
+.current-permissions-list span[style*="color"],
+[data-permission-item] span[style*="color"] {
+  color: #000000 !important;
+  -webkit-text-fill-color: #000000 !important;
+}
+
+/* Ensure checkboxes in rules-and-permissions modal are clickable */
+/* Checklists Page - Primary buttons with mukuru.primary */
+button[data-scope="button"][data-variant="primary"],
+button[class*="primary"],
+.mukuru-primary-button,
+[data-scope="button"][data-variant="primary"],
+Button[variant="primary"] {
+  background-color: #F05423 !important; /* mukuru.primary */
+  background: #F05423 !important;
+  border: none !important;
+  border-width: 0 !important;
+  border-style: none !important;
+  border-color: #F05423 !important;
+  outline: none !important;
+  outline-width: 0 !important;
+  outline-style: none !important;
+  box-shadow: none !important;
+  -webkit-box-shadow: none !important;
+  -moz-box-shadow: none !important;
+  color: white !important;
+}
+
+button[data-scope="button"][data-variant="primary"]:hover,
+button[class*="primary"]:hover,
+.mukuru-primary-button:hover,
+[data-scope="button"][data-variant="primary"]:hover,
+Button[variant="primary"]:hover,
+button[data-scope="button"][data-variant="primary"]:focus,
+button[class*="primary"]:focus,
+.mukuru-primary-button:focus,
+[data-scope="button"][data-variant="primary"]:focus,
+Button[variant="primary"]:focus,
+button[data-scope="button"][data-variant="primary"]:active,
+button[class*="primary"]:active,
+.mukuru-primary-button:active,
+[data-scope="button"][data-variant="primary"]:active,
+Button[variant="primary"]:active {
+  background-color: #E04A1A !important;
+  background: #E04A1A !important;
+  border: none !important;
+  border-width: 0 !important;
+  border-style: none !important;
+  border-color: #E04A1A !important;
+  outline: none !important;
+  outline-width: 0 !important;
+  outline-style: none !important;
+  box-shadow: none !important;
+  -webkit-box-shadow: none !important;
+  -moz-box-shadow: none !important;
+}
+
+/* Ensure all text and icons in primary buttons are white */
+button[data-scope="button"][data-variant="primary"] *,
+button[data-scope="button"][data-variant="primary"] span,
+button[data-scope="button"][data-variant="primary"] p,
+button[data-scope="button"][data-variant="primary"] div,
+button[data-scope="button"][data-variant="primary"] svg,
+button[data-scope="button"][data-variant="primary"] path,
+Button[variant="primary"] *,
+Button[variant="primary"] span,
+Button[variant="primary"] svg,
+Button[variant="primary"] path {
+  color: white !important;
+  fill: white !important;
+  stroke: white !important;
+}
+
+/* Checklists Page - Checkbox styling with mukuru.primary */
+[data-scope="checkbox"][data-checked="true"] [data-part="control"],
+[data-scope="checkbox"][data-checked="true"] [data-part="indicator"] {
+  background-color: #F05423 !important; /* mukuru.primary */
+  background: #F05423 !important;
+  border-color: #F05423 !important;
+  color: white !important;
+}
+
+/* Checklists Page - Ensure Search and Dropdown text is visible */
+[data-scope="search"] input,
+[data-scope="search"] input::placeholder,
+[data-scope="dropdown"] [data-part="trigger"],
+[data-scope="dropdown"] [data-part="trigger"] span,
+[data-scope="dropdown"] [data-part="trigger"] div,
+[data-scope="dropdown"] [data-part="trigger"] button,
+[data-scope="dropdown"] [data-part="trigger"] *,
+[data-scope="dropdown"] [data-part="content"] [data-part="item"],
+[data-scope="dropdown"] [data-part="content"] [data-part="item"] span,
+[data-scope="dropdown"] [data-part="content"] [data-part="item"] *,
+.mukuru-dropdown-wrapper [data-part="menu-trigger"],
+.mukuru-dropdown-wrapper [data-part="menu-trigger"] *,
+.mukuru-dropdown-wrapper [data-part="menu-trigger"] button,
+.mukuru-dropdown-wrapper [data-part="menu-trigger"] span,
+.mukuru-dropdown-wrapper [data-part="menu-trigger"] div {
+  color: #111827 !important;
+  -webkit-text-fill-color: #111827 !important;
+}
+
+[data-scope="search"] input::placeholder {
+  color: #9CA3AF !important;
+  -webkit-text-fill-color: #9CA3AF !important;
+}
+
+/* Force black text on all dropdown elements */
+[data-scope="dropdown"] *,
+.mukuru-dropdown-wrapper * {
+  color: #111827 !important;
+  -webkit-text-fill-color: #111827 !important;
+}
+
+[data-scope="dropdown"] [data-part="content"] [data-part="item"]:hover,
+.mukuru-dropdown-wrapper [data-part="menu-item"]:hover {
+  background-color: #F9FAFB !important;
+}
+
+/* Checklists Page - Ensure Tag text is visible */
+[data-scope="tag"],
+Tag,
+.mukuru-tag {
+  color: #111827 !important;
+  -webkit-text-fill-color: #111827 !important;
+}
+
+[data-scope="tag"] *,
+Tag *,
+.mukuru-tag * {
+  color: #111827 !important;
+  -webkit-text-fill-color: #111827 !important;
+}
+
+/* Checklists Page - Custom scrollbar styling */
+.checklist-scrollable {
+  scrollbar-width: thin;
+  scrollbar-color: #D1D5DB #F9FAFB;
+  -webkit-overflow-scrolling: touch;
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+}
+
+.checklist-scrollable::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+.checklist-scrollable::-webkit-scrollbar-track {
+  background: #F9FAFB;
+  border-radius: 4px;
+}
+
+.checklist-scrollable::-webkit-scrollbar-thumb {
+  background: #D1D5DB;
+  border-radius: 4px;
+  border: 2px solid #F9FAFB;
+}
+
+.checklist-scrollable::-webkit-scrollbar-thumb:hover {
+  background: #9CA3AF;
+}
+
+.checklist-scrollable::-webkit-scrollbar-corner {
+  background: #F9FAFB;
+}
+
+/* Checklists Page - Ensure all text is visible */
+.checklists-page * {
+  color: inherit;
+}
+
+.checklists-page [data-scope="typography"],
+.checklists-page Typography {
+  color: inherit !important;
+}
+
+/* Backdrop blur for all modals and popups */
+[data-scope="dialog"],
+[data-scope="modal"],
+[data-part="backdrop"],
+Box[position="fixed"][style*="backdrop"],
+Box[position="fixed"][style*="backdrop"],
+[data-scope="dialog"] [data-part="backdrop"],
+[data-scope="modal"] [data-part="backdrop"] {
+  backdrop-filter: blur(8px) !important;
+  -webkit-backdrop-filter: blur(8px) !important;
+}
+
+/* Ensure all checkboxes in rules-and-permissions modal are clickable */
+[data-scope="checkbox"] {
+  pointer-events: auto !important;
+  cursor: pointer !important;
+  position: relative !important;
+  z-index: 10 !important;
+}
+
+[data-scope="checkbox"] [data-part="root"],
+[data-scope="checkbox"] [data-part="control"] {
+  pointer-events: auto !important;
+  cursor: pointer !important;
+  position: relative !important;
+  z-index: 11 !important;
+}
+
+/* Ensure HStack containing checkboxes don't block clicks */
+.HStack[style*="isolation"],
+.HStack[style*="z-index"] {
+  pointer-events: auto !important;
+}
+
+/* Make sure checkbox wrapper boxes are clickable */
+.HStack > Box[style*="flexShrink"],
+.HStack > Box[style*="cursor"] {
+  pointer-events: auto !important;
+  cursor: pointer !important;
+  z-index: 12 !important;
+  position: relative !important;
 }

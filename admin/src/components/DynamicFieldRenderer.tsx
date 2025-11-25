@@ -3,14 +3,12 @@
 import React from 'react';
 import {
   Box,
-  Text,
-  Input,
-  Textarea,
-  Select,
   VStack,
   HStack,
-  Badge,
+  Textarea,
+  Input as ChakraInput
 } from '@chakra-ui/react';
+import { Typography, Tag } from '@/lib/mukuruImports';
 import { RenderableField } from '../lib/entitySchemaRenderer';
 
 interface DynamicFieldRendererProps {
@@ -33,7 +31,7 @@ export function DynamicFieldRenderer({
       case 'Email':
       case 'Phone':
         return (
-          <Input
+          <ChakraInput
             value={field.value || ''}
             placeholder={field.placeholder}
             readOnly={readOnly}
@@ -81,7 +79,7 @@ export function DynamicFieldRenderer({
 
       case 'Number':
         return (
-          <Input
+          <ChakraInput
             value={field.value || ''}
             placeholder={field.placeholder}
             readOnly={readOnly}
@@ -93,7 +91,7 @@ export function DynamicFieldRenderer({
 
       case 'Date':
         return (
-          <Input
+          <ChakraInput
             value={
               field.value
                 ? new Date(field.value).toISOString().split('T')[0]
@@ -132,15 +130,15 @@ export function DynamicFieldRenderer({
                   selectedValues.map((val: string, idx: number) => {
                     const option = field.options?.find((opt) => opt.value === val);
                     return (
-                      <Badge key={idx} colorScheme="blue" px="2" py="1">
+                      <Tag key={idx} variant="info">
                         {option?.label || val}
-                      </Badge>
+                      </Tag>
                     );
                   })
                 ) : (
-                  <Text color="gray.400" fontSize="sm">
+                  <Typography color="gray.400" fontSize="sm">
                     No selection
-                  </Text>
+                  </Typography>
                 )}
               </HStack>
             );
@@ -150,7 +148,7 @@ export function DynamicFieldRenderer({
               (opt) => opt.value === field.value
             );
             return (
-              <Input
+              <ChakraInput
                 value={selectedOption?.label || field.value || ''}
                 placeholder={field.placeholder}
                 readOnly={true}
@@ -161,7 +159,7 @@ export function DynamicFieldRenderer({
           }
         }
         return (
-          <Input
+          <ChakraInput
             value={field.value || ''}
             placeholder={field.placeholder}
             readOnly={readOnly}
@@ -179,9 +177,9 @@ export function DynamicFieldRenderer({
               readOnly={readOnly}
               disabled={readOnly}
             />
-            <Text fontSize="sm" color="gray.600">
+            <Typography fontSize="sm" color="gray.600">
               {field.value === true || field.value === 'true' ? 'Yes' : 'No'}
-            </Text>
+            </Typography>
           </HStack>
         );
 
@@ -205,7 +203,7 @@ export function DynamicFieldRenderer({
           <Box>
             {field.value ? (
               <HStack gap="2">
-                <Text 
+                <Typography 
                   fontSize="sm" 
                   color="orange.600"
                   cursor="pointer"
@@ -246,24 +244,24 @@ export function DynamicFieldRenderer({
                   }}
                 >
                   {fileData?.fileName || (typeof field.value === 'string' ? field.value : 'File attached')}
-                </Text>
+                </Typography>
                 {fileData?.fileSize && (
-                  <Text fontSize="xs" color="gray.500">
+                  <Typography fontSize="xs" color="gray.500">
                     ({(fileData.fileSize / 1024 / 1024).toFixed(2)} MB)
-                  </Text>
+                  </Typography>
                 )}
               </HStack>
             ) : (
-              <Text fontSize="sm" color="gray.400">
+              <Typography fontSize="sm" color="gray.400">
                 Not provided
-              </Text>
+              </Typography>
             )}
           </Box>
         );
 
       case 'Country':
         return (
-          <Input
+          <ChakraInput
             value={field.value || ''}
             placeholder={field.placeholder || 'Country code'}
             readOnly={readOnly}
@@ -274,7 +272,7 @@ export function DynamicFieldRenderer({
 
       case 'Currency':
         return (
-          <Input
+          <ChakraInput
             value={
               field.value
                 ? typeof field.value === 'number'
@@ -316,7 +314,7 @@ export function DynamicFieldRenderer({
       default:
         // Fallback for unknown types
         return (
-          <Input
+          <ChakraInput
             value={field.value || ''}
             placeholder={field.placeholder}
             readOnly={readOnly}
@@ -329,19 +327,19 @@ export function DynamicFieldRenderer({
 
   return (
     <Box>
-      <Text fontSize="sm" fontWeight="medium" color="gray.700" mb="2">
+      <Typography fontSize="sm" fontWeight="medium" color="gray.700" mb="2">
         {field.label}
         {field.isRequired && (
-          <Text as="span" color="red.500" ml="1">
+          <Typography as="span" color="red.500" ml="1">
             *
-          </Text>
+          </Typography>
         )}
-      </Text>
+      </Typography>
       {renderField()}
       {field.helpText && (
-        <Text fontSize="xs" color="gray.500" mt="1.5">
+        <Typography fontSize="xs" color="gray.500" mt="1.5">
           {field.helpText}
-        </Text>
+        </Typography>
       )}
     </Box>
   );

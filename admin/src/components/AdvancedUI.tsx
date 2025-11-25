@@ -8,7 +8,6 @@ import {
   Text,
   Button,
   IconButton,
-  Input,
   Textarea,
   Menu,
   Badge,
@@ -24,6 +23,7 @@ import {
   Spinner,
   Icon
 } from '@chakra-ui/react';
+import { Search } from '@/lib/mukuruImports';
 import {
   FiBold,
   FiItalic,
@@ -592,12 +592,9 @@ export function MultiSelect({
               {/* Search */}
               {searchable && (
                 <Box p="2" borderBottom="1px" borderColor="gray.200">
-                  <Input
-                    size="sm"
+                  <Search
                     placeholder="Search options..."
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    onClick={(e) => e.stopPropagation()}
+                    onSearchChange={(query) => setSearchTerm(query)}
                   />
                 </Box>
               )}

@@ -1,65 +1,113 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { auth } from '@/lib/auth';
+import { logger } from '@/lib/logger';
 
-const PROJECTIONS_API_BASE_URL = process.env.PROJECTIONS_API_BASE_URL || 'http://localhost:8007';
+// Route segment config
+export const dynamic = 'force-dynamic';
+export const runtime = 'nodejs';
 
+/**
+ * Applications API route - routes through centralized proxy for BFF pattern
+ * All token handling is done by the proxy, ensuring sessionId never exposed to client
+ */
 export async function GET(request: NextRequest) {
+  logger.debug('[Applications API Route] GET request received', { url: request.url });
   try {
+    const session = await auth();
+    logger.debug('[Applications API Route] Session', { authenticated: !!session });
     const searchParams = request.nextUrl.searchParams;
-    const partnerId = searchParams.get('partnerId');
-    const status = searchParams.get('status');
-    const riskLevel = searchParams.get('riskLevel');
-    const assignedTo = searchParams.get('assignedTo');
-    const isOverdue = searchParams.get('isOverdue');
-    const requiresManualReview = searchParams.get('requiresManualReview');
-    const fromDate = searchParams.get('fromDate');
-    const toDate = searchParams.get('toDate');
-    const searchTerm = searchParams.get('searchTerm');
-    const sortBy = searchParams.get('sortBy');
-    const sortDirection = searchParams.get('sortDirection');
-    const skip = searchParams.get('skip') || '0';
-    const take = searchParams.get('take') || '50';
-
-    // Build query parameters
-    const params = new URLSearchParams();
-    if (partnerId) params.append('partnerId', partnerId);
-    if (status) params.append('status', status);
-    if (riskLevel) params.append('riskLevel', riskLevel);
-    if (assignedTo) params.append('assignedTo', assignedTo);
-    if (isOverdue) params.append('isOverdue', isOverdue);
-    if (requiresManualReview) params.append('requiresManualReview', requiresManualReview);
-    if (fromDate) params.append('fromDate', fromDate);
-    if (toDate) params.append('toDate', toDate);
-    if (searchTerm) params.append('searchTerm', searchTerm);
-    if (sortBy) params.append('sortBy', sortBy);
-    if (sortDirection) params.append('sortDirection', sortDirection);
-    params.append('skip', skip);
-    params.append('take', take);
-
-    const url = `${PROJECTIONS_API_BASE_URL}/api/v1/cases?${params.toString()}`;
+    const queryString = searchParams.toString();
+    logger.debug('[Applications API Route] Query params', { queryString });
     
-    const response = await fetch(url, {
+    // Build proxy URL - proxy will handle token injection and refresh
+    // The backend endpoint is /api/v1/projections/cases (from ProjectionsController)
+    // The proxy routes /api/proxy/api/v1/projections/cases to the backend
+    const proxyPath = `/api/proxy/api/v1/projections/cases${queryString ? `?${queryString}` : ''}`;
+    const proxyUrl = new URL(proxyPath, request.url);
+    
+    // Prepare headers
+    const headers: HeadersInit = {
+      'Content-Type': 'application/json',
+    };
+
+    // Add user identification headers (proxy will inject token from Redis)
+    if (session?.user) {
+      const user = session.user as any;
+      if (user.email) headers['X-User-Email'] = user.email;
+      if (user.name) headers['X-User-Name'] = user.name;
+      if (user.id) headers['X-User-Id'] = user.id;
+      if (user.role) headers['X-User-Role'] = user.role;
+    }
+    
+    // Forward request through proxy (proxy handles token from httpOnly cookie)
+    const response = await fetch(proxyUrl.toString(), {
       method: 'GET',
-      headers: {
-        'Content-Type': 'application/json',
-      },
+      headers,
       cache: 'no-store',
+      signal: AbortSignal.timeout(10000),
     });
 
     if (!response.ok) {
-      const errorText = await response.text();
-      console.error(`Applications API error: ${response.status} ${response.statusText} - ${errorText}`);
+      let errorText = '';
+      try {
+        errorText = await response.text();
+      } catch (readError) {
+        errorText = `Failed to read error response: ${readError instanceof Error ? readError.message : 'Unknown error'}`;
+      }
+      
+      logger.error(new Error(`Backend error: ${response.status} ${response.statusText}`), '[Applications API Route] Backend error', {
+        tags: { error_type: 'api_backend_error' },
+        extra: {
+          status: response.status,
+          statusText: response.statusText,
+          body: errorText,
+          url: proxyUrl.toString()
+        }
+      });
+      
       return NextResponse.json(
-        { error: `API request failed: ${response.status} ${response.statusText}`, details: errorText },
+        { 
+          error: `API request failed: ${response.status} ${response.statusText}`, 
+          details: errorText || 'No error details available',
+          status: response.status
+        },
         { status: response.status }
       );
     }
 
-    const data = await response.json();
+    let data;
+    try {
+      const responseText = await response.text();
+      if (!responseText || responseText.trim() === '') {
+        logger.warn('[Applications API Route] Empty response from backend');
+        return NextResponse.json({ items: [], totalCount: 0, page: 1, pageSize: 50 });
+      }
+      data = JSON.parse(responseText);
+    } catch (parseError) {
+      logger.error(parseError, '[Applications API Route] Failed to parse response', {
+        tags: { error_type: 'api_parse_error' },
+        extra: { url: proxyUrl.toString() }
+      });
+      return NextResponse.json(
+        { 
+          error: 'Invalid response from backend', 
+          message: parseError instanceof Error ? parseError.message : 'Failed to parse response'
+        },
+        { status: 502 }
+      );
+    }
+    
     return NextResponse.json(data);
   } catch (error) {
-    console.error('Applications API proxy error:', error);
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    logger.error(error, '[Applications API Route] Request error', {
+      tags: { error_type: 'api_request_error' }
+    });
     return NextResponse.json(
-      { error: 'Failed to fetch applications', message: error instanceof Error ? error.message : 'Unknown error' },
+      { 
+        error: 'Failed to fetch applications', 
+        message: errorMessage,
+      },
       { status: 500 }
     );
   }

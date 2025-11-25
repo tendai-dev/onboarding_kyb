@@ -48,8 +48,12 @@ const CustomTooltip = ({ active, payload, label }: any) => {
 export const EntityTypeChart = ({ data, height = 300 }: { data: Array<{ type: string; count: number }>; height?: number }) => {
   const COLORS = ['#dd6b20', '#38a169', '#3182ce', '#805ad5', '#e53e3e'];
   
+  if (!data || data.length === 0) {
+    return null;
+  }
+  
   return (
-    <Box width="100%" height={`${height}px`}>
+    <Box width="100%" height={`${height}px`} minWidth="300px" minHeight={`${height}px`} style={{ position: 'relative' }}>
       <ResponsiveContainer width="100%" height="100%">
         <BarChart data={data} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
           <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
@@ -78,8 +82,12 @@ export const EntityTypeChart = ({ data, height = 300 }: { data: Array<{ type: st
 
 // Application Trends Chart
 export const ApplicationTrendsChart = ({ data }: { data: Array<{ date: string; applications: number; completed: number }> }) => {
+  if (!data || data.length === 0) {
+    return null;
+  }
+  
   return (
-    <Box width="100%" height="300px">
+    <Box width="100%" height="300px" minWidth="300px" minHeight="300px" style={{ position: 'relative' }}>
       <ResponsiveContainer width="100%" height="100%">
         <AreaChart data={data} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
           <defs>
@@ -167,8 +175,12 @@ export const ProcessingTimeChart = ({ data }: { data: Array<{ range: string; cou
 
 // Status Distribution Pie Chart
 export const StatusPieChart = ({ data }: { data: Array<{ name: string; value: number; color: string }> }) => {
+  if (!data || data.length === 0) {
+    return null;
+  }
+  
   return (
-    <Box width="100%" height="300px">
+    <Box width="100%" height="300px" minWidth="300px" minHeight="300px" style={{ position: 'relative' }}>
       <ResponsiveContainer width="100%" height="100%">
         <PieChart>
           <Pie

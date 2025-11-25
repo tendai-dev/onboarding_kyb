@@ -1,15 +1,14 @@
 // Browser Push Notifications Service
 // This service handles browser push notifications for new messages
+// Note: Service worker removed per requirements - using standard browser notifications only
 
 export class PushNotificationService {
   private static instance: PushNotificationService;
-  private registration: ServiceWorkerRegistration | null = null;
   private permission: NotificationPermission = 'default';
 
   private constructor() {
     if (typeof window !== 'undefined') {
       this.permission = Notification.permission;
-      this.initializeServiceWorker();
     }
   }
 
@@ -18,17 +17,6 @@ export class PushNotificationService {
       PushNotificationService.instance = new PushNotificationService();
     }
     return PushNotificationService.instance;
-  }
-
-  private async initializeServiceWorker(): Promise<void> {
-    if ('serviceWorker' in navigator) {
-      try {
-        this.registration = await navigator.serviceWorker.register('/sw.js');
-        console.log('[PushNotifications] Service Worker registered');
-      } catch (error) {
-        console.error('[PushNotifications] Service Worker registration failed:', error);
-      }
-    }
   }
 
   public async requestPermission(): Promise<boolean> {
@@ -74,11 +62,8 @@ export class PushNotificationService {
       ...options,
     };
 
-    if (this.registration) {
-      await this.registration.showNotification(title, defaultOptions);
-    } else {
-      new Notification(title, defaultOptions);
-    }
+    // Use standard browser notifications (service worker removed)
+    new Notification(title, defaultOptions);
   }
 
   public async showMessageNotification(
@@ -102,7 +87,7 @@ export class PushNotificationService {
   }
 
   public isSupported(): boolean {
-    return 'Notification' in window && 'serviceWorker' in navigator;
+    return 'Notification' in window;
   }
 }
 

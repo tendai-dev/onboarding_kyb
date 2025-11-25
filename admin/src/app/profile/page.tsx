@@ -5,16 +5,13 @@ import {
   Container,
   VStack,
   HStack,
-  Text,
-  Avatar,
-  Button,
-  Card,
   Separator,
-  Badge,
-  Icon,
   Spinner,
   Flex,
+  SimpleGrid,
 } from "@chakra-ui/react";
+import { Typography, Button, Tag, Card, IconWrapper } from "@/lib/mukuruImports";
+import { Avatar, AvatarImage, AvatarFallback } from "@chakra-ui/react";
 import { useSession, signOut } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
@@ -30,10 +27,13 @@ import {
 } from "react-icons/fi";
 import Link from "next/link";
 import AdminSidebar from "../../components/AdminSidebar";
+import PortalHeader from "../../components/PortalHeader";
+import { useSidebar } from "../../contexts/SidebarContext";
 
 export default function ProfilePage() {
   const { data: session, status } = useSession();
   const router = useRouter();
+  const { condensed } = useSidebar();
   const [isLoggingOut, setIsLoggingOut] = useState(false);
 
   const handleLogout = async () => {
@@ -97,206 +97,239 @@ export default function ProfilePage() {
 
   return (
     <Flex minH="100vh" bg="gray.50">
-      {/* Left Sidebar */}
       <AdminSidebar />
+      <PortalHeader />
 
       {/* Main Content */}
-      <Box flex="1" ml="240px">
-        <Box p="6" bg="gray.50">
-          <Container maxW="4xl">
-            {/* Header */}
-            <HStack mb="6" gap="4">
-              <Link href="/dashboard">
-                <Button variant="ghost" size="sm">
-                  <HStack gap="2">
-                    <Icon as={FiArrowLeft} />
-                    <Text>Back to Dashboard</Text>
-                  </HStack>
-                </Button>
-              </Link>
-            </HStack>
+      <Box 
+        flex="1" 
+        ml={condensed ? "72px" : "280px"}
+        mt="90px"
+        minH="calc(100vh - 90px)"
+        width={condensed ? "calc(100% - 72px)" : "calc(100% - 280px)"}
+        bg="gray.50"
+        overflowX="hidden"
+        transition="margin-left 0.3s ease, width 0.3s ease"
+      >
+        <Box width="full" px="8" py="8" maxW="full">
+          {/* Header */}
+          <Box mb="6">
+            <Link href="/dashboard" style={{ textDecoration: 'none' }}>
+              <Button 
+                variant="ghost" 
+                size="sm"
+                leftIcon={<IconWrapper><FiArrowLeft size={16} color="#F05423" /></IconWrapper>}
+                style={{ color: '#F05423', border: 'none' }}
+                _hover={{ bg: 'gray.100', border: 'none' }}
+                _focus={{ border: 'none', boxShadow: 'none' }}
+                _active={{ border: 'none' }}
+                className="back-button"
+              >
+                Back to Dashboard
+              </Button>
+            </Link>
+          </Box>
 
-        {/* Profile Card */}
-        <Card.Root mb="6">
-          <Card.Header>
-            <HStack justify="space-between">
-              <Text fontSize="2xl" fontWeight="bold" color="gray.800">
-                Profile Management
-              </Text>
-              <Badge colorScheme="orange" fontSize="sm" px="3" py="1">
-                Administrator
-              </Badge>
-            </HStack>
-          </Card.Header>
-          <Card.Body>
-            <VStack gap="6" align="stretch">
-              {/* Profile Picture and Basic Info */}
-              <HStack gap="6" p="6" bg="gray.50" borderRadius="lg">
-                {userImage ? (
-                  <Avatar.Root size="xl">
-                    <Avatar.Image src={userImage} alt={displayName} />
-                    <Avatar.Fallback>{getInitials(userName)}</Avatar.Fallback>
-                  </Avatar.Root>
-                ) : (
-                  <Avatar.Root size="xl" bg="orange.500" color="white">
-                    <Avatar.Fallback>
-                      <Icon as={FiUser} boxSize="8" />
-                    </Avatar.Fallback>
-                  </Avatar.Root>
-                )}
-                <VStack align="start" gap="2" flex="1">
-                  <Text fontSize="xl" fontWeight="bold" color="gray.800">
-                    {displayName}
-                  </Text>
-                  <Text fontSize="sm" color="gray.600">
-                    {userEmail}
-                  </Text>
-                  <Text fontSize="xs" color="gray.500">
-                    Profile picture is managed by Azure AD
-                  </Text>
-                </VStack>
-              </HStack>
-
-              <Separator />
-
-              {/* User Information */}
-              <VStack align="stretch" gap="4">
-                <Text fontSize="lg" fontWeight="semibold" color="gray.700">
-                  Account Information
-                </Text>
-
-                <Box p="4" bg="white" borderRadius="md" border="1px" borderColor="gray.200">
-                  <VStack align="stretch" gap="4">
-                    <HStack justify="space-between">
-                      <HStack gap="3">
-                        <Icon as={FiUser} color="gray.500" />
-                        <Text fontSize="sm" color="gray.600">
-                          Full Name
-                        </Text>
-                      </HStack>
-                      <Text fontSize="sm" fontWeight="medium" color="gray.800">
-                        {userName}
-                      </Text>
-                    </HStack>
-
-                    <Separator />
-
-                    <HStack justify="space-between">
-                      <HStack gap="3">
-                        <Icon as={FiMail} color="gray.500" />
-                        <Text fontSize="sm" color="gray.600">
-                          Email Address
-                        </Text>
-                      </HStack>
-                      <Text fontSize="sm" fontWeight="medium" color="gray.800">
-                        {userEmail}
-                      </Text>
-                    </HStack>
-
-                    <Separator />
-
-                    <HStack justify="space-between">
-                      <HStack gap="3">
-                        <Icon as={FiShield} color="gray.500" />
-                        <Text fontSize="sm" color="gray.600">
-                          Role
-                        </Text>
-                      </HStack>
-                      <Badge colorScheme="orange" fontSize="sm" px="2" py="1">
-                        Administrator
-                      </Badge>
-                    </HStack>
-
-                    <Separator />
-
-                    <HStack justify="space-between">
-                      <HStack gap="3">
-                        <Icon as={FiKey} color="gray.500" />
-                        <Text fontSize="sm" color="gray.600">
-                          Authentication
-                        </Text>
-                      </HStack>
-                      <Text fontSize="sm" fontWeight="medium" color="gray.800">
-                        Azure AD (Single Sign-On)
-                      </Text>
-                    </HStack>
+          {/* Profile Management and Account Information - Side by Side */}
+          <SimpleGrid columns={{ base: 1, lg: 2 }} gap="6" mb="6" width="full">
+            {/* Profile Management Card */}
+            <Card bg="white" width="full" height="full" display="flex" flexDirection="column">
+              <Box p="6" borderBottom="1px" borderColor="gray.200" width="full">
+                <Flex justify="space-between" align="center" width="full">
+                  <Typography fontSize="2xl" fontWeight="bold" color="gray.800">
+                    Profile Management
+                  </Typography>
+                  <Tag 
+                    variant="warning" 
+                    style={{ backgroundColor: '#F05423' }}
+                    className="mukuru-primary-tag"
+                  >
+                    Administrator
+                  </Tag>
+                </Flex>
+              </Box>
+              <Box p="6" width="full" flex="1" display="flex" flexDirection="column" justifyContent="center">
+                <VStack gap="4" align="center" width="full">
+                  {userImage ? (
+                    <Avatar.Root size="xl" flexShrink={0}>
+                      <AvatarImage src={userImage} alt={displayName} />
+                      <AvatarFallback>{getInitials(userName)}</AvatarFallback>
+                    </Avatar.Root>
+                  ) : (
+                    <Avatar.Root size="xl" bg="orange.500" color="white" flexShrink={0}>
+                      <AvatarFallback>
+                        <IconWrapper><FiUser size={32} /></IconWrapper>
+                      </AvatarFallback>
+                    </Avatar.Root>
+                  )}
+                  <VStack align="center" gap="2" width="full">
+                    <Typography fontSize="xl" fontWeight="bold" color="gray.800" textAlign="center" width="full">
+                      {displayName}
+                    </Typography>
+                    <Typography fontSize="sm" color="gray.600" textAlign="center" width="full">
+                      {userEmail}
+                    </Typography>
+                    <Typography fontSize="xs" color="gray.500" textAlign="center" width="full">
+                      Profile picture is managed by Azure AD
+                    </Typography>
                   </VStack>
-                </Box>
-              </VStack>
+                </VStack>
+              </Box>
+            </Card>
 
-              <Separator />
+            {/* Account Information Card */}
+            <Card bg="white" width="full" height="full" display="flex" flexDirection="column">
+              <Box p="6" borderBottom="1px" borderColor="gray.200" width="full">
+                <Typography fontSize="2xl" fontWeight="bold" color="gray.800">
+                  Account Information
+                </Typography>
+              </Box>
+              <Box p="6" width="full" flex="1" display="flex" flexDirection="column" justifyContent="center">
+                <VStack align="stretch" gap="4" width="full">
+                  <Flex justify="space-between" align="center" width="full" gap="4" py="2">
+                    <Flex gap="3" align="center" flex="1" minW="0">
+                      <IconWrapper flexShrink={0}><FiUser size={16} color="#718096" /></IconWrapper>
+                      <Typography fontSize="sm" color="gray.600" flexShrink={0}>
+                        Full Name
+                      </Typography>
+                    </Flex>
+                    <Box flexShrink={0} maxW="60%">
+                      <Typography fontSize="sm" fontWeight="medium" color="gray.800" textAlign="right">
+                        {userName}
+                      </Typography>
+                    </Box>
+                  </Flex>
 
-              {/* Security Information */}
-              <VStack align="stretch" gap="4">
-                <Text fontSize="lg" fontWeight="semibold" color="gray.700">
+                  <Box width="full" height="1px" bg="gray.200" />
+
+                  <Flex justify="space-between" align="center" width="full" gap="4" py="2">
+                    <Flex gap="3" align="center" flex="1" minW="0">
+                      <IconWrapper flexShrink={0}><FiMail size={16} color="#718096" /></IconWrapper>
+                      <Typography fontSize="sm" color="gray.600" flexShrink={0}>
+                        Email Address
+                      </Typography>
+                    </Flex>
+                    <Box flexShrink={0} maxW="60%">
+                      <Typography fontSize="sm" fontWeight="medium" color="gray.800" textAlign="right">
+                        {userEmail}
+                      </Typography>
+                    </Box>
+                  </Flex>
+
+                  <Box width="full" height="1px" bg="gray.200" />
+
+                  <Flex justify="space-between" align="center" width="full" gap="4" py="2">
+                    <Flex gap="3" align="center" flex="1" minW="0">
+                      <IconWrapper flexShrink={0}><FiShield size={16} color="#718096" /></IconWrapper>
+                      <Typography fontSize="sm" color="gray.600" flexShrink={0}>
+                        Role
+                      </Typography>
+                    </Flex>
+                    <Box flexShrink={0}>
+                      <Tag 
+                        variant="warning" 
+                        style={{ backgroundColor: '#F05423' }}
+                        className="mukuru-primary-tag"
+                      >
+                        Administrator
+                      </Tag>
+                    </Box>
+                  </Flex>
+
+                  <Box width="full" height="1px" bg="gray.200" />
+
+                  <Flex justify="space-between" align="center" width="full" gap="4" py="2">
+                    <Flex gap="3" align="center" flex="1" minW="0">
+                      <IconWrapper flexShrink={0}><FiKey size={16} color="#718096" /></IconWrapper>
+                      <Typography fontSize="sm" color="gray.600" flexShrink={0}>
+                        Authentication
+                      </Typography>
+                    </Flex>
+                    <Box flexShrink={0} maxW="60%">
+                      <Typography fontSize="sm" fontWeight="medium" color="gray.800" textAlign="right">
+                        Azure AD (Single Sign-On)
+                      </Typography>
+                    </Box>
+                  </Flex>
+                </VStack>
+              </Box>
+            </Card>
+          </SimpleGrid>
+
+          {/* Security & Privacy, Actions, and Need Help Cards - Side by Side */}
+          <SimpleGrid columns={{ base: 1, md: 2, lg: 3 }} gap="6" width="full">
+            {/* Security & Privacy Card */}
+            <Card bg="white" width="full" height="full" display="flex" flexDirection="column">
+              <Box p="6" borderBottom="1px" borderColor="gray.200" width="full">
+                <Typography fontSize="2xl" fontWeight="bold" color="gray.800">
                   Security & Privacy
-                </Text>
-
-                <Box p="4" bg="blue.50" borderRadius="md" border="1px" borderColor="blue.200">
-                  <VStack align="start" gap="2">
-                    <HStack gap="2">
-                      <Icon as={FiShield} color="blue.600" />
-                      <Text fontSize="sm" fontWeight="semibold" color="blue.800">
+                </Typography>
+              </Box>
+              <Box p="6" width="full" flex="1" display="flex" flexDirection="column" justifyContent="center">
+                <Box p="6" bg="blue.50" borderRadius="md" border="1px" borderColor="blue.200" width="full">
+                  <VStack align="start" gap="3" width="full">
+                    <Flex gap="2" align="center" width="full">
+                      <IconWrapper flexShrink={0}><FiShield size={16} color="#3182CE" /></IconWrapper>
+                      <Typography fontSize="sm" fontWeight="semibold" color="blue.800">
                         Secure Authentication
-                      </Text>
-                    </HStack>
-                    <Text fontSize="xs" color="blue.700" pl="6">
+                      </Typography>
+                    </Flex>
+                    <Typography fontSize="sm" color="blue.700" pl="6" width="full" lineHeight="1.6">
                       Your account is secured through Azure AD Single Sign-On. 
                       All authentication tokens are stored securely server-side and never exposed to the browser.
-                    </Text>
+                    </Typography>
                   </VStack>
                 </Box>
-              </VStack>
+              </Box>
+            </Card>
 
-              <Separator />
-
-              {/* Actions */}
-              <VStack align="stretch" gap="3">
-                <Text fontSize="lg" fontWeight="semibold" color="gray.700">
+            {/* Actions Card */}
+            <Card bg="white" width="full" height="full" display="flex" flexDirection="column">
+              <Box p="6" borderBottom="1px" borderColor="gray.200" width="full">
+                <Typography fontSize="2xl" fontWeight="bold" color="gray.800">
                   Actions
-                </Text>
+                </Typography>
+              </Box>
+              <Box p="6" width="full" flex="1" display="flex" flexDirection="column" justifyContent="center">
+                <VStack align="stretch" gap="4" width="full">
+                  <Button
+                    variant="primary"
+                    onClick={handleLogout}
+                    disabled={isLoggingOut}
+                    size="md"
+                    width="full"
+                    style={{ backgroundColor: '#F05423' }}
+                    className="mukuru-primary-button"
+                  >
+                    {!isLoggingOut && <IconWrapper><FiLogOut size={16} color="white" /></IconWrapper>}
+                    {isLoggingOut ? "Logging out..." : "Sign Out"}
+                  </Button>
+                  <Typography fontSize="xs" color="gray.500" textAlign="center" width="full" lineHeight="1.5">
+                    Signing out will end your session and clear all authentication tokens.
+                  </Typography>
+                </VStack>
+              </Box>
+            </Card>
 
-                <Button
-                  colorScheme="red"
-                  variant="outline"
-                  onClick={handleLogout}
-                  loading={isLoggingOut}
-                  disabled={isLoggingOut}
-                  size="lg"
-                >
-                  <HStack gap="2">
-                    {!isLoggingOut && <Icon as={FiLogOut} />}
-                    <Text>{isLoggingOut ? "Logging out..." : "Sign Out"}</Text>
-                  </HStack>
-                </Button>
-
-                <Text fontSize="xs" color="gray.500" textAlign="center">
-                  Signing out will end your session and clear all authentication tokens.
-                </Text>
-              </VStack>
-            </VStack>
-          </Card.Body>
-        </Card.Root>
-
-        {/* Additional Information */}
-        <Card.Root>
-          <Card.Header>
-            <Text fontSize="lg" fontWeight="semibold" color="gray.800">
-              Need Help?
-            </Text>
-          </Card.Header>
-          <Card.Body>
-            <VStack align="stretch" gap="3">
-              <Text fontSize="sm" color="gray.600">
-                For profile updates, password changes, or account management, please contact your Azure AD administrator.
-              </Text>
-              <Text fontSize="sm" color="gray.600">
-                Profile information is managed through your organization's Azure Active Directory.
-              </Text>
-            </VStack>
-          </Card.Body>
-        </Card.Root>
-          </Container>
+            {/* Need Help Card */}
+            <Card bg="white" width="full" height="full" display="flex" flexDirection="column">
+              <Box p="6" borderBottom="1px" borderColor="gray.200" width="full">
+                <Typography fontSize="2xl" fontWeight="bold" color="gray.800">
+                  Need Help?
+                </Typography>
+              </Box>
+              <Box p="6" width="full" flex="1" display="flex" flexDirection="column" justifyContent="center">
+                <VStack align="stretch" gap="3" width="full">
+                  <Typography fontSize="sm" color="gray.600" width="full" lineHeight="1.6">
+                    For profile updates, password changes, or account management, please contact your Azure AD administrator.
+                  </Typography>
+                  <Typography fontSize="sm" color="gray.600" width="full" lineHeight="1.6">
+                    Profile information is managed through your organization's Azure Active Directory.
+                  </Typography>
+                </VStack>
+              </Box>
+            </Card>
+          </SimpleGrid>
         </Box>
       </Box>
     </Flex>

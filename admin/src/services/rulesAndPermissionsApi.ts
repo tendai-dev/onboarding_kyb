@@ -156,9 +156,73 @@ class RulesAndPermissionsApiService {
   async getAllUsers(includePermissions = true): Promise<User[]> {
     const params = new URLSearchParams();
     if (includePermissions) params.append('includePermissions', 'true');
+    // Request all users (large page size)
+    params.append('page', '1');
+    params.append('pageSize', '1000');
     
     const queryString = params.toString();
-    return this.request<User[]>(`/users${queryString ? `?${queryString}` : ''}`);
+    const response = await this.request<any>(`/users${queryString ? `?${queryString}` : ''}`);
+    
+    // Authentication service returns { users: UserDto[], totalCount, page, ... }
+    // Transform to User[] format expected by frontend
+    if (response && response.users && Array.isArray(response.users)) {
+      return response.users.map((user: any) => ({
+        id: user.id || user.Id,
+        email: user.email || user.Email || '',
+        name: user.name || user.Name || user.fullName || '',
+        firstLoginAt: user.firstLoginAt || user.firstLogin || user.lastLogin || '',
+        lastLoginAt: user.lastLoginAt || user.lastLogin || '',
+        createdAt: user.createdAt || user.CreatedAt || '',
+        permissions: (user.permissions || user.Permissions || []).map((perm: any) => ({
+          id: perm.id || perm.Id || '',
+          permissionName: perm.permissionName || perm.PermissionName || perm.permission_name || '',
+          resource: perm.resource || perm.Resource || undefined,
+          description: perm.description || perm.Description || undefined,
+          isActive: perm.isActive !== undefined ? perm.isActive : (perm.IsActive !== undefined ? perm.IsActive : (perm.is_active !== undefined ? perm.is_active : true)),
+          createdAt: perm.createdAt || perm.CreatedAt || perm.created_at || '',
+          createdBy: perm.createdBy || perm.CreatedBy || perm.created_by || undefined
+        })),
+        roles: (user.roles || []).map((roleName: string) => ({
+          id: '',
+          roleId: '',
+          roleName: roleName,
+          roleDisplayName: roleName,
+          isActive: true,
+          createdAt: ''
+        }))
+      }));
+    }
+    
+    // Fallback: if response is already an array, transform snake_case to camelCase
+    if (Array.isArray(response)) {
+      return response.map((user: any) => ({
+        id: user.id || user.Id || '',
+        email: user.email || user.Email || '',
+        name: user.name || user.Name || user.fullName || '',
+        firstLoginAt: user.firstLoginAt || user.firstLogin || user.first_login_at || user.first_login || '',
+        lastLoginAt: user.lastLoginAt || user.lastLogin || user.last_login_at || user.last_login || '',
+        createdAt: user.createdAt || user.CreatedAt || user.created_at || '',
+        permissions: (user.permissions || user.Permissions || []).map((perm: any) => ({
+          id: perm.id || perm.Id || '',
+          permissionName: perm.permissionName || perm.PermissionName || perm.permission_name || '',
+          resource: perm.resource || perm.Resource || undefined,
+          description: perm.description || perm.Description || undefined,
+          isActive: perm.isActive !== undefined ? perm.isActive : (perm.IsActive !== undefined ? perm.IsActive : (perm.is_active !== undefined ? perm.is_active : true)),
+          createdAt: perm.createdAt || perm.CreatedAt || perm.created_at || '',
+          createdBy: perm.createdBy || perm.CreatedBy || perm.created_by || undefined
+        })),
+        roles: (user.roles || user.Roles || []).map((userRole: any) => ({
+          id: userRole.id || userRole.Id || '',
+          roleId: userRole.roleId || userRole.RoleId || userRole.role_id || '',
+          roleName: userRole.roleName || userRole.RoleName || userRole.role_name || '',
+          roleDisplayName: userRole.roleDisplayName || userRole.RoleDisplayName || userRole.role_display_name || userRole.roleName || '',
+          isActive: userRole.isActive !== undefined ? userRole.isActive : (userRole.IsActive !== undefined ? userRole.IsActive : (userRole.is_active !== undefined ? userRole.is_active : true)),
+          createdAt: userRole.createdAt || userRole.CreatedAt || userRole.created_at || ''
+        }))
+      }));
+    }
+    
+    return [];
   }
 
   async getUserByEmail(email: string): Promise<User | null> {
@@ -199,7 +263,48 @@ class RulesAndPermissionsApiService {
     if (includePermissions) params.append('includePermissions', 'true');
     
     const queryString = params.toString();
-    return this.request<Role[]>(`/roles${queryString ? `?${queryString}` : ''}`);
+    const response = await this.request<any>(`/roles${queryString ? `?${queryString}` : ''}`);
+    
+    // Authentication service returns { roles: RoleDto[] }
+    // Transform to Role[] format expected by frontend
+    if (response && response.roles && Array.isArray(response.roles)) {
+      return response.roles.map((role: any) => ({
+        id: role.id || role.Id || '',
+        name: role.name || role.Name || '',
+        displayName: role.displayName || role.DisplayName || role.display_name || role.name || role.Name || '',
+        description: role.description || role.Description || role.description || '',
+        isActive: role.isActive !== undefined ? role.isActive : (role.IsActive !== undefined ? role.IsActive : (role.is_active !== undefined ? role.is_active : true)),
+        createdAt: role.createdAt || role.CreatedAt || role.created_at || new Date().toISOString(),
+        updatedAt: role.updatedAt || role.UpdatedAt || role.updated_at || new Date().toISOString(),
+        permissions: (role.permissions || role.Permissions || []).map((perm: any) => ({
+          id: perm.id || perm.Id || '',
+          permissionName: perm.permissionName || perm.PermissionName || perm.permission_name || '',
+          resource: perm.resource || perm.Resource || perm.resource || undefined,
+          isActive: perm.isActive !== undefined ? perm.isActive : (perm.IsActive !== undefined ? perm.IsActive : (perm.is_active !== undefined ? perm.is_active : true))
+        }))
+      }));
+    }
+    
+    // Fallback: if response is already an array, transform snake_case to camelCase
+    if (Array.isArray(response)) {
+      return response.map((role: any) => ({
+        id: role.id || role.Id || '',
+        name: role.name || role.Name || '',
+        displayName: role.displayName || role.DisplayName || role.display_name || role.name || role.Name || '',
+        description: role.description || role.Description || role.description || '',
+        isActive: role.isActive !== undefined ? role.isActive : (role.IsActive !== undefined ? role.IsActive : (role.is_active !== undefined ? role.is_active : true)),
+        createdAt: role.createdAt || role.CreatedAt || role.created_at || new Date().toISOString(),
+        updatedAt: role.updatedAt || role.UpdatedAt || role.updated_at || new Date().toISOString(),
+        permissions: (role.permissions || role.Permissions || []).map((perm: any) => ({
+          id: perm.id || perm.Id || '',
+          permissionName: perm.permissionName || perm.PermissionName || perm.permission_name || perm.permissionName || '',
+          resource: perm.resource || perm.Resource || perm.resource || undefined,
+          isActive: perm.isActive !== undefined ? perm.isActive : (perm.IsActive !== undefined ? perm.IsActive : (perm.is_active !== undefined ? perm.is_active : true))
+        }))
+      }));
+    }
+    
+    return [];
   }
 
   async getRoleById(roleId: string, includePermissions = true): Promise<Role> {

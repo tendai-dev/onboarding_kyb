@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth';
+import { auth } from '@/lib/auth';
+import { logger } from '@/lib/logger';
 
 /**
  * Application Status API route - routes through centralized proxy for BFF pattern
@@ -19,7 +19,7 @@ export async function PUT(
   }
 
   try {
-    const session = await getServerSession(authOptions);
+    const session = await auth();
     const body = await request.json();
     const { status, notes, reason } = body;
     
@@ -72,7 +72,10 @@ export async function PUT(
           }
         }
       } catch (e) {
-        console.warn('Could not resolve caseId to GUID, using id as-is:', e);
+        logger.warn('Could not resolve caseId to GUID, using id as-is', {
+          tags: { warning_type: 'guid_resolution' },
+          extra: { error: e instanceof Error ? e.message : String(e) }
+        });
       }
     }
 
@@ -129,7 +132,10 @@ export async function PUT(
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error(`[Admin Application Status Update] API error: ${response.status}`, errorText);
+      logger.error(new Error(`API error: ${response.status}`), '[Admin Application Status Update] API error', {
+        tags: { error_type: 'api_backend_error' },
+        extra: { status: response.status, errorText }
+      });
       return NextResponse.json(
         { error: `Failed to update status: ${response.status} ${response.statusText}`, details: errorText },
         { status: response.status }
@@ -139,7 +145,9 @@ export async function PUT(
     const data = await response.json();
     return NextResponse.json(data);
   } catch (error) {
-    console.error('[Admin Application Status Update] Error:', error);
+    logger.error(error, '[Admin Application Status Update] Error', {
+      tags: { error_type: 'api_route_error' }
+    });
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
     const isConnectionError = errorMessage.includes('fetch failed') || errorMessage.includes('ECONNREFUSED') || errorMessage.includes('timeout');
     

@@ -6,7 +6,6 @@ import {
   HStack,
   Text,
   Button,
-  Input,
   Checkbox,
   Badge,
   Flex,
@@ -18,6 +17,7 @@ import {
   useDisclosure,
   Separator
 } from "@chakra-ui/react";
+import { Search } from "@/lib/mukuruImports";
 import { useState, useEffect, useMemo } from "react";
 import {
   FiSearch,
@@ -323,12 +323,12 @@ export function EnhancedAdminInterface({
 
           {/* Search and Actions */}
           <HStack gap="4">
-            <Input
-              placeholder="Search applications..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              flex="1"
-            />
+            <Box flex="1" maxW="400px">
+              <Search
+                placeholder="Search applications..."
+                onSearchChange={(query) => setSearchTerm(query)}
+              />
+            </Box>
             
             <HStack gap="2">
               <select

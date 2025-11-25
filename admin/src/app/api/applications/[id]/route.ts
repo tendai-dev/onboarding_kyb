@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth';
+import { auth } from '@/lib/auth';
+import { logger } from '@/lib/logger';
 
 /**
  * Application Details API route - routes through centralized proxy for BFF pattern
@@ -19,7 +19,7 @@ export async function GET(
   }
 
   try {
-    const session = await getServerSession(authOptions);
+    const session = await auth();
     
     // Build headers
     const headers: HeadersInit = {
@@ -43,7 +43,7 @@ export async function GET(
     const searchPath = `/api/proxy/projections/v1/cases?searchTerm=${encodeURIComponent(id)}&take=10`;
     const searchUrl = new URL(searchPath, request.url);
     
-    console.log(`[Admin Application Details] Searching projections API via proxy: ${searchUrl}`);
+    logger.debug('[Admin Application Details] Searching projections API via proxy', { url: searchUrl.toString() });
 
     let response = await fetch(searchUrl.toString(), {
       method: 'GET',
@@ -89,7 +89,7 @@ export async function GET(
     // This handles cases where the projection hasn't synced yet
     if (isGuid) {
       try {
-        console.log(`[Admin Application Details] Not found in projections, trying onboarding API via proxy: /api/proxy/api/v1/cases/${id}`);
+        logger.debug('[Admin Application Details] Not found in projections, trying onboarding API', { path: `/api/proxy/api/v1/cases/${id}` });
         
         // Route through proxy
         const onboardingPath = `/api/proxy/api/v1/cases/${id}`;
@@ -104,7 +104,7 @@ export async function GET(
         if (onboardingResponse.ok) {
           const onboardingData = await onboardingResponse.json();
           
-          console.log(`[Admin Application Details] Found in onboarding API, transforming data...`);
+          logger.debug('[Admin Application Details] Found in onboarding API, transforming data');
           
           // Transform onboarding API response to match projection format
           // The onboarding API returns snake_case, we need to transform it
@@ -159,14 +159,19 @@ export async function GET(
             metadataJson: JSON.stringify(onboardingData.metadata || {}),
           };
 
-          console.log(`[Admin Application Details] Successfully transformed and returning data`);
+          logger.debug('[Admin Application Details] Successfully transformed and returning data');
           return NextResponse.json(transformed);
         } else {
           const errorText = await onboardingResponse.text();
-          console.error(`[Admin Application Details] Onboarding API returned ${onboardingResponse.status}:`, errorText);
+          logger.error(new Error(`Onboarding API returned ${onboardingResponse.status}`), '[Admin Application Details] Onboarding API error', {
+            tags: { error_type: 'api_backend_error' },
+            extra: { status: onboardingResponse.status, errorText }
+          });
         }
       } catch (e) {
-        console.error('[Admin Application Details] Error fetching from onboarding API:', e);
+        logger.error(e, '[Admin Application Details] Error fetching from onboarding API', {
+          tags: { error_type: 'api_fetch_error' }
+        });
         // Fall through to 404
       }
     }
@@ -177,7 +182,9 @@ export async function GET(
       { status: 404 }
     );
   } catch (error) {
-    console.error('[Admin Application Details] Error:', error);
+    logger.error(error, '[Admin Application Details] Error', {
+      tags: { error_type: 'api_route_error' }
+    });
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
     const isConnectionError = errorMessage.includes('fetch failed') || errorMessage.includes('ECONNREFUSED') || errorMessage.includes('timeout');
     

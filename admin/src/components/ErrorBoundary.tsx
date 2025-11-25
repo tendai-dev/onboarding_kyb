@@ -1,7 +1,8 @@
 "use client";
 
 import React from "react";
-import { Box, VStack, Text, Button, Heading } from "@chakra-ui/react";
+import { Box, VStack } from "@chakra-ui/react";
+import { Typography, Button } from "@/lib/mukuruImports";
 import * as Sentry from "@sentry/nextjs";
 
 interface ErrorBoundaryProps {
@@ -59,12 +60,12 @@ export class ErrorBoundary extends React.Component<
           p="8"
         >
           <VStack gap="4" maxW="600px" textAlign="center">
-            <Heading size="lg" color="red.600">
+            <Typography fontSize="2xl" fontWeight="bold" color="red.600">
               Something went wrong
-            </Heading>
-            <Text color="gray.600">
+            </Typography>
+            <Typography color="gray.600">
               An unexpected error occurred. Our team has been notified and is working on a fix.
-            </Text>
+            </Typography>
             {process.env.NODE_ENV === "development" && (
               <Box
                 p="4"
@@ -76,17 +77,17 @@ export class ErrorBoundary extends React.Component<
                 maxW="100%"
                 overflow="auto"
               >
-                <Text fontSize="sm" fontFamily="mono" color="red.800">
+                <Typography fontSize="sm" fontFamily="mono" color="red.800">
                   {this.state.error.toString()}
                   {this.state.error.stack && (
                     <Box as="pre" mt="2" fontSize="xs" whiteSpace="pre-wrap">
                       {this.state.error.stack}
                     </Box>
                   )}
-                </Text>
+                </Typography>
               </Box>
             )}
-            <Button colorScheme="orange" onClick={this.resetError}>
+            <Button variant="primary" onClick={this.resetError}>
               Try Again
             </Button>
             <Button variant="ghost" onClick={() => window.location.href = "/dashboard"}>

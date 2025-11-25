@@ -18,7 +18,7 @@ import { motion } from "framer-motion";
 import { useState, useRef } from "react";
 import { Button } from "@chakra-ui/react";
 
-const MotionBox = motion(Box);
+const MotionBox = motion.create(Box);
 const MotionCard = motion.div;
 
 const documentsToSign = [

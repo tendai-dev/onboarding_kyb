@@ -19,7 +19,7 @@ import { motion } from "framer-motion";
 import { useState } from "react";
 import { Button, Link } from "@chakra-ui/react";
 
-const MotionBox = motion(Box);
+const MotionBox = motion.create(Box);
 
 interface NavigationProps {
   userType?: 'partner';

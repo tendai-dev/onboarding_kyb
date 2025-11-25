@@ -6,13 +6,12 @@ import {
   HStack, 
   VStack, 
   Container,
-  Text,
   Image,
-  Button,
   SimpleGrid,
   Icon,
   Spinner
 } from "@chakra-ui/react";
+import { Button, Typography, MukuruLogo } from "@/lib/mukuruImports";
 import { motion, useScroll, useTransform, useInView } from "framer-motion";
 import { useRef, useEffect, useState } from "react";
 import Link from "next/link";
@@ -31,11 +30,11 @@ import {
 } from "react-icons/fi";
 
 // Create motion components
-const MotionBox = motion(Box);
-const MotionFlex = motion(Flex);
-const MotionVStack = motion(VStack);
-const MotionHStack = motion(HStack);
-const MotionButton = motion(Button);
+const MotionBox = motion.create(Box);
+const MotionFlex = motion.create(Flex);
+const MotionVStack = motion.create(VStack);
+const MotionHStack = motion.create(HStack);
+const MotionButton = motion.create(Button);
 
 export default function Home() {
   const containerRef = useRef(null);
@@ -75,7 +74,7 @@ export default function Home() {
       <Box minH="100vh" display="flex" alignItems="center" justifyContent="center" bg="white">
         <VStack gap={4}>
           <Spinner size="xl" color="#f76834" />
-          <Text color="gray.600">Loading...</Text>
+          <Typography color="gray.600">Loading...</Typography>
         </VStack>
       </Box>
     );
@@ -154,12 +153,12 @@ export default function Home() {
       >
         {/* Logo */}
         <HStack gap="3">
-          <Image src="/mukuru-logo.png" alt="Mukuru Logo" height="48px" width="auto" />
+          <MukuruLogo height="48px" />
         </HStack>
 
         {/* Right Navigation Links */}
         <HStack gap="10">
-          <Text 
+          <Typography 
             color="white" 
             fontWeight="medium" 
             cursor="pointer" 
@@ -168,8 +167,8 @@ export default function Home() {
             onClick={() => document.getElementById('benefits')?.scrollIntoView({ behavior: 'smooth' })}
           >
             Benefits
-          </Text>
-          <Text 
+          </Typography>
+          <Typography 
             color="white" 
             fontWeight="medium" 
             cursor="pointer" 
@@ -178,7 +177,7 @@ export default function Home() {
             onClick={() => document.getElementById('contact')?.scrollIntoView({ behavior: 'smooth' })}
           >
             Contact
-          </Text>
+          </Typography>
         </HStack>
       </MotionFlex>
 
@@ -203,7 +202,7 @@ export default function Home() {
               variants={containerVariants}
             >
               <motion.div variants={itemVariants}>
-                <Text
+                <Typography
                   as="h1"
                   fontSize="6xl"
                   fontWeight="bold"
@@ -212,11 +211,11 @@ export default function Home() {
                   whiteSpace="nowrap"
                 >
                   Partner with Mukuru
-                </Text>
+                </Typography>
               </motion.div>
               
               <motion.div variants={itemVariants}>
-                <Text
+                <Typography
                   as="p"
                   fontSize="xl"
                   color="gray.600"
@@ -225,11 +224,11 @@ export default function Home() {
                   fontWeight="normal"
                 >
                   Join Africa's leading microfinance network. Complete your business verification to access remittance and financial services for your partners.
-                </Text>
+                </Typography>
               </motion.div>
               
               <motion.div variants={itemVariants}>
-                  <MotionButton
+                  <Button
                     onClick={async () => {
                       // Use NextAuth signIn instead of legacy PKCE flow
                       // NextAuth handles OAuth flow and token storage in Redis
@@ -238,25 +237,19 @@ export default function Home() {
                         redirect: true 
                       });
                     }}
-                    variant="solid"
-                    size="xl"
+                    variant="primary"
+                    size="md"
                     borderRadius="32px"
                     fontWeight="semibold"
                     fontSize="xl"
                     px="12"
                     py="6"
                     bg="gray.800"
-                    color="white"
                     _hover={{ bg: "gray.700" }}
                     _active={{ bg: "gray.900" }}
-                    whileHover={{ 
-                      scale: 1.05,
-                      boxShadow: "0 12px 30px rgba(0, 0, 0, 0.3)"
-                    }}
-                    whileTap={{ scale: 0.95 }}
                   >
                     Get Started Now
-                  </MotionButton>
+                  </Button>
               </motion.div>
             </MotionVStack>
           </Container>
@@ -344,15 +337,15 @@ export default function Home() {
             alignItems="center"
             justifyContent="center"
           >
-            <Text fontSize="2xl" color="white" fontWeight="bold">✓</Text>
+            <Typography fontSize="2xl" color="white" fontWeight="bold">✓</Typography>
           </Box>
           <VStack gap="2" align="start">
-            <Text fontSize="xl" fontWeight="bold" color="gray.800">
+            <Typography fontSize="xl" fontWeight="bold" color="gray.800">
               Quick Verification
-            </Text>
-            <Text fontSize="md" color="gray.600">
+            </Typography>
+            <Typography fontSize="md" color="gray.600">
               Fast-track approval process
-            </Text>
+            </Typography>
           </VStack>
         </VStack>
       </MotionBox>
@@ -377,9 +370,9 @@ export default function Home() {
       >
         <VStack gap="4" align="start">
           <HStack justify="space-between" width="100%">
-            <Text fontSize="xl" fontWeight="bold" color="gray.800">
+            <Typography fontSize="xl" fontWeight="bold" color="gray.800">
               Application Status
-            </Text>
+            </Typography>
             <Box
               width="24px"
               height="24px"
@@ -389,7 +382,7 @@ export default function Home() {
               alignItems="center"
               justifyContent="center"
             >
-              <Text fontSize="sm" color="white">↗</Text>
+              <Typography fontSize="sm" color="white">↗</Typography>
             </Box>
           </HStack>
           
@@ -454,12 +447,12 @@ export default function Home() {
         <Container maxW="6xl">
           <MotionVStack gap="12" align="center">
             <MotionVStack gap="4" align="center" textAlign="center">
-              <Text fontSize="4xl" fontWeight="bold" color="gray.800">
+              <Typography fontSize="4xl" fontWeight="bold" color="gray.800">
                 Why Partner with Mukuru?
-              </Text>
-              <Text fontSize="xl" color="gray.600" maxW="3xl">
+              </Typography>
+              <Typography fontSize="xl" color="gray.600" maxW="3xl">
                 Join thousands of businesses across Africa providing trusted financial services
-              </Text>
+              </Typography>
             </MotionVStack>
             
             <SimpleGrid columns={{ base: 1, md: 3 }} gap="8" width="100%">
@@ -488,12 +481,12 @@ export default function Home() {
                 >
                   <Icon as={FiShield} boxSize="8" color="#f76834" />
                 </Box>
-                <Text fontSize="xl" fontWeight="bold" color="gray.800" mb="4">
+                <Typography fontSize="xl" fontWeight="bold" color="gray.800" mb="4">
                   Trusted & Secure
-                </Text>
-                <Text color="gray.600">
+                </Typography>
+                <Typography color="gray.600">
                   Bank-level security protects your business information throughout verification
-                </Text>
+                </Typography>
       </MotionBox>
 
               <MotionBox
@@ -521,12 +514,12 @@ export default function Home() {
                 >
                   <Icon as={FiClock} boxSize="8" color="#f76834" />
                 </Box>
-                <Text fontSize="xl" fontWeight="bold" color="gray.800" mb="4">
+                <Typography fontSize="xl" fontWeight="bold" color="gray.800" mb="4">
                   Fast Approval
-                </Text>
-                <Text color="gray.600">
+                </Typography>
+                <Typography color="gray.600">
                   Get approved quickly and start offering remittance services to your partners
-                </Text>
+                </Typography>
       </MotionBox>
 
               <MotionBox
@@ -554,12 +547,12 @@ export default function Home() {
                 >
                   <Icon as={FiCheckCircle} boxSize="8" color="#f76834" />
                 </Box>
-                <Text fontSize="xl" fontWeight="bold" color="gray.800" mb="4">
+                <Typography fontSize="xl" fontWeight="bold" color="gray.800" mb="4">
                   Real-Time Tracking
-                </Text>
-                <Text color="gray.600">
+                </Typography>
+                <Typography color="gray.600">
                   Track your verification status and communicate with our compliance team
-                </Text>
+                </Typography>
               </MotionBox>
             </SimpleGrid>
           </MotionVStack>
@@ -596,12 +589,12 @@ export default function Home() {
         <Container maxW="6xl" position="relative" zIndex="10">
           <MotionVStack gap="12" align="center">
             <MotionVStack gap="4" align="center" textAlign="center">
-              <Text fontSize="4xl" fontWeight="bold" color="gray.800">
+              <Typography fontSize="4xl" fontWeight="bold" color="gray.800">
                 Get in Touch
-              </Text>
-              <Text fontSize="xl" color="gray.600" maxW="3xl">
+              </Typography>
+              <Typography fontSize="xl" color="gray.600" maxW="3xl">
                 Have questions? Our compliance team is here to help
-              </Text>
+              </Typography>
             </MotionVStack>
             
             <SimpleGrid columns={{ base: 1, md: 4 }} gap="6" width="100%">
@@ -630,12 +623,12 @@ export default function Home() {
                 >
                   <Icon as={FiMail} boxSize="6" color="#f76834" />
                 </Box>
-                <Text fontSize="lg" fontWeight="bold" color="gray.800" mb="2">
+                <Typography fontSize="lg" fontWeight="bold" color="gray.800" mb="2">
                   Email Us
-                </Text>
-                <Text fontSize="sm" color="gray.600">
+                </Typography>
+                <Typography fontSize="sm" color="gray.600">
                   kyb@mukuru.com
-                </Text>
+                </Typography>
               </MotionBox>
               
               <MotionBox
@@ -663,12 +656,12 @@ export default function Home() {
                 >
                   <Icon as={FiPhone} boxSize="6" color="#f76834" />
                 </Box>
-                <Text fontSize="lg" fontWeight="bold" color="gray.800" mb="2">
+                <Typography fontSize="lg" fontWeight="bold" color="gray.800" mb="2">
                   Call Us
-                </Text>
-                <Text fontSize="sm" color="gray.600">
+                </Typography>
+                <Typography fontSize="sm" color="gray.600">
                   +27 10 593 0849
-                </Text>
+                </Typography>
               </MotionBox>
               
               <MotionBox
@@ -696,12 +689,12 @@ export default function Home() {
                 >
                   <Icon as={FiMapPin} boxSize="6" color="#f76834" />
                 </Box>
-                <Text fontSize="lg" fontWeight="bold" color="gray.800" mb="2">
+                <Typography fontSize="lg" fontWeight="bold" color="gray.800" mb="2">
                   Visit Us
-                </Text>
-                <Text fontSize="sm" color="gray.600">
+                </Typography>
+                <Typography fontSize="sm" color="gray.600">
                   Johannesburg, South Africa
-                </Text>
+                </Typography>
               </MotionBox>
               
               <MotionBox
@@ -729,12 +722,12 @@ export default function Home() {
                 >
                   <Icon as={FiGlobe} boxSize="6" color="#f76834" />
                 </Box>
-                <Text fontSize="lg" fontWeight="bold" color="gray.800" mb="2">
+                <Typography fontSize="lg" fontWeight="bold" color="gray.800" mb="2">
                   Website
-                </Text>
-                <Text fontSize="sm" color="gray.600">
+                </Typography>
+                <Typography fontSize="sm" color="gray.600">
                   mukuru.com
-                </Text>
+                </Typography>
               </MotionBox>
             </SimpleGrid>
           </MotionVStack>
@@ -756,9 +749,9 @@ export default function Home() {
       >
         <Container maxW="6xl">
           <Flex justify="space-between" align="center">
-            <Text fontSize="sm" color="gray.600">
+            <Typography fontSize="sm" color="gray.600">
               © 2025 Mukuru. All rights reserved.
-            </Text>
+            </Typography>
             <HStack gap="6">
               {/* Footer links removed - pages not implemented yet */}
             </HStack>

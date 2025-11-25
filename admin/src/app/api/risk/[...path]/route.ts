@@ -1,21 +1,46 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth';
+import { auth } from '@/lib/auth';
+import { logger } from '@/lib/logger';
+
+// Route segment config
+export const dynamic = 'force-dynamic';
+export const runtime = 'nodejs';
 
 /**
  * Risk API route - routes through centralized proxy for BFF pattern
  * All token handling is done by the proxy, ensuring sessionId never exposed to client
  */
-async function forwardRequest(request: NextRequest, method: string) {
+async function forwardRequest(request: NextRequest, method: string, params?: { path?: string[] }) {
+  logger.debug(`[Risk API Route] ${method} request received`, { url: request.url.toString() });
   try {
-    const session = await getServerSession(authOptions);
+    const session = await auth();
     const pathname = request.nextUrl.pathname;
-    const pathAfterRisk = pathname.replace('/api/risk', '') || '';
     const searchParams = request.nextUrl.searchParams;
     const queryString = searchParams.toString();
-    const servicePath = pathAfterRisk.startsWith('/') ? pathAfterRisk : `/${pathAfterRisk}`;
+    
+    // Extract the path after /api/risk
+    // If params.path exists (from [...path]), use it, otherwise parse from pathname
+    let servicePath = '';
+    if (params?.path && params.path.length > 0) {
+      // Join the path segments
+      servicePath = `/${params.path.join('/')}`;
+    } else {
+      // Fallback: extract from pathname
+      const pathAfterRisk = pathname.replace('/api/risk', '') || '';
+      servicePath = pathAfterRisk.startsWith('/') ? pathAfterRisk : `/${pathAfterRisk}`;
+    }
+    
+    // If servicePath is just '/risk-assessments', remove it since backend route already includes it
+    // Backend route is /api/v1/risk-assessments, so we should map:
+    // /api/risk/risk-assessments -> /api/proxy/api/v1/risk-assessments
+    // /api/risk/risk-assessments/{id} -> /api/proxy/api/v1/risk-assessments/{id}
+    if (servicePath === '/risk-assessments' || servicePath.startsWith('/risk-assessments/')) {
+      // Remove the leading /risk-assessments since backend route already includes it
+      servicePath = servicePath.replace(/^\/risk-assessments/, '');
+    }
     
     // Build proxy URL - proxy will handle token injection and refresh
+    // Backend route is [Route("api/v1/risk-assessments")], so we need /api/v1/risk-assessments
     const proxyPath = `/api/proxy/api/v1/risk-assessments${servicePath}${queryString ? `?${queryString}` : ''}`;
     const proxyUrl = new URL(proxyPath, request.url);
     
@@ -80,23 +105,38 @@ async function forwardRequest(request: NextRequest, method: string) {
   }
 }
 
-export async function GET(request: NextRequest) {
-  return forwardRequest(request, 'GET');
+export async function GET(
+  request: NextRequest,
+  { params }: { params: { path?: string[] } }
+) {
+  return forwardRequest(request, 'GET', params);
 }
 
-export async function POST(request: NextRequest) {
-  return forwardRequest(request, 'POST');
+export async function POST(
+  request: NextRequest,
+  { params }: { params: { path?: string[] } }
+) {
+  return forwardRequest(request, 'POST', params);
 }
 
-export async function PUT(request: NextRequest) {
-  return forwardRequest(request, 'PUT');
+export async function PUT(
+  request: NextRequest,
+  { params }: { params: { path?: string[] } }
+) {
+  return forwardRequest(request, 'PUT', params);
 }
 
-export async function DELETE(request: NextRequest) {
-  return forwardRequest(request, 'DELETE');
+export async function DELETE(
+  request: NextRequest,
+  { params }: { params: { path?: string[] } }
+) {
+  return forwardRequest(request, 'DELETE', params);
 }
 
-export async function PATCH(request: NextRequest) {
-  return forwardRequest(request, 'PATCH');
+export async function PATCH(
+  request: NextRequest,
+  { params }: { params: { path?: string[] } }
+) {
+  return forwardRequest(request, 'PATCH', params);
 }
 

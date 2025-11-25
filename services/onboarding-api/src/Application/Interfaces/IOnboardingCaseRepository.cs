@@ -15,6 +15,14 @@ public interface IOnboardingCaseRepository
     
     Task<IEnumerable<OnboardingCase>> GetByPartnerIdAsync(Guid partnerId, CancellationToken cancellationToken = default);
     
+    Task<(IEnumerable<OnboardingCase> Items, int TotalCount)> GetByPartnerIdWithFiltersAsync(
+        Guid partnerId,
+        int limit = 25,
+        int offset = 0,
+        string? status = null,
+        string? assignee = null,
+        CancellationToken cancellationToken = default);
+    
     Task AddAsync(OnboardingCase onboardingCase, CancellationToken cancellationToken = default);
     
     void Update(OnboardingCase onboardingCase);

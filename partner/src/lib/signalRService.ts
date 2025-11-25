@@ -1,5 +1,6 @@
 import * as signalR from "@microsoft/signalr";
 import { getAuthUser } from "./auth/session";
+import { generateUserIdFromEmail } from "./api";
 
 class SignalRService {
   private connection: signalR.HubConnection | null = null;
@@ -18,17 +19,19 @@ class SignalRService {
       const userEmail = user.email || "";
       
       // Generate user ID from email (consistent with backend)
-      const userId = this.generateUserIdFromEmail(userEmail);
+      const userId = generateUserIdFromEmail(userEmail);
 
-      // Build connection URL through proxy
-      const hubUrl = `/api/proxy/messaging/messageHub`;
+      // Build connection URL directly to backend (bypassing Next.js proxy)
+      // Next.js API routes don't support WebSocket connections, so SignalR must connect directly
+      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8001';
+      const hubUrl = `${backendUrl}/api/v1/messages/hub`;
       
       this.connection = new signalR.HubConnectionBuilder()
         .withUrl(hubUrl, {
-          // Tokens are handled server-side by proxy - no need for accessTokenFactory
-          // The proxy will inject the Authorization header from Redis
+          // For direct backend connection, we need to handle auth differently
+          // The backend will use X-User-Id header for identification
           accessTokenFactory: async () => {
-            // Return empty - proxy handles authentication
+            // Return empty - backend uses headers for user identification
             return "";
           },
           headers: {
@@ -58,9 +61,12 @@ class SignalRService {
 
       this.reconnectAttempts = 0;
     } catch (error) {
-      console.error('[SignalR] Connection error:', error);
+      // SignalR is optional - messaging will work without real-time updates
+      console.warn('[SignalR] Connection failed (non-critical):', error);
+      console.warn('[SignalR] Messaging will work without real-time updates');
       this.reconnectAttempts++;
-      throw error;
+      // Don't throw - allow messaging to work without SignalR
+      // The connection will remain null and isConnected() will return false
     }
   }
 
@@ -191,17 +197,6 @@ class SignalRService {
     return this.connection?.state || signalR.HubConnectionState.Disconnected;
   }
 
-  private generateUserIdFromEmail(email: string): string {
-    // Simple hash function to generate consistent ID from email
-    // This should match the backend logic
-    let hash = 0;
-    for (let i = 0; i < email.length; i++) {
-      const char = email.charCodeAt(i);
-      hash = ((hash << 5) - hash) + char;
-      hash = hash & hash; // Convert to 32bit integer
-    }
-    return Math.abs(hash).toString();
-  }
 }
 
 // Export singleton instance

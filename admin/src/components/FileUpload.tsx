@@ -5,14 +5,11 @@ import {
   Box, 
   VStack, 
   HStack, 
-  Text, 
-  Icon, 
-  Button,
-  Progress,
-  Badge,
   Circle,
   Image
 } from "@chakra-ui/react";
+import { Typography, Button, Tag, IconWrapper } from "@/lib/mukuruImports";
+import { Progress } from "@chakra-ui/react";
 import { 
   FiUpload, 
   FiFile, 
@@ -230,11 +227,11 @@ export function FileUpload({
   const getStatusIcon = (status: UploadedFile['status']) => {
     switch (status) {
       case 'uploading':
-        return <Icon as={FiUpload} boxSize="4" />;
+        return <IconWrapper><FiUpload size={16} /></IconWrapper>;
       case 'completed':
-        return <Icon as={FiCheck} boxSize="4" color="green.500" />;
+        return <IconWrapper><FiCheck size={16} color="#38A169" /></IconWrapper>;
       case 'error':
-        return <Icon as={FiX} boxSize="4" color="red.500" />;
+        return <IconWrapper><FiX size={16} color="#E53E3E" /></IconWrapper>;
     }
   };
 
@@ -272,27 +269,26 @@ export function FileUpload({
       >
         <VStack gap="4">
           <Circle size="60px" bg="blue.100" color="blue.600">
-            <Icon as={FiCloud} boxSize="8" />
+            <IconWrapper><FiCloud size={32} color="#3182CE" /></IconWrapper>
           </Circle>
           
           <VStack gap="2">
-            <Text fontSize="lg" fontWeight="semibold" color="gray.700">
+            <Typography fontSize="lg" fontWeight="semibold" color="gray.700">
               {label}
-            </Text>
-            <Text fontSize="sm" color="gray.600">
+            </Typography>
+            <Typography fontSize="sm" color="gray.600">
               {description}
-            </Text>
-            <Text fontSize="xs" color="gray.500">
+            </Typography>
+            <Typography fontSize="xs" color="gray.500">
               Max file size: {maxSize}MB • Accepted: {acceptedTypes.join(', ')}
-            </Text>
+            </Typography>
           </VStack>
 
           <Button
-            colorScheme="blue"
-            variant="outline"
+            variant="secondary"
             size="sm"
           >
-            <Icon as={FiUpload} />
+            <IconWrapper><FiUpload size={16} /></IconWrapper>
             Choose Files
           </Button>
         </VStack>
@@ -311,9 +307,9 @@ export function FileUpload({
       {/* Uploaded Files List */}
       {uploadedFiles.length > 0 && (
         <VStack gap="3" align="stretch">
-          <Text fontSize="sm" fontWeight="medium" color="gray.700">
+          <Typography fontSize="sm" fontWeight="medium" color="gray.700">
             Uploaded Files ({uploadedFiles.length})
-          </Text>
+          </Typography>
           
           {uploadedFiles.map((uploadedFile) => (
             <Box
@@ -347,21 +343,21 @@ export function FileUpload({
                       />
                     </Box>
                   ) : (
-                    <Text fontSize="lg">{getFileIcon(uploadedFile.file)}</Text>
+                    <Typography fontSize="lg">{getFileIcon(uploadedFile.file)}</Typography>
                   )}
                   
                   <VStack gap="1" align="start" flex="1">
-                    <Text fontSize="sm" fontWeight="medium" color="gray.800">
+                    <Typography fontSize="sm" fontWeight="medium" color="gray.800">
                       {uploadedFile.file.name}
-                    </Text>
-                    <Text fontSize="xs" color="gray.500">
+                    </Typography>
+                    <Typography fontSize="xs" color="gray.500">
                       {(uploadedFile.file.size / 1024 / 1024).toFixed(2)} MB
-                    </Text>
+                    </Typography>
                   </VStack>
 
-                  <Badge colorScheme={getStatusColor(uploadedFile.status)}>
+                  <Tag variant={getStatusColor(uploadedFile.status) === 'green' ? 'success' : getStatusColor(uploadedFile.status) === 'red' ? 'danger' : 'info'}>
                     {uploadedFile.status}
-                  </Badge>
+                  </Tag>
                 </HStack>
 
                 <HStack gap="2">
@@ -369,23 +365,21 @@ export function FileUpload({
                   
                   {uploadedFile.status === 'error' && (
                     <Button
-                      size="xs"
+                      size="sm"
                       variant="ghost"
-                      colorScheme="red"
                       onClick={() => removeFile(uploadedFile.id)}
                     >
-                      <Icon as={FiX} />
+                      <IconWrapper><FiX size={16} /></IconWrapper>
                     </Button>
                   )}
                   
                   {uploadedFile.status === 'completed' && (
                     <Button
-                      size="xs"
+                      size="sm"
                       variant="ghost"
-                      colorScheme="green"
                       onClick={() => removeFile(uploadedFile.id)}
                     >
-                      <Icon as={FiX} />
+                      <IconWrapper><FiX size={16} /></IconWrapper>
                     </Button>
                   )}
                 </HStack>
@@ -394,18 +388,14 @@ export function FileUpload({
               {/* Progress Bar */}
               {uploadedFile.status === 'uploading' && (
                 <Box mt="3">
-                  <Progress.Root 
-                    value={uploadedFile.progress} 
-                    colorScheme="blue" 
-                    size="sm" 
-                  >
+                  <Progress.Root value={uploadedFile.progress} colorScheme="blue" size="sm">
                     <Progress.Track>
                       <Progress.Range />
                     </Progress.Track>
                   </Progress.Root>
-                  <Text fontSize="xs" color="gray.500" mt="1">
+                  <Typography fontSize="xs" color="gray.500" mt="1">
                     Uploading... {uploadedFile.progress}%
-                  </Text>
+                  </Typography>
                 </Box>
               )}
 
@@ -413,10 +403,10 @@ export function FileUpload({
               {uploadedFile.status === 'error' && uploadedFile.error && (
                 <Box mt="3" p="2" bg="red.50" borderRadius="md" border="1px" borderColor="red.200">
                   <HStack gap="2">
-                    <Icon as={FiAlertCircle} color="red.500" boxSize="4" />
-                    <Text fontSize="sm" color="red.700">
+                    <IconWrapper><FiAlertCircle size={16} color="#E53E3E" /></IconWrapper>
+                    <Typography fontSize="sm" color="red.700">
                       {uploadedFile.error}
-                    </Text>
+                    </Typography>
                   </HStack>
                 </Box>
               )}
@@ -425,10 +415,10 @@ export function FileUpload({
               {uploadedFile.status === 'completed' && (
                 <Box mt="3" p="2" bg="green.50" borderRadius="md" border="1px" borderColor="green.200">
                   <HStack gap="2">
-                    <Icon as={FiCheck} color="green.500" boxSize="4" />
-                    <Text fontSize="sm" color="green.700">
+                    <IconWrapper><FiCheck size={16} color="#38A169" /></IconWrapper>
+                    <Typography fontSize="sm" color="green.700">
                       Successfully uploaded to Google Drive
-                    </Text>
+                    </Typography>
                   </HStack>
                 </Box>
               )}

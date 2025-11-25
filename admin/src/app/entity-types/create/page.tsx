@@ -5,19 +5,14 @@ import {
   Container,
   VStack,
   HStack,
-  Text,
-  Input,
   Textarea,
-  Button,
   SimpleGrid,
   Flex,
-  Icon,
   Checkbox,
   Spinner,
-  Alert,
-  AlertTitle,
-  AlertDescription
+  Input as ChakraInput
 } from "@chakra-ui/react";
+import { Typography, Button, IconWrapper, AlertBar } from "@/lib/mukuruImports";
 import { FiFileText, FiX } from "react-icons/fi";
 import AdminSidebar from "../../../components/AdminSidebar";
 import { useState, useEffect } from "react";
@@ -137,12 +132,12 @@ export default function CreateEntityTypePage() {
         <Box bg="white" borderBottom="1px" borderColor="gray.200" py="8">
           <Container maxW="8xl">
             <VStack align="start" gap="1">
-              <Text as="h1" fontSize="3xl" fontWeight="bold" color="gray.800">
+              <Typography as="h1" fontSize="3xl" fontWeight="bold" color="gray.800">
                 Create Entity Type
-              </Text>
-              <Text color="gray.600" fontSize="lg">
+              </Typography>
+              <Typography color="gray.600" fontSize="lg">
                 Define a new entity type and select which requirements apply.
-              </Text>
+              </Typography>
             </VStack>
           </Container>
         </Box>
@@ -150,10 +145,11 @@ export default function CreateEntityTypePage() {
         {/* Error Alert */}
         {error && (
           <Container maxW="8xl" py="4">
-            <Alert.Root status="error" borderRadius="md">
-              <AlertTitle>Error!</AlertTitle>
-              <AlertDescription>{error}</AlertDescription>
-            </Alert.Root>
+            <AlertBar
+              status="error"
+              title="Error!"
+              description={error}
+            />
           </Container>
         )}
 
@@ -162,17 +158,17 @@ export default function CreateEntityTypePage() {
           {/* General Information */}
           <Box bg="white" borderRadius="xl" border="1px" borderColor="gray.200" p="6" mb="8">
             <VStack align="stretch" gap="6">
-              <Text fontSize="xl" fontWeight="bold" color="gray.800">
+              <Typography fontSize="xl" fontWeight="bold" color="gray.800">
                 General Information
-              </Text>
+              </Typography>
 
               <VStack align="stretch" gap="4">
                 <HStack gap="4" align="start">
                   <VStack align="start" gap="2" flex="1">
-                    <Text fontSize="sm" fontWeight="medium" color="gray.700">
+                    <Typography fontSize="sm" fontWeight="medium" color="gray.700">
                       Code *
-                    </Text>
-                    <Input
+                    </Typography>
+                    <ChakraInput
                       value={formData.code}
                       readOnly
                       placeholder="e.g., COMPANY, NGO, SOLE_PROPRIETOR"
@@ -187,17 +183,17 @@ export default function CreateEntityTypePage() {
                       _placeholder={{ color: "gray.400" }}
                       required
                     />
-                    <Text fontSize="xs" color="gray.500">
+                    <Typography fontSize="xs" color="gray.500">
                       Uppercase, underscores allowed (used in code)
-                    </Text>
+                    </Typography>
                   </VStack>
                   <VStack align="start" gap="2" flex="1">
-                    <Text fontSize="sm" fontWeight="medium" color="gray.700">
+                    <Typography fontSize="sm" fontWeight="medium" color="gray.700">
                       Display Name *
-                    </Text>
-                    <Input
+                    </Typography>
+                    <ChakraInput
                       value={formData.displayName}
-                      onChange={(e) => setFormData(prev => ({ ...prev, displayName: e.target.value }))}
+                      onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFormData(prev => ({ ...prev, displayName: e.target.value }))}
                       placeholder="e.g., Company, NGO, Sole Proprietor"
                       size="md"
                       borderRadius="lg"
@@ -209,16 +205,16 @@ export default function CreateEntityTypePage() {
                       _placeholder={{ color: "gray.400" }}
                       required
                     />
-                    <Text fontSize="xs" color="gray.500">
+                    <Typography fontSize="xs" color="gray.500">
                       User-facing name (shown in forms)
-                    </Text>
+                    </Typography>
                   </VStack>
                 </HStack>
 
                 <VStack align="start" gap="2">
-                  <Text fontSize="sm" fontWeight="medium" color="gray.700">
+                  <Typography fontSize="sm" fontWeight="medium" color="gray.700">
                     Description *
-                  </Text>
+                  </Typography>
                   <Textarea
                     value={formData.description}
                     onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
@@ -237,12 +233,12 @@ export default function CreateEntityTypePage() {
                 </VStack>
 
                 <VStack align="start" gap="2">
-                  <Text fontSize="sm" fontWeight="medium" color="gray.700">
+                  <Typography fontSize="sm" fontWeight="medium" color="gray.700">
                     Icon (optional)
-                  </Text>
-                  <Input
+                  </Typography>
+                  <ChakraInput
                     value={formData.icon}
-                    onChange={(e) => setFormData(prev => ({ ...prev, icon: e.target.value }))}
+                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFormData(prev => ({ ...prev, icon: e.target.value }))}
                     placeholder="e.g., FiBriefcase, FiHome"
                     size="md"
                     borderRadius="lg"
@@ -253,9 +249,9 @@ export default function CreateEntityTypePage() {
                     _focus={{ borderColor: "orange.500", boxShadow: "0 0 0 1px #FF6B35" }}
                     _placeholder={{ color: "gray.400" }}
                   />
-                  <Text fontSize="xs" color="gray.500">
+                  <Typography fontSize="xs" color="gray.500">
                     Icon name from react-icons (optional)
-                  </Text>
+                  </Typography>
                 </VStack>
               </VStack>
             </VStack>
@@ -265,12 +261,12 @@ export default function CreateEntityTypePage() {
           <Box bg="white" borderRadius="xl" border="1px" borderColor="gray.200" p="6" mb="8">
             <VStack align="stretch" gap="6">
               <VStack align="start" gap="1">
-                <Text fontSize="xl" fontWeight="bold" color="gray.800">
+                <Typography fontSize="xl" fontWeight="bold" color="gray.800">
                   Requirements
-                </Text>
-                <Text color="gray.600" fontSize="md">
+                </Typography>
+                <Typography color="gray.600" fontSize="md">
                   Select which requirements apply to this entity type
-                </Text>
+                </Typography>
               </VStack>
 
               {loading ? (
@@ -303,7 +299,7 @@ export default function CreateEntityTypePage() {
                             checked={selectedRequirements.includes(requirement.id)}
                             onCheckedChange={() => handleRequirementToggle(requirement.id)}
                             colorScheme="orange"
-                            size="lg"
+                            size="md"
                             mt="1"
                           >
                             <Checkbox.Control>
@@ -312,12 +308,12 @@ export default function CreateEntityTypePage() {
                           </Checkbox.Root>
                         </Box>
                         <VStack align="start" gap="1" flex="1" position="relative" zIndex="1">
-                          <Text fontSize="sm" fontWeight="semibold" color="gray.800">
+                          <Typography fontSize="sm" fontWeight="semibold" color="gray.800">
                             {requirement.displayName}
-                          </Text>
-                          <Text fontSize="xs" color="gray.600" lineHeight="1.4">
+                          </Typography>
+                          <Typography fontSize="xs" color="gray.600" lineHeight="1.4">
                             {requirement.description}
-                          </Text>
+                          </Typography>
                         </VStack>
                       </HStack>
                     </Box>
@@ -330,27 +326,21 @@ export default function CreateEntityTypePage() {
           {/* Action Buttons */}
           <Flex justify="start" gap="4" pt="4">
             <Button
-              colorScheme="orange"
-              size="lg"
-              bg="#FF6B35"
-              _hover={{ bg: "#E55A2B" }}
-              _active={{ bg: "#CC4A1F" }}
+              variant="primary"
+              size="md"
               onClick={handleCreate}
-              loading={saving}
-              loadingText="Creating..."
-              disabled={loading}
+              disabled={loading || saving}
             >
-              <Icon as={FiFileText} mr="2" />
-              Create
+              <IconWrapper><FiFileText size={16} /></IconWrapper>
+              {saving ? "Creating..." : "Create"}
             </Button>
             <Button
-              variant="outline"
-              colorScheme="gray"
-              size="lg"
+              variant="secondary"
+              size="md"
               onClick={handleCancel}
               disabled={saving || loading}
             >
-              <Icon as={FiX} mr="2" />
+              <IconWrapper><FiX size={16} /></IconWrapper>
               Cancel
             </Button>
           </Flex>

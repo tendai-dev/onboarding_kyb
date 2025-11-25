@@ -1,6 +1,8 @@
 import { getSession } from 'next-auth/react';
 
-const ENTITY_CONFIG_API_BASE_URL = process.env.NEXT_PUBLIC_ENTITY_CONFIG_API_BASE_URL || 'http://localhost:8003';
+const ENTITY_CONFIG_API_BASE_URL = process.env.NEXT_PUBLIC_ENTITY_CONFIG_API_BASE_URL || 'http://localhost:8001';
+
+// Entity Configuration API Service
 
 // Types matching the backend DTOs
 export interface EntityType {
@@ -82,9 +84,13 @@ export interface WizardConfiguration {
   id: string;
   entityTypeId: string;
   entityTypeDisplayName?: string;
+  entity_type_display_name?: string; // Backend returns snake_case
   isActive: boolean;
+  is_active?: boolean; // Backend returns snake_case
   createdAt: string;
+  created_at?: string; // Backend returns snake_case
   updatedAt: string;
+  updated_at?: string; // Backend returns snake_case
   steps: WizardStep[];
 }
 
@@ -118,32 +124,36 @@ export interface UpdateWizardConfigurationRequest {
   steps: CreateWizardStepRequest[];
 }
 
-export enum RequirementType {
-  Information = 1,
-  Document = 2,
-  ProofOfIdentity = 3,
-  ProofOfAddress = 4,
-  OwnershipStructure = 5,
-  BoardDirectors = 6,
-  AuthorizedSignatories = 7
-}
+export const RequirementType = {
+  Information: 1,
+  Document: 2,
+  ProofOfIdentity: 3,
+  ProofOfAddress: 4,
+  OwnershipStructure: 5,
+  BoardDirectors: 6,
+  AuthorizedSignatories: 7
+} as const;
 
-export enum FieldType {
-  Text = 'Text',
-  Email = 'Email',
-  Phone = 'Phone',
-  Number = 'Number',
-  Date = 'Date',
-  Select = 'Select',
-  MultiSelect = 'MultiSelect',
-  Radio = 'Radio',
-  Checkbox = 'Checkbox',
-  Textarea = 'Textarea',
-  File = 'File',
-  Country = 'Country',
-  Currency = 'Currency',
-  Address = 'Address'
-}
+export type RequirementType = typeof RequirementType[keyof typeof RequirementType];
+
+export const FieldType = {
+  Text: 'Text',
+  Email: 'Email',
+  Phone: 'Phone',
+  Number: 'Number',
+  Date: 'Date',
+  Select: 'Select',
+  MultiSelect: 'MultiSelect',
+  Radio: 'Radio',
+  Checkbox: 'Checkbox',
+  Textarea: 'Textarea',
+  File: 'File',
+  Country: 'Country',
+  Currency: 'Currency',
+  Address: 'Address'
+} as const;
+
+export type FieldType = typeof FieldType[keyof typeof FieldType];
 
 class EntityConfigApiService {
   private async getAuthHeaders(): Promise<HeadersInit> {
@@ -181,7 +191,30 @@ class EntityConfigApiService {
   }
 
   private async request<T>(endpoint: string, options?: RequestInit): Promise<T> {
-    const url = `${ENTITY_CONFIG_API_BASE_URL}/api/v1${endpoint}`;
+    // Use Next.js API route when in browser, direct URL when server-side
+    let baseUrl: string;
+    let finalEndpoint: string;
+    
+    if (typeof window !== 'undefined') {
+      // Client-side: use Next.js API routes
+      // Requirements endpoint uses dedicated route, wizard configurations and others use rules-and-permissions catch-all
+      if (endpoint.startsWith('/requirements')) {
+        baseUrl = '/api/requirements';
+        finalEndpoint = ''; // The route handles /requirements internally
+      } else if (endpoint.startsWith('/wizardconfigurations') || endpoint.startsWith('/entity-types')) {
+        baseUrl = '/api/rules-and-permissions';
+        finalEndpoint = endpoint;
+      } else {
+        baseUrl = '/api/rules-and-permissions';
+        finalEndpoint = endpoint;
+      }
+    } else {
+      // Server-side: use direct backend URL
+      baseUrl = `${ENTITY_CONFIG_API_BASE_URL}/api/v1`;
+      finalEndpoint = endpoint;
+    }
+    
+    const url = `${baseUrl}${finalEndpoint}`;
     const headers = await this.getAuthHeaders();
 
     try {
@@ -243,11 +276,41 @@ class EntityConfigApiService {
     if (includeRequirements) params.append('includeRequirements', 'true');
     
     const queryString = params.toString();
-    return this.request<EntityType[]>(`/entitytypes${queryString ? `?${queryString}` : ''}`);
+    const data = await this.request<any[]>(`/entity-types${queryString ? `?${queryString}` : ''}`);
+    
+    // Transform snake_case or PascalCase to camelCase
+    return data.map((et: any) => {
+      // Transform requirements array if present
+      let requirements = et.requirements || et.Requirements || [];
+      if (Array.isArray(requirements) && requirements.length > 0) {
+        requirements = requirements.map((req: any) => ({
+          id: req.id || req.Id,
+          requirementId: req.requirementId || req.RequirementId || req.requirement_id,
+          isRequired: req.isRequired !== undefined ? req.isRequired : (req.IsRequired !== undefined ? req.IsRequired : (req.is_required !== undefined ? req.is_required : false)),
+          displayOrder: req.displayOrder || req.DisplayOrder || req.display_order || 0,
+          requirement: req.requirement || req.Requirement
+        }));
+      }
+      
+      return {
+        id: et.id || et.Id,
+        code: et.code || et.Code,
+        displayName: et.displayName || et.DisplayName || et.display_name || et.code || 'Unnamed',
+        description: et.description || et.Description || et.description || '',
+        icon: et.icon || et.Icon,
+        isActive: et.isActive !== undefined ? et.isActive : (et.IsActive !== undefined ? et.IsActive : (et.is_active !== undefined ? et.is_active : true)),
+        createdAt: et.createdAt || et.CreatedAt || et.created_at || '',
+        updatedAt: et.updatedAt || et.UpdatedAt || et.updated_at || '',
+        requirements: requirements
+      };
+    });
   }
 
-  async getEntityType(id: string): Promise<EntityType> {
-    return this.request<EntityType>(`/entitytypes/${id}`);
+  async getEntityType(id: string, includeRequirements = true): Promise<EntityType> {
+    const url = includeRequirements 
+      ? `/entity-types/${id}?includeRequirements=true`
+      : `/entity-types/${id}`;
+    return this.request<EntityType>(url);
   }
 
   async getEntityTypeByCode(code: string, includeRequirements = true): Promise<EntityType | null> {
@@ -258,7 +321,7 @@ class EntityConfigApiService {
     
     // Use the new direct endpoint - NO FALLBACK
     try {
-      const result = await this.request<EntityType>(`/entitytypes/by-code/${encodeURIComponent(cleanCode)}`);
+      const result = await this.request<EntityType>(`/entity-types/by-code/${encodeURIComponent(cleanCode)}`);
       console.log('[EntityConfigAPI] ✅ Successfully fetched entity type:', result?.code);
       return result;
     } catch (error) {
@@ -275,21 +338,21 @@ class EntityConfigApiService {
   }
 
   async createEntityType(data: { code: string; displayName: string; description: string; icon?: string }): Promise<{ id: string; code: string; displayName: string }> {
-    return this.request<{ id: string; code: string; displayName: string }>('/entitytypes', {
+    return this.request<{ id: string; code: string; displayName: string }>('/entity-types', {
       method: 'POST',
       body: JSON.stringify(data),
     });
   }
 
   async updateEntityType(id: string, data: { displayName: string; description: string; isActive: boolean; icon?: string }): Promise<any> {
-    return this.request<any>(`/entitytypes/${id}`, {
+    return this.request<any>(`/entity-types/${id}`, {
       method: 'PUT',
       body: JSON.stringify(data),
     });
   }
 
   async deleteEntityType(id: string): Promise<void> {
-    return this.request<void>(`/entitytypes/${id}`, {
+    return this.request<void>(`/entity-types/${id}`, {
       method: 'DELETE',
     });
   }
@@ -297,7 +360,23 @@ class EntityConfigApiService {
   // Requirements endpoints
   async getRequirements(includeInactive = false): Promise<Requirement[]> {
     const params = includeInactive ? '?includeInactive=true' : '';
-    return this.request<Requirement[]>(`/requirements${params}`);
+    const data = await this.request<any[]>(`/requirements${params}`);
+    
+    // Transform snake_case or PascalCase to camelCase
+    return data.map((req: any) => ({
+      id: req.id || req.Id,
+      code: req.code || req.Code,
+      displayName: req.displayName || req.DisplayName || req.display_name || req.code || 'Unnamed',
+      description: req.description || req.Description || req.description || '',
+      type: req.type || req.Type || req.type || '',
+      fieldType: req.fieldType || req.FieldType || req.field_type || '',
+      validationRules: req.validationRules || req.ValidationRules || req.validation_rules,
+      helpText: req.helpText || req.HelpText || req.help_text,
+      isActive: req.isActive !== undefined ? req.isActive : (req.IsActive !== undefined ? req.IsActive : (req.is_active !== undefined ? req.is_active : true)),
+      createdAt: req.createdAt || req.CreatedAt || req.created_at || '',
+      updatedAt: req.updatedAt || req.UpdatedAt || req.updated_at || '',
+      options: req.options || req.Options || []
+    }));
   }
 
   async getRequirement(id: string): Promise<Requirement> {
@@ -355,14 +434,14 @@ class EntityConfigApiService {
 
   // Entity Type Requirements endpoints
   async addRequirementToEntityType(entityTypeId: string, data: { requirementId: string; isRequired: boolean; displayOrder: number }): Promise<void> {
-    return this.request<void>(`/entitytypes/${entityTypeId}/requirements`, {
+    return this.request<void>(`/entity-types/${entityTypeId}/requirements`, {
       method: 'POST',
       body: JSON.stringify(data),
     });
   }
 
   async removeRequirementFromEntityType(entityTypeId: string, requirementId: string): Promise<void> {
-    return this.request<void>(`/entitytypes/${entityTypeId}/requirements/${requirementId}`, {
+    return this.request<void>(`/entity-types/${entityTypeId}/requirements/${requirementId}`, {
       method: 'DELETE',
     });
   }
@@ -370,11 +449,47 @@ class EntityConfigApiService {
   // Wizard Configuration endpoints
   async getWizardConfigurations(includeInactive = false): Promise<WizardConfiguration[]> {
     const params = includeInactive ? '?includeInactive=true' : '';
-    return this.request<WizardConfiguration[]>(`/wizardconfigurations${params}`);
+    const data = await this.request<any[]>(`/wizardconfigurations${params}`);
+    // Transform snake_case to camelCase
+    return data.map(config => ({
+      id: config.id,
+      entityTypeId: config.entity_type_id || config.entityTypeId,
+      entityTypeDisplayName: config.entity_type_display_name || config.entityTypeDisplayName,
+      isActive: config.is_active !== undefined ? config.is_active : config.isActive,
+      createdAt: config.created_at || config.createdAt,
+      updatedAt: config.updated_at || config.updatedAt,
+      steps: (config.steps || []).map((step: any) => ({
+        id: step.id,
+        title: step.title,
+        subtitle: step.subtitle,
+        requirementTypes: step.requirement_types || step.requirementTypes || [],
+        checklistCategory: step.checklist_category || step.checklistCategory || '',
+        stepNumber: step.step_number || step.stepNumber || 0,
+        isActive: step.is_active !== undefined ? step.is_active : step.isActive,
+      })),
+    }));
   }
 
   async getWizardConfiguration(id: string): Promise<WizardConfiguration> {
-    return this.request<WizardConfiguration>(`/wizardconfigurations/${id}`);
+    const config = await this.request<any>(`/wizardconfigurations/${id}`);
+    // Transform snake_case to camelCase
+    return {
+      id: config.id,
+      entityTypeId: config.entity_type_id || config.entityTypeId,
+      entityTypeDisplayName: config.entity_type_display_name || config.entityTypeDisplayName,
+      isActive: config.is_active !== undefined ? config.is_active : config.isActive,
+      createdAt: config.created_at || config.createdAt,
+      updatedAt: config.updated_at || config.updatedAt,
+      steps: (config.steps || []).map((step: any) => ({
+        id: step.id,
+        title: step.title,
+        subtitle: step.subtitle,
+        requirementTypes: step.requirement_types || step.requirementTypes || [],
+        checklistCategory: step.checklist_category || step.checklistCategory || '',
+        stepNumber: step.step_number || step.stepNumber || 0,
+        isActive: step.is_active !== undefined ? step.is_active : step.isActive,
+      })),
+    };
   }
 
   async getWizardConfigurationByEntityType(entityTypeId: string): Promise<WizardConfiguration | null> {
@@ -415,4 +530,3 @@ class EntityConfigApiService {
 }
 
 export const entityConfigApiService = new EntityConfigApiService();
-

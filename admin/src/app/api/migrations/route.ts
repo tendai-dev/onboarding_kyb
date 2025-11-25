@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth';
+import { auth } from '@/lib/auth';
+import { logger } from '@/lib/logger';
 
 /**
  * Migration API route - routes through centralized proxy for BFF pattern
@@ -8,7 +8,7 @@ import { authOptions } from '@/lib/auth';
  */
 async function forwardRequest(request: NextRequest, method: string) {
   try {
-    const session = await getServerSession(authOptions);
+    const session = await auth();
     const searchParams = request.nextUrl.searchParams;
     const queryString = searchParams.toString();
     
@@ -70,7 +70,9 @@ async function forwardRequest(request: NextRequest, method: string) {
       headers: responseHeaders,
     });
   } catch (error) {
-    console.error('[Migration API] Error:', error);
+    logger.error(error, '[Migration API] Error', {
+      tags: { error_type: 'api_route_error' }
+    });
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
     
     // Check if it's a connection error

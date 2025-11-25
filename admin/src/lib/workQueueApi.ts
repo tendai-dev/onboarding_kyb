@@ -170,7 +170,12 @@ async function request<T>(endpoint: string, options?: RequestInit): Promise<T> {
     });
 
     // Read response body once (can only read once)
-    const responseText = await response.text();
+    let responseText = '';
+    try {
+      responseText = await response.text();
+    } catch (readError) {
+      responseText = `Failed to read response body: ${readError instanceof Error ? readError.message : 'Unknown error'}`;
+    }
     
     if (!response.ok) {
       let errorMessage = `Work Queue API request failed: ${response.status} ${response.statusText}`;
@@ -186,32 +191,40 @@ async function request<T>(endpoint: string, options?: RequestInit): Promise<T> {
             errorMessage = errorData.error;
           } else if (typeof errorData === 'string') {
             errorMessage = errorData;
-          } else {
+          } else if (Object.keys(errorData).length > 0) {
             // If it's an object but no message/error field, use the whole response
             errorMessage = JSON.stringify(errorData);
           }
         } catch {
-          // If JSON parsing fails, use the raw text
-          errorMessage = responseText;
+          // If JSON parsing fails, use the raw text if it's not empty
+          if (responseText.trim()) {
+            errorMessage = responseText;
+          }
         }
       }
       
+      // Log error details for debugging (always log, not just in development)
+      const errorDetails = {
+        status: response.status,
+        statusText: response.statusText,
+        url: url,
+        body: responseText || '(empty)',
+        errorMessage: errorMessage
+      };
+      
+      console.error('[WorkQueueAPI] Error response:', errorDetails);
+      
       if (typeof window !== 'undefined') {
-        const { clientSentry } = await import('./sentry-client');
-        clientSentry.reportError(error, {
-          tags: { error_type: 'work_queue_api', operation: 'api_request' },
-          extra: { status: response.status, statusText: response.statusText, body: responseText },
-          level: 'error',
-        });
-      }
-      // Log error details for debugging
-      if (process.env.NODE_ENV === 'development') {
-        console.error('[WorkQueueAPI] Error response:', {
-          status: response.status,
-          statusText: response.statusText,
-          body: responseText,
-          errorMessage
-        });
+        try {
+          const { clientSentry } = await import('./sentry-client');
+          clientSentry.reportError(new Error(errorMessage), {
+            tags: { error_type: 'work_queue_api', operation: 'api_request' },
+            extra: errorDetails,
+            level: 'error',
+          });
+        } catch (sentryError) {
+          // Ignore Sentry errors
+        }
       }
       
       throw new Error(errorMessage);
@@ -219,20 +232,33 @@ async function request<T>(endpoint: string, options?: RequestInit): Promise<T> {
 
     // Success case - parse JSON response
     if (!responseText || responseText.trim() === '') {
+      console.warn('[WorkQueueAPI] Empty response from:', url);
       return null as T;
     }
     
     try {
-      return JSON.parse(responseText) as T;
-    } catch {
-      // If parsing fails, return the text as-is (for non-JSON responses)
-      return responseText as T;
+      const parsed = JSON.parse(responseText);
+      return parsed as T;
+    } catch (parseError) {
+      // If parsing fails, log the error and throw a helpful message
+      console.error('[WorkQueueAPI] Failed to parse JSON response:', {
+        url: url,
+        responseText: responseText.substring(0, 200), // First 200 chars
+        error: parseError instanceof Error ? parseError.message : 'Unknown parse error'
+      });
+      throw new Error(`Invalid JSON response from Work Queue API: ${parseError instanceof Error ? parseError.message : 'Unknown error'}`);
     }
   } catch (error) {
     // If it's a connection error, provide a more helpful message
     if (error instanceof TypeError && error.message.includes('Failed to fetch')) {
-      throw new Error(`Cannot connect to Work Queue API at ${url}. Please ensure the backend services are running.`);
+      const connectionError = new Error(`Cannot connect to Work Queue API at ${url}. Please ensure the backend services are running.`);
+      console.error('[WorkQueueAPI] Connection error:', {
+        url: url,
+        error: error.message
+      });
+      throw connectionError;
     }
+    // Re-throw other errors as-is
     throw error;
   }
 }
@@ -317,11 +343,15 @@ export const workQueueApi = {
     params.append('pageSize', pageSize.toString());
     
     const queryString = params.toString();
-    const result = await request<PagedResult<WorkItemDto>>(`?${queryString}`);
+    const result = await request<any>(`?${queryString}`);
+    
+    // Handle both camelCase and snake_case response formats
+    const items = result.items || result.data || [];
+    const totalCount = result.totalCount || result.total_count || 0;
     
     return {
-      data: result.items.map(mapWorkItemToApplication),
-      total: result.totalCount,
+      data: items.map(mapWorkItemToApplication),
+      total: totalCount,
     };
   },
 
@@ -348,11 +378,15 @@ export const workQueueApi = {
     params.append('page', page.toString());
     params.append('pageSize', pageSize.toString());
     
-    const result = await request<PagedResult<WorkItemDto>>(`/my-items?${params.toString()}`);
+    const result = await request<any>(`/my-items?${params.toString()}`);
+    
+    // Handle both camelCase and snake_case response formats
+    const items = result.items || result.data || [];
+    const totalCount = result.totalCount || result.total_count || 0;
     
     return {
-      data: result.items.map(mapWorkItemToApplication),
-      total: result.totalCount,
+      data: items.map(mapWorkItemToApplication),
+      total: totalCount,
     };
   },
 
@@ -364,11 +398,15 @@ export const workQueueApi = {
     params.append('page', page.toString());
     params.append('pageSize', pageSize.toString());
     
-    const result = await request<PagedResult<WorkItemDto>>(`/pending-approvals?${params.toString()}`);
+    const result = await request<any>(`/pending-approvals?${params.toString()}`);
+    
+    // Handle both camelCase and snake_case response formats
+    const items = result.items || result.data || [];
+    const totalCount = result.totalCount || result.total_count || 0;
     
     return {
-      data: result.items,
-      total: result.totalCount,
+      data: items,
+      total: totalCount,
     };
   },
 
@@ -430,11 +468,15 @@ export const workQueueApi = {
     params.append('pageSize', pageSize.toString());
     
     const queryString = params.toString();
-    const result = await request<PagedResult<WorkItemDto>>(`?${queryString}`);
+    const result = await request<any>(`?${queryString}`);
+    
+    // Handle both camelCase and snake_case response formats
+    const items = result.items || result.data || [];
+    const totalCount = result.totalCount || result.total_count || 0;
     
     return {
-      data: result.items,
-      total: result.totalCount,
+      data: items,
+      total: totalCount,
     };
   },
 
@@ -473,7 +515,10 @@ export const workQueueApi = {
     params.append('pageSize', '10000');
     
     const queryString = params.toString();
-    const result = await request<PagedResult<WorkItemDto>>(`?${queryString}`);
+    const result = await request<any>(`?${queryString}`);
+    
+    // Handle both camelCase and snake_case response formats
+    const items = result.items || result.data || [];
     
     // Convert to CSV
     const csvRows: string[] = [];
@@ -493,8 +538,8 @@ export const workQueueApi = {
     };
     
     // CSV Data
-    if (result.items && result.items.length > 0) {
-      result.items.forEach(item => {
+    if (items && items.length > 0) {
+      items.forEach((item: WorkItemDto) => {
         const app = mapWorkItemToApplication(item);
         csvRows.push([
           escapeCsvField(app.id),

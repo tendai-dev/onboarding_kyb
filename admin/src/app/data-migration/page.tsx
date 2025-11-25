@@ -5,16 +5,12 @@ import {
   Container, 
   VStack, 
   HStack,
-  Text,
-  Button,
-  Input,
   SimpleGrid,
-  Badge,
-  Icon,
   Flex,
   Spinner,
   Textarea
 } from "@chakra-ui/react";
+import { Typography, Button, Input, Tag, IconWrapper } from "@/lib/mukuruImports";
 import { 
   FiSearch, 
   FiFilter, 
@@ -230,33 +226,29 @@ export default function DataMigrationPage() {
           {/* Header */}
           <Flex justify="space-between" align="center">
             <VStack align="start" gap="1">
-              <Text fontSize="3xl" fontWeight="bold" color="gray.800">
+              <Typography fontSize="3xl" fontWeight="bold" color="gray.800">
                 Data Migration
-              </Text>
-              <Text color="gray.600">
+              </Typography>
+              <Typography color="gray.600">
                 Import and migrate existing partner/customer data
-              </Text>
+              </Typography>
             </VStack>
             
             <HStack gap="3">
               <Button
-                variant="outline"
+                variant="secondary"
                 size="sm"
                 onClick={loadMigrationJobs}
               >
-                <HStack gap="2">
-                  <Icon as={FiSearch} />
-                  <Text>Refresh</Text>
-                </HStack>
+                <IconWrapper><FiSearch size={16} /></IconWrapper>
+                Refresh
               </Button>
               <Button
-                variant="outline"
+                variant="secondary"
                 size="sm"
               >
-                <HStack gap="2">
-                  <Icon as={FiSettings} />
-                  <Text>Migration Settings</Text>
-                </HStack>
+                <IconWrapper><FiSettings size={16} /></IconWrapper>
+                Migration Settings
               </Button>
             </HStack>
           </Flex>
@@ -265,10 +257,10 @@ export default function DataMigrationPage() {
           {error && (
             <Box bg="red.50" p="4" borderRadius="md" border="1px" borderColor="red.200">
               <HStack gap="2">
-                <Icon as={FiAlertTriangle} boxSize="5" color="red.500" />
+                <IconWrapper><FiAlertTriangle size={20} color="#E53E3E" /></IconWrapper>
                 <VStack align="start" gap="1">
-                  <Text fontWeight="semibold" color="red.700">Error loading data</Text>
-                  <Text fontSize="sm" color="red.600">{error}</Text>
+                  <Typography fontWeight="semibold" color="red.700">Error loading data</Typography>
+                  <Typography fontSize="sm" color="red.600">{error}</Typography>
                 </VStack>
               </HStack>
             </Box>
@@ -278,24 +270,19 @@ export default function DataMigrationPage() {
           <Box bg="white" p="6" borderRadius="lg" boxShadow="sm">
             <VStack gap="4" align="stretch">
               <Flex justify="space-between" align="center">
-                <Text fontSize="lg" fontWeight="semibold" color="gray.800">
+                <Typography fontSize="lg" fontWeight="semibold" color="gray.800">
                   Migration Jobs
-                </Text>
+                </Typography>
                 <Button
-                  bg="#FF6B35"
-                  color="white"
-                  _hover={{ bg: "#E55A2B" }}
-                  _active={{ bg: "#CC4A1F" }}
+                  variant="primary"
                   size="sm"
                   onClick={() => {
                     // Scroll to the "Start New Migration" section
                     document.getElementById('start-migration-section')?.scrollIntoView({ behavior: 'smooth' });
                   }}
                 >
-                  <HStack gap="2">
-                    <Icon as={FiUpload} />
-                    <Text>New Migration</Text>
-                  </HStack>
+                  <IconWrapper><FiUpload size={16} /></IconWrapper>
+                  New Migration
                 </Button>
               </Flex>
 
@@ -309,13 +296,13 @@ export default function DataMigrationPage() {
                   bg="gray.50"
                 >
                   <VStack gap="3">
-                    <Icon as={FiUpload} boxSize="8" color="gray.400" />
-                    <Text fontSize="md" color="gray.600" fontWeight="medium">
+                    <IconWrapper><FiUpload size={32} color="#A0AEC0" /></IconWrapper>
+                    <Typography fontSize="md" color="gray.600" fontWeight="medium">
                       No migration jobs found
-                    </Text>
-                    <Text fontSize="sm" color="gray.500">
+                    </Typography>
+                    <Typography fontSize="sm" color="gray.500">
                       Start a new migration to import partner/customer data
-                    </Text>
+                    </Typography>
                   </VStack>
                 </Box>
               ) : (
@@ -332,34 +319,30 @@ export default function DataMigrationPage() {
                     <VStack gap="3" align="stretch">
                       <Flex justify="space-between" align="start">
                         <VStack align="start" gap="1">
-                          <Text fontSize="md" fontWeight="semibold" color="gray.800">
+                          <Typography fontSize="md" fontWeight="semibold" color="gray.800">
                             {job.name}
-                          </Text>
-                          <Text fontSize="xs" color="gray.500" fontFamily="mono">
+                          </Typography>
+                          <Typography fontSize="xs" color="gray.500" fontFamily="mono">
                             {job.id}
-                          </Text>
-                          <Text fontSize="sm" color="gray.600">
+                          </Typography>
+                          <Typography fontSize="sm" color="gray.600">
                             {job.entityType} • {job.source}
-                          </Text>
+                          </Typography>
                         </VStack>
                         
-                        <Badge
-                          bg={`${getStatusColor(job.status)}.500`}
-                          color="white"
-                          variant="solid"
-                          fontSize="xs"
-                          textTransform="capitalize"
+                      <Tag 
+                          variant={getStatusColor(job.status) === 'red' ? 'danger' : getStatusColor(job.status) === 'green' ? 'success' : getStatusColor(job.status) === 'blue' ? 'info' : getStatusColor(job.status) === 'orange' ? 'warning' : 'inactive'}
                         >
                           {formatStatus(job.status)}
-                        </Badge>
+                        </Tag>
                       </Flex>
 
                       <VStack gap="2" align="stretch">
                         <HStack justify="space-between">
-                          <Text fontSize="sm" color="gray.600">Progress:</Text>
-                          <Text fontSize="sm" fontWeight="medium" color="gray.800">
+                          <Typography fontSize="sm" color="gray.600">Progress:</Typography>
+                          <Typography fontSize="sm" fontWeight="medium" color="gray.800">
                             {job.progress}%
-                          </Text>
+                          </Typography>
                         </HStack>
                         
                         <Box
@@ -380,29 +363,29 @@ export default function DataMigrationPage() {
                       </VStack>
 
                       <HStack justify="space-between" fontSize="sm" color="gray.600">
-                        <Text>Total: {job.totalRecords}</Text>
-                        <Text>Processed: {job.processedRecords}</Text>
-                        <Text color="red.600">Failed: {job.failedRecords}</Text>
+                        <Typography>Total: {job.totalRecords}</Typography>
+                        <Typography>Processed: {job.processedRecords}</Typography>
+                        <Typography color="red.600">Failed: {job.failedRecords}</Typography>
                       </HStack>
 
                       {job.errorMessage && (
                         <Box bg="red.50" p="3" borderRadius="md" border="1px" borderColor="red.200">
                           <HStack gap="2">
-                            <Icon as={FiAlertTriangle} boxSize="4" color="red.500" />
-                            <Text fontSize="sm" color="red.700">{job.errorMessage}</Text>
+                            <IconWrapper><FiAlertTriangle size={16} color="#E53E3E" /></IconWrapper>
+                            <Typography fontSize="sm" color="red.700">{job.errorMessage}</Typography>
                           </HStack>
                         </Box>
                       )}
 
                       <HStack justify="space-between" fontSize="xs" color="gray.500">
                         <VStack align="start" gap="0">
-                          <Text fontWeight="medium">Started:</Text>
-                          <Text>{formatDate(job.startTime)}</Text>
+                          <Typography fontWeight="medium">Started:</Typography>
+                          <Typography>{formatDate(job.startTime)}</Typography>
                         </VStack>
                         {job.endTime && (
                           <VStack align="end" gap="0">
-                            <Text fontWeight="medium">Completed:</Text>
-                            <Text>{formatDate(job.endTime)}</Text>
+                            <Typography fontWeight="medium">Completed:</Typography>
+                            <Typography>{formatDate(job.endTime)}</Typography>
                           </VStack>
                         )}
                       </HStack>
@@ -417,16 +400,16 @@ export default function DataMigrationPage() {
           {/* New Migration Form */}
           <Box id="start-migration-section" bg="white" p="6" borderRadius="lg" boxShadow="sm">
             <VStack gap="4" align="stretch">
-              <Text fontSize="lg" fontWeight="semibold" color="gray.800">
+              <Typography fontSize="lg" fontWeight="semibold" color="gray.800">
                 Start New Migration
-              </Text>
+              </Typography>
               
               <SimpleGrid columns={{ base: 1, md: 2 }} gap="4">
                 <VStack gap="3" align="stretch">
                   <Box>
-                    <Text fontSize="sm" fontWeight="medium" color="gray.700" mb="2">
+                    <Typography fontSize="sm" fontWeight="medium" color="gray.700" mb="2">
                       Migration Name
-                    </Text>
+                    </Typography>
                     <Input
                       placeholder="Enter migration name"
                       value={migrationName}
@@ -435,9 +418,9 @@ export default function DataMigrationPage() {
                   </Box>
                   
                   <Box>
-                    <Text fontSize="sm" fontWeight="medium" color="gray.700" mb="2">
+                    <Typography fontSize="sm" fontWeight="medium" color="gray.700" mb="2">
                       Entity Type
-                    </Text>
+                    </Typography>
                     <select
                       value={selectedEntityType}
                       onChange={(e) => setSelectedEntityType(e.target.value)}
@@ -461,18 +444,18 @@ export default function DataMigrationPage() {
                       ))}
                     </select>
                     {entityTypes.length === 0 && (
-                      <Text fontSize="xs" color="gray.500" mt="1">
+                      <Typography fontSize="xs" color="gray.500" mt="1">
                         No entity types found. Please configure entity types first.
-                      </Text>
+                      </Typography>
                     )}
                   </Box>
                 </VStack>
                 
                 <VStack gap="3" align="stretch">
                   <Box>
-                    <Text fontSize="sm" fontWeight="medium" color="gray.700" mb="2">
+                    <Typography fontSize="sm" fontWeight="medium" color="gray.700" mb="2">
                       Data File
-                    </Text>
+                    </Typography>
                     <input
                       type="file"
                       accept=".csv,.xlsx,.pdf"
@@ -488,19 +471,12 @@ export default function DataMigrationPage() {
                   </Box>
                   
                   <Button
-                    bg="#FF6B35"
-                    color="white"
-                    _hover={{ bg: "#E55A2B" }}
-                    _active={{ bg: "#CC4A1F" }}
+                    variant="primary"
                     onClick={handleFileUpload}
                     disabled={!selectedFile || !migrationName || !selectedEntityType || startingMigration}
-                    loading={startingMigration}
-                    loadingText="Starting..."
                   >
-                    <HStack gap="2">
-                      <Icon as={FiUpload} />
-                      <Text>Start Migration</Text>
-                    </HStack>
+                    <IconWrapper><FiUpload size={16} /></IconWrapper>
+                    {startingMigration ? "Starting..." : "Start Migration"}
                   </Button>
                 </VStack>
               </SimpleGrid>
@@ -511,17 +487,15 @@ export default function DataMigrationPage() {
           <Box bg="white" p="6" borderRadius="lg" boxShadow="sm">
             <VStack gap="4" align="stretch">
               <Flex justify="space-between" align="center">
-                <Text fontSize="lg" fontWeight="semibold" color="gray.800">
+                <Typography fontSize="lg" fontWeight="semibold" color="gray.800">
                   Entity Checklists
-                </Text>
+                </Typography>
                 <Button
-                  variant="outline"
+                  variant="secondary"
                   size="sm"
                 >
-                  <HStack gap="2">
-                    <Icon as={FiFileText} />
-                    <Text>Manage Checklists</Text>
-                  </HStack>
+                  <IconWrapper><FiFileText size={16} /></IconWrapper>
+                  <Typography>Manage Checklists</Typography>
                 </Button>
               </Flex>
 
@@ -538,63 +512,58 @@ export default function DataMigrationPage() {
                     <VStack gap="3" align="stretch">
                       <Flex justify="space-between" align="start">
                         <VStack align="start" gap="1">
-                          <Text fontSize="md" fontWeight="semibold" color="gray.800">
+                          <Typography fontSize="md" fontWeight="semibold" color="gray.800">
                             {checklist.name}
-                          </Text>
-                          <Text fontSize="sm" color="gray.600">
+                          </Typography>
+                          <Typography fontSize="sm" color="gray.600">
                             {checklist.description}
-                          </Text>
+                          </Typography>
                         </VStack>
                         
-                        <Badge
-                          bg={checklist.isActive ? "green.500" : "gray.500"}
-                          color="white"
-                          variant="subtle"
-                          fontSize="xs"
+                      <Tag 
+                          variant={checklist.isActive ? "success" : "inactive"}
                         >
                           {checklist.isActive ? "Active" : "Inactive"}
-                        </Badge>
+                        </Tag>
                       </Flex>
 
                       <VStack gap="2" align="stretch">
                         <HStack justify="space-between">
-                          <Text fontSize="sm" color="gray.600">Items:</Text>
-                          <Text fontSize="sm" fontWeight="medium" color="gray.800">
+                          <Typography fontSize="sm" color="gray.600">Items:</Typography>
+                          <Typography fontSize="sm" fontWeight="medium" color="gray.800">
                             {checklist.items.length} items
-                          </Text>
+                          </Typography>
                         </HStack>
                         
                         <HStack justify="space-between">
-                          <Text fontSize="sm" color="gray.600">Required:</Text>
-                          <Text fontSize="sm" fontWeight="medium" color="gray.800">
+                          <Typography fontSize="sm" color="gray.600">Required:</Typography>
+                          <Typography fontSize="sm" fontWeight="medium" color="gray.800">
                             {checklist.items.filter(item => item.isRequired).length} required
-                          </Text>
+                          </Typography>
                         </HStack>
                       </VStack>
 
-                      <Text fontSize="xs" color="gray.500">
+                      <Typography fontSize="xs" color="gray.500">
                         Last updated: {new Date(checklist.lastUpdated).toLocaleDateString()}
-                      </Text>
+                      </Typography>
 
                       <HStack justify="space-between">
                         <Button
                           size="sm"
-                          variant="outline"
+                          variant="secondary"
                         >
                           <HStack gap="2">
-                            <Icon as={FiFileText} />
-                            <Text>View Details</Text>
+                            <IconWrapper><FiFileText size={16} /></IconWrapper>
+                            <Typography>View Details</Typography>
                           </HStack>
                         </Button>
                         
                         <Button
                           size="sm"
-                          variant="outline"
+                          variant="secondary"
                         >
-                          <HStack gap="2">
-                            <Icon as={FiDownload} />
-                            <Text>Export</Text>
-                          </HStack>
+                          <IconWrapper><FiDownload size={16} /></IconWrapper>
+                          <Typography>Export</Typography>
                         </Button>
                       </HStack>
                     </VStack>

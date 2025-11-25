@@ -3,99 +3,65 @@ import { getToken } from 'next-auth/jwt';
 import { getTokenSession, updateAccessToken, storeTokenSession } from '@/lib/redis-session';
 import { reportApiError } from '@/lib/sentry';
 
-const DEFAULT_TARGET = process.env.PROXY_TARGET || 'http://localhost:8090';
-const MESSAGING_TARGET = process.env.PROXY_TARGET_MESSAGING || process.env.MESSAGING_TARGET || 'http://localhost:8087';
-const PROJECTIONS_TARGET = process.env.PROXY_TARGET_PROJECTIONS || process.env.PROJECTIONS_TARGET || 'http://localhost:8007';
-const ONBOARDING_TARGET = process.env.PROXY_TARGET_ONBOARDING || process.env.ONBOARDING_TARGET || 'http://localhost:8081';
+// All services are now consolidated into the unified onboarding-api
+const UNIFIED_API_TARGET = process.env.PROXY_TARGET || process.env.ONBOARDING_TARGET || 'http://localhost:8001';
 const AUTH_TARGET = process.env.PROXY_TARGET_AUTH || process.env.AUTH_TARGET || 'http://localhost:8090';
-const DOCUMENT_TARGET = process.env.PROXY_TARGET_DOCUMENT || process.env.DOCUMENT_TARGET || 'http://localhost:8008';
-const RISK_TARGET = process.env.RISK_API_BASE_URL || process.env.NEXT_PUBLIC_RISK_API_BASE_URL || 'http://127.0.0.1:8006';
-const WORK_QUEUE_TARGET = process.env.WORK_QUEUE_API_BASE_URL || process.env.NEXT_PUBLIC_GATEWAY_URL || 'http://127.0.0.1:8000';
-const CHECKLIST_TARGET = process.env.CHECKLIST_API_BASE_URL || process.env.NEXT_PUBLIC_CHECKLIST_API_BASE_URL || 'http://127.0.0.1:8086';
-const ENTITY_CONFIG_TARGET = process.env.NEXT_PUBLIC_ENTITY_CONFIG_API_BASE_URL || process.env.ENTITY_CONFIG_API_BASE_URL || 'http://localhost:8003';
+const ENTITY_CONFIG_TARGET = process.env.ENTITY_CONFIG_TARGET || process.env.NEXT_PUBLIC_ENTITY_CONFIG_API_BASE_URL || 'http://localhost:8003';
 
 function resolveUpstream(pathname: string, search: string) {
-  // Supports service-specific proxying by prefixing the path after /api/proxy
-  // Examples:
-  //  - /api/proxy/messaging/api/v1/messages -> PROXY_TARGET_MESSAGING
-  //  - /api/proxy/projections/api/v1/* -> PROXY_TARGET_PROJECTIONS
-  //  - /api/proxy/... -> DEFAULT_TARGET
+  // All services are now consolidated into the unified onboarding-api
+  // Route /api/users/* to authentication service (if separate)
+  // Route entity config endpoints to entity configuration service
+  // Everything else goes to unified API
   const afterProxy = pathname.split('/api/proxy')[1] || '';
 
-  if (afterProxy.startsWith('/messaging')) {
-    const trimmed = afterProxy.replace('/messaging', '');
-    return `${MESSAGING_TARGET}${trimmed}${search}`;
+  // Route /api/users/* and /api/v1/users/* to unified API
+  // Authentication service may not be running, so route to unified API
+  if (afterProxy.startsWith('/api/users') || afterProxy.startsWith('/api/v1/users')) {
+    // Convert /api/users to /api/v1/users for unified API
+    let unifiedPath = afterProxy;
+    if (afterProxy.startsWith('/api/users')) {
+      unifiedPath = afterProxy.replace('/api/users', '/api/v1/users');
+    }
+    return `${UNIFIED_API_TARGET}${unifiedPath}${search}`;
   }
 
-  if (afterProxy.startsWith('/projections/v1')) {
-    const trimmed = afterProxy.replace('/projections/v1', '/api/v1');
-    return `${PROJECTIONS_TARGET}${trimmed}${search}`;
+  // Route /api/roles and /api/v1/roles to unified API
+  // Authentication service may not be running, so route to unified API
+  if (afterProxy.startsWith('/api/roles') || afterProxy.startsWith('/api/v1/roles')) {
+    // Convert /api/roles to /api/v1/roles for unified API
+    let unifiedPath = afterProxy;
+    if (afterProxy.startsWith('/api/roles')) {
+      unifiedPath = afterProxy.replace('/api/roles', '/api/v1/roles');
+    }
+    return `${UNIFIED_API_TARGET}${unifiedPath}${search}`;
+  }
+
+  // Route checklists endpoints to unified API
+  if (afterProxy.startsWith('/api/v1/checklists')) {
+    return `${UNIFIED_API_TARGET}${afterProxy}${search}`;
+  }
+
+  // Route entity configuration endpoints
+  // Wizard configurations are in the unified API (8001), others go to entity config service (8003)
+  if (afterProxy.startsWith('/api/v1/wizardconfigurations')) {
+    // Wizard configurations are in the unified onboarding-api
+    return `${UNIFIED_API_TARGET}${afterProxy}${search}`;
   }
   
-  if (afterProxy.startsWith('/projections')) {
-    const trimmed = afterProxy.replace('/projections', '');
-    return `${PROJECTIONS_TARGET}${trimmed}${search}`;
-  }
-
-  // Route /api/users/* to authentication service
-  if (afterProxy.startsWith('/api/users')) {
-    return `${AUTH_TARGET}${afterProxy}${search}`;
-  }
-
-  // Route /api/v1/cases/* to onboarding API
-  if (afterProxy.startsWith('/api/v1/cases')) {
-    return `${ONBOARDING_TARGET}${afterProxy}${search}`;
-  }
-
-  // Route /api/v1/sync to projections API (for syncing cases)
-  if (afterProxy.startsWith('/api/v1/sync')) {
-    return `${PROJECTIONS_TARGET}${afterProxy}${search}`;
-  }
-
-  // Route /api/v1/documents/* to document service
-  if (afterProxy.startsWith('/api/v1/documents')) {
-    return `${DOCUMENT_TARGET}${afterProxy}${search}`;
-  }
-
-  // Route /api/v1/dashboard to projections API
-  if (afterProxy.startsWith('/api/v1/dashboard')) {
-    return `${PROJECTIONS_TARGET}${afterProxy}${search}`;
-  }
-
-  // Route /api/v1/risk-assessments to risk service
-  if (afterProxy.startsWith('/api/v1/risk-assessments') || afterProxy.startsWith('/risk-assessments')) {
-    const riskPath = afterProxy.replace('/api/v1', '');
-    return `${RISK_TARGET}/api/v1${riskPath}${search}`;
-  }
-
-  // Route /api/workqueue to work queue service
-  if (afterProxy.startsWith('/api/workqueue') || afterProxy.startsWith('/workqueue')) {
-    const workQueuePath = afterProxy.replace('/api/workqueue', '/api/workqueue').replace('/workqueue', '/api/workqueue');
-    return `${WORK_QUEUE_TARGET}${workQueuePath}${search}`;
-  }
-
-  // Route /api/v1/workqueue to work queue service
-  if (afterProxy.startsWith('/api/v1/workqueue')) {
-    return `${WORK_QUEUE_TARGET}${afterProxy}${search}`;
-  }
-
-  // Route /api/v1/checklists to checklist service
-  if (afterProxy.startsWith('/api/v1/checklists') || afterProxy.startsWith('/checklists')) {
-    const checklistPath = afterProxy.replace('/api/v1', '');
-    return `${CHECKLIST_TARGET}/api/v1${checklistPath}${search}`;
-  }
-
-  // Route /api/v1/entitytypes, /api/v1/requirements, /api/v1/wizardconfigurations, /api/v1/roles, /api/v1/permissions to entity config service
-  if (afterProxy.startsWith('/api/v1/entitytypes') || 
-      afterProxy.startsWith('/api/v1/requirements') || 
-      afterProxy.startsWith('/api/v1/wizardconfigurations') ||
-      afterProxy.startsWith('/api/v1/roles') ||
-      afterProxy.startsWith('/api/v1/permissions') ||
-      afterProxy.startsWith('/api/v1/users')) {
+  // Route other entity config endpoints to entity config service
+  // These include: /api/v1/entity-types, /api/v1/requirements, /api/v1/permissions
+  // NOTE: If entity config service (8003) is not running, route to unified API as fallback
+  if (afterProxy.startsWith('/api/v1/entity-types') || 
+      afterProxy.startsWith('/api/v1/requirements') ||
+      afterProxy.startsWith('/api/v1/permissions')) {
+    // Try entity config service first, but fallback to unified API if service unavailable
+    // This allows graceful degradation when entity config service is down
     return `${ENTITY_CONFIG_TARGET}${afterProxy}${search}`;
   }
 
-  return `${DEFAULT_TARGET}${afterProxy}${search}`;
+  // All other routes go to unified onboarding-api
+  return `${UNIFIED_API_TARGET}${afterProxy}${search}`;
 }
 
 async function forward(req: NextRequest) {
@@ -236,8 +202,77 @@ async function forward(req: NextRequest) {
     });
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
     
-    // If it's a connection error, provide more helpful message
+    // If it's a connection error, try fallback for entity config endpoints or auth service
     if (errorMessage.includes('ECONNREFUSED') || errorMessage.includes('fetch failed')) {
+      const afterProxy = req.nextUrl.pathname.split('/api/proxy')[1] || '';
+      
+      // If authentication service is down and this is a roles/users endpoint, try unified API as fallback
+      if (url.includes(AUTH_TARGET) && 
+          (afterProxy.startsWith('/api/roles') || 
+           afterProxy.startsWith('/api/v1/roles') ||
+           afterProxy.startsWith('/api/users') ||
+           afterProxy.startsWith('/api/v1/users'))) {
+        // Fallback to unified API - convert /api/roles to /api/v1/roles if needed
+        let fallbackPath = afterProxy;
+        if (afterProxy.startsWith('/api/roles')) {
+          fallbackPath = afterProxy.replace('/api/roles', '/api/v1/roles');
+        } else if (afterProxy.startsWith('/api/users')) {
+          fallbackPath = afterProxy.replace('/api/users', '/api/v1/users');
+        }
+        const fallbackUrl = `${UNIFIED_API_TARGET}${fallbackPath}${req.nextUrl.search}`;
+        try {
+          const fallbackRes = await fetch(fallbackUrl, init);
+          const fallbackBody = await fallbackRes.arrayBuffer();
+          const fallbackHeaders = new Headers();
+          fallbackRes.headers.forEach((v, k) => fallbackHeaders.set(k, v));
+          fallbackHeaders.set('Access-Control-Allow-Origin', '*');
+          fallbackHeaders.set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS, PATCH');
+          fallbackHeaders.set('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-User-Id, X-User-Email, X-User-Name, X-User-Role');
+          return new NextResponse(fallbackBody, { status: fallbackRes.status, headers: fallbackHeaders });
+        } catch (fallbackError) {
+          // Both services failed - return helpful error
+          return new NextResponse(JSON.stringify({ 
+            error: 'Backend service unavailable', 
+            details: `Authentication Service (${AUTH_TARGET}) is not running. Please start the authentication service on port 8090, or ensure the Unified API (${UNIFIED_API_TARGET}) has the roles/users endpoints.`,
+            originalError: errorMessage,
+            attemptedFallback: fallbackUrl
+          }), { 
+            status: 503, 
+            headers: { 'Content-Type': 'application/json' }
+          });
+        }
+      }
+      
+      // If entity config service is down and this is an entity config endpoint, try unified API as fallback
+      if (url.includes(ENTITY_CONFIG_TARGET) && 
+          (afterProxy.startsWith('/api/v1/requirements') || 
+           afterProxy.startsWith('/api/v1/entity-types') ||
+           afterProxy.startsWith('/api/v1/permissions'))) {
+        // Fallback to unified API
+        const fallbackUrl = `${UNIFIED_API_TARGET}${afterProxy}${req.nextUrl.search}`;
+        try {
+          const fallbackRes = await fetch(fallbackUrl, init);
+          const fallbackBody = await fallbackRes.arrayBuffer();
+          const fallbackHeaders = new Headers();
+          fallbackRes.headers.forEach((v, k) => fallbackHeaders.set(k, v));
+          fallbackHeaders.set('Access-Control-Allow-Origin', '*');
+          fallbackHeaders.set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS, PATCH');
+          fallbackHeaders.set('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-User-Id, X-User-Email, X-User-Name, X-User-Role');
+          return new NextResponse(fallbackBody, { status: fallbackRes.status, headers: fallbackHeaders });
+        } catch (fallbackError) {
+          // Both services failed - return helpful error
+          return new NextResponse(JSON.stringify({ 
+            error: 'Backend service unavailable', 
+            details: `Entity Configuration Service (${ENTITY_CONFIG_TARGET}) is not running. Please start the service on port 8003, or ensure the Unified API (${UNIFIED_API_TARGET}) has the requirements endpoint.`,
+            originalError: errorMessage,
+            attemptedFallback: fallbackUrl
+          }), { 
+            status: 503, 
+            headers: { 'Content-Type': 'application/json' }
+          });
+        }
+      }
+      
       return new NextResponse(JSON.stringify({ 
         error: 'Backend service unavailable', 
         details: `Cannot connect to ${url}. Please ensure the backend service is running.`,

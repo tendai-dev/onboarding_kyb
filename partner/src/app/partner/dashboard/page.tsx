@@ -9,7 +9,6 @@ import {
   SimpleGrid,
   Flex,
   Badge,
-  Button,
   Image,
   Circle,
   Icon,
@@ -18,6 +17,7 @@ import {
   AlertDescription,
   Spinner
 } from "@chakra-ui/react";
+import { Button, MukuruLogo } from "@/lib/mukuruImports";
 import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
 import { useEffect, useMemo, useState, useCallback, Suspense } from "react";
@@ -49,12 +49,12 @@ import {
   FiAward
 } from "react-icons/fi";
 
-const MotionBox = motion(Box);
-const MotionFlex = motion(Flex);
-const MotionVStack = motion(VStack);
-const MotionHStack = motion(HStack);
-const MotionText = motion(Text);
-const MotionCircle = motion(Circle);
+const MotionBox = motion.create(Box);
+const MotionFlex = motion.create(Flex);
+const MotionVStack = motion.create(VStack);
+const MotionHStack = motion.create(HStack);
+const MotionText = motion.create(Text);
+const MotionCircle = motion.create(Circle);
 
 // Application Journey Progress Component
 interface JourneyStage {
@@ -348,7 +348,7 @@ function PartnerDashboardContent() {
 
   useEffect(() => {
     if (authUser) {
-      setCurrentUser({ name: authUser.name, email: authUser.email });
+      setCurrentUser({ name: authUser.name || "", email: authUser.email || "" });
     } else if (!authLoading) {
       // Fallback to direct session check if auth context not loaded yet
       const user = getAuthUser();
@@ -657,7 +657,7 @@ function PartnerDashboardContent() {
               animate={{ opacity: 1, x: 0 }}
               transition={{ duration: 0.6, delay: 0.1 }}
             >
-              <Image src="/mukuru-logo.png" alt="Mukuru" height="32px" />
+              <MukuruLogo height="32px" />
               
             </MotionHStack>
             <MotionHStack 
@@ -672,7 +672,7 @@ function PartnerDashboardContent() {
               <Link href="/partner/messages">
                 <Button variant="ghost" size="sm">Messages</Button>
               </Link>
-              <Button variant="outline" size="sm" onClick={() => logout('http://localhost:3000/')}>Logout</Button>
+              <Button variant="secondary" size="sm" onClick={() => logout('http://localhost:3000/')}>Logout</Button>
               <Link href="/partner/application/enhanced">
                 <MotionBox
                   whileHover={{ scale: 1.05 }}
@@ -680,13 +680,11 @@ function PartnerDashboardContent() {
                 >
                   <Button 
                     size="sm"
+                    className="mukuru-primary-button"
                     borderRadius="full"
                     px="6"
                     fontWeight="medium"
-                    bg="black"
-                    color="white"
                     _hover={{
-                      bg: "gray.900",
                       transform: "translateY(-1px)"
                     }}
                     transition="all 0.2s ease"
@@ -747,11 +745,11 @@ function PartnerDashboardContent() {
           {submitted && retryCount > 0 && retryCount < 5 && !application && (
             <Box bg="blue.50" p="3" borderRadius="md" mb="3" border="1px" borderColor="blue.200">
               <HStack gap="2">
-                <Spinner size="xs" color="blue.500" />
+                <Spinner size="sm" color="blue.500" />
                 <Text fontSize="xs" color="blue.700">
                   Application is being processed. Refreshing data... ({retryCount}/5)
                 </Text>
-                <Button size="xs" variant="outline" onClick={handleRefresh} ml="auto">
+                <Button size="sm" variant="secondary" onClick={handleRefresh} ml="auto">
                   <Icon as={FiRefreshCw} mr="1" />
                   Refresh Now
                 </Button>
@@ -781,8 +779,8 @@ function PartnerDashboardContent() {
                 </Text>
               </MotionHStack>
               <Button 
-                size="xs" 
-                variant="outline" 
+                size="sm" 
+                variant="secondary" 
                 onClick={handleRefresh}
                 disabled={loading}
               >
@@ -1162,7 +1160,7 @@ function PartnerDashboardContent() {
                       whileTap={{ scale: 0.98 }}
                     >
                       <Button 
-                        variant="outline" 
+                        variant="secondary" 
                         size="md" 
                         width="100%"
                         borderRadius="xl"
@@ -1200,11 +1198,9 @@ function PartnerDashboardContent() {
                   <Link href="/partner/application/enhanced">
                     <Button 
                       size="md"
+                      className="mukuru-primary-button"
                       borderRadius="xl"
                       fontWeight="medium"
-                      bg="black"
-                      color="white"
-                      _hover={{ bg: "gray.900" }}
                     >
                       <Icon as={FiPlus} mr="2" />
                       Create Application

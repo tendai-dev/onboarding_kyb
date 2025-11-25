@@ -35,6 +35,10 @@ node_modules/
 # *.env
 # .env.local
 
+# NPM Registry Configuration (contains sensitive tokens)
+**/.npmrc
+!.npmrc.example
+
 # Test results
 TestResults/
 *.trx

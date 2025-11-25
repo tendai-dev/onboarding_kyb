@@ -1,2 +1,0 @@
-import{jsx as r}from"react/jsx-runtime";import{useRecipe as e,chakra as p}from"@chakra-ui/react";import{forwardRef as t}from"react";import{typographyRecipe as o}from"../../../configs/themes/typography.recipe.js";const i=t((t,i)=>{const{children:s,as:a="p",...c}=t,m=e({recipe:o}),n={...c,levels:a},[f,h]=m.splitVariantProps(n),l=m(f);return r(p.p,{as:a,ref:i,css:l,...h,children:s})});i.displayName="Typography";export{i as Typography};
-//# sourceMappingURL=Typography.js.map

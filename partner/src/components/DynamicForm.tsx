@@ -5,25 +5,17 @@ import {
   Box,
   VStack,
   HStack,
-  Text,
-  Input,
   Textarea,
-  Select,
-  Button,
-  Checkbox,
-  RadioGroup,
-  Radio,
-  Switch,
   SimpleGrid,
   Icon,
-  Badge,
-  Tooltip,
-  Alert,
-  AlertTitle,
-  AlertDescription,
   Spinner,
-  Flex
+  Flex,
+  FormControl,
+  FormHelperText,
+  FormErrorMessage
 } from "@chakra-ui/react";
+import { Button, Checkbox, Radio, RadioGroup, Tag, Tooltip, Typography, Dropdown, AlertBar } from "@/lib/mukuruImports";
+import { Input, Switch } from "@chakra-ui/react";
 import { useState, useEffect } from "react";
 import { FiInfo, FiAlertCircle, FiCheckCircle, FiExternalLink } from "react-icons/fi";
 
@@ -268,10 +260,10 @@ export function DynamicForm({
 
     return (
       <FormControl key={field.id} isRequired={field.required} isInvalid={!!error}>
-        <FormLabel fontSize="sm" fontWeight="medium" color="gray.700">
+        <Typography fontSize="sm" fontWeight="medium" color="gray.700" mb="2">
           {field.label}
-          {field.required && <Text as="span" color="red.500" ml="1">*</Text>}
-        </FormLabel>
+          {field.required && <Typography as="span" color="red.500" ml="1">*</Typography>}
+        </Typography>
 
         <Box position="relative">
           {field.type === 'text' && (
@@ -303,14 +295,18 @@ export function DynamicForm({
           )}
 
           {field.type === 'select' && (
-            <Select {...baseProps}>
-              <option value="">Select an option</option>
+            <Dropdown
+              value={value || ""}
+              onChange={(val) => updateField(field.id, val)}
+              disabled={disabled}
+              placeholder="Select an option"
+            >
               {field.options?.map(option => (
                 <option key={option.value} value={option.value} disabled={option.disabled}>
                   {option.label}
                 </option>
               ))}
-            </Select>
+            </Dropdown>
           )}
 
           {field.type === 'radio' && (
@@ -326,24 +322,13 @@ export function DynamicForm({
           )}
 
           {field.type === 'checkbox' && (
-            <Checkbox.Root
-              checked={!!value}
-              onCheckedChange={(checked) => updateField(field.id, checked)}
-              isDisabled={disabled}
-            >
-              <Checkbox.Control>
-                <Checkbox.Indicator />
-              </Checkbox.Control>
-              <Checkbox.Label ml="2">{field.label}</Checkbox.Label>
-            </Checkbox.Root>
+            <Checkbox checked={!!value} onCheckedChange={(details) => updateField(field.id, details.checked === true)} disabled={disabled}>
+              {field.label}
+            </Checkbox>
           )}
 
           {field.type === 'switch' && (
-            <Switch.Root
-              checked={!!value}
-              onCheckedChange={(checked) => updateField(field.id, checked)}
-              isDisabled={disabled}
-            >
+            <Switch.Root checked={!!value} onCheckedChange={(details) => updateField(field.id, details.checked)} disabled={disabled}>
               <Switch.Control>
                 <Switch.Thumb />
               </Switch.Control>
@@ -379,12 +364,12 @@ export function DynamicForm({
 
         {/* External validation message */}
         {validationResult?.message && (
-          <Alert status={validationResult.status === 'valid' ? 'success' : 'error'} size="sm" mt="2">
-            <AlertIcon />
-            <AlertDescription fontSize="xs">
-              {validationResult.message}
-            </AlertDescription>
-          </Alert>
+          <AlertBar 
+            variant={validationResult.status === 'valid' ? 'success' : 'error'} 
+            title={validationResult.message}
+            size="sm"
+            mt="2"
+          />
         )}
 
         {/* Error message */}
@@ -412,12 +397,12 @@ export function DynamicForm({
         <Box mb="6" p="4" bg="gray.50" borderRadius="lg">
           <VStack gap="2" align="stretch">
             <HStack justify="space-between">
-              <Text fontSize="sm" fontWeight="medium" color="gray.700">
+              <Typography fontSize="sm" fontWeight="medium" color="gray.700">
                 Form Progress
-              </Text>
-              <Text fontSize="sm" color="gray.600">
+              </Typography>
+              <Typography fontSize="sm" color="gray.600">
                 {completedFields} of {totalRequiredFields} required fields completed
-              </Text>
+              </Typography>
             </HStack>
             <Box width="100%" height="2" bg="gray.200" borderRadius="full" overflow="hidden">
               <Box
@@ -428,9 +413,9 @@ export function DynamicForm({
                 transition="width 0.3s ease"
               />
             </Box>
-            <Text fontSize="xs" color="gray.500" textAlign="center">
+            <Typography fontSize="xs" color="gray.500" textAlign="center">
               {Math.round(progressPercentage)}% Complete
-            </Text>
+            </Typography>
           </VStack>
         </Box>
       )}
@@ -440,9 +425,9 @@ export function DynamicForm({
           {Object.entries(groupedFields).map(([groupName, groupFields]) => (
             <Box key={groupName}>
               {groupName !== 'default' && (
-                <Text fontSize="lg" fontWeight="semibold" color="gray.800" mb="4">
+                <Typography fontSize="lg" fontWeight="semibold" color="gray.800" mb="4">
                   {groupName}
-                </Text>
+                </Typography>
               )}
               
               <SimpleGrid columns={{ base: 1, md: 2 }} gap="4">

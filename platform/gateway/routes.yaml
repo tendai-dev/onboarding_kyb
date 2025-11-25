@@ -1,5 +1,6 @@
 ---
 # API Gateway Routes - Nginx Ingress with unified API domain
+# All services are now consolidated into kyc-onboarding-api
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
@@ -19,8 +20,8 @@ metadata:
     nginx.ingress.kubernetes.io/proxy-send-timeout: "60"
     nginx.ingress.kubernetes.io/proxy-read-timeout: "60"
     
-    # Body size
-    nginx.ingress.kubernetes.io/proxy-body-size: "10m"
+    # Body size (increased for document uploads)
+    nginx.ingress.kubernetes.io/proxy-body-size: "50m"
     
     # CORS
     nginx.ingress.kubernetes.io/enable-cors: "true"
@@ -43,12 +44,15 @@ metadata:
         return 405;
       }
       
-      # Enforce JSON for POST/PUT/PATCH
+      # Enforce JSON for POST/PUT/PATCH (except for file uploads)
       set $reject_non_json 0;
       if ($request_method ~ ^(POST|PUT|PATCH)$) {
         set $reject_non_json 1;
       }
       if ($content_type ~ "application/json") {
+        set $reject_non_json 0;
+      }
+      if ($content_type ~ "multipart/form-data") {
         set $reject_non_json 0;
       }
       if ($reject_non_json = 1) {
@@ -66,7 +70,17 @@ spec:
   - host: api.yourdomain.tld
     http:
       paths:
-      # Onboarding API
+      # All API routes now go to unified onboarding-api
+      # Path rewrites are handled by the service itself
+      - path: /api
+        pathType: Prefix
+        backend:
+          service:
+            name: kyc-onboarding-api
+            port:
+              number: 8080
+      
+      # Legacy paths for backward compatibility (all route to unified API)
       - path: /onboarding/v1
         pathType: Prefix
         backend:
@@ -75,70 +89,62 @@ spec:
             port:
               number: 8080
       
-      # Document Service
       - path: /documents/v1
         pathType: Prefix
         backend:
           service:
-            name: kyc-document-api
+            name: kyc-onboarding-api
             port:
               number: 8080
       
-      # Checklist Service
       - path: /checks/v1
         pathType: Prefix
         backend:
           service:
-            name: kyc-checklist-api
+            name: kyc-onboarding-api
             port:
               number: 8080
       
-      # Risk Service
       - path: /risk/v1
         pathType: Prefix
         backend:
           service:
-            name: kyc-risk-api
+            name: kyc-onboarding-api
             port:
               number: 8080
       
-      # Notification Service
       - path: /notifications/v1
         pathType: Prefix
         backend:
           service:
-            name: kyc-notification-api
+            name: kyc-onboarding-api
             port:
               number: 8080
       
-      # Webhook Handler
       - path: /webhooks/v1
         pathType: Prefix
         backend:
           service:
-            name: kyc-webhook-handler
+            name: kyc-onboarding-api
             port:
               number: 8080
       
-      # Projections API (Read Models)
       - path: /projections/v1
         pathType: Prefix
         backend:
           service:
-            name: kyc-projections-api
+            name: kyc-onboarding-api
             port:
               number: 8080
       
-      # Messaging Service
       - path: /messaging/v1
         pathType: Prefix
         backend:
           service:
-            name: kyc-messaging-api
+            name: kyc-onboarding-api
             port:
               number: 8080
       
-      # Frontend-compatible API routes (mapped to onboarding-api)
       - path: /api/v1/onboardings
         pathType: Prefix
         backend:
@@ -162,4 +168,3 @@ spec:
             name: kyc-onboarding-api
             port:
               number: 8080
-

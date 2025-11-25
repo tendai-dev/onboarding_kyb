@@ -25,3 +25,235 @@ body {
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
 }
+
+/* Mukuru Primary Button Styles */
+.mukuru-primary-button,
+button.mukuru-primary-button,
+[data-scope="button"].mukuru-primary-button {
+  background-color: #F05423 !important; /* mukuru.primary */
+  background: #F05423 !important;
+  border: none !important;
+  border-width: 0 !important;
+  border-style: none !important;
+  border-color: #F05423 !important;
+  color: white !important;
+  outline: none !important;
+  box-shadow: none !important;
+}
+
+.mukuru-primary-button *,
+button.mukuru-primary-button *,
+.mukuru-primary-button span,
+button.mukuru-primary-button span,
+.mukuru-primary-button svg,
+button.mukuru-primary-button svg,
+.mukuru-primary-button path,
+button.mukuru-primary-button path {
+  color: white !important;
+  fill: white !important;
+  stroke: white !important;
+  -webkit-text-fill-color: white !important;
+}
+
+.mukuru-primary-button:hover,
+button.mukuru-primary-button:hover,
+[data-scope="button"].mukuru-primary-button:hover {
+  background-color: #E04A1A !important; /* darker orange on hover */
+  background: #E04A1A !important;
+  border-color: #E04A1A !important;
+}
+
+.mukuru-primary-button:focus,
+button.mukuru-primary-button:focus,
+.mukuru-primary-button:active,
+button.mukuru-primary-button:active {
+  background-color: #E04A1A !important;
+  background: #E04A1A !important;
+  border-color: #E04A1A !important;
+}
+
+/* Ensure all text is visible - Critical visibility fixes */
+/* Force dark text on white backgrounds */
+.bg-white,
+[data-bg="white"],
+[class*="bg-white"],
+[style*="background-color: white"],
+[style*="background-color: #fff"],
+[style*="background-color: #ffffff"],
+[style*="background: white"],
+[style*="background: #fff"],
+[style*="background: #ffffff"] {
+  color: #111827 !important; /* gray.900 */
+}
+
+/* Ensure Typography components are visible */
+[data-part="typography"],
+[data-scope="typography"],
+.chakra-text,
+p,
+span,
+div,
+label {
+  color: #111827 !important; /* gray.900 for dark text */
+  -webkit-text-fill-color: #111827 !important;
+}
+
+/* Ensure input fields are visible */
+input[type="text"],
+input[type="email"],
+input[type="tel"],
+input[type="password"],
+input[type="number"],
+textarea,
+select {
+  color: #111827 !important; /* gray.900 */
+  background-color: white !important;
+  -webkit-text-fill-color: #111827 !important;
+}
+
+input[readonly],
+input[disabled] {
+  color: #374151 !important; /* gray.700 */
+  background-color: #F9FAFB !important; /* gray.50 */
+  -webkit-text-fill-color: #374151 !important;
+}
+
+/* Ensure Card content is visible */
+[data-part="card"],
+[data-scope="card"],
+.card {
+  color: #111827 !important;
+}
+
+[data-part="card"] *,
+[data-scope="card"] *,
+.card * {
+  color: #111827 !important;
+  -webkit-text-fill-color: #111827 !important;
+}
+
+/* Override any white text colors on white backgrounds */
+[style*="color: white"]:not(.mukuru-primary-button):not(.mukuru-primary-button *),
+[style*="color: #fff"]:not(.mukuru-primary-button):not(.mukuru-primary-button *),
+[style*="color: #ffffff"]:not(.mukuru-primary-button):not(.mukuru-primary-button *) {
+  color: #111827 !important; /* gray.900 */
+  -webkit-text-fill-color: #111827 !important;
+}
+
+/* Ensure profile page form fields are always visible */
+[data-part="card"] form,
+[data-scope="card"] form,
+.card form,
+form {
+  display: flex !important;
+  flex-direction: column !important;
+  width: 100% !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+}
+
+/* Ensure all VStack and form containers are visible */
+[data-part="card"] > div,
+[data-scope="card"] > div,
+.card > div {
+  visibility: visible !important;
+  opacity: 1 !important;
+}
+
+/* Fix Account Actions rows - prevent overlap */
+[data-part="card"] > div > div[style*="display: flex"],
+.card > div > div[style*="display: flex"] {
+  position: relative !important;
+  z-index: auto !important;
+  margin: 0 !important;
+  transform: none !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  min-height: 48px !important;
+  width: 100% !important;
+}
+
+/* Force form fields to be visible */
+input[type="text"],
+input[type="email"],
+input[type="tel"],
+input[type="password"],
+input[type="number"],
+textarea,
+select {
+  visibility: visible !important;
+  opacity: 1 !important;
+}
+
+/* Ensure all text in Mukuru Cards is visible */
+[data-part="card"],
+[data-scope="card"],
+.card,
+Card {
+  color: #111827 !important;
+}
+
+[data-part="card"] *,
+[data-scope="card"] *,
+.card *,
+Card * {
+  color: #111827 !important;
+  -webkit-text-fill-color: #111827 !important;
+  opacity: 1 !important;
+  visibility: visible !important;
+  word-wrap: break-word !important;
+  overflow-wrap: break-word !important;
+}
+
+/* Force Typography text visibility in cards */
+[data-part="card"] [data-part="typography"],
+[data-scope="card"] [data-part="typography"],
+.card [data-part="typography"],
+Card [data-part="typography"],
+[data-part="card"] .chakra-text,
+[data-scope="card"] .chakra-text,
+.card .chakra-text,
+Card .chakra-text {
+  color: #111827 !important;
+  -webkit-text-fill-color: #111827 !important;
+  opacity: 1 !important;
+  visibility: visible !important;
+  line-height: 1.5 !important;
+  word-wrap: break-word !important;
+  overflow-wrap: break-word !important;
+}
+
+/* Ensure all text in profile cards is visible */
+[data-part="card"] p,
+[data-part="card"] span,
+[data-part="card"] div,
+[data-part="card"] label,
+[data-scope="card"] p,
+[data-scope="card"] span,
+[data-scope="card"] div,
+[data-scope="card"] label,
+.card p,
+.card span,
+.card div,
+.card label {
+  color: #111827 !important;
+  -webkit-text-fill-color: #111827 !important;
+  opacity: 1 !important;
+  visibility: visible !important;
+  line-height: 1.5 !important;
+  word-wrap: break-word !important;
+  overflow-wrap: break-word !important;
+  white-space: normal !important;
+}
+
+/* Ensure VStack and HStack text is visible */
+[data-part="card"] [data-part="vstack"] *,
+[data-part="card"] [data-part="hstack"] *,
+.card [data-part="vstack"] *,
+.card [data-part="hstack"] * {
+  color: #111827 !important;
+  -webkit-text-fill-color: #111827 !important;
+  opacity: 1 !important;
+  visibility: visible !important;
+}

@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { logger } from '@/lib/logger';
 
 /**
  * Proxy endpoint for serving documents/images from MinIO
@@ -43,9 +44,11 @@ export async function GET(req: NextRequest) {
       // Encode the decoded key properly for the backend API
       const directDownloadUrl = `${docServiceUrl}/api/v1/documents/direct?key=${encodeURIComponent(decodedKey)}`;
       
-      console.log('[Proxy-Document] Original storageKey:', storageKey);
-      console.log('[Proxy-Document] Decoded storageKey:', decodedKey);
-      console.log('[Proxy-Document] Fetching via direct download:', directDownloadUrl);
+      logger.debug('[Proxy-Document] Processing document request', {
+        originalStorageKey: storageKey,
+        decodedStorageKey: decodedKey,
+        directDownloadUrl
+      });
       
       try {
         const downloadResponse = await fetch(directDownloadUrl, {
@@ -57,7 +60,10 @@ export async function GET(req: NextRequest) {
           signal: AbortSignal.timeout(30000), // 30 second timeout
         });
         
-        console.log('[Proxy-Document] Response status:', downloadResponse.status, downloadResponse.statusText);
+        logger.debug('[Proxy-Document] Response status', {
+          status: downloadResponse.status,
+          statusText: downloadResponse.statusText
+        });
 
         if (downloadResponse.ok) {
           // Direct download succeeded - stream the response directly
@@ -65,7 +71,7 @@ export async function GET(req: NextRequest) {
           const contentType = downloadResponse.headers.get('content-type') || 'application/octet-stream';
           const contentDisposition = downloadResponse.headers.get('content-disposition') || '';
           
-          console.log('[Proxy-Document] Success - content-type:', contentType);
+          logger.debug('[Proxy-Document] Success', { contentType });
 
           const headers = new Headers({
             'Content-Type': contentType,
@@ -113,7 +119,10 @@ export async function GET(req: NextRequest) {
             // Couldn't read error text
           }
           
-          console.error('[Proxy-Document] Direct download failed:', downloadResponse.status, errorText);
+          logger.error(new Error(`Direct download failed: ${downloadResponse.status}`), '[Proxy-Document] Direct download failed', {
+            tags: { error_type: 'document_download_error' },
+            extra: { status: downloadResponse.status, errorText }
+          });
           
           // Return appropriate status code (404 for not found, 500 for server errors)
           const statusCode = downloadResponse.status === 404 ? 404 : (downloadResponse.status || 500);
@@ -132,7 +141,9 @@ export async function GET(req: NextRequest) {
           );
         }
       } catch (fetchError) {
-        console.error('[Proxy-Document] Fetch error:', fetchError);
+        logger.error(fetchError, '[Proxy-Document] Fetch error', {
+          tags: { error_type: 'document_fetch_error' }
+        });
         const errorMessage = fetchError instanceof Error ? fetchError.message : 'Unknown error';
         
         return new NextResponse(
@@ -151,7 +162,9 @@ export async function GET(req: NextRequest) {
     // Fallback: If we only have a URL (presigned URL) and no storageKey, try to fetch it
     // Note: This is less reliable due to signature validation issues
     if (url && !storageKey) {
-      console.log('[Proxy-Document] Using presigned URL fallback (not recommended)');
+      logger.warn('[Proxy-Document] Using presigned URL fallback (not recommended)', {
+        tags: { warning_type: 'presigned_url_fallback' }
+      });
       
       try {
         // Try to replace minio:9000 with localhost:9000 for local development
@@ -193,7 +206,9 @@ export async function GET(req: NextRequest) {
           );
         }
       } catch (fetchError) {
-        console.error('[Proxy-Document] Presigned URL fetch error:', fetchError);
+        logger.error(fetchError, '[Proxy-Document] Presigned URL fetch error', {
+          tags: { error_type: 'presigned_url_fetch_error' }
+        });
         return new NextResponse(
           JSON.stringify({ 
             error: 'Failed to fetch document from presigned URL', 
@@ -213,7 +228,9 @@ export async function GET(req: NextRequest) {
       { status: 400, headers: { 'Content-Type': 'application/json' } }
     );
   } catch (error) {
-    console.error('[Proxy-Document] Unexpected error:', error);
+    logger.error(error, '[Proxy-Document] Unexpected error', {
+      tags: { error_type: 'proxy_document_unexpected_error' }
+    });
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
     return new NextResponse(
       JSON.stringify({ error: 'Proxy request failed', details: errorMessage }),

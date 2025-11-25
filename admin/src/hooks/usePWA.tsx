@@ -118,8 +118,9 @@ export function usePushNotifications() {
   const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
-    // Check if push notifications are supported
-    if ('serviceWorker' in navigator && 'PushManager' in window) {
+    // Check if basic notifications are supported (service worker removed per requirements)
+    // Note: Push subscriptions require service worker, so they are disabled
+    if ('Notification' in window) {
       setIsSupported(true);
       setPermission(Notification.permission);
     }
@@ -139,30 +140,14 @@ export function usePushNotifications() {
   }, [isSupported]);
 
   const subscribeToPush = useCallback(async () => {
-    if (!isSupported || permission !== 'granted') return false;
-
+    // Push subscriptions require service worker, which has been removed per requirements
+    // This function is kept for API compatibility but will always return false
     setIsLoading(true);
     try {
-      const registration = await navigator.serviceWorker.ready;
-      const sub = await registration.pushManager.subscribe({
-        userVisibleOnly: true,
-        applicationServerKey: process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY
-      });
-
-      setSubscription(sub);
-      
-      // Send subscription to server
-      await fetch('/api/push/subscribe', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(sub)
-      });
-
-      return true;
+      // Service worker removed - push subscriptions not available
+      // Use standard browser notifications instead via PushNotificationService
+      return false;
     } catch (error) {
-      console.error('Error subscribing to push notifications:', error);
       return false;
     } finally {
       setIsLoading(false);
@@ -384,7 +369,7 @@ export function PushNotificationSettings() {
 }
 
 // Offline Indicator Component
-export function OfflineIndicator(): JSX.Element | null {
+export function OfflineIndicator(): React.JSX.Element | null {
   const [isOnline, setIsOnline] = useState(true);
   const [showIndicator, setShowIndicator] = useState(false);
 
@@ -505,21 +490,16 @@ export function PWAUpdateAvailable() {
   const [isUpdating, setIsUpdating] = useState(false);
 
   useEffect(() => {
-    // Listen for service worker updates
-    if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.addEventListener('controllerchange', () => {
-        setUpdateAvailable(true);
-      });
-    }
+    // Service worker removed per requirements - update detection disabled
+    // App updates will be handled via standard browser refresh
   }, []);
 
   const handleUpdate = async () => {
     setIsUpdating(true);
     try {
-      // Reload the page to use the new service worker
+      // Service worker removed - standard page reload
       window.location.reload();
     } catch (error) {
-      console.error('Error updating PWA:', error);
       setIsUpdating(false);
     }
   };

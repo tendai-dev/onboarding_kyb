@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using DomainNotification = OnboardingApi.Domain.Notification.Aggregates.Notification;
 using OnboardingApi.Domain.Notification.Aggregates;
 using OnboardingApi.Domain.Notification.ValueObjects;
 
@@ -10,7 +11,7 @@ public class NotificationDbContext : DbContext
     {
     }
 
-    public DbSet<Notification> Notifications { get; set; }
+    public DbSet<DomainNotification> Notifications { get; set; }
     public DbSet<NotificationTemplate> NotificationTemplates { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -111,7 +112,7 @@ public class NotificationDbContext : DbContext
         });
 
         // Notification configuration
-        modelBuilder.Entity<Notification>(entity =>
+        modelBuilder.Entity<DomainNotification>(entity =>
         {
             entity.ToTable("notifications", "notification");
             

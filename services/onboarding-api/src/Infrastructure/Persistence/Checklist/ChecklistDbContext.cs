@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using DomainChecklist = OnboardingApi.Domain.Checklist.Aggregates.Checklist;
 using OnboardingApi.Domain.Checklist.Aggregates;
 using OnboardingApi.Domain.Checklist.ValueObjects;
 
@@ -10,7 +11,7 @@ public class ChecklistDbContext : DbContext
     {
     }
 
-    public DbSet<Checklist> Checklists { get; set; }
+    public DbSet<DomainChecklist> Checklists { get; set; }
     public DbSet<ChecklistItem> ChecklistItems { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -21,7 +22,7 @@ public class ChecklistDbContext : DbContext
         modelBuilder.HasDefaultSchema("checklist");
 
         // Checklist configuration
-        modelBuilder.Entity<Checklist>(entity =>
+        modelBuilder.Entity<DomainChecklist>(entity =>
         {
             entity.ToTable("checklists", "checklist");
             
@@ -156,7 +157,7 @@ public class ChecklistDbContext : DbContext
         });
 
         // Relationship between Checklist and ChecklistItem
-        modelBuilder.Entity<Checklist>()
+        modelBuilder.Entity<DomainChecklist>()
             .HasMany<ChecklistItem>()
             .WithOne()
             .HasForeignKey("ChecklistId")

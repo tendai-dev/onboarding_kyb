@@ -63,7 +63,7 @@ import { SweetAlert } from "@/utils/sweetAlert";
 import { SchemaDrivenView } from "@/components/SchemaDrivenView";
 import { findUserCaseByEmail, generateUserIdFromEmail } from "@/lib/api";
 
-const MotionBox = motion(Box);
+const MotionBox = motion.create(Box);
 
 export default function ApplicationDetailsPage() {
   const params = useParams();

@@ -2,48 +2,73 @@
 
 import {
   Box,
+  Container,
   VStack,
   HStack,
-  Text,
-  Badge,
   Flex,
-  Button,
-  Spinner,
-  Input
+  Spinner
 } from "@chakra-ui/react";
-import { FiCheckSquare, FiPlus, FiEdit3, FiTrash2, FiSearch, FiX } from "react-icons/fi";
+import { 
+  Search, 
+  Typography, 
+  Tag, 
+  Button, 
+  IconWrapper,
+  DataTable,
+  AlertBar,
+  Tooltip
+} from "@/lib/mukuruImports";
+import type { ColumnConfig } from "@mukuru/mukuru-react-components";
+import { FiCheckSquare, FiPlus, FiEdit3, FiTrash2, FiX } from "react-icons/fi";
 import AdminSidebar from "../../components/AdminSidebar";
+import PortalHeader from "../../components/PortalHeader";
+import { useSidebar } from "../../contexts/SidebarContext";
 import Link from "next/link";
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { entityConfigApiService, Requirement } from "../../services/entityConfigApi";
 import { SweetAlert } from "../../utils/sweetAlert";
 
 export default function KYBRequirementsPage() {
+  const { condensed } = useSidebar();
   const [requirements, setRequirements] = useState<Requirement[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [deleting, setDeleting] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [refreshKey, setRefreshKey] = useState(0);
 
-  useEffect(() => {
-    loadData();
-  }, []);
-
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
-      const data = await entityConfigApiService.getRequirements(false);
-      setRequirements(data);
+      console.log('[Requirements Page] Loading requirements with filters:', {
+        status: statusFilter,
+        search: searchQuery,
+      });
+      const requirementsData = await entityConfigApiService.getRequirements(false);
+      console.log('[Requirements Page] Requirements loaded:', requirementsData.length);
+      // Log a sample requirement to check fieldType
+      if (requirementsData.length > 0) {
+        console.log('[Requirements Page] Sample requirement:', {
+          code: requirementsData[0].code,
+          fieldType: requirementsData[0].fieldType,
+          type: requirementsData[0].type
+        });
+      }
+      setRequirements(requirementsData);
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to load requirements';
       setError(errorMessage);
-      console.error('Error loading requirements:', err);
+      console.error('[Requirements Page] Error loading requirements:', err);
     } finally {
       setLoading(false);
     }
-  };
+  }, [statusFilter, searchQuery]);
+
+  useEffect(() => {
+    loadData();
+  }, [loadData]);
 
   const handleDelete = async (id: string) => {
     const result = await SweetAlert.confirm(
@@ -63,6 +88,7 @@ export default function KYBRequirementsPage() {
       
       await entityConfigApiService.deleteRequirement(id);
       setRequirements(prev => prev.filter(req => req.id !== id));
+      setRefreshKey(prev => prev + 1);
       
       SweetAlert.close();
       SweetAlert.success('Deleted!', 'Requirement has been deleted successfully.');
@@ -75,29 +101,31 @@ export default function KYBRequirementsPage() {
     }
   };
 
-  const filteredRequirements = useMemo(() => {
-    return requirements.filter(requirement => {
-      // Status filter
-      if (statusFilter !== "all") {
-        const isActive = statusFilter === "active";
-        if (requirement.isActive !== isActive) {
-          return false;
-        }
-      }
+  const handleSearchChange = useCallback((query: string) => {
+    setSearchQuery(query);
+  }, []);
 
-      // Search filter
-      if (searchQuery.trim()) {
-        const query = searchQuery.toLowerCase();
-        return (
-          requirement.displayName.toLowerCase().includes(query) ||
-          requirement.code.toLowerCase().includes(query) ||
-          requirement.description?.toLowerCase().includes(query)
-        );
+  const filteredRequirements = requirements.filter(requirement => {
+    // Status filter
+    if (statusFilter !== "all") {
+      const isActive = statusFilter === "active";
+      if (requirement.isActive !== isActive) {
+        return false;
       }
+    }
 
-      return true;
-    });
-  }, [requirements, searchQuery, statusFilter]);
+    // Search filter
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase();
+      return (
+        requirement.displayName.toLowerCase().includes(query) ||
+        requirement.code.toLowerCase().includes(query) ||
+        requirement.description?.toLowerCase().includes(query)
+      );
+    }
+
+    return true;
+  });
 
   const clearFilters = () => {
     setSearchQuery("");
@@ -173,522 +201,261 @@ export default function KYBRequirementsPage() {
     },
   };
 
-  if (loading) {
-    return (
-      <Flex minH="100vh" bg="gray.50" overflow="hidden">
-        <AdminSidebar />
-        <Box 
-          flex="1" 
-          ml="224px" 
-          h="100vh"
-          display="flex" 
-          alignItems="center" 
-          justifyContent="center"
-        >
-          <VStack gap={tokens.spacing.lg}>
-            <Spinner size="xl" color="orange.500" />
-            <Text color={tokens.colors.text.secondary} fontWeight="500">
-              Loading requirements...
-            </Text>
-          </VStack>
-        </Box>
-      </Flex>
-    );
-  }
+  // Define columns for DataTable
+  const columns: ColumnConfig<Requirement>[] = [
+    {
+      field: 'displayName',
+      header: 'Requirement',
+      sortable: true,
+      minWidth: '250px',
+      render: (value, row) => (
+        <VStack align="start" gap="4px">
+          <Typography fontSize="14px" fontWeight="500" color="#111827">
+            {row.displayName}
+          </Typography>
+          <Typography 
+            fontSize="12px" 
+            color="#6B7280"
+            maxW="300px"
+            style={{
+              display: "-webkit-box",
+              WebkitLineClamp: 2,
+              WebkitBoxOrient: "vertical",
+              overflow: "hidden"
+            }}
+          >
+            {row.description || "No description provided"}
+          </Typography>
+        </VStack>
+      ),
+    },
+    {
+      field: 'code',
+      header: 'Code',
+      sortable: true,
+      minWidth: '150px',
+      render: (value) => (
+        <Typography fontSize="14px" fontFamily="mono" color="#374151">
+          {String(value || '')}
+        </Typography>
+      ),
+    },
+    {
+      field: 'type',
+      header: 'Type',
+      sortable: true,
+      minWidth: '120px',
+      render: (value) => (
+        <Tag variant="info">{String(value || '')}</Tag>
+      ),
+    },
+    {
+      field: 'fieldType',
+      header: 'Field Type',
+      sortable: true,
+      minWidth: '120px',
+      render: (value, row) => {
+        // Try multiple possible field names
+        const fieldType = (row as any).fieldType || (row as any).field_type || value;
+        return fieldType ? (
+          <Tag variant="info" style={{ fontSize: '12px', padding: '4px 8px' }}>
+            {String(fieldType)}
+          </Tag>
+      ) : (
+        <Typography fontSize="14px" color="#6B7280">-</Typography>
+        );
+      },
+    },
+    {
+      field: 'isActive',
+      header: 'Status',
+      sortable: true,
+      minWidth: '100px',
+      render: (value) => (
+        <Tag variant={value ? "success" : "inactive"}>
+          {value ? "Active" : "Inactive"}
+        </Tag>
+      ),
+    },
+    {
+      field: 'id',
+    header: 'Actions',
+      sortable: false,
+    width: '150px',
+      minWidth: '150px',
+      render: (value, row) => {
+      const requirement = row as unknown as Requirement;
+      return (
+          <Box display="flex" alignItems="center" justifyContent="center" h="100%" w="100%">
+            <HStack gap="6px" justify="center" align="center">
+        <Tooltip content="Edit requirement">
+                <Link href={`/requirements/edit/${requirement.id}`} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <button
+              style={{
+                      padding: '6px 10px',
+                      border: '1px solid #E5E7EB',
+                      background: 'white',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                      borderRadius: '6px',
+                      transition: 'all 0.2s ease',
+              }}
+              onMouseEnter={(e) => {
+                      e.currentTarget.style.background = '#F9FAFB';
+                      e.currentTarget.style.borderColor = '#F05423';
+                      e.currentTarget.style.color = '#F05423';
+              }}
+              onMouseLeave={(e) => {
+                      e.currentTarget.style.background = 'white';
+                      e.currentTarget.style.borderColor = '#E5E7EB';
+                      e.currentTarget.style.color = '#374151';
+              }}
+            >
+              <IconWrapper>
+                      <FiEdit3 size={16} color="inherit" />
+              </IconWrapper>
+            </button>
+          </Link>
+        </Tooltip>
+        <Tooltip content="Delete requirement">
+          <button
+            onClick={() => handleDelete(requirement.id)}
+            disabled={deleting === requirement.id}
+            style={{
+                    padding: '6px 10px',
+                    border: '1px solid #E5E7EB',
+                    background: 'white',
+              cursor: deleting === requirement.id ? 'not-allowed' : 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+                    borderRadius: '6px',
+              opacity: deleting === requirement.id ? 0.5 : 1,
+                    transition: 'all 0.2s ease',
+            }}
+            onMouseEnter={(e) => {
+              if (deleting !== requirement.id) {
+                      e.currentTarget.style.background = '#FEF2F2';
+                      e.currentTarget.style.borderColor = '#EF4444';
+                      e.currentTarget.style.color = '#EF4444';
+              }
+            }}
+            onMouseLeave={(e) => {
+                    e.currentTarget.style.background = 'white';
+                    e.currentTarget.style.borderColor = '#E5E7EB';
+                    e.currentTarget.style.color = '#374151';
+            }}
+          >
+            <IconWrapper>
+                    <FiTrash2 size={16} color="inherit" />
+            </IconWrapper>
+          </button>
+        </Tooltip>
+      </HStack>
+          </Box>
+      );
+      },
+    },
+  ];
 
   return (
-    <Flex minH="100vh" bg="gray.50" overflow="hidden">
+    <Flex minH="100vh" bg="gray.50">
       <AdminSidebar />
-      
-      {/* Main Content Area with Scroll */}
+      <PortalHeader />
       <Box 
-        flex="1" 
-        ml="224px" 
-        w="calc(100% - 224px)" 
-        h="100vh"
-        overflowY="auto"
-        overflowX="hidden"
+        ml={condensed ? "72px" : "280px"} 
+        mt="90px" 
+        minH="calc(100vh - 90px)" 
+        width={condensed ? "calc(100% - 72px)" : "calc(100% - 280px)"} 
+        bg="gray.50" 
+        overflowX="hidden" 
+        transition="margin-left 0.3s ease, width 0.3s ease"
       >
-        {/* Centered Container */}
-        <Flex
-          w="100%"
-          justify="center"
-          px={tokens.spacing["3xl"]}
-          py={tokens.spacing.lg}
-        >
-          <Box 
-            w="100%" 
-            maxW="1200px"
-            textAlign="left"
-          >
-            {/* Header */}
-            <Box mb={tokens.spacing.md} w="100%">
-              <HStack justify="space-between" align="flex-start" w="100%" mb={tokens.spacing.sm}>
-                <Box flex="1">
-                  <Text 
-                    fontSize={tokens.typography.heading.size}
-                    fontWeight={tokens.typography.heading.weight}
-                    color={tokens.colors.text.primary}
-                    mb={tokens.spacing.xs}
-                    lineHeight={tokens.typography.heading.lineHeight}
-                    letterSpacing={tokens.typography.heading.letterSpacing}
-                  >
-                    KYB Requirements
-                  </Text>
-                  <Text 
-                    fontSize={tokens.typography.body.size}
-                    color={tokens.colors.text.tertiary}
-                    lineHeight="1.5"
-                    fontWeight={tokens.typography.body.weight}
-                  >
-                    Define and manage requirements for business verification
-                  </Text>
-                </Box>
-                <Link href="/requirements/create">
-                  <Button 
-                    colorScheme="blue" 
-                    size="md"
-                    h={tokens.form.inputHeight}
-                    px={tokens.spacing["2xl"]}
-                    fontSize={tokens.typography.body.size}
-                    fontWeight={tokens.typography.label.weight}
-                    borderRadius={tokens.form.borderRadius}
-                  >
-                    <HStack gap={tokens.spacing.sm}>
-                      <FiPlus size={16} />
-                      <Text>New Requirement</Text>
-                    </HStack>
-                  </Button>
-                </Link>
-              </HStack>
-            </Box>
-
-            {/* Form Content Container */}
-            <VStack 
-              gap={tokens.spacing.md} 
-              align="stretch" 
-              w="100%"
-            >
-              {/* Search and Filter Card */}
-              <Box 
-                bg={tokens.colors.bg.white}
-                borderRadius={tokens.form.cardRadius}
-                border="1px"
-                borderColor={tokens.colors.border.default}
-                boxShadow="0 1px 3px rgba(0,0,0,0.1)"
-                p={tokens.form.cardPadding}
-                w="100%"
-              >
-                <VStack align="stretch" gap={tokens.spacing.sm} w="100%">
-                  <Text 
-                    fontSize={tokens.typography.section.size}
-                    fontWeight={tokens.typography.section.weight}
-                    color={tokens.colors.text.primary}
-                    lineHeight={tokens.typography.section.lineHeight}
-                    letterSpacing={tokens.typography.section.letterSpacing}
-                    mb={tokens.spacing.xs}
-                    textAlign="left"
-                    w="100%"
-                  >
-                    Search & Filter
-                  </Text>
-                  
-                  <HStack gap={tokens.spacing.md} align="flex-end" w="100%">
-                    <Box flex="1">
-                      <Text 
-                        fontSize={tokens.typography.label.size}
-                        fontWeight={tokens.typography.label.weight}
-                        color={tokens.colors.text.secondary}
-                        mb={tokens.form.labelInputGap}
-                        textAlign="left"
-                      >
-                        Search requirements
-                      </Text>
-                      <Box position="relative">
-                        <FiSearch 
-                          style={{
-                            position: 'absolute',
-                            left: '12px',
-                            top: '50%',
-                            transform: 'translateY(-50%)',
-                            color: '#9CA3AF',
-                            zIndex: 1,
-                            pointerEvents: 'none'
-                          }}
-                        />
-                        <Input
-                          placeholder="Search by name, code, description, or type..."
-                          value={searchQuery}
-                          onChange={(e) => setSearchQuery(e.target.value)}
-                          pl="40px"
-                          bg={tokens.colors.bg.gray[50]}
-                          border="1px"
-                          borderColor={tokens.colors.border.default}
-                          color={tokens.colors.text.primary}
-                          h={tokens.form.inputHeight}
-                          fontSize={tokens.typography.body.size}
-                          borderRadius={tokens.form.borderRadius}
-                          _placeholder={{ color: "#9CA3AF" }}
-                          _focus={{
-                            borderColor: tokens.colors.border.focus,
-                            boxShadow: "0 0 0 3px rgba(59, 130, 246, 0.1)"
-                          }}
-                          _hover={{ borderColor: tokens.colors.border.hover }}
-                          w="100%"
-                        />
-                      </Box>
-                    </Box>
-
-                    <Box minW="200px">
-                      <Text 
-                        fontSize={tokens.typography.label.size}
-                        fontWeight={tokens.typography.label.weight}
-                        color={tokens.colors.text.secondary}
-                        mb={tokens.form.labelInputGap}
-                        textAlign="left"
-                      >
-                        Status Filter
-                      </Text>
-                      <select
-                        value={statusFilter}
-                        onChange={(e) => setStatusFilter(e.target.value)}
-                        style={{
-                          width: "100%",
-                          padding: "10px 12px",
-                          borderRadius: tokens.form.borderRadius,
-                          border: `1px solid ${tokens.colors.border.default}`,
-                          backgroundColor: tokens.colors.bg.gray[50],
-                          fontSize: tokens.typography.body.size,
-                          height: tokens.form.inputHeight,
-                          color: tokens.colors.text.primary
-                        }}
-                      >
-                        <option value="all">All Status</option>
-                        <option value="active">Active</option>
-                        <option value="inactive">Inactive</option>
-                      </select>
-                    </Box>
-
-                    {(searchQuery || statusFilter !== "all") && (
-                      <Button
-                        variant="outline"
-                        onClick={clearFilters}
-                        size="md"
-                        h={tokens.form.inputHeight}
-                        borderColor={tokens.colors.border.default}
-                        borderRadius={tokens.form.borderRadius}
-                        _hover={{ 
-                          bg: tokens.colors.bg.gray[50], 
-                          borderColor: tokens.colors.border.hover 
-                        }}
-                      >
-                        <HStack gap={tokens.spacing.xs}>
-                          <FiX size={16} />
-                          <Text fontSize={tokens.typography.body.size}>Clear</Text>
-                        </HStack>
-                      </Button>
-                    )}
-                  </HStack>
-                </VStack>
+        <VStack gap="4" align="stretch" w="100%">
+          {/* Header */}
+          <Container maxW="100%" px="8" py="6" width="full">
+            <Flex justify="space-between" align="center" mb="4">
+              <Box>
+                <Typography fontSize="28px" fontWeight="600" color="#111827" mb="4px">
+                  KYB Requirements
+                </Typography>
+                <Typography fontSize="14px" color="#6B7280">
+                  Define and manage requirements for business verification
+                </Typography>
               </Box>
+              <Link href="/requirements/create">
+                <Button variant="primary" className="mukuru-primary-button">
+                  <IconWrapper><FiPlus size={16} /></IconWrapper>
+                  New Requirement
+                </Button>
+              </Link>
+            </Flex>
+          </Container>
 
-              {/* Results Summary */}
-              <HStack justify="space-between" align="center" w="100%">
-                <Text 
-                  fontSize={tokens.typography.section.size}
-                  fontWeight={tokens.typography.section.weight}
-                  color={tokens.colors.text.primary}
+          {/* Error Display */}
+          {error && (
+            <Container maxW="100%" px="8" width="full">
+              <AlertBar status="error" title="Error loading requirements" description={error} />
+            </Container>
+          )}
+
+          {/* Search and Filters */}
+          <Container maxW="100%" px="8" width="full">
+            <VStack gap="4" align="stretch">
+              <Box width="100%" maxW="800px">
+                <Search
+                  placeholder="Search by name, code, description, or type..."
+                  onSearchChange={handleSearchChange}
+                />
+              </Box>
+              
+              <HStack gap="2" mb="2">
+                <Button
+                  variant="primary"
+                  className="mukuru-primary-button"
+                  onClick={() => setStatusFilter("all")}
+                  style={{ opacity: statusFilter === "all" ? 1 : 0.7 }}
                 >
-                  Requirements ({filteredRequirements.length})
-                </Text>
-                {filteredRequirements.length > 0 && (
-                  <Text 
-                    fontSize={tokens.typography.helper.size}
-                    color={tokens.colors.text.tertiary}
-                    fontWeight={tokens.typography.helper.weight}
-                  >
-                    Showing {filteredRequirements.length} of {requirements.length} requirements
-                  </Text>
-                )}
+                  All
+                </Button>
+                <Button
+                  variant="primary"
+                  className="mukuru-primary-button"
+                  onClick={() => setStatusFilter("active")}
+                  style={{ opacity: statusFilter === "active" ? 1 : 0.7 }}
+                >
+                  Active
+                </Button>
+                <Button
+                  variant="primary"
+                  className="mukuru-primary-button"
+                  onClick={() => setStatusFilter("inactive")}
+                  style={{ opacity: statusFilter === "inactive" ? 1 : 0.7 }}
+                >
+                  Inactive
+                </Button>
               </HStack>
-
-              {/* Requirements Table */}
-              {filteredRequirements.length === 0 ? (
-                <Box 
-                  bg={tokens.colors.bg.white}
-                  borderRadius={tokens.form.cardRadius}
-                  border="1px"
-                  borderColor={tokens.colors.border.default}
-                  boxShadow="0 1px 3px rgba(0,0,0,0.1)"
-                  p={tokens.spacing["3xl"]}
-                  textAlign="center"
-                  w="100%"
-                >
-                  <VStack gap={tokens.spacing.lg}>
-                    <Box 
-                      p={tokens.spacing.lg} 
-                      bg="blue.50" 
-                      borderRadius="full" 
-                      display="inline-block"
-                    >
-                      <FiCheckSquare size={32} color="#3182CE" />
-                    </Box>
-                    <VStack gap={tokens.spacing.md}>
-                      <Text 
-                        fontSize={tokens.typography.section.size}
-                        fontWeight={tokens.typography.section.weight}
-                        color={tokens.colors.text.primary}
-                      >
-                        {searchQuery || statusFilter !== "all" ? "No matching requirements" : "No requirements yet"}
-                      </Text>
-                      <Text 
-                        color={tokens.colors.text.tertiary}
-                        maxW="400px"
-                        fontSize={tokens.typography.body.size}
-                        lineHeight="1.5"
-                      >
-                        {searchQuery || statusFilter !== "all" 
-                          ? "Try adjusting your search criteria or filters to find what you're looking for."
-                          : "Get started by creating your first requirement to define the information needed for business verification."
-                        }
-                      </Text>
-                    </VStack>
-                    
-                    {(searchQuery || statusFilter !== "all") && (
-                      <Button 
-                        variant="outline" 
-                        onClick={clearFilters} 
-                        size="md"
-                        h={tokens.form.inputHeight}
-                        px={tokens.spacing.lg}
-                        fontSize={tokens.typography.body.size}
-                        fontWeight={tokens.typography.label.weight}
-                        borderColor={tokens.colors.border.default}
-                        borderRadius={tokens.form.borderRadius}
-                        _hover={{ 
-                          bg: tokens.colors.bg.gray[50], 
-                          borderColor: tokens.colors.border.hover 
-                        }}
-                      >
-                        <HStack gap={tokens.spacing.sm}>
-                          <FiX size={14} />
-                          <Text>Clear Filters</Text>
-                        </HStack>
-                      </Button>
-                    )}
-                    
-                    {!searchQuery && statusFilter === "all" && (
-                      <Link href="/requirements/create">
-                        <Button 
-                          colorScheme="blue" 
-                          size="md"
-                          h={tokens.form.inputHeight}
-                          px={tokens.spacing["2xl"]}
-                          fontSize={tokens.typography.body.size}
-                          fontWeight={tokens.typography.label.weight}
-                          borderRadius={tokens.form.borderRadius}
-                        >
-                          <HStack gap={tokens.spacing.sm}>
-                            <FiPlus size={16} />
-                            <Text>Create First Requirement</Text>
-                          </HStack>
-                        </Button>
-                      </Link>
-                    )}
-                  </VStack>
-                </Box>
-              ) : (
-                <Box 
-                  bg={tokens.colors.bg.white}
-                  borderRadius={tokens.form.cardRadius}
-                  border="1px"
-                  borderColor={tokens.colors.border.default}
-                  boxShadow="0 1px 3px rgba(0,0,0,0.1)"
-                  overflow="hidden"
-                  w="100%"
-                >
-                  <Box overflowX="auto">
-                    <Box as="table" w="100%" style={{ borderCollapse: "collapse" }}>
-                      <Box as="thead" bg={tokens.colors.bg.gray[50]}>
-                        <Box as="tr" borderBottom="1px" borderColor={tokens.colors.border.default}>
-                          <Box 
-                            as="th" 
-                            px={tokens.spacing.md}
-                            py={tokens.spacing.md}
-                            textAlign="left"
-                            fontSize={tokens.typography.label.size}
-                            fontWeight={tokens.typography.label.weight}
-                            color={tokens.colors.text.secondary}
-                          >
-                            Requirement
-                          </Box>
-                          <Box 
-                            as="th" 
-                            px={tokens.spacing.md}
-                            py={tokens.spacing.md}
-                            textAlign="left"
-                            fontSize={tokens.typography.label.size}
-                            fontWeight={tokens.typography.label.weight}
-                            color={tokens.colors.text.secondary}
-                          >
-                            Code
-                          </Box>
-                          <Box 
-                            as="th" 
-                            px={tokens.spacing.md}
-                            py={tokens.spacing.md}
-                            textAlign="left"
-                            fontSize={tokens.typography.label.size}
-                            fontWeight={tokens.typography.label.weight}
-                            color={tokens.colors.text.secondary}
-                          >
-                            Type
-                          </Box>
-                          <Box 
-                            as="th" 
-                            px={tokens.spacing.md}
-                            py={tokens.spacing.md}
-                            textAlign="left"
-                            fontSize={tokens.typography.label.size}
-                            fontWeight={tokens.typography.label.weight}
-                            color={tokens.colors.text.secondary}
-                          >
-                            Field Type
-                          </Box>
-                          <Box 
-                            as="th" 
-                            px={tokens.spacing.md}
-                            py={tokens.spacing.md}
-                            textAlign="left"
-                            fontSize={tokens.typography.label.size}
-                            fontWeight={tokens.typography.label.weight}
-                            color={tokens.colors.text.secondary}
-                          >
-                            Status
-                          </Box>
-                          <Box 
-                            as="th" 
-                            px={tokens.spacing.md}
-                            py={tokens.spacing.md}
-                            textAlign="center"
-                            fontSize={tokens.typography.label.size}
-                            fontWeight={tokens.typography.label.weight}
-                            color={tokens.colors.text.secondary}
-                          >
-                            Actions
-                          </Box>
-                        </Box>
-                      </Box>
-                      <Box as="tbody">
-                        {filteredRequirements.map((requirement) => (
-                          <Box 
-                            as="tr" 
-                            key={requirement.id}
-                            borderBottom="1px"
-                            borderColor={tokens.colors.border.default}
-                            _hover={{ bg: tokens.colors.bg.gray[50] }}
-                            transition="background 0.15s ease"
-                          >
-                            <Box as="td" px={tokens.spacing.md} py={tokens.spacing.md}>
-                              <VStack align="start" gap={tokens.spacing.xs}>
-                                <Text 
-                                  fontSize={tokens.typography.body.size}
-                                  fontWeight={tokens.typography.label.weight}
-                                  color={tokens.colors.text.primary}
-                                  lineHeight="1.4"
-                                >
-                                  {requirement.displayName}
-                                </Text>
-                                <Text 
-                                  fontSize={tokens.typography.helper.size}
-                                  color={tokens.colors.text.tertiary}
-                                  lineHeight="1.4"
-                                  maxW="300px"
-                                  style={{
-                                    display: "-webkit-box",
-                                    WebkitLineClamp: 2,
-                                    WebkitBoxOrient: "vertical",
-                                    overflow: "hidden"
-                                  }}
-                                >
-                                  {requirement.description || "No description provided"}
-                                </Text>
-                              </VStack>
-                            </Box>
-                            <Box as="td" px={tokens.spacing.md} py={tokens.spacing.md}>
-                              <Text 
-                                fontSize={tokens.typography.body.size}
-                                fontFamily="mono"
-                                color={tokens.colors.text.secondary}
-                              >
-                                {requirement.code}
-                              </Text>
-                            </Box>
-                            <Box as="td" px={tokens.spacing.md} py={tokens.spacing.md}>
-                              <Badge variant="outline" colorScheme="purple" size="sm">
-                                {requirement.type}
-                              </Badge>
-                            </Box>
-                            <Box as="td" px={tokens.spacing.md} py={tokens.spacing.md}>
-                              {requirement.fieldType ? (
-                                <Badge variant="subtle" colorScheme="cyan" size="sm">
-                                  {requirement.fieldType}
-                                </Badge>
-                              ) : (
-                                <Text fontSize={tokens.typography.body.size} color={tokens.colors.text.tertiary}>
-                                  -
-                                </Text>
-                              )}
-                            </Box>
-                            <Box as="td" px={tokens.spacing.md} py={tokens.spacing.md}>
-                              <Badge
-                                colorScheme={requirement.isActive ? "green" : "gray"}
-                                variant="subtle"
-                                size="sm"
-                              >
-                                {requirement.isActive ? "Active" : "Inactive"}
-                              </Badge>
-                            </Box>
-                            <Box as="td" px={tokens.spacing.md} py={tokens.spacing.md} textAlign="center">
-                              <HStack gap={tokens.spacing.sm} justify="center">
-                                <Link href={`/requirements/edit/${requirement.id}`}>
-                                  <Button 
-                                    size="sm" 
-                                    variant="outline" 
-                                    colorScheme="blue"
-                                    h="32px"
-                                    w="32px"
-                                    p="0"
-                                    borderRadius={tokens.form.borderRadius}
-                                  >
-                                    <FiEdit3 size={14} />
-                                  </Button>
-                                </Link>
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  colorScheme="red"
-                                  onClick={() => handleDelete(requirement.id)}
-                                  loading={deleting === requirement.id}
-                                  h="32px"
-                                  w="32px"
-                                  p="0"
-                                  borderRadius={tokens.form.borderRadius}
-                                >
-                                  <FiTrash2 size={14} />
-                                </Button>
-                              </HStack>
-                            </Box>
-                          </Box>
-                        ))}
-                      </Box>
-                    </Box>
-                  </Box>
-                </Box>
-              )}
             </VStack>
-          </Box>
-        </Flex>
+          </Container>
+
+          {/* DataTable */}
+          <Container maxW="100%" px="8" py="8" width="full">
+            <Box className="work-queue-table-wrapper">
+              <DataTable
+                key={`requirements-${statusFilter}-${searchQuery}-${refreshKey}`}
+                data={filteredRequirements as unknown as Record<string, unknown>[]}
+                columns={columns as unknown as ColumnConfig[]}
+                emptyState={{
+                  message: searchQuery || statusFilter !== "all" 
+                    ? "No matching requirements found. Try adjusting your search criteria or filters."
+                    : "No requirements yet. Get started by creating your first requirement."
+                }}
+              />
+            </Box>
+          </Container>
+        </VStack>
       </Box>
     </Flex>
   );

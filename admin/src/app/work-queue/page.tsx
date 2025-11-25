@@ -4,33 +4,50 @@ import {
   Box, 
   VStack, 
   HStack,
-  Text,
   SimpleGrid,
   Flex,
-  Badge,
-  Button,
-  Input,
   Spinner,
   Container,
-  createToaster,
-  Toaster,
-  Tabs,
-  Menu,
-  IconButton,
-  Dialog,
   Textarea,
   Field,
-  Select,
-  Checkbox,
-  Icon
+  Menu,
+  IconButton,
+  Icon,
+  Avatar
 } from "@chakra-ui/react";
-import { useState, useEffect, useCallback, useRef } from "react";
-import AdminSidebar from "../../components/AdminSidebar";
 import { 
-  FiSearch, 
+  Typography, 
+  Card, 
+  Button, 
+  Search, 
+  AlertBar, 
+  Tag,
+  DataTable,
+  IconWrapper,
+  TabsRoot,
+  TabsList,
+  TabsTrigger,
+  TabsIndicator,
+  TabsContent,
+  Input,
+  Modal,
+  ModalHeader,
+  ModalBody,
+  ModalFooter,
+  Checkbox,
+  ChevronRightIcon,
+  Tooltip,
+  EditIcon,
+  DeleteIcon
+} from "@/lib/mukuruImports";
+import type { ColumnConfig } from "@mukuru/mukuru-react-components";
+import { useState, useEffect, useCallback, useRef, useMemo } from "react";
+import AdminSidebar from "../../components/AdminSidebar";
+import PortalHeader from "../../components/PortalHeader";
+import { useSidebar } from "../../contexts/SidebarContext";
+import { 
   FiEye, 
   FiFile, 
-  FiAlertCircle,
   FiMoreVertical,
   FiUser,
   FiPlay,
@@ -40,22 +57,47 @@ import {
   FiClock,
   FiRefreshCw,
   FiUserCheck,
-  FiAlertTriangle
+  FiAlertTriangle,
+  FiTrendingUp,
+  FiCheckCircle,
+  FiXCircle,
+  FiClock as FiClockIcon,
+  FiAlertCircle,
+  FiDownload
 } from "react-icons/fi";
 import Link from "next/link";
 import { useSession } from "next-auth/react";
-import workQueueApi, { Application, mapWorkItemToApplication } from "../../lib/workQueueApi";
+import {
+  fetchWorkItems,
+  fetchMyWorkItems,
+  fetchPendingApprovals,
+  assignWorkItemUseCase,
+  unassignWorkItemUseCase,
+  startReviewUseCase,
+  approveWorkItemUseCase,
+  declineWorkItemUseCase,
+  completeWorkItemUseCase,
+  submitForApprovalUseCase,
+  markForRefreshUseCase,
+  addCommentUseCase,
+  fetchWorkItemComments,
+  fetchWorkItemHistory,
+  exportWorkItems,
+  WorkItemApplication,
+} from "../../services";
+import { logger } from "../../lib/logger";
 
 type ViewType = 'all' | 'my-items' | 'pending-approvals';
 type StatusFilter = 'ALL' | 'SUBMITTED' | 'IN PROGRESS' | 'RISK REVIEW' | 'COMPLETE' | 'DECLINED';
 
 export default function WorkQueuePage() {
   const { data: session } = useSession();
+  const { condensed } = useSidebar();
   const [viewType, setViewType] = useState<ViewType>('all');
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('ALL');
   const [searchTerm, setSearchTerm] = useState("");
-  const [applications, setApplications] = useState<Application[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [applications, setWorkItemApplications] = useState<WorkItemApplication[]>([]);
+  const [loading, setLoading] = useState(false); // Start as false - DataTable manages its own loading
   const [error, setError] = useState<string | null>(null);
   const [stats, setStats] = useState({
     total: 0,
@@ -68,7 +110,7 @@ export default function WorkQueuePage() {
 
   // Modal states
   const [assignModalOpen, setAssignModalOpen] = useState(false);
-  const [selectedApp, setSelectedApp] = useState<Application | null>(null);
+  const [selectedApp, setSelectedApp] = useState<WorkItemApplication | null>(null);
   const [assignToSelf, setAssignToSelf] = useState(true);
   const [assignToUserId, setAssignToUserId] = useState("");
   const [assignToUserName, setAssignToUserName] = useState("");
@@ -81,128 +123,40 @@ export default function WorkQueuePage() {
   const [comments, setComments] = useState<any[]>([]);
   const [history, setHistory] = useState<any[]>([]);
   const [newComment, setNewComment] = useState("");
+  const [sortConfig, setSortConfig] = useState<{
+    field: string;
+    direction: "asc" | "desc";
+  } | null>(null);
+  const [refreshKey, setRefreshKey] = useState(0);
 
-  // Chakra UI v3 uses createToaster API instead of useToast hook
-  // Use useRef to keep toaster stable across renders
-  const toasterRef = useRef(createToaster({
-    placement: "top-end",
-    pauseOnPageIdle: true,
-  }));
+  // Toast notifications - using AlertBar for now (can be enhanced later)
+  const [toast, setToast] = useState<{ title: string; description: string; type: 'success' | 'error' | 'warning' | 'info' } | null>(null);
+  
+  const showToast = (title: string, description: string, type: 'success' | 'error' | 'warning' | 'info' = 'info', duration: number = 5000) => {
+    setToast({ title, description, type });
+    setTimeout(() => setToast(null), duration);
+  };
 
-  // Get current user info
-  const currentUser = {
+  // Get current user info - memoize to prevent recreation on every render
+  const currentUser = useMemo(() => ({
     id: session?.user?.email || '',
     name: session?.user?.name || 'Admin',
     email: session?.user?.email || ''
-  };
+  }), [session?.user?.email, session?.user?.name]);
 
-  const loadApplications = useCallback(async (search?: string, status?: StatusFilter, view?: ViewType) => {
-    try {
-      setLoading(true);
-      setError(null);
-      
-      let result;
-      if (view === 'my-items') {
-        // Try to get my items from backend
-        result = await workQueueApi.getMyWorkItems(1, 1000);
-        
-        console.log('[Work Queue] My Items result:', {
-          count: result.data.length,
-          total: result.total,
-          items: result.data.map(app => ({
-            id: app.id,
-            workItemNumber: app.workItemNumber,
-            assignedTo: app.assignedTo,
-            assignedToName: app.assignedToName,
-            status: app.status
-          }))
-        });
-        
-        // If no items found, try fallback: get all items and filter by name/email
-        if (result.data.length === 0) {
-          console.log('[Work Queue] No items from getMyWorkItems, trying fallback filter by name/email');
-          const allResult = await workQueueApi.getWorkItems({ pageSize: 1000 });
-          
-          // Filter by current user's name or email
-          const filtered = allResult.data.filter(app => {
-            const matchesId = app.assignedTo === currentUser.id || 
-                             app.assignedTo === currentUser.email ||
-                             app.assignedTo?.toLowerCase() === currentUser.email?.toLowerCase();
-            const matchesName = app.assignedToName === currentUser.name ||
-                               app.assignedToName?.toLowerCase() === currentUser.name?.toLowerCase();
-            
-            console.log('[Work Queue] Checking item:', {
-              appId: app.id,
-              assignedTo: app.assignedTo,
-              assignedToName: app.assignedToName,
-              currentUserId: currentUser.id,
-              currentUserName: currentUser.name,
-              currentUserEmail: currentUser.email,
-              matchesId,
-              matchesName
-            });
-            
-            return matchesId || matchesName;
-          });
-          
-          console.log('[Work Queue] Fallback filter found:', filtered.length, 'items');
-          result = { data: filtered, total: filtered.length };
-        }
-      } else if (view === 'pending-approvals') {
-        const pendingResult = await workQueueApi.getPendingApprovals(1, 1000);
-        // Convert WorkItemDto[] to Application[]
-        setApplications(pendingResult.data.map(mapWorkItemToApplication));
-        return; // Early return since we've set the applications
-      } else {
-        result = await workQueueApi.getWorkItems({
-          searchTerm: search || undefined,
-          status: status && status !== 'ALL' ? status : undefined,
-          pageSize: 1000,
-        });
-      }
-      
-      setApplications(result.data);
-      
-      // Calculate stats from all items (not filtered)
-      const allResult = await workQueueApi.getWorkItems({ pageSize: 1000 });
-      setStats({
-        total: allResult.total,
-        submitted: allResult.data.filter(app => app.status === 'SUBMITTED').length,
-        inProgress: allResult.data.filter(app => app.status === 'IN PROGRESS').length,
-        riskReview: allResult.data.filter(app => app.status === 'RISK REVIEW').length,
-        complete: allResult.data.filter(app => app.status === 'COMPLETE').length,
-        declined: allResult.data.filter(app => app.status === 'DECLINED').length,
-      });
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to load work queue items';
-      console.error('Error loading applications:', err);
-      setError(errorMessage);
-      toasterRef.current.create({
-        title: 'Error loading work queue',
-        description: errorMessage,
-        type: 'error',
-        duration: 5000,
-      });
-    } finally {
-      setLoading(false);
-    }
-  }, [currentUser]);
+  // Removed loadWorkItemApplications - DataTable handles data fetching via fetchData
 
-  useEffect(() => {
-    loadApplications(searchTerm, statusFilter, viewType);
-  }, [viewType, statusFilter, loadApplications]);
-
-  useEffect(() => {
-    if (searchTerm === '' || loading) return;
-    const timer = setTimeout(() => {
-      loadApplications(searchTerm, statusFilter, viewType);
-    }, 500);
-    return () => clearTimeout(timer);
-  }, [searchTerm, statusFilter, viewType, loadApplications, loading]);
+  // Handler for search changes - Search component handles debouncing internally (500ms)
+  // Note: DataTable handles data fetching via fetchData, so we just update the search term
+  const handleSearchChange = useCallback((query: string) => {
+    setSearchTerm(query);
+    // DataTable will automatically refetch when key changes
+  }, []);
 
   const handleExport = async () => {
     try {
-      const blob = await workQueueApi.exportWorkItems({
+      // Use new service structure for export
+      const blob = await exportWorkItems({
         searchTerm: searchTerm || undefined,
         status: statusFilter !== 'ALL' ? statusFilter : undefined,
       });
@@ -216,24 +170,14 @@ export default function WorkQueuePage() {
       window.URL.revokeObjectURL(url);
       document.body.removeChild(a);
       
-      toasterRef.current.create({
-        title: 'Export successful',
-        description: 'Work queue data has been exported to CSV',
-        type: 'success',
-        duration: 3000,
-      });
+      showToast('Export successful', 'Work queue data has been exported to CSV', 'success', 3000);
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to export work queue';
-      toasterRef.current.create({
-        title: 'Export failed',
-        description: errorMessage,
-        type: 'error',
-        duration: 5000,
-      });
+      showToast('Export failed', errorMessage, 'error', 5000);
     }
   };
 
-  const openAssignModal = (app: Application) => {
+  const openAssignModal = (app: WorkItemApplication) => {
     setSelectedApp(app);
     setAssignToSelf(true);
     setAssignToUserId("");
@@ -242,16 +186,11 @@ export default function WorkQueuePage() {
   };
 
   const handleAssign = async () => {
-    console.log('[WorkQueue] handleAssign called', { selectedApp, assignToSelf });
+    logger.debug('[WorkQueue] handleAssign called', { selectedApp, assignToSelf });
     
     if (!selectedApp) {
-      console.error('[WorkQueue] No selected app');
-      toasterRef.current.create({
-        title: 'Assignment failed',
-        description: 'No work item selected',
-        type: 'error',
-        duration: 3000,
-      });
+      logger.error(new Error('No selected app'), '[WorkQueue] No selected app');
+      showToast('Assignment failed', 'No work item selected', 'error', 3000);
       return;
     }
     
@@ -264,18 +203,13 @@ export default function WorkQueuePage() {
                        selectedApp.backendStatus === 'Cancelled';
     
     if (isCompleted) {
-      toasterRef.current.create({
-        title: 'Assignment not allowed',
-        description: 'Cannot assign a work item that is already completed or declined.',
-        type: 'error',
-        duration: 5000,
-      });
+      showToast('Assignment not allowed', 'Cannot assign a work item that is already completed or declined.', 'error', 5000);
       setAssignModalOpen(false);
       return;
     }
     
     try {
-      console.log('[WorkQueue] Starting assignment process');
+      logger.debug('[WorkQueue] Starting assignment process');
       // For "assign to self", we need to get the user ID from the JWT token (sub claim)
       // This matches what the backend uses for "My Items" queries
       let userId: string;
@@ -328,18 +262,13 @@ export default function WorkQueuePage() {
       }
       
       if (!userId || !userName) {
-        toasterRef.current.create({
-          title: 'Assignment failed',
-          description: 'Please select an assignee',
-          type: 'error',
-          duration: 3000,
-        });
+        showToast('Assignment failed', 'Please select an assignee', 'error', 3000);
         return;
       }
 
       // Use workItemId (GUID) for API calls
       const workItemId = selectedApp.workItemId || selectedApp.id;
-      console.log('[WorkQueue] Calling assignWorkItem API', { 
+      logger.debug('[WorkQueue] Calling assignWorkItem API', { 
         workItemId, 
         userId, 
         userName,
@@ -353,16 +282,11 @@ export default function WorkQueuePage() {
         throw new Error(`Invalid work item ID format: ${workItemId}. Expected a GUID.`);
       }
       
-      await workQueueApi.assignWorkItem(workItemId, userId, userName);
+      await assignWorkItemUseCase(workItemId, userId, userName);
       
-      console.log('[WorkQueue] Assignment API call successful');
+      logger.info('[WorkQueue] Assignment API call successful');
       
-      toasterRef.current.create({
-        title: 'Assignment successful',
-        description: `Work item assigned to ${userName}`,
-        type: 'success',
-        duration: 3000,
-      });
+      showToast('Assignment successful', `Work item assigned to ${userName}`, 'success', 3000);
 
       // If assigning to self, offer to start review
       if (assignToSelf) {
@@ -375,9 +299,11 @@ export default function WorkQueuePage() {
       }
 
       setAssignModalOpen(false);
-      loadApplications(searchTerm, statusFilter, viewType);
+      // Trigger DataTable refresh
+      setRefreshKey(prev => prev + 1);
+      calculateStats();
     } catch (err) {
-      console.error('[WorkQueue] Assignment error:', err);
+      logger.error(err, '[WorkQueue] Assignment error');
       let errorMessage = err instanceof Error ? err.message : 'Failed to assign work item';
       
       // Provide user-friendly error messages
@@ -389,12 +315,7 @@ export default function WorkQueuePage() {
         errorMessage = 'Cannot assign a work item that has been declined.';
       }
       
-      toasterRef.current.create({
-        title: 'Assignment failed',
-        description: errorMessage,
-        type: 'error',
-        duration: 5000,
-      });
+      showToast('Assignment failed', errorMessage, 'error', 5000);
     }
   };
 
@@ -403,22 +324,14 @@ export default function WorkQueuePage() {
       // Find the application to get the actual workItemId (GUID)
       const app = applications.find(a => a.id === appId || a.workItemId === appId);
       const workItemId = app?.workItemId || appId; // Use workItemId if available, fallback to appId
-      await workQueueApi.unassignWorkItem(workItemId);
-      toasterRef.current.create({
-        title: 'Unassigned successfully',
-        description: 'Work item has been unassigned',
-        type: 'success',
-        duration: 3000,
-      });
-      loadApplications(searchTerm, statusFilter, viewType);
+      await unassignWorkItemUseCase(workItemId);
+      showToast('Unassigned successfully', 'Work item has been unassigned', 'success', 3000);
+      // Trigger DataTable refresh
+      setRefreshKey(prev => prev + 1);
+      calculateStats();
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to unassign work item';
-      toasterRef.current.create({
-        title: 'Unassign failed',
-        description: errorMessage,
-        type: 'error',
-        duration: 5000,
-      });
+      showToast('Unassign failed', errorMessage, 'error', 5000);
     }
   };
 
@@ -437,30 +350,15 @@ export default function WorkQueuePage() {
       // If already "InProgress", just navigate to review page
       if (app?.backendStatus === 'Assigned') {
         // Start the review - this will change status from "Assigned" to "InProgress"
-        await workQueueApi.startReview(workItemId);
+        await startReviewUseCase(workItemId);
         
-        toasterRef.current.create({
-          title: 'Review started',
-          description: 'Redirecting to review page...',
-          type: 'success',
-          duration: 2000,
-        });
+        showToast('Review started', 'Redirecting to review page...', 'success', 2000);
       } else if (isAlreadyInProgress) {
         // Already in progress, just navigate (don't call API)
-        toasterRef.current.create({
-          title: 'Opening review',
-          description: 'Redirecting to review page...',
-          type: 'info',
-          duration: 1500,
-        });
+        showToast('Opening review', 'Redirecting to review page...', 'info', 1500);
       } else {
         // Status is neither Assigned nor InProgress - show error
-        toasterRef.current.create({
-          title: 'Cannot start review',
-          description: `Work item must be in "Assigned" status to start review. Current status: ${app?.backendStatus || app?.status}`,
-          type: 'error',
-          duration: 5000,
-        });
+        showToast('Cannot start review', `Work item must be in "Assigned" status to start review. Current status: ${app?.backendStatus || app?.status}`, 'error', 5000);
         return; // Don't navigate
       }
       
@@ -486,17 +384,12 @@ export default function WorkQueuePage() {
         }
       }
       
-      console.error('[WorkQueue] Error starting review:', err);
-      toasterRef.current.create({
-        title: 'Failed to start review',
-        description: errorMessage,
-        type: 'error',
-        duration: 5000,
-      });
+      logger.error(err, '[WorkQueue] Error starting review');
+      showToast('Failed to start review', errorMessage, 'error', 5000);
     }
   };
 
-  const openActionModal = (app: Application, type: 'start-review' | 'approve' | 'decline' | 'complete') => {
+  const openActionModal = (app: WorkItemApplication, type: 'start-review' | 'approve' | 'decline' | 'complete') => {
     setSelectedApp(app);
     setActionType(type);
     setActionNotes("");
@@ -513,45 +406,32 @@ export default function WorkQueuePage() {
       
       switch (actionType) {
         case 'start-review':
-          await workQueueApi.startReview(workItemId);
+          await startReviewUseCase(workItemId);
           break;
         case 'approve':
-          await workQueueApi.approveWorkItem(workItemId, actionNotes);
+          await approveWorkItemUseCase(workItemId, actionNotes);
           break;
         case 'decline':
           if (!declineReason.trim()) {
-            toasterRef.current.create({
-              title: 'Decline failed',
-              description: 'Please provide a reason for declining',
-              type: 'error',
-              duration: 3000,
-            });
+            showToast('Decline failed', 'Please provide a reason for declining', 'error', 3000);
             return;
           }
-          await workQueueApi.declineWorkItem(workItemId, declineReason);
+          await declineWorkItemUseCase(workItemId, declineReason);
           break;
         case 'complete':
-          await workQueueApi.completeWorkItem(workItemId, actionNotes);
+          await completeWorkItemUseCase(workItemId, actionNotes);
           break;
       }
 
-      toasterRef.current.create({
-        title: 'Action successful',
-        description: `${actionType.replace('-', ' ')} completed successfully`,
-        type: 'success',
-        duration: 3000,
-      });
+      showToast('Action successful', `${actionType.replace('-', ' ')} completed successfully`, 'success', 3000);
 
       setActionModalOpen(false);
-      loadApplications(searchTerm, statusFilter, viewType);
+      // Trigger DataTable refresh
+      setRefreshKey(prev => prev + 1);
+      calculateStats();
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : `Failed to ${actionType}`;
-      toasterRef.current.create({
-        title: 'Action failed',
-        description: errorMessage,
-        type: 'error',
-        duration: 5000,
-      });
+      showToast('Action failed', errorMessage, 'error', 5000);
     }
   };
 
@@ -560,22 +440,14 @@ export default function WorkQueuePage() {
       // Find the application to get the actual workItemId (GUID)
       const app = applications.find(a => a.id === appId || a.workItemId === appId);
       const workItemId = app?.workItemId || appId; // Use workItemId if available, fallback to appId
-      await workQueueApi.submitForApproval(workItemId, notes);
-      toasterRef.current.create({
-        title: 'Submitted for approval',
-        description: 'Work item has been submitted for approval',
-        type: 'success',
-        duration: 3000,
-      });
-      loadApplications(searchTerm, statusFilter, viewType);
+      await submitForApprovalUseCase(workItemId, notes);
+      showToast('Submitted for approval', 'Work item has been submitted for approval', 'success', 3000);
+      // Trigger DataTable refresh
+      setRefreshKey(prev => prev + 1);
+      calculateStats();
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to submit for approval';
-      toasterRef.current.create({
-        title: 'Submission failed',
-        description: errorMessage,
-        type: 'error',
-        duration: 5000,
-      });
+      showToast('Submission failed', errorMessage, 'error', 5000);
     }
   };
 
@@ -584,22 +456,14 @@ export default function WorkQueuePage() {
       // Find the application to get the actual workItemId (GUID)
       const app = applications.find(a => a.id === appId || a.workItemId === appId);
       const workItemId = app?.workItemId || appId; // Use workItemId if available, fallback to appId
-      await workQueueApi.markForRefresh(workItemId);
-      toasterRef.current.create({
-        title: 'Marked for refresh',
-        description: 'Work item has been marked for refresh',
-        type: 'success',
-        duration: 3000,
-      });
-      loadApplications(searchTerm, statusFilter, viewType);
+      await markForRefreshUseCase(workItemId);
+      showToast('Marked for refresh', 'Work item has been marked for refresh', 'success', 3000);
+      // Trigger DataTable refresh
+      setRefreshKey(prev => prev + 1);
+      calculateStats();
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to mark for refresh';
-      toasterRef.current.create({
-        title: 'Failed',
-        description: errorMessage,
-        type: 'error',
-        duration: 5000,
-      });
+      showToast('Failed', errorMessage, 'error', 5000);
     }
   };
 
@@ -608,10 +472,10 @@ export default function WorkQueuePage() {
       // Find the application to get the actual workItemId (GUID)
       const app = applications.find(a => a.id === appId || a.workItemId === appId);
       const workItemId = app?.workItemId || appId; // Use workItemId if available, fallback to appId
-      const commentsData = await workQueueApi.getWorkItemComments(workItemId);
+      const commentsData = await fetchWorkItemComments(workItemId);
       setComments(commentsData);
     } catch (err) {
-      console.error('Error loading comments:', err);
+      logger.error(err, 'Error loading comments');
       setComments([]);
     }
   };
@@ -621,10 +485,10 @@ export default function WorkQueuePage() {
       // Find the application to get the actual workItemId (GUID)
       const app = applications.find(a => a.id === appId || a.workItemId === appId);
       const workItemId = app?.workItemId || appId; // Use workItemId if available, fallback to appId
-      const historyData = await workQueueApi.getWorkItemHistory(workItemId);
+      const historyData = await fetchWorkItemHistory(workItemId);
       setHistory(historyData);
     } catch (err) {
-      console.error('Error loading history:', err);
+      logger.error(err, 'Error loading history');
       setHistory([]);
     }
   };
@@ -635,33 +499,23 @@ export default function WorkQueuePage() {
     try {
       // Use workItemId (GUID) for API calls
       const workItemId = selectedApp.workItemId || selectedApp.id;
-      await workQueueApi.addComment(workItemId, newComment);
-      toasterRef.current.create({
-        title: 'Comment added',
-        description: 'Your comment has been added',
-        type: 'success',
-        duration: 3000,
-      });
+      await addCommentUseCase(workItemId, newComment);
+      showToast('Comment added', 'Your comment has been added', 'success', 3000);
       setNewComment("");
       loadComments(workItemId);
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to add comment';
-      toasterRef.current.create({
-        title: 'Failed to add comment',
-        description: errorMessage,
-        type: 'error',
-        duration: 5000,
-      });
+      showToast('Failed to add comment', errorMessage, 'error', 5000);
     }
   };
 
-  const openCommentsModal = async (app: Application) => {
+  const openCommentsModal = async (app: WorkItemApplication) => {
     setSelectedApp(app);
     setCommentsModalOpen(true);
     await loadComments(app.id);
   };
 
-  const openHistoryModal = async (app: Application) => {
+  const openHistoryModal = async (app: WorkItemApplication) => {
     setSelectedApp(app);
     setHistoryModalOpen(true);
     await loadHistory(app.id);
@@ -699,570 +553,1908 @@ export default function WorkQueuePage() {
     }
   };
 
-  const filteredApplications = applications;
+  const filteredWorkItemApplications = applications;
 
-  if (loading && applications.length === 0 && !error) {
-    return (
-      <Flex minH="100vh" bg="gray.50">
-        <AdminSidebar />
-        <Box flex="1" ml="240px" display="flex" alignItems="center" justifyContent="center">
-          <VStack gap="4">
-            <Spinner size="xl" color="orange.500" />
-            <Text color="black">Loading work queue items...</Text>
-          </VStack>
-        </Box>
-      </Flex>
-    );
-  }
+  // Stats calculation - memoized to avoid recalculating on every render
+  const calculateStats = useCallback(async () => {
+    try {
+      logger.debug('[WorkQueue] Calculating stats...');
+      const allResult = await fetchWorkItems({ pageSize: 1000 });
+      setStats({
+        total: allResult.totalCount,
+        submitted: allResult.items.filter(app => app.status === 'SUBMITTED').length,
+        inProgress: allResult.items.filter(app => app.status === 'IN PROGRESS').length,
+        riskReview: allResult.items.filter(app => app.status === 'RISK REVIEW').length,
+        complete: allResult.items.filter(app => app.status === 'COMPLETE').length,
+        declined: allResult.items.filter(app => app.status === 'DECLINED').length,
+      });
+      logger.debug('[WorkQueue] Stats calculated', { total: allResult.totalCount });
+    } catch (err) {
+      logger.error(err, '[WorkQueue] Error calculating stats');
+      // Don't show error toast for stats - it's not critical
+    }
+  }, []);
+
+  // Load stats on mount and when viewType changes (debounced to avoid rapid calls)
+  const statsTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  useEffect(() => {
+    if (statsTimeoutRef.current) {
+      clearTimeout(statsTimeoutRef.current);
+    }
+    statsTimeoutRef.current = setTimeout(() => {
+      calculateStats();
+    }, 500); // Debounce stats calculation
+    
+    return () => {
+      if (statsTimeoutRef.current) {
+        clearTimeout(statsTimeoutRef.current);
+      }
+    };
+  }, [calculateStats, viewType]);
+
+  // Async mode fetchData function for DataTable
+  // Use useCallback to memoize and include viewType and statusFilter in dependencies
+  const fetchData = useCallback(async (params: Record<string, string | string[] | null>) => {
+    try {
+      logger.debug('[WorkQueue] fetchData started');
+      setLoading(true);
+      setError(null);
+      
+      const search = params.search as string || searchTerm || '';
+      const statusParam = params.status as string | string[] | null;
+      const status = Array.isArray(statusParam) ? statusParam[0] : statusParam;
+      
+      // Use statusFilter from state if not provided in params, or if statusFilter is set
+      const effectiveStatus = status || (statusFilter !== 'ALL' ? statusFilter : undefined);
+      
+      logger.debug('[WorkQueue] fetchData called', { viewType, effectiveStatus, search, params });
+      
+      let result;
+      if (viewType === 'my-items') {
+        logger.debug('[WorkQueue] Fetching my items...');
+        result = await fetchMyWorkItems(1, 1000);
+        logger.debug('[WorkQueue] My items result', { count: result.items.length, total: result.totalCount });
+        
+        if (result.items.length === 0) {
+          logger.debug('[WorkQueue] No items from getMyWorkItems, trying fallback filter');
+          const allResult = await fetchWorkItems({ pageSize: 1000 });
+          const filtered = allResult.items.filter(app => {
+            const matchesId = app.assignedTo === currentUser.id || 
+                             app.assignedTo === currentUser.email ||
+                             app.assignedTo?.toLowerCase() === currentUser.email?.toLowerCase();
+            const matchesName = app.assignedToName === currentUser.name ||
+                               app.assignedToName?.toLowerCase() === currentUser.name?.toLowerCase();
+            return matchesId || matchesName;
+          });
+          result = { items: filtered, totalCount: filtered.length, page: 1, pageSize: 1000 };
+          logger.debug('[WorkQueue] Fallback filter found', { count: filtered.length });
+        }
+      } else if (viewType === 'pending-approvals') {
+        logger.debug('[WorkQueue] Fetching pending approvals...');
+        const pendingResult = await fetchPendingApprovals(1, 1000);
+        logger.debug('[WorkQueue] Pending approvals result', { count: pendingResult.items.length, total: pendingResult.totalCount });
+        // Pending approvals returns WorkItemDto, need to map to WorkItemApplication
+        const { mapWorkItemsToApplications } = await import('../../services/mappers/workQueueMapper');
+        const mapped = mapWorkItemsToApplications(pendingResult.items);
+        return mapped as unknown as Record<string, unknown>[];
+      } else {
+        logger.debug('[WorkQueue] Fetching all items...', { search, effectiveStatus });
+        result = await fetchWorkItems({
+          searchTerm: search || undefined,
+          status: effectiveStatus,
+          pageSize: 1000,
+        });
+        logger.debug('[WorkQueue] All items result', { count: result.items.length, total: result.totalCount });
+      }
+      
+      // Update applications state for compatibility
+      setWorkItemApplications(result.items);
+      
+      logger.debug('[WorkQueue] fetchData completed successfully', { count: result.items.length });
+      return result.items as unknown as Record<string, unknown>[];
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Failed to load work queue items';
+      logger.error(err, '[WorkQueue] Error in fetchData', {
+        tags: { error_type: 'fetch_data' },
+        extra: {
+          message: err instanceof Error ? err.message : String(err),
+          stack: err instanceof Error ? err.stack : undefined,
+          viewType,
+          statusFilter,
+          searchTerm
+        }
+      });
+      setError(errorMessage);
+      setToast({ title: 'Error loading work queue', description: errorMessage, type: 'error' });
+      setTimeout(() => setToast(null), 5000);
+      return [];
+    } finally {
+      setLoading(false);
+    }
+  }, [viewType, statusFilter, currentUser, searchTerm]);
+
+  const handleSortChange = (field: string, direction: "asc" | "desc") => {
+    setSortConfig({ field, direction });
+  };
+
+  // Removed early loading return - DataTable handles its own loading state
+
+  // Prepare DataTable columns
+  const columns: ColumnConfig<WorkItemApplication>[] = [
+    {
+      field: 'workItemNumber',
+      header: 'Work Item #',
+      sortable: true,
+      width: '90px',
+      minWidth: '90px',
+      render: (value, row) => (
+        <Typography fontSize="sm" fontWeight="semibold" color="gray.900">
+          {row.workItemNumber || row.id.substring(0, 8)}
+        </Typography>
+      )
+    },
+    {
+      field: 'legalName',
+      header: 'Applicant Name',
+      sortable: true,
+      width: '150px',
+      minWidth: '150px',
+      render: (value) => (
+        <Typography fontSize="sm" color="gray.800" fontWeight="medium" style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+          {value as string || 'N/A'}
+        </Typography>
+      )
+    },
+    {
+      field: 'entityType',
+      header: 'Entity Type',
+      sortable: true,
+      width: '100px',
+      minWidth: '100px',
+      render: (value) => (
+        <Typography fontSize="sm" color="gray.700" style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+          {value as string || 'N/A'}
+        </Typography>
+      )
+    },
+    {
+      field: 'country',
+      header: 'Country',
+      sortable: true,
+      width: '80px',
+      minWidth: '80px',
+      render: (value) => (
+        <Typography fontSize="sm" color="gray.700">
+          {value as string || 'N/A'}
+        </Typography>
+      )
+    },
+    {
+      field: 'status',
+      header: 'Status',
+      sortable: true,
+      width: '110px',
+      minWidth: '110px',
+      render: (value) => {
+        const status = value as string;
+        const statusVariantMap: Record<string, "success" | "inactive" | "info" | "warning"> = {
+          'SUBMITTED': 'info',
+          'IN PROGRESS': 'warning',
+          'RISK REVIEW': 'warning',
+          'COMPLETE': 'success',
+          'DECLINED': 'inactive',
+        };
+        const variant = statusVariantMap[status] || 'info';
+        return (
+          <Tag variant={variant} size="md" appearance="transparent">
+            {status}
+          </Tag>
+        );
+      }
+    },
+    {
+      field: 'assignedToName',
+      header: 'Assigned To',
+      sortable: true,
+      width: '120px',
+      minWidth: '120px',
+      render: (value, row) => {
+        const assignedTo = (value as string) || row.assignedTo || "Unassigned";
+        const isAssigned = assignedTo !== "Unassigned";
+        return (
+          <HStack gap="2">
+            <Box
+              w="6"
+              h="6"
+              borderRadius="full"
+              bg={isAssigned ? "orange.200" : "gray.200"}
+              display="flex"
+              alignItems="center"
+              justifyContent="center"
+              flexShrink={0}
+            >
+              <IconWrapper>
+                <FiUser size={12} color={isAssigned ? "#DD6B20" : "#9CA3AF"} />
+              </IconWrapper>
+            </Box>
+            <Typography 
+              fontSize="sm" 
+              color={isAssigned ? "gray.800" : "gray.500"} 
+              fontWeight={isAssigned ? "medium" : "normal"}
+              fontStyle={!isAssigned ? "italic" : "normal"}
+              style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
+            >
+              {assignedTo}
+            </Typography>
+          </HStack>
+        );
+      }
+    },
+        {
+          field: 'priority',
+          header: 'Priority',
+          sortable: true,
+          width: '90px',
+          minWidth: '90px',
+          render: (value) => {
+            if (!value) return <Typography fontSize="sm" color="gray.500">-</Typography>;
+            const priority = (value as string).toLowerCase();
+            const priorityVariantMap: Record<string, "success" | "inactive" | "info" | "warning"> = {
+              'low': 'success',
+              'medium': 'info',
+              'high': 'warning',
+              'urgent': 'warning',
+            };
+            const variant = priorityVariantMap[priority] || 'info';
+            return (
+              <Tag variant={variant} size="md" appearance="transparent">
+                {value as string}
+              </Tag>
+            );
+          }
+        },
+        {
+          field: 'riskLevel',
+          header: 'Risk',
+          sortable: true,
+          width: '80px',
+          minWidth: '80px',
+          render: (value) => {
+            if (!value) return <Typography fontSize="sm" color="gray.500">-</Typography>;
+            const risk = (value as string).toLowerCase();
+            const riskVariantMap: Record<string, "success" | "inactive" | "info" | "warning"> = {
+              'low': 'success',
+              'medium': 'info',
+              'high': 'warning',
+              'critical': 'warning',
+            };
+            const variant = riskVariantMap[risk] || 'info';
+            return (
+              <Tag variant={variant} size="md" appearance="transparent">
+                {value as string}
+              </Tag>
+            );
+          }
+        },
+  ];
 
   return (
     <Flex minH="100vh" bg="gray.50">
       <AdminSidebar />
+      <PortalHeader />
+      
+      {/* Toast Notification */}
+      {toast && (
+        <Box
+          position="fixed"
+          top="20px"
+          right="20px"
+          zIndex={10000}
+          maxW="400px"
+        >
+          <AlertBar
+            status={toast.type}
+            title={toast.title}
+            description={toast.description}
+            onClose={() => setToast(null)}
+          />
+        </Box>
+      )}
 
-      <Box flex="1" ml="240px">
-        <Box bg="white" borderBottom="1px" borderColor="gray.200" py="4" px="6" boxShadow="sm">
-          <HStack justify="space-between">
-            <Text fontSize="xl" fontWeight="bold" color="black">Work Queue</Text>
+      <Box 
+        flex="1" 
+        ml={condensed ? "72px" : "280px"}
+        mt="90px"
+        minH="calc(100vh - 90px)" 
+        width={condensed ? "calc(100% - 72px)" : "calc(100% - 280px)"}
+        bg="gray.50" 
+        overflowX="hidden"
+        transition="margin-left 0.3s ease, width 0.3s ease"
+      >
+        {/* Header Section */}
+        <Box bg="white" borderBottom="1px" borderColor="gray.200" boxShadow="sm" width="full">
+          <Container maxW="100%" px="8" py="6" width="full">
+            <Flex justify="space-between" align="center" mb="4">
+            <VStack align="start" gap="2">
+              <Typography fontSize="3xl" fontWeight="bold" color="gray.900">
+                Work Queue
+              </Typography>
+              <Typography fontSize="md" color="gray.600" fontWeight="normal">
+                Manage and track work items across all onboarding cases
+              </Typography>
+            </VStack>
             <HStack gap="3">
-              <HStack gap="2">
-                <FiSearch color="black" size="16" />
-                <Input
-                  placeholder="Search applications..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  size="sm"
-                  width="300px"
-                />
-              </HStack>
               <Button 
-                size="sm" 
-                colorScheme="orange"
+                  variant="primary"
+                  size="sm"
                 onClick={handleExport}
+                  className="mukuru-primary-button"
+                  style={{
+                    color: 'white',
+                    backgroundColor: '#F05423',
+                    border: 'none',
+                    borderWidth: 0,
+                    borderStyle: 'none',
+                    borderColor: '#F05423',
+                    outline: 'none',
+                    outlineWidth: 0,
+                    boxShadow: 'none',
+                    WebkitBoxShadow: 'none',
+                    MozBoxShadow: 'none'
+                  }}
               >
-                <FiFile style={{ marginRight: '8px' }} />
-                Export
+                <IconWrapper>
+                  <FiDownload size={16} />
+                </IconWrapper>
+                <span style={{ color: 'white' }}>Export</span>
               </Button>
             </HStack>
-          </HStack>
-        </Box>
-
-        <Container maxW="8xl" py="6">
-          <VStack gap="6" align="stretch">
-            {error && (
-              <Box p="4" bg="red.50" border="1px" borderColor="red.200" borderRadius="md" color="red.700">
-                <HStack gap="2">
-                  <Box as={FiAlertCircle} boxSize="5" />
-                  <VStack align="start" gap="1" flex="1">
-                    <Text fontWeight="semibold">Error loading work queue</Text>
-                    <Text fontSize="sm">{error}</Text>
-                  </VStack>
-                </HStack>
-              </Box>
-            )}
+          </Flex>
 
             {/* View Tabs */}
-            <Tabs.Root value={viewType} onValueChange={(e) => setViewType(e.value as ViewType)}>
-              <Tabs.List>
-                <Tabs.Trigger value="all">All Items</Tabs.Trigger>
-                <Tabs.Trigger value="my-items">My Items</Tabs.Trigger>
-                <Tabs.Trigger value="pending-approvals">Pending Approvals</Tabs.Trigger>
-              </Tabs.List>
-            </Tabs.Root>
+            <TabsRoot defaultValue={viewType} onValueChange={(details: { value: string }) => setViewType(details.value as ViewType)} variant="line">
+              <TabsList>
+                <TabsTrigger value="all">All Items</TabsTrigger>
+                <TabsTrigger value="my-items">My Items</TabsTrigger>
+                <TabsTrigger value="pending-approvals">Pending Approvals</TabsTrigger>
+                <TabsIndicator rounded="l2" />
+              </TabsList>
+            </TabsRoot>
+          </Container>
+        </Box>
 
-            {/* Status Filter Buttons */}
-            {viewType === 'all' && (
-              <HStack gap="2" wrap="wrap">
-                <Button
-                  size="sm"
-                  variant={statusFilter === 'ALL' ? 'solid' : 'outline'}
-                  colorScheme={statusFilter === 'ALL' ? 'orange' : 'gray'}
-                  color={statusFilter === 'ALL' ? undefined : 'black'}
-                  onClick={() => setStatusFilter('ALL')}
-                >
-                  All
-                </Button>
-                <Button
-                  size="sm"
-                  variant={statusFilter === 'SUBMITTED' ? 'solid' : 'outline'}
-                  colorScheme={statusFilter === 'SUBMITTED' ? 'blue' : 'gray'}
-                  color={statusFilter === 'SUBMITTED' ? undefined : 'black'}
-                  onClick={() => setStatusFilter('SUBMITTED')}
-                >
-                  Submitted ({stats.submitted})
-                </Button>
-                <Button
-                  size="sm"
-                  variant={statusFilter === 'IN PROGRESS' ? 'solid' : 'outline'}
-                  colorScheme={statusFilter === 'IN PROGRESS' ? 'orange' : 'gray'}
-                  color={statusFilter === 'IN PROGRESS' ? undefined : 'black'}
-                  onClick={() => setStatusFilter('IN PROGRESS')}
-                >
-                  In Progress ({stats.inProgress})
-                </Button>
-                <Button
-                  size="sm"
-                  variant={statusFilter === 'RISK REVIEW' ? 'solid' : 'outline'}
-                  colorScheme={statusFilter === 'RISK REVIEW' ? 'red' : 'gray'}
-                  color={statusFilter === 'RISK REVIEW' ? undefined : 'black'}
-                  onClick={() => setStatusFilter('RISK REVIEW')}
-                >
-                  Risk Review ({stats.riskReview})
-                </Button>
-                <Button
-                  size="sm"
-                  variant={statusFilter === 'COMPLETE' ? 'solid' : 'outline'}
-                  colorScheme={statusFilter === 'COMPLETE' ? 'green' : 'gray'}
-                  color={statusFilter === 'COMPLETE' ? undefined : 'black'}
-                  onClick={() => setStatusFilter('COMPLETE')}
-                >
-                  Complete ({stats.complete})
-                </Button>
-                <Button
-                  size="sm"
-                  variant={statusFilter === 'DECLINED' ? 'solid' : 'outline'}
-                  colorScheme={statusFilter === 'DECLINED' ? 'red' : 'gray'}
-                  color={statusFilter === 'DECLINED' ? undefined : 'black'}
-                  onClick={() => setStatusFilter('DECLINED')}
-                >
-                  Declined ({stats.declined})
-                </Button>
-              </HStack>
+        {/* Content Section */}
+        <Box flex="1" bg="gray.50" width="full">
+          <TabsRoot defaultValue={viewType} onValueChange={(details: { value: string }) => setViewType(details.value as ViewType)} variant="line">
+            <TabsContent value="all">
+              <Container maxW="100%" px="8" py="8" width="full">
+                <VStack gap="4" align="stretch" width="full">
+            {/* Error Alert */}
+            {error && (
+              <AlertBar
+                status="error"
+                title="Error loading work queue"
+                description={error}
+              />
             )}
 
-            {/* Stats Cards */}
-            <SimpleGrid columns={{ base: 2, md: 4, lg: 6 }} gap="4">
-              <Box bg="white" p="4" borderRadius="lg" boxShadow="sm" cursor="pointer" onClick={() => setStatusFilter('ALL')}>
-                <VStack gap="2">
-                  <Text fontSize="2xl" fontWeight="bold" color="black">{stats.total}</Text>
-                  <Text fontSize="sm" color="black">Total</Text>
+            {/* Status Filter Buttons */}
+                    <HStack gap="2" wrap="wrap" mb="2" mt="0" pt="0" className="status-filter-buttons" style={{ border: 'none', outline: 'none' }}>
+                <div
+                  onClick={() => setStatusFilter('ALL')}
+                  role="button"
+                  tabIndex={0}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      setStatusFilter('ALL');
+                    }
+                  }}
+                  className={`status-filter-btn ${statusFilter === 'ALL' ? "mukuru-primary-button" : "mukuru-secondary-button"}`}
+                  style={{
+                    color: 'white',
+                    background: statusFilter === 'ALL' ? '#F05423' : '#111827',
+                    backgroundColor: statusFilter === 'ALL' ? '#F05423' : '#111827',
+                    border: `1px solid ${statusFilter === 'ALL' ? '#F05423' : '#111827'}`,
+                    borderWidth: '1px',
+                    borderStyle: 'solid',
+                    borderColor: statusFilter === 'ALL' ? '#F05423' : '#111827',
+                    outline: '0',
+                    outlineWidth: '0',
+                    outlineStyle: 'none',
+                    outlineColor: 'transparent',
+                    boxShadow: 'none',
+                    borderRadius: '8px',
+                    padding: '8px 16px',
+                    fontSize: '14px',
+                    fontWeight: '600',
+                    cursor: 'pointer',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    minHeight: '36px',
+                    margin: 0,
+                    userSelect: 'none',
+                    WebkitTapHighlightColor: 'transparent',
+                    backgroundClip: 'border-box',
+                    WebkitBackgroundClip: 'border-box'
+                  }}
+                >
+                  <span style={{ color: 'white' }}>All</span>
+                </div>
+                <div
+                  onClick={() => setStatusFilter('SUBMITTED')}
+                  role="button"
+                  tabIndex={0}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      setStatusFilter('SUBMITTED');
+                    }
+                  }}
+                  className={`status-filter-btn ${statusFilter === 'SUBMITTED' ? "mukuru-primary-button" : "mukuru-secondary-button"}`}
+                  style={{
+                    color: 'white',
+                    background: statusFilter === 'SUBMITTED' ? '#F05423' : '#111827',
+                    backgroundColor: statusFilter === 'SUBMITTED' ? '#F05423' : '#111827',
+                    border: `1px solid ${statusFilter === 'SUBMITTED' ? '#F05423' : '#111827'}`,
+                    borderWidth: '1px',
+                    borderStyle: 'solid',
+                    borderColor: statusFilter === 'SUBMITTED' ? '#F05423' : '#111827',
+                    outline: '0',
+                    outlineWidth: '0',
+                    outlineStyle: 'none',
+                    outlineColor: 'transparent',
+                    boxShadow: 'none',
+                    borderRadius: '8px',
+                    padding: '8px 16px',
+                    fontSize: '14px',
+                    fontWeight: '600',
+                    cursor: 'pointer',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    minHeight: '36px',
+                    margin: 0,
+                    userSelect: 'none',
+                    WebkitTapHighlightColor: 'transparent',
+                    backgroundClip: 'border-box',
+                    WebkitBackgroundClip: 'border-box'
+                  }}
+                >
+                  <span style={{ color: 'white' }}>Submitted ({stats.submitted})</span>
+                </div>
+                <div
+                  onClick={() => setStatusFilter('IN PROGRESS')}
+                  role="button"
+                  tabIndex={0}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      setStatusFilter('IN PROGRESS');
+                    }
+                  }}
+                  className={`status-filter-btn ${statusFilter === 'IN PROGRESS' ? "mukuru-primary-button" : "mukuru-secondary-button"}`}
+                  style={{
+                    color: 'white',
+                    background: statusFilter === 'IN PROGRESS' ? '#F05423' : '#111827',
+                    backgroundColor: statusFilter === 'IN PROGRESS' ? '#F05423' : '#111827',
+                    border: `1px solid ${statusFilter === 'IN PROGRESS' ? '#F05423' : '#111827'}`,
+                    borderWidth: '1px',
+                    borderStyle: 'solid',
+                    borderColor: statusFilter === 'IN PROGRESS' ? '#F05423' : '#111827',
+                    outline: '0',
+                    outlineWidth: '0',
+                    outlineStyle: 'none',
+                    outlineColor: 'transparent',
+                    boxShadow: 'none',
+                    borderRadius: '8px',
+                    padding: '8px 16px',
+                    fontSize: '14px',
+                    fontWeight: '600',
+                    cursor: 'pointer',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    minHeight: '36px',
+                    margin: 0,
+                    userSelect: 'none',
+                    WebkitTapHighlightColor: 'transparent',
+                    backgroundClip: 'border-box',
+                    WebkitBackgroundClip: 'border-box'
+                  }}
+                >
+                  <span style={{ color: 'white' }}>In Progress ({stats.inProgress})</span>
+                </div>
+                <div
+                  onClick={() => setStatusFilter('RISK REVIEW')}
+                  role="button"
+                  tabIndex={0}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      setStatusFilter('RISK REVIEW');
+                    }
+                  }}
+                  className={`status-filter-btn ${statusFilter === 'RISK REVIEW' ? "mukuru-primary-button" : "mukuru-secondary-button"}`}
+                  style={{
+                    color: 'white',
+                    background: statusFilter === 'RISK REVIEW' ? '#F05423' : '#111827',
+                    backgroundColor: statusFilter === 'RISK REVIEW' ? '#F05423' : '#111827',
+                    border: `1px solid ${statusFilter === 'RISK REVIEW' ? '#F05423' : '#111827'}`,
+                    borderWidth: '1px',
+                    borderStyle: 'solid',
+                    borderColor: statusFilter === 'RISK REVIEW' ? '#F05423' : '#111827',
+                    outline: '0',
+                    outlineWidth: '0',
+                    outlineStyle: 'none',
+                    outlineColor: 'transparent',
+                    boxShadow: 'none',
+                    borderRadius: '8px',
+                    padding: '8px 16px',
+                    fontSize: '14px',
+                    fontWeight: '600',
+                    cursor: 'pointer',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    minHeight: '36px',
+                    margin: 0,
+                    userSelect: 'none',
+                    WebkitTapHighlightColor: 'transparent',
+                    backgroundClip: 'border-box',
+                    WebkitBackgroundClip: 'border-box'
+                  }}
+                >
+                  <span style={{ color: 'white' }}>Risk Review ({stats.riskReview})</span>
+                </div>
+                <div
+                  onClick={() => setStatusFilter('COMPLETE')}
+                  role="button"
+                  tabIndex={0}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      setStatusFilter('COMPLETE');
+                    }
+                  }}
+                  className={`status-filter-btn ${statusFilter === 'COMPLETE' ? "mukuru-primary-button" : "mukuru-secondary-button"}`}
+                  style={{
+                    color: 'white',
+                    background: statusFilter === 'COMPLETE' ? '#F05423' : '#111827',
+                    backgroundColor: statusFilter === 'COMPLETE' ? '#F05423' : '#111827',
+                    border: `1px solid ${statusFilter === 'COMPLETE' ? '#F05423' : '#111827'}`,
+                    borderWidth: '1px',
+                    borderStyle: 'solid',
+                    borderColor: statusFilter === 'COMPLETE' ? '#F05423' : '#111827',
+                    outline: '0',
+                    outlineWidth: '0',
+                    outlineStyle: 'none',
+                    outlineColor: 'transparent',
+                    boxShadow: 'none',
+                    borderRadius: '8px',
+                    padding: '8px 16px',
+                    fontSize: '14px',
+                    fontWeight: '600',
+                    cursor: 'pointer',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    minHeight: '36px',
+                    margin: 0,
+                    userSelect: 'none',
+                    WebkitTapHighlightColor: 'transparent',
+                    backgroundClip: 'border-box',
+                    WebkitBackgroundClip: 'border-box'
+                  }}
+                >
+                  <span style={{ color: 'white' }}>Complete ({stats.complete})</span>
+                </div>
+                <div
+                  onClick={() => setStatusFilter('DECLINED')}
+                  role="button"
+                  tabIndex={0}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      setStatusFilter('DECLINED');
+                    }
+                  }}
+                  className={`status-filter-btn ${statusFilter === 'DECLINED' ? "mukuru-primary-button" : "mukuru-secondary-button"}`}
+                  style={{
+                    color: 'white',
+                    background: statusFilter === 'DECLINED' ? '#F05423' : '#111827',
+                    backgroundColor: statusFilter === 'DECLINED' ? '#F05423' : '#111827',
+                    border: `1px solid ${statusFilter === 'DECLINED' ? '#F05423' : '#111827'}`,
+                    borderWidth: '1px',
+                    borderStyle: 'solid',
+                    borderColor: statusFilter === 'DECLINED' ? '#F05423' : '#111827',
+                    outline: '0',
+                    outlineWidth: '0',
+                    outlineStyle: 'none',
+                    outlineColor: 'transparent',
+                    boxShadow: 'none',
+                    borderRadius: '8px',
+                    padding: '8px 16px',
+                    fontSize: '14px',
+                    fontWeight: '600',
+                    cursor: 'pointer',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    minHeight: '36px',
+                    margin: 0,
+                    userSelect: 'none',
+                    WebkitTapHighlightColor: 'transparent',
+                    backgroundClip: 'border-box',
+                    WebkitBackgroundClip: 'border-box'
+                  }}
+                >
+                  <span style={{ color: 'white' }}>Declined ({stats.declined})</span>
+                </div>
+              </HStack>
+
+                    {/* Stats Cards - Mukuru Cards */}
+            <SimpleGrid columns={{ base: 2, md: 3, lg: 6 }} gap="4">
+              <Card 
+                width="full" 
+                bg="white" 
+                onClick={() => setStatusFilter('ALL')}
+                        style={{ cursor: 'pointer' }}
+                        className="stats-card"
+                      >
+                        <Flex alignItems="center" justifyContent="space-between" w="100%" h="100%" mb="4">
+                          <Flex alignItems="center" gap="12px" my="auto">
+                            <Avatar.Root bg="mukuru.orange.100/20" height="36px" width="36px" display="flex" alignItems="center" justifyContent="center">
+                    <IconWrapper>
+                                <FiTrendingUp color="#F05423" height="24px" width="24px" />
+                    </IconWrapper>
+                            </Avatar.Root>
+                            <Typography color="gray.800" fontSize="16px" fontWeight="black" lineHeight="24px">
+                              Total
+                            </Typography>
+                          </Flex>
+                          <Box justifySelf="flex-end">
+                            <ChevronRightIcon color="#F05423" width="20px" height="20px" />
+                          </Box>
+                        </Flex>
+                        <Typography color="gray.800" fontFamily="Madera" fontSize="30px" fontWeight="black" letterSpacing="0%" lineHeight="40px">
+                    {stats.total.toLocaleString()}
+                  </Typography>
+              </Card>
+              
+              <Card 
+                width="full" 
+                bg="white" 
+                onClick={() => setStatusFilter('SUBMITTED')}
+                        style={{ cursor: 'pointer' }}
+                        className="stats-card"
+                      >
+                        <Flex alignItems="center" justifyContent="space-between" w="100%" h="100%" mb="4">
+                          <Flex alignItems="center" gap="12px" my="auto">
+                            <Avatar.Root bg="blue.100" height="36px" width="36px" display="flex" alignItems="center" justifyContent="center">
+                    <IconWrapper>
+                                <FiClockIcon color="#3182CE" height="24px" width="24px" />
+                    </IconWrapper>
+                            </Avatar.Root>
+                            <Typography color="gray.800" fontSize="16px" fontWeight="black" lineHeight="24px">
+                              Submitted
+                            </Typography>
+                          </Flex>
+                          <Box justifySelf="flex-end">
+                            <ChevronRightIcon color="#F05423" width="20px" height="20px" />
+                          </Box>
+                        </Flex>
+                        <Typography color="blue.600" fontFamily="Madera" fontSize="30px" fontWeight="black" letterSpacing="0%" lineHeight="40px">
+                    {stats.submitted.toLocaleString()}
+                  </Typography>
+              </Card>
+              
+              <Card 
+                width="full" 
+                bg="white" 
+                onClick={() => setStatusFilter('IN PROGRESS')}
+                        style={{ cursor: 'pointer' }}
+                        className="stats-card"
+                      >
+                        <Flex alignItems="center" justifyContent="space-between" w="100%" h="100%" mb="4">
+                          <Flex alignItems="center" gap="12px" my="auto">
+                            <Avatar.Root bg="mukuru.orange.100/20" height="36px" width="36px" display="flex" alignItems="center" justifyContent="center">
+                    <IconWrapper>
+                                <FiRefreshCw color="#F05423" height="24px" width="24px" />
+                    </IconWrapper>
+                            </Avatar.Root>
+                            <Typography color="gray.800" fontSize="16px" fontWeight="black" lineHeight="24px">
+                              In Progress
+                            </Typography>
+                          </Flex>
+                          <Box justifySelf="flex-end">
+                            <ChevronRightIcon color="#F05423" width="20px" height="20px" />
+                          </Box>
+                        </Flex>
+                        <Typography color="orange.600" fontFamily="Madera" fontSize="30px" fontWeight="black" letterSpacing="0%" lineHeight="40px">
+                    {stats.inProgress.toLocaleString()}
+                  </Typography>
+              </Card>
+              
+              <Card 
+                width="full" 
+                bg="white" 
+                onClick={() => setStatusFilter('RISK REVIEW')}
+                        style={{ cursor: 'pointer' }}
+                        className="stats-card"
+                      >
+                        <Flex alignItems="center" justifyContent="space-between" w="100%" h="100%" mb="4">
+                          <Flex alignItems="center" gap="12px" my="auto">
+                            <Avatar.Root bg="red.100" height="36px" width="36px" display="flex" alignItems="center" justifyContent="center">
+                    <IconWrapper>
+                                <FiAlertTriangle color="#E53E3E" height="24px" width="24px" />
+                    </IconWrapper>
+                            </Avatar.Root>
+                            <Typography color="gray.800" fontSize="16px" fontWeight="black" lineHeight="24px">
+                              Risk Review
+                            </Typography>
+                          </Flex>
+                          <Box justifySelf="flex-end">
+                            <ChevronRightIcon color="#F05423" width="20px" height="20px" />
+                          </Box>
+                        </Flex>
+                        <Typography color="orange.600" fontFamily="Madera" fontSize="30px" fontWeight="black" letterSpacing="0%" lineHeight="40px">
+                    {stats.riskReview.toLocaleString()}
+                  </Typography>
+              </Card>
+              
+              <Card 
+                width="full" 
+                bg="white" 
+                onClick={() => setStatusFilter('COMPLETE')}
+                        style={{ cursor: 'pointer' }}
+                        className="stats-card"
+                      >
+                        <Flex alignItems="center" justifyContent="space-between" w="100%" h="100%" mb="4">
+                          <Flex alignItems="center" gap="12px" my="auto">
+                            <Avatar.Root bg="green.100" height="36px" width="36px" display="flex" alignItems="center" justifyContent="center">
+                    <IconWrapper>
+                                <FiCheckCircle color="#38A169" height="24px" width="24px" />
+                    </IconWrapper>
+                            </Avatar.Root>
+                            <Typography color="gray.800" fontSize="16px" fontWeight="black" lineHeight="24px">
+                              Complete
+                            </Typography>
+                          </Flex>
+                          <Box justifySelf="flex-end">
+                            <ChevronRightIcon color="#F05423" width="20px" height="20px" />
+                          </Box>
+                        </Flex>
+                        <Typography color="green.600" fontFamily="Madera" fontSize="30px" fontWeight="black" letterSpacing="0%" lineHeight="40px">
+                    {stats.complete.toLocaleString()}
+                  </Typography>
+              </Card>
+              
+              <Card 
+                width="full" 
+                bg="white" 
+                onClick={() => setStatusFilter('DECLINED')}
+                        style={{ cursor: 'pointer' }}
+                        className="stats-card"
+                      >
+                        <Flex alignItems="center" justifyContent="space-between" w="100%" h="100%" mb="4">
+                          <Flex alignItems="center" gap="12px" my="auto">
+                            <Avatar.Root bg="red.100" height="36px" width="36px" display="flex" alignItems="center" justifyContent="center">
+                              <IconWrapper>
+                                <FiXCircle color="#C53030" height="24px" width="24px" />
+                              </IconWrapper>
+                            </Avatar.Root>
+                            <Typography color="gray.800" fontSize="16px" fontWeight="black" lineHeight="24px">
+                      Declined
+                    </Typography>
+                          </Flex>
+                          <Box justifySelf="flex-end">
+                            <ChevronRightIcon color="#F05423" width="20px" height="20px" />
+                          </Box>
+                        </Flex>
+                        <Typography color="red.600" fontFamily="Madera" fontSize="30px" fontWeight="black" letterSpacing="0%" lineHeight="40px">
+                          {stats.declined.toLocaleString()}
+                        </Typography>
+                      </Card>
+                    </SimpleGrid>
+
+                    {/* Work Queue DataTable */}
+                    <Box 
+                      bg="white" 
+                      borderRadius="xl" 
+                      boxShadow="0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06)"
+                      border="1px solid"
+                      borderColor="gray.100"
+                      overflow="hidden"
+                      color="gray.900"
+                      className="work-queue-table-wrapper"
+                    >
+                      <DataTable
+                        key={`work-queue-${viewType}-${statusFilter}-${searchTerm}-${refreshKey}`}
+                        fetchData={fetchData}
+                        columns={columns as unknown as ColumnConfig<Record<string, unknown>>[]}
+                        tableId="work-queue"
+                        sortConfig={sortConfig ?? undefined}
+                        onSortChange={handleSortChange}
+                        showActions={true}
+                        actionColumn={{
+                          header: 'Actions',
+                          width: '120px',
+                          render: (row, index) => {
+                            const app = row as unknown as WorkItemApplication;
+                            return (
+                              <div style={{ display: "flex", gap: "6px", alignItems: "center", justifyContent: "flex-end" }}>
+                                <Tooltip content="View" showArrow variant="light">
+                                  <Link href={app.applicationId ? `/applications/${app.applicationId}` : `/applications/${app.id}`} style={{ textDecoration: 'none' }}>
+                                    <button
+                                      style={{
+                                        background: "none",
+                                        border: "none",
+                                        padding: "6px",
+                                        cursor: "pointer",
+                                        color: "#E8590C",
+                                        display: "flex",
+                                        alignItems: "center",
+                                        justifyContent: "center",
+                                        minWidth: "28px",
+                                        height: "28px"
+                                      }}
+                                      aria-label="View"
+                                    >
+                                      <IconWrapper><FiEye size={14} /></IconWrapper>
+                                    </button>
+                                  </Link>
+                                </Tooltip>
+                                {app.assignedTo && 
+                                 (app.assignedTo === currentUser.id || app.assignedToName === currentUser.name) &&
+                                 (app.backendStatus === 'Assigned' || app.backendStatus === 'InProgress') &&
+                                 app.status !== 'COMPLETE' && 
+                                 app.status !== 'DECLINED' && (
+                                  <Tooltip content="Review" showArrow variant="light">
+                                    <button
+                                      style={{
+                                        background: "none",
+                                        border: "none",
+                                        padding: "8px",
+                                        cursor: "pointer",
+                                        color: "#E8590C",
+                                        display: "flex",
+                                        alignItems: "center",
+                                        justifyContent: "center"
+                                      }}
+                                      onClick={() => handleStartReview(app.id)}
+                                      aria-label="Review"
+                                    >
+                                      <IconWrapper><FiPlay size={16} /></IconWrapper>
+                                    </button>
+                                  </Tooltip>
+                                )}
+                                {!app.assignedTo && 
+                                 app.status !== 'COMPLETE' && 
+                                 app.status !== 'DECLINED' &&
+                                 app.backendStatus !== 'Completed' &&
+                                 app.backendStatus !== 'Declined' &&
+                                 app.backendStatus !== 'Cancelled' && (
+                                  <Tooltip content="Assign" showArrow variant="light">
+                                    <button
+                                      style={{
+                                        background: "none",
+                                        border: "none",
+                                        padding: "8px",
+                                        cursor: "pointer",
+                                        color: "#E8590C",
+                                        display: "flex",
+                                        alignItems: "center",
+                                        justifyContent: "center"
+                                      }}
+                                      onClick={() => openAssignModal(app)}
+                                      aria-label="Assign"
+                                    >
+                                      <IconWrapper><FiUser size={16} /></IconWrapper>
+                                    </button>
+                                  </Tooltip>
+                                )}
+                                {app.status === 'IN PROGRESS' && (
+                                  <Tooltip content="Complete" showArrow variant="light">
+                                    <button
+                                      style={{
+                                        background: "none",
+                                        border: "none",
+                                        padding: "8px",
+                                        cursor: "pointer",
+                                        color: "#E8590C",
+                                        display: "flex",
+                                        alignItems: "center",
+                                        justifyContent: "center"
+                                      }}
+                                      onClick={() => openActionModal(app, 'complete')}
+                                      aria-label="Complete"
+                                    >
+                                      <IconWrapper><FiCheck size={16} /></IconWrapper>
+                                    </button>
+                                  </Tooltip>
+                                )}
+                                {app.status === 'RISK REVIEW' && (
+                                  <>
+                                    <Tooltip content="Approve" showArrow variant="light">
+                                      <button
+                                        style={{
+                                          background: "none",
+                                          border: "none",
+                                          padding: "8px",
+                                          cursor: "pointer",
+                                          color: "#E8590C",
+                                          display: "flex",
+                                          alignItems: "center",
+                                          justifyContent: "center"
+                                        }}
+                                        onClick={() => openActionModal(app, 'approve')}
+                                        aria-label="Approve"
+                                      >
+                                        <IconWrapper><FiCheck size={16} /></IconWrapper>
+                                      </button>
+                                    </Tooltip>
+                                    <Tooltip content="Decline" showArrow variant="light">
+                                      <button
+                                        style={{
+                                          background: "none",
+                                          border: "none",
+                                          padding: "8px",
+                                          cursor: "pointer",
+                                          color: "#E8590C",
+                                          display: "flex",
+                                          alignItems: "center",
+                                          justifyContent: "center"
+                                        }}
+                                        onClick={() => openActionModal(app, 'decline')}
+                                        aria-label="Decline"
+                                      >
+                                        <DeleteIcon />
+                                      </button>
+                                    </Tooltip>
+                                  </>
+                                )}
+                                <Tooltip content="Mark for Refresh" showArrow variant="light">
+                                  <button
+                                    style={{
+                                      background: "none",
+                                      border: "none",
+                                      padding: "8px",
+                                      cursor: "pointer",
+                                      color: "#E8590C",
+                                      display: "flex",
+                                      alignItems: "center",
+                                      justifyContent: "center"
+                                    }}
+                                    onClick={() => handleMarkForRefresh(app.id)}
+                                    aria-label="Mark for Refresh"
+                                  >
+                                    <IconWrapper><FiRefreshCw size={16} /></IconWrapper>
+                                  </button>
+                                </Tooltip>
+                              </div>
+                            );
+                          }
+                        }}
+                        emptyState={{
+                          message: "No work queue items found",
+                          content: (
+                            <VStack gap="4" py="8">
+                    <IconWrapper>
+                                <FiFile size={48} color="#9CA3AF" />
+                    </IconWrapper>
+                              <Typography fontSize="lg" fontWeight="semibold" color="gray.700">
+                                No work queue items found
+                              </Typography>
+                              <Typography fontSize="sm" color="gray.600" textAlign="center" maxW="400px">
+                                {error 
+                                  ? `Error loading work queue: ${error}. Please check your connection and try again.`
+                                  : viewType === 'my-items'
+                                    ? "You don't have any assigned work items. Work items will appear here once they are assigned to you."
+                                    : viewType === 'pending-approvals'
+                                      ? "No items are pending approval. Items requiring approval will appear here."
+                                      : "Work items are automatically created when onboarding cases are submitted. Submit a new case to see work items here."}
+                              </Typography>
+                            </VStack>
+                          )
+                        }}
+                      />
+                    </Box>
+                  </VStack>
+                </Container>
+              </TabsContent>
+
+              <TabsContent value="my-items">
+                <Container maxW="8xl" px="8" py="8" width="full">
+                  <VStack gap="6" align="stretch" width="full">
+                    {/* Error Alert */}
+                    {error && (
+                      <AlertBar
+                        status="error"
+                        title="Error loading work queue"
+                        description={error}
+                      />
+                    )}
+
+                    {/* Stats Cards - Mukuru Cards */}
+                    <SimpleGrid columns={{ base: 2, md: 3, lg: 6 }} gap="4">
+                      <Card 
+                        width="full" 
+                        bg="white"
+                        style={{ cursor: 'pointer' }}
+                        className="stats-card"
+                      >
+                        <Flex alignItems="center" justifyContent="space-between" w="100%" h="100%" mb="4">
+                          <Flex alignItems="center" gap="12px" my="auto">
+                            <Avatar.Root bg="mukuru.orange.100/20" height="36px" width="36px" display="flex" alignItems="center" justifyContent="center">
+                              <IconWrapper>
+                                <FiTrendingUp color="#F05423" height="24px" width="24px" />
+                              </IconWrapper>
+                            </Avatar.Root>
+                            <Typography color="gray.800" fontSize="16px" fontWeight="black" lineHeight="24px">
+                              Total
+                            </Typography>
+                          </Flex>
+                          <Box justifySelf="flex-end">
+                            <ChevronRightIcon color="#F05423" width="20px" height="20px" />
+                          </Box>
+                        </Flex>
+                        <Typography color="gray.800" fontFamily="Madera" fontSize="30px" fontWeight="black" letterSpacing="0%" lineHeight="40px">
+                          {stats.total.toLocaleString()}
+                        </Typography>
+                      </Card>
+                      
+                      <Card 
+                        width="full" 
+                        bg="white"
+                        style={{ cursor: 'pointer' }}
+                        className="stats-card"
+                      >
+                        <Flex alignItems="center" justifyContent="space-between" w="100%" h="100%" mb="4">
+                          <Flex alignItems="center" gap="12px" my="auto">
+                            <Avatar.Root bg="blue.100" height="36px" width="36px" display="flex" alignItems="center" justifyContent="center">
+                              <IconWrapper>
+                                <FiClockIcon color="#3182CE" height="24px" width="24px" />
+                              </IconWrapper>
+                            </Avatar.Root>
+                            <Typography color="gray.800" fontSize="16px" fontWeight="black" lineHeight="24px">
+                              Submitted
+                            </Typography>
+                          </Flex>
+                          <Box justifySelf="flex-end">
+                            <ChevronRightIcon color="#F05423" width="20px" height="20px" />
+                          </Box>
+                        </Flex>
+                        <Typography color="blue.600" fontFamily="Madera" fontSize="30px" fontWeight="black" letterSpacing="0%" lineHeight="40px">
+                          {stats.submitted.toLocaleString()}
+                        </Typography>
+                      </Card>
+                      
+                      <Card 
+                        width="full" 
+                        bg="white"
+                        style={{ cursor: 'pointer' }}
+                        className="stats-card"
+                      >
+                        <Flex alignItems="center" justifyContent="space-between" w="100%" h="100%" mb="4">
+                          <Flex alignItems="center" gap="12px" my="auto">
+                            <Avatar.Root bg="mukuru.orange.100/20" height="36px" width="36px" display="flex" alignItems="center" justifyContent="center">
+                              <IconWrapper>
+                                <FiRefreshCw color="#F05423" height="24px" width="24px" />
+                              </IconWrapper>
+                            </Avatar.Root>
+                            <Typography color="gray.800" fontSize="16px" fontWeight="black" lineHeight="24px">
+                              In Progress
+                            </Typography>
+                          </Flex>
+                          <Box justifySelf="flex-end">
+                            <ChevronRightIcon color="#F05423" width="20px" height="20px" />
+                          </Box>
+                        </Flex>
+                        <Typography color="orange.600" fontFamily="Madera" fontSize="30px" fontWeight="black" letterSpacing="0%" lineHeight="40px">
+                          {stats.inProgress.toLocaleString()}
+                        </Typography>
+                      </Card>
+                      
+                      <Card 
+                        width="full" 
+                        bg="white"
+                        style={{ cursor: 'pointer' }}
+                        className="stats-card"
+                      >
+                        <Flex alignItems="center" justifyContent="space-between" w="100%" h="100%" mb="4">
+                          <Flex alignItems="center" gap="12px" my="auto">
+                            <Avatar.Root bg="red.100" height="36px" width="36px" display="flex" alignItems="center" justifyContent="center">
+                              <IconWrapper>
+                                <FiAlertTriangle color="#E53E3E" height="24px" width="24px" />
+                              </IconWrapper>
+                            </Avatar.Root>
+                            <Typography color="gray.800" fontSize="16px" fontWeight="black" lineHeight="24px">
+                              Risk Review
+                            </Typography>
+                          </Flex>
+                          <Box justifySelf="flex-end">
+                            <ChevronRightIcon color="#F05423" width="20px" height="20px" />
+                          </Box>
+                        </Flex>
+                        <Typography color="orange.600" fontFamily="Madera" fontSize="30px" fontWeight="black" letterSpacing="0%" lineHeight="40px">
+                          {stats.riskReview.toLocaleString()}
+                        </Typography>
+                      </Card>
+                      
+                      <Card 
+                        width="full" 
+                        bg="white"
+                        style={{ cursor: 'pointer' }}
+                        className="stats-card"
+                      >
+                        <Flex alignItems="center" justifyContent="space-between" w="100%" h="100%" mb="4">
+                          <Flex alignItems="center" gap="12px" my="auto">
+                            <Avatar.Root bg="green.100" height="36px" width="36px" display="flex" alignItems="center" justifyContent="center">
+                              <IconWrapper>
+                                <FiCheckCircle color="#38A169" height="24px" width="24px" />
+                              </IconWrapper>
+                            </Avatar.Root>
+                            <Typography color="gray.800" fontSize="16px" fontWeight="black" lineHeight="24px">
+                              Complete
+                            </Typography>
+                          </Flex>
+                          <Box justifySelf="flex-end">
+                            <ChevronRightIcon color="#F05423" width="20px" height="20px" />
+                          </Box>
+                        </Flex>
+                        <Typography color="green.600" fontFamily="Madera" fontSize="30px" fontWeight="black" letterSpacing="0%" lineHeight="40px">
+                          {stats.complete.toLocaleString()}
+                        </Typography>
+                      </Card>
+                      
+                      <Card 
+                        width="full" 
+                        bg="white"
+                        style={{ cursor: 'pointer' }}
+                        className="stats-card"
+                      >
+                        <Flex alignItems="center" justifyContent="space-between" w="100%" h="100%" mb="4">
+                          <Flex alignItems="center" gap="12px" my="auto">
+                            <Avatar.Root bg="red.100" height="36px" width="36px" display="flex" alignItems="center" justifyContent="center">
+                              <IconWrapper>
+                                <FiXCircle color="#C53030" height="24px" width="24px" />
+                              </IconWrapper>
+                            </Avatar.Root>
+                            <Typography color="gray.800" fontSize="16px" fontWeight="black" lineHeight="24px">
+                              Declined
+                            </Typography>
+                          </Flex>
+                          <Box justifySelf="flex-end">
+                            <ChevronRightIcon color="#F05423" width="20px" height="20px" />
+                          </Box>
+                        </Flex>
+                        <Typography color="red.600" fontFamily="Madera" fontSize="30px" fontWeight="black" letterSpacing="0%" lineHeight="40px">
+                    {stats.declined.toLocaleString()}
+                        </Typography>
+                      </Card>
+                    </SimpleGrid>
+
+                    {/* Search Bar Above Table */}
+                    <Box mb="4" width="100%">
+                      <Box width="100%" maxW="800px">
+                        <Search
+                          placeholder="Search by Name or Email..."
+                          onSearchChange={handleSearchChange}
+                        />
+                      </Box>
+                    </Box>
+
+                    {/* Work Queue DataTable */}
+                    <Box 
+                      bg="white" 
+                      borderRadius="xl" 
+                      boxShadow="0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06)"
+                      border="1px solid"
+                      borderColor="gray.100"
+                      overflow="hidden"
+                      color="gray.900"
+                      className="work-queue-table-wrapper"
+                    >
+                      <DataTable
+                        key={`work-queue-${viewType}-${statusFilter}-${searchTerm}-${refreshKey}`}
+                        fetchData={fetchData}
+                        columns={columns as unknown as ColumnConfig<Record<string, unknown>>[]}
+                        tableId="work-queue"
+                        sortConfig={sortConfig ?? undefined}
+                        onSortChange={handleSortChange}
+                        showActions={true}
+                        actionColumn={{
+                          header: 'Actions',
+                          width: '120px',
+                          render: (row, index) => {
+                            const app = row as unknown as WorkItemApplication;
+                            return (
+                              <div style={{ display: "flex", gap: "6px", alignItems: "center", justifyContent: "flex-end" }}>
+                                <Tooltip content="View" showArrow variant="light">
+                                  <Link href={app.applicationId ? `/applications/${app.applicationId}` : `/applications/${app.id}`} style={{ textDecoration: 'none' }}>
+                                    <button
+                                      style={{
+                                        background: "none",
+                                        border: "none",
+                                        padding: "6px",
+                                        cursor: "pointer",
+                                        color: "#E8590C",
+                                        display: "flex",
+                                        alignItems: "center",
+                                        justifyContent: "center",
+                                        minWidth: "28px",
+                                        height: "28px"
+                                      }}
+                                      aria-label="View"
+                                    >
+                                      <IconWrapper><FiEye size={14} /></IconWrapper>
+                                    </button>
+                                  </Link>
+                                </Tooltip>
+                                {app.assignedTo && 
+                                 (app.assignedTo === currentUser.id || app.assignedToName === currentUser.name) &&
+                                 (app.backendStatus === 'Assigned' || app.backendStatus === 'InProgress') &&
+                                 app.status !== 'COMPLETE' && 
+                                 app.status !== 'DECLINED' && (
+                                  <Tooltip content="Review" showArrow variant="light">
+                                    <button
+                                      style={{
+                                        background: "none",
+                                        border: "none",
+                                        padding: "8px",
+                                        cursor: "pointer",
+                                        color: "#E8590C",
+                                        display: "flex",
+                                        alignItems: "center",
+                                        justifyContent: "center"
+                                      }}
+                                      onClick={() => handleStartReview(app.id)}
+                                      aria-label="Review"
+                                    >
+                                      <IconWrapper><FiPlay size={16} /></IconWrapper>
+                                    </button>
+                                  </Tooltip>
+                                )}
+                                {!app.assignedTo && 
+                                 app.status !== 'COMPLETE' && 
+                                 app.status !== 'DECLINED' &&
+                                 app.backendStatus !== 'Completed' &&
+                                 app.backendStatus !== 'Declined' &&
+                                 app.backendStatus !== 'Cancelled' && (
+                                  <Tooltip content="Assign" showArrow variant="light">
+                                    <button
+                                      style={{
+                                        background: "none",
+                                        border: "none",
+                                        padding: "8px",
+                                        cursor: "pointer",
+                                        color: "#E8590C",
+                                        display: "flex",
+                                        alignItems: "center",
+                                        justifyContent: "center"
+                                      }}
+                                      onClick={() => openAssignModal(app)}
+                                      aria-label="Assign"
+                                    >
+                                      <IconWrapper><FiUser size={16} /></IconWrapper>
+                                    </button>
+                                  </Tooltip>
+                                )}
+                                {app.status === 'IN PROGRESS' && (
+                                  <Tooltip content="Complete" showArrow variant="light">
+                                    <button
+                                      style={{
+                                        background: "none",
+                                        border: "none",
+                                        padding: "8px",
+                                        cursor: "pointer",
+                                        color: "#E8590C",
+                                        display: "flex",
+                                        alignItems: "center",
+                                        justifyContent: "center"
+                                      }}
+                                      onClick={() => openActionModal(app, 'complete')}
+                                      aria-label="Complete"
+                                    >
+                                      <IconWrapper><FiCheck size={16} /></IconWrapper>
+                                    </button>
+                                  </Tooltip>
+                                )}
+                                {app.status === 'RISK REVIEW' && (
+                                  <>
+                                    <Tooltip content="Approve" showArrow variant="light">
+                                      <button
+                                        style={{
+                                          background: "none",
+                                          border: "none",
+                                          padding: "8px",
+                                          cursor: "pointer",
+                                          color: "#E8590C",
+                                          display: "flex",
+                                          alignItems: "center",
+                                          justifyContent: "center"
+                                        }}
+                                        onClick={() => openActionModal(app, 'approve')}
+                                        aria-label="Approve"
+                                      >
+                                        <IconWrapper><FiCheck size={16} /></IconWrapper>
+                                      </button>
+                                    </Tooltip>
+                                    <Tooltip content="Decline" showArrow variant="light">
+                                      <button
+                                        style={{
+                                          background: "none",
+                                          border: "none",
+                                          padding: "8px",
+                                          cursor: "pointer",
+                                          color: "#E8590C",
+                                          display: "flex",
+                                          alignItems: "center",
+                                          justifyContent: "center"
+                                        }}
+                                        onClick={() => openActionModal(app, 'decline')}
+                                        aria-label="Decline"
+                                      >
+                                        <DeleteIcon />
+                                      </button>
+                                    </Tooltip>
+                                  </>
+                                )}
+                                <Tooltip content="Mark for Refresh" showArrow variant="light">
+                                  <button
+                                    style={{
+                                      background: "none",
+                                      border: "none",
+                                      padding: "8px",
+                                      cursor: "pointer",
+                                      color: "#E8590C",
+                                      display: "flex",
+                                      alignItems: "center",
+                                      justifyContent: "center"
+                                    }}
+                                    onClick={() => handleMarkForRefresh(app.id)}
+                                    aria-label="Mark for Refresh"
+                                  >
+                                    <IconWrapper><FiRefreshCw size={16} /></IconWrapper>
+                                  </button>
+                                </Tooltip>
+                              </div>
+                            );
+                          }
+                        }}
+                        emptyState={{
+                          message: "No work queue items found",
+                          content: (
+                            <VStack gap="4" py="8">
+                              <IconWrapper>
+                                <FiFile size={48} color="#9CA3AF" />
+                              </IconWrapper>
+                              <Typography fontSize="lg" fontWeight="semibold" color="gray.700">
+                                No work queue items found
+                              </Typography>
+                              <Typography fontSize="sm" color="gray.600" textAlign="center" maxW="400px">
+                                Work items will appear here once they are created
+                  </Typography>
                 </VStack>
-              </Box>
-              <Box bg="white" p="4" borderRadius="lg" boxShadow="sm" cursor="pointer" onClick={() => setStatusFilter('SUBMITTED')}>
-                <VStack gap="2">
-                  <Text fontSize="2xl" fontWeight="bold" color="blue.600">{stats.submitted}</Text>
-                  <Text fontSize="sm" color="black">Submitted</Text>
-                </VStack>
-              </Box>
-              <Box bg="white" p="4" borderRadius="lg" boxShadow="sm" cursor="pointer" onClick={() => setStatusFilter('IN PROGRESS')}>
-                <VStack gap="2">
-                  <Text fontSize="2xl" fontWeight="bold" color="orange.600">{stats.inProgress}</Text>
-                  <Text fontSize="sm" color="black">In Progress</Text>
-                </VStack>
-              </Box>
-              <Box bg="white" p="4" borderRadius="lg" boxShadow="sm" cursor="pointer" onClick={() => setStatusFilter('RISK REVIEW')}>
-                <VStack gap="2">
-                  <Text fontSize="2xl" fontWeight="bold" color="red.600">{stats.riskReview}</Text>
-                  <Text fontSize="sm" color="black">Risk Review</Text>
-                </VStack>
-              </Box>
-              <Box bg="white" p="4" borderRadius="lg" boxShadow="sm" cursor="pointer" onClick={() => setStatusFilter('COMPLETE')}>
-                <VStack gap="2">
-                  <Text fontSize="2xl" fontWeight="bold" color="green.600">{stats.complete}</Text>
-                  <Text fontSize="sm" color="black">Complete</Text>
-                </VStack>
-              </Box>
-              <Box bg="white" p="4" borderRadius="lg" boxShadow="sm" cursor="pointer" onClick={() => setStatusFilter('DECLINED')}>
-                <VStack gap="2">
-                  <Text fontSize="2xl" fontWeight="bold" color="red.600">{stats.declined}</Text>
-                  <Text fontSize="sm" color="black">Declined</Text>
-                </VStack>
-              </Box>
+                          )
+                        }}
+                      />
+                    </Box>
+                  </VStack>
+                </Container>
+              </TabsContent>
+
+              <TabsContent value="pending-approvals">
+                <Container maxW="100%" px="8" py="8" width="full">
+                  <VStack gap="6" align="stretch" width="full">
+                    {/* Error Alert */}
+                    {error && (
+                      <AlertBar
+                        status="error"
+                        title="Error loading work queue"
+                        description={error}
+                      />
+                    )}
+
+                    {/* Stats Cards - Mukuru Cards */}
+                    <SimpleGrid columns={{ base: 2, md: 3, lg: 6 }} gap="4">
+                      <Card 
+                        width="full" 
+                        bg="white"
+                        style={{ cursor: 'pointer' }}
+                        className="stats-card"
+                      >
+                        <Flex alignItems="center" justifyContent="space-between" w="100%" h="100%" mb="4">
+                          <Flex alignItems="center" gap="12px" my="auto">
+                            <Avatar.Root bg="mukuru.orange.100/20" height="36px" width="36px" display="flex" alignItems="center" justifyContent="center">
+                              <IconWrapper>
+                                <FiTrendingUp color="#F05423" height="24px" width="24px" />
+                              </IconWrapper>
+                            </Avatar.Root>
+                            <Typography color="gray.800" fontSize="16px" fontWeight="black" lineHeight="24px">
+                              Total
+                            </Typography>
+                          </Flex>
+                          <Box justifySelf="flex-end">
+                            <ChevronRightIcon color="#F05423" width="20px" height="20px" />
+                          </Box>
+                        </Flex>
+                        <Typography color="gray.800" fontFamily="Madera" fontSize="30px" fontWeight="black" letterSpacing="0%" lineHeight="40px">
+                          {stats.total.toLocaleString()}
+                        </Typography>
+                      </Card>
+                      
+                      <Card 
+                        width="full" 
+                        bg="white"
+                        style={{ cursor: 'pointer' }}
+                        className="stats-card"
+                      >
+                        <Flex alignItems="center" justifyContent="space-between" w="100%" h="100%" mb="4">
+                          <Flex alignItems="center" gap="12px" my="auto">
+                            <Avatar.Root bg="blue.100" height="36px" width="36px" display="flex" alignItems="center" justifyContent="center">
+                              <IconWrapper>
+                                <FiClockIcon color="#3182CE" height="24px" width="24px" />
+                              </IconWrapper>
+                            </Avatar.Root>
+                            <Typography color="gray.800" fontSize="16px" fontWeight="black" lineHeight="24px">
+                              Submitted
+                            </Typography>
+                          </Flex>
+                          <Box justifySelf="flex-end">
+                            <ChevronRightIcon color="#F05423" width="20px" height="20px" />
+                          </Box>
+                        </Flex>
+                        <Typography color="blue.600" fontFamily="Madera" fontSize="30px" fontWeight="black" letterSpacing="0%" lineHeight="40px">
+                          {stats.submitted.toLocaleString()}
+                        </Typography>
+                      </Card>
+                      
+                      <Card 
+                        width="full" 
+                        bg="white"
+                        style={{ cursor: 'pointer' }}
+                        className="stats-card"
+                      >
+                        <Flex alignItems="center" justifyContent="space-between" w="100%" h="100%" mb="4">
+                          <Flex alignItems="center" gap="12px" my="auto">
+                            <Avatar.Root bg="mukuru.orange.100/20" height="36px" width="36px" display="flex" alignItems="center" justifyContent="center">
+                              <IconWrapper>
+                                <FiRefreshCw color="#F05423" height="24px" width="24px" />
+                              </IconWrapper>
+                            </Avatar.Root>
+                            <Typography color="gray.800" fontSize="16px" fontWeight="black" lineHeight="24px">
+                              In Progress
+                            </Typography>
+                          </Flex>
+                          <Box justifySelf="flex-end">
+                            <ChevronRightIcon color="#F05423" width="20px" height="20px" />
+                          </Box>
+                        </Flex>
+                        <Typography color="orange.600" fontFamily="Madera" fontSize="30px" fontWeight="black" letterSpacing="0%" lineHeight="40px">
+                          {stats.inProgress.toLocaleString()}
+                        </Typography>
+                      </Card>
+                      
+                      <Card 
+                        width="full" 
+                        bg="white"
+                        style={{ cursor: 'pointer' }}
+                        className="stats-card"
+                      >
+                        <Flex alignItems="center" justifyContent="space-between" w="100%" h="100%" mb="4">
+                          <Flex alignItems="center" gap="12px" my="auto">
+                            <Avatar.Root bg="red.100" height="36px" width="36px" display="flex" alignItems="center" justifyContent="center">
+                              <IconWrapper>
+                                <FiAlertTriangle color="#E53E3E" height="24px" width="24px" />
+                              </IconWrapper>
+                            </Avatar.Root>
+                            <Typography color="gray.800" fontSize="16px" fontWeight="black" lineHeight="24px">
+                              Risk Review
+                            </Typography>
+                          </Flex>
+                          <Box justifySelf="flex-end">
+                            <ChevronRightIcon color="#F05423" width="20px" height="20px" />
+                          </Box>
+                        </Flex>
+                        <Typography color="orange.600" fontFamily="Madera" fontSize="30px" fontWeight="black" letterSpacing="0%" lineHeight="40px">
+                          {stats.riskReview.toLocaleString()}
+                        </Typography>
+                      </Card>
+                      
+                      <Card 
+                        width="full" 
+                        bg="white"
+                        style={{ cursor: 'pointer' }}
+                        className="stats-card"
+                      >
+                        <Flex alignItems="center" justifyContent="space-between" w="100%" h="100%" mb="4">
+                          <Flex alignItems="center" gap="12px" my="auto">
+                            <Avatar.Root bg="green.100" height="36px" width="36px" display="flex" alignItems="center" justifyContent="center">
+                              <IconWrapper>
+                                <FiCheckCircle color="#38A169" height="24px" width="24px" />
+                              </IconWrapper>
+                            </Avatar.Root>
+                            <Typography color="gray.800" fontSize="16px" fontWeight="black" lineHeight="24px">
+                              Complete
+                            </Typography>
+                          </Flex>
+                          <Box justifySelf="flex-end">
+                            <ChevronRightIcon color="#F05423" width="20px" height="20px" />
+                          </Box>
+                        </Flex>
+                        <Typography color="green.600" fontFamily="Madera" fontSize="30px" fontWeight="black" letterSpacing="0%" lineHeight="40px">
+                          {stats.complete.toLocaleString()}
+                        </Typography>
+                      </Card>
+                      
+                      <Card 
+                        width="full" 
+                        bg="white"
+                        style={{ cursor: 'pointer' }}
+                        className="stats-card"
+                      >
+                        <Flex alignItems="center" justifyContent="space-between" w="100%" h="100%" mb="4">
+                          <Flex alignItems="center" gap="12px" my="auto">
+                            <Avatar.Root bg="red.100" height="36px" width="36px" display="flex" alignItems="center" justifyContent="center">
+                              <IconWrapper>
+                                <FiXCircle color="#C53030" height="24px" width="24px" />
+                              </IconWrapper>
+                            </Avatar.Root>
+                            <Typography color="gray.800" fontSize="16px" fontWeight="black" lineHeight="24px">
+                              Declined
+                            </Typography>
+                          </Flex>
+                          <Box justifySelf="flex-end">
+                            <ChevronRightIcon color="#F05423" width="20px" height="20px" />
+                          </Box>
+                        </Flex>
+                        <Typography color="red.600" fontFamily="Madera" fontSize="30px" fontWeight="black" letterSpacing="0%" lineHeight="40px">
+                          {stats.declined.toLocaleString()}
+                        </Typography>
+              </Card>
             </SimpleGrid>
 
-            {/* Applications Table */}
-            <Box bg="white" borderRadius="lg" boxShadow="sm" overflow="hidden">
-              <VStack gap="0" align="stretch">
-                <HStack bg="gray.50" p="4" fontWeight="semibold" color="black" fontSize="sm">
-                  <Box flex="1">Work Item #</Box>
-                  <Box flex="2">Applicant Name</Box>
-                  <Box flex="1">Entity Type</Box>
-                  <Box flex="1">Country</Box>
-                  <Box flex="1">Status</Box>
-                  <Box flex="1">Assigned To</Box>
-                  <Box flex="1">Priority</Box>
-                  <Box flex="1">Risk</Box>
-                  <Box flex="1">Due Date</Box>
-                  <Box flex="1">Actions</Box>
-                </HStack>
-                
-                {filteredApplications.length === 0 ? (
-                  <Box p="8" textAlign="center">
-                    <Text color="black">No work queue items found</Text>
-                  </Box>
-                ) : (
-                  filteredApplications.map((app) => (
-                    <HStack 
-                      key={app.id} 
-                      p="4" 
-                      borderBottom="1px" 
-                      borderColor="gray.100"
-                      _hover={{ bg: "gray.50" }}
-                      fontSize="sm"
-                      color="black"
-                    >
-                      <Box flex="1" fontWeight="medium" color="black">
-                        {app.workItemNumber || app.id.substring(0, 8)}
+                    {/* Search Bar Above Table */}
+                    <Box mb="4" width="100%">
+                      <Box width="100%" maxW="800px">
+                        <Search
+                          placeholder="Search by Name or Email..."
+                          onSearchChange={handleSearchChange}
+                        />
                       </Box>
-                      <Box flex="2" color="black">{app.legalName}</Box>
-                      <Box flex="1" color="black">{app.entityType}</Box>
-                      <Box flex="1" color="black">{app.country}</Box>
-                      <Box flex="1">
-                        <Badge colorScheme={getStatusBgColor(app.status)} size="sm">
-                          {app.status}
-                        </Badge>
-                      </Box>
-                      <Box flex="1" color="black">
-                        {app.assignedToName || (
-                          <Text fontSize="xs" color="black" fontStyle="italic">Unassigned</Text>
-                        )}
-                      </Box>
-                      <Box flex="1">
-                        {app.priority && (
-                          <Badge colorScheme={getPriorityColor(app.priority)} size="sm">
-                            {app.priority}
-                          </Badge>
-                        )}
-                      </Box>
-                      <Box flex="1">
-                        {app.riskLevel && (
-                          <Badge colorScheme={getRiskColor(app.riskLevel)} size="sm">
-                            {app.riskLevel}
-                          </Badge>
-                        )}
-                      </Box>
-                      <Box flex="1" color="black">
-                        {app.dueDate ? (
-                          <VStack align="start" gap="0">
-                            <Text fontSize="xs" color="black">
-                              {new Date(app.dueDate).toLocaleDateString()}
-                            </Text>
-                            {app.isOverdue && (
-                              <Badge colorScheme="red" size="xs">Overdue</Badge>
-                            )}
-                          </VStack>
-                        ) : (
-                          <Text fontSize="xs" color="black">-</Text>
-                        )}
-                      </Box>
-                      <Box flex="1">
-                        <HStack gap="1">
-                          <Link href={app.applicationId ? `/applications/${app.applicationId}` : `/applications/${app.id}`}>
-                            <IconButton size="sm" variant="outline" aria-label="View" color="black">
-                              <FiEye />
-                            </IconButton>
-                          </Link>
-                          {/* Start Reviewing button - show prominently when assigned to current user and ready to review */}
-                          {app.assignedTo && 
-                           (app.assignedTo === currentUser.id || app.assignedToName === currentUser.name) &&
-                           (app.backendStatus === 'Assigned' || app.backendStatus === 'InProgress') &&
-                           app.status !== 'COMPLETE' && 
-                           app.status !== 'DECLINED' && (
-                            <Button
-                              size="sm"
-                              colorScheme="orange"
-                              onClick={() => handleStartReview(app.id)}
-                            >
-                              <HStack gap="1">
-                                <Icon as={FiPlay} />
-                                <Text>Start Reviewing</Text>
-                              </HStack>
-                            </Button>
-                          )}
-                          <Menu.Root positioning={{ placement: "bottom-end" }}>
-                            <Menu.Trigger asChild>
-                              <IconButton size="sm" variant="outline" aria-label="More actions" color="black">
-                                <FiMoreVertical />
-                              </IconButton>
-                            </Menu.Trigger>
-                            <Menu.Positioner>
-                              <Menu.Content>
-                              {!app.assignedTo && 
-                               app.status !== 'COMPLETE' && 
-                               app.status !== 'DECLINED' &&
-                               app.backendStatus !== 'Completed' &&
-                               app.backendStatus !== 'Declined' &&
-                               app.backendStatus !== 'Cancelled' && (
-                                <Menu.Item 
-                                  value="assign" 
-                                  onSelect={() => openAssignModal(app)}
-                                >
-                                  <FiUser style={{ marginRight: '8px' }} />
-                                  Assign
-                                </Menu.Item>
-                              )}
-                              {app.assignedTo && app.assignedTo !== currentUser.id && (
-                                <Menu.Item 
-                                  value="unassign" 
-                                  onSelect={() => handleUnassign(app.id)}
-                                >
-                                  <FiX style={{ marginRight: '8px' }} />
-                                  Unassign
-                                </Menu.Item>
-                              )}
-                              {/* Start Review - show if assigned and backend status is "Assigned" or "InProgress" */}
-                              {(app.backendStatus === 'Assigned' || app.backendStatus === 'InProgress') && 
-                               app.assignedTo && 
-                               (app.assignedTo === currentUser.id || app.assignedToName === currentUser.name) && (
-                                <Menu.Item 
-                                  value="start-review" 
-                                  onSelect={() => handleStartReview(app.id)}
-                                >
-                                  <FiPlay style={{ marginRight: '8px' }} />
-                                  Start Review
-                                </Menu.Item>
-                              )}
-                              {app.status === 'IN PROGRESS' && (
-                                <>
-                                  {app.requiresApproval && (
-                                    <Menu.Item 
-                                      value="submit-approval" 
-                                      onSelect={() => handleSubmitForApproval(app.id)}
+                    </Box>
+
+            {/* Work Queue DataTable */}
+            <Box 
+              bg="white" 
+              borderRadius="xl" 
+              boxShadow="0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06)"
+              border="1px solid"
+              borderColor="gray.100"
+              overflow="hidden"
+              color="gray.900"
+                      className="work-queue-table-wrapper"
+            >
+              <DataTable
+                        key={`work-queue-${viewType}-${statusFilter}-${searchTerm}-${refreshKey}`}
+                        fetchData={fetchData}
+                columns={columns as unknown as ColumnConfig<Record<string, unknown>>[]}
+                        tableId="work-queue"
+                        sortConfig={sortConfig ?? undefined}
+                        onSortChange={handleSortChange}
+                        showActions={true}
+                        actionColumn={{
+                          header: 'Actions',
+                          width: '120px',
+                          render: (row, index) => {
+                            const app = row as unknown as WorkItemApplication;
+                            return (
+                              <div style={{ display: "flex", gap: "6px", alignItems: "center", justifyContent: "flex-end" }}>
+                                <Tooltip content="View" showArrow variant="light">
+                                  <Link href={app.applicationId ? `/applications/${app.applicationId}` : `/applications/${app.id}`} style={{ textDecoration: 'none' }}>
+                                    <button
+                                      style={{
+                                        background: "none",
+                                        border: "none",
+                                        padding: "6px",
+                                        cursor: "pointer",
+                                        color: "#E8590C",
+                                        display: "flex",
+                                        alignItems: "center",
+                                        justifyContent: "center",
+                                        minWidth: "28px",
+                                        height: "28px"
+                                      }}
+                                      aria-label="View"
                                     >
-                                      <FiUserCheck style={{ marginRight: '8px' }} />
-                                      Submit for Approval
-                                    </Menu.Item>
-                                  )}
-                                  <Menu.Item 
-                                    value="complete" 
-                                    onSelect={() => openActionModal(app, 'complete')}
+                                      <IconWrapper><FiEye size={14} /></IconWrapper>
+                                    </button>
+                                  </Link>
+                                </Tooltip>
+                                {app.assignedTo && 
+                                 (app.assignedTo === currentUser.id || app.assignedToName === currentUser.name) &&
+                                 (app.backendStatus === 'Assigned' || app.backendStatus === 'InProgress') &&
+                                 app.status !== 'COMPLETE' && 
+                                 app.status !== 'DECLINED' && (
+                                  <Tooltip content="Review" showArrow variant="light">
+                                    <button
+                                      style={{
+                                        background: "none",
+                                        border: "none",
+                                        padding: "8px",
+                                        cursor: "pointer",
+                                        color: "#E8590C",
+                                        display: "flex",
+                                        alignItems: "center",
+                                        justifyContent: "center"
+                                      }}
+                                      onClick={() => handleStartReview(app.id)}
+                                      aria-label="Review"
+                                    >
+                                      <IconWrapper><FiPlay size={16} /></IconWrapper>
+                                    </button>
+                                  </Tooltip>
+                                )}
+                                {!app.assignedTo && 
+                                 app.status !== 'COMPLETE' && 
+                                 app.status !== 'DECLINED' &&
+                                 app.backendStatus !== 'Completed' &&
+                                 app.backendStatus !== 'Declined' &&
+                                 app.backendStatus !== 'Cancelled' && (
+                                  <Tooltip content="Assign" showArrow variant="light">
+                                    <button
+                                      style={{
+                                        background: "none",
+                                        border: "none",
+                                        padding: "8px",
+                                        cursor: "pointer",
+                                        color: "#E8590C",
+                                        display: "flex",
+                                        alignItems: "center",
+                                        justifyContent: "center"
+                                      }}
+                                      onClick={() => openAssignModal(app)}
+                                      aria-label="Assign"
+                                    >
+                                      <IconWrapper><FiUser size={16} /></IconWrapper>
+                                    </button>
+                                  </Tooltip>
+                                )}
+                                {app.status === 'IN PROGRESS' && (
+                                  <Tooltip content="Complete" showArrow variant="light">
+                                    <button
+                                      style={{
+                                        background: "none",
+                                        border: "none",
+                                        padding: "8px",
+                                        cursor: "pointer",
+                                        color: "#E8590C",
+                                        display: "flex",
+                                        alignItems: "center",
+                                        justifyContent: "center"
+                                      }}
+                                      onClick={() => openActionModal(app, 'complete')}
+                                      aria-label="Complete"
+                                    >
+                                      <IconWrapper><FiCheck size={16} /></IconWrapper>
+                                    </button>
+                                  </Tooltip>
+                                )}
+                                {app.status === 'RISK REVIEW' && (
+                                  <>
+                                    <Tooltip content="Approve" showArrow variant="light">
+                                      <button
+                                        style={{
+                                          background: "none",
+                                          border: "none",
+                                          padding: "8px",
+                                          cursor: "pointer",
+                                          color: "#E8590C",
+                                          display: "flex",
+                                          alignItems: "center",
+                                          justifyContent: "center"
+                                        }}
+                                        onClick={() => openActionModal(app, 'approve')}
+                                        aria-label="Approve"
+                                      >
+                                        <IconWrapper><FiCheck size={16} /></IconWrapper>
+                                      </button>
+                                    </Tooltip>
+                                    <Tooltip content="Decline" showArrow variant="light">
+                                      <button
+                                        style={{
+                                          background: "none",
+                                          border: "none",
+                                          padding: "8px",
+                                          cursor: "pointer",
+                                          color: "#E8590C",
+                                          display: "flex",
+                                          alignItems: "center",
+                                          justifyContent: "center"
+                                        }}
+                                        onClick={() => openActionModal(app, 'decline')}
+                                        aria-label="Decline"
+                                      >
+                                        <DeleteIcon />
+                                      </button>
+                                    </Tooltip>
+                                  </>
+                                )}
+                                <Tooltip content="Mark for Refresh" showArrow variant="light">
+                                  <button
+                                    style={{
+                                      background: "none",
+                                      border: "none",
+                                      padding: "8px",
+                                      cursor: "pointer",
+                                      color: "#E8590C",
+                                      display: "flex",
+                                      alignItems: "center",
+                                      justifyContent: "center"
+                                    }}
+                                    onClick={() => handleMarkForRefresh(app.id)}
+                                    aria-label="Mark for Refresh"
                                   >
-                                    <FiCheck style={{ marginRight: '8px' }} />
-                                    Complete
-                                  </Menu.Item>
-                                </>
-                              )}
-                              {app.status === 'RISK REVIEW' && (
-                                <>
-                                  <Menu.Item 
-                                    value="approve" 
-                                    onSelect={() => openActionModal(app, 'approve')}
-                                  >
-                                    <FiCheck style={{ marginRight: '8px' }} />
-                                    Approve
-                                  </Menu.Item>
-                                  <Menu.Item 
-                                    value="decline" 
-                                    onSelect={() => openActionModal(app, 'decline')}
-                                  >
-                                    <FiX style={{ marginRight: '8px' }} />
-                                    Decline
-                                  </Menu.Item>
-                                </>
-                              )}
-                              <Menu.Item 
-                                value="refresh" 
-                                onSelect={() => handleMarkForRefresh(app.id)}
-                              >
-                                <FiRefreshCw style={{ marginRight: '8px' }} />
-                                Mark for Refresh
-                              </Menu.Item>
-                              <Menu.Item 
-                                value="comments" 
-                                onSelect={() => openCommentsModal(app)}
-                              >
-                                <FiMessageSquare style={{ marginRight: '8px' }} />
-                                Comments
-                              </Menu.Item>
-                              <Menu.Item 
-                                value="history" 
-                                onSelect={() => openHistoryModal(app)}
-                              >
-                                <FiClock style={{ marginRight: '8px' }} />
-                                History
-                              </Menu.Item>
-                              </Menu.Content>
-                            </Menu.Positioner>
-                          </Menu.Root>
-                        </HStack>
-                      </Box>
-                    </HStack>
-                  ))
-                )}
-              </VStack>
+                                    <IconWrapper><FiRefreshCw size={16} /></IconWrapper>
+                                  </button>
+                                </Tooltip>
+                              </div>
+                            );
+                          }
+                        }}
+                emptyState={{
+                          message: "No work queue items found",
+                  content: (
+                    <VStack gap="4" py="8">
+                      <IconWrapper>
+                        <FiFile size={48} color="#9CA3AF" />
+                      </IconWrapper>
+                      <Typography fontSize="lg" fontWeight="semibold" color="gray.700">
+                        No work queue items found
+                      </Typography>
+                      <Typography fontSize="sm" color="gray.600" textAlign="center" maxW="400px">
+                                Work items will appear here once they are created
+                      </Typography>
+                    </VStack>
+                  )
+                }}
+              />
             </Box>
           </VStack>
         </Container>
+              </TabsContent>
+            </TabsRoot>
+        </Box>
       </Box>
 
       {/* Assign Modal */}
-      <Dialog.Root open={assignModalOpen} onOpenChange={(e) => setAssignModalOpen(e.open)}>
-        <Dialog.Backdrop bg="blackAlpha.600" backdropFilter="blur(4px)" />
-        <Dialog.Positioner>
-          <Dialog.Content
-            maxW="500px"
-            borderRadius="xl"
-            boxShadow="2xl"
-            border="1px"
-            borderColor="gray.200"
-          >
-            <Dialog.Header pb="4" borderBottom="1px" borderColor="gray.100">
+      <Modal
+        isOpen={assignModalOpen}
+        onClose={() => setAssignModalOpen(false)}
+        title="Assign Work Item"
+        size="small"
+        closeOnBackdropClick={true}
+        closeOnEsc={true}
+      >
+        <ModalHeader>
               <HStack gap="3" align="center" mb="1">
                 <Box
                   p="2"
                   borderRadius="lg"
+                  _focus={{ boxShadow: 'none', outline: 'none', border: 'none', borderWidth: 0, borderStyle: 'none', borderColor: 'transparent' }}
+                  _focusVisible={{ boxShadow: 'none', outline: 'none', border: 'none', borderWidth: 0, borderStyle: 'none', borderColor: 'transparent' }}
+                  _active={{ boxShadow: 'none', outline: 'none', border: 'none', borderWidth: 0, borderStyle: 'none', borderColor: 'transparent' }}
+                  _hover={{ boxShadow: 'none', outline: 'none', border: 'none', borderWidth: 0, borderStyle: 'none', borderColor: 'transparent' }}
                   bgGradient="linear(to-br, orange.100, orange.200)"
                   display="flex"
                   alignItems="center"
                   justifyContent="center"
                 >
-                  <Icon as={FiUserCheck} boxSize="4" color="orange.600" />
+              <IconWrapper><FiUserCheck size={16} color="#DD6B20" /></IconWrapper>
                 </Box>
                 <VStack align="start" gap="0">
-                  <Dialog.Title fontSize="lg" fontWeight="700" color="gray.900">
+              <Typography fontSize="lg" fontWeight="700" color="gray.900">
                     Assign Work Item
-                  </Dialog.Title>
-                  <Dialog.Description fontSize="sm" color="gray.600" mt="0.5">
+              </Typography>
+              <Typography fontSize="sm" color="gray.600" mt="0.5">
                     Assign this work item to a user
-                  </Dialog.Description>
+              </Typography>
                 </VStack>
               </HStack>
-            </Dialog.Header>
-            <Dialog.Body py="6">
+        </ModalHeader>
+        <ModalBody>
               <VStack gap="5" align="stretch">
-                <Text fontSize="sm" color="gray.700">
+                <Typography fontSize="sm" color="gray.700">
                   Assign work item: <strong>{selectedApp?.workItemNumber || selectedApp?.id}</strong>
-                </Text>
+                </Typography>
                 <Field.Root>
                   <Field.Label fontSize="sm" fontWeight="600" color="gray.700" mb="2">
                     Assign to
                   </Field.Label>
-                  <Checkbox.Root
+              <Checkbox
                     checked={assignToSelf}
-                    onCheckedChange={(e) => {
-                      setAssignToSelf(e.checked as boolean);
-                      if (e.checked) {
+                onCheckedChange={(details) => {
+                  setAssignToSelf(details.checked === true);
+                  if (details.checked === true) {
                         setAssignToUserId(currentUser.id);
                         setAssignToUserName(currentUser.name);
                       }
                     }}
                   >
-                    <Checkbox.Control>
-                      <Checkbox.Indicator />
-                    </Checkbox.Control>
-                    <Checkbox.Label fontSize="sm" color="gray.700">
                       Assign to me ({currentUser.name})
-                    </Checkbox.Label>
-                  </Checkbox.Root>
+              </Checkbox>
                 </Field.Root>
                 {!assignToSelf && (
-                  <Field.Root>
-                    <Field.Label fontSize="sm" fontWeight="600" color="gray.700" mb="2">
-                      User ID
-                    </Field.Label>
                     <Input
+                label="User ID"
                       value={assignToUserId}
-                      onChange={(e) => setAssignToUserId(e.target.value)}
+                      onChange={(e: React.ChangeEvent<HTMLInputElement>) => setAssignToUserId(e.target.value)}
                       placeholder="Enter user ID"
-                      borderRadius="md"
-                      borderWidth="1.5px"
-                      borderColor="gray.300"
-                      fontSize="sm"
-                      color="gray.900"
-                      _focus={{
-                        borderColor: "orange.400",
-                        boxShadow: "0 0 0 1px orange.400"
-                      }}
-                    />
-                  </Field.Root>
+              />
                 )}
                 {!assignToSelf && (
-                  <Field.Root>
-                    <Field.Label fontSize="sm" fontWeight="600" color="gray.700" mb="2">
-                      User Name
-                    </Field.Label>
                     <Input
+                label="User Name"
                       value={assignToUserName}
-                      onChange={(e) => setAssignToUserName(e.target.value)}
+                      onChange={(e: React.ChangeEvent<HTMLInputElement>) => setAssignToUserName(e.target.value)}
                       placeholder="Enter user name"
-                      borderRadius="md"
-                      borderWidth="1.5px"
-                      borderColor="gray.300"
-                      fontSize="sm"
-                      color="gray.900"
-                      _focus={{
-                        borderColor: "orange.400",
-                        boxShadow: "0 0 0 1px orange.400"
-                      }}
-                    />
-                  </Field.Root>
+              />
                 )}
               </VStack>
-            </Dialog.Body>
-            <Dialog.Footer pt="4" borderTop="1px" borderColor="gray.100">
+        </ModalBody>
+        <ModalFooter>
               <HStack gap="3" justify="flex-end" w="full">
                 <Button
                   type="button"
-                  variant="outline"
-                  onClick={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    setAssignModalOpen(false);
-                  }}
-                  borderRadius="md"
-                  px="4"
-                  py="2"
-                  fontSize="sm"
-                  fontWeight="600"
-                  borderWidth="1.5px"
-                  _hover={{
-                    bg: "gray.50",
-                    borderColor: "gray.400"
-                  }}
+                      variant="secondary"
+              size="sm"
+              onClick={() => setAssignModalOpen(false)}
                 >
                   Cancel
                 </Button>
                 <Button
                   type="button"
-                  colorScheme="orange"
-                  bgGradient="linear(to-r, orange.500, orange.600)"
-                  _hover={{
-                    bgGradient: "linear(to-r, orange.600, orange.700)",
-                    boxShadow: "md"
-                  }}
-                  onClick={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    handleAssign();
-                  }}
-                  borderRadius="md"
-                  px="4"
-                  py="2"
-                  fontSize="sm"
-                  fontWeight="600"
-                  boxShadow="sm"
+                      variant="primary"
+                      className="mukuru-primary-button"
+              size="sm"
+              onClick={handleAssign}
                 >
                   Assign
                 </Button>
               </HStack>
-            </Dialog.Footer>
-          </Dialog.Content>
-        </Dialog.Positioner>
-      </Dialog.Root>
+        </ModalFooter>
+      </Modal>
 
       {/* Action Modal */}
-      <Dialog.Root open={actionModalOpen} onOpenChange={(e: { open: boolean }) => setActionModalOpen(e.open)}>
-        <Dialog.Backdrop bg="blackAlpha.600" backdropFilter="blur(4px)" />
-        <Dialog.Positioner>
-          <Dialog.Content
-            maxW="500px"
-            borderRadius="xl"
-            boxShadow="2xl"
-            border="1px"
-            borderColor="gray.200"
-          >
-            <Dialog.Header pb="4" borderBottom="1px" borderColor="gray.100">
-              <Dialog.Title fontSize="lg" fontWeight="700" color="gray.900">
+      <Modal
+        isOpen={actionModalOpen}
+        onClose={() => setActionModalOpen(false)}
+        title={
+          actionType === 'start-review' ? 'Start Review' :
+          actionType === 'approve' ? 'Approve Work Item' :
+          actionType === 'decline' ? 'Decline Work Item' :
+          actionType === 'complete' ? 'Complete Work Item' : ''
+        }
+        size="small"
+        closeOnBackdropClick={true}
+        closeOnEsc={true}
+      >
+        <ModalHeader>
+          <Typography fontSize="lg" fontWeight="700" color="gray.900">
                 {actionType === 'start-review' && 'Start Review'}
                 {actionType === 'approve' && 'Approve Work Item'}
                 {actionType === 'decline' && 'Decline Work Item'}
                 {actionType === 'complete' && 'Complete Work Item'}
-              </Dialog.Title>
-            </Dialog.Header>
-            <Dialog.Body py="6">
+          </Typography>
+        </ModalHeader>
+        <ModalBody>
               <VStack gap="5" align="stretch">
-                <Text fontSize="sm" color="gray.700">
+                <Typography fontSize="sm" color="gray.700">
                   Work Item: <strong>{selectedApp?.workItemNumber || selectedApp?.id}</strong>
-                </Text>
+                </Typography>
                 {actionType === 'decline' && (
                   <Field.Root required>
                     <Field.Label fontSize="sm" fontWeight="600" color="gray.700" mb="2">
@@ -1288,7 +2480,7 @@ export default function WorkQueuePage() {
                 {(actionType === 'approve' || actionType === 'complete') && (
                   <Field.Root>
                     <Field.Label fontSize="sm" fontWeight="600" color="gray.700" mb="2">
-                      Notes <Text as="span" color="gray.400" fontWeight="400">(Optional)</Text>
+                      Notes <Typography as="span" fontSize="sm" color="gray.400" fontWeight="400">(Optional)</Typography>
                     </Field.Label>
                     <Textarea
                       value={actionNotes}
@@ -1308,48 +2500,21 @@ export default function WorkQueuePage() {
                   </Field.Root>
                 )}
               </VStack>
-            </Dialog.Body>
-            <Dialog.Footer pt="4" borderTop="1px" borderColor="gray.100">
+        </ModalBody>
+        <ModalFooter>
               <HStack gap="3" justify="flex-end" w="full">
                 <Button
-                  variant="outline"
+                  variant="secondary"
+              size="sm"
                   onClick={() => setActionModalOpen(false)}
-                  borderRadius="md"
-                  px="4"
-                  py="2"
-                  fontSize="sm"
-                  fontWeight="600"
-                  borderWidth="1.5px"
-                  _hover={{
-                    bg: "gray.50",
-                    borderColor: "gray.400"
-                  }}
                 >
                   Cancel
                 </Button>
                 <Button
-                  colorScheme={actionType === 'decline' ? 'red' : 'green'}
-                  bgGradient={actionType === 'decline' 
-                    ? "linear(to-r, red.500, red.600)"
-                    : "linear(to-r, green.500, green.600)"}
-                  _hover={{
-                    bgGradient: actionType === 'decline'
-                      ? "linear(to-r, red.600, red.700)"
-                      : "linear(to-r, green.600, green.700)",
-                    boxShadow: "md"
-                  }}
+              variant="primary"
+              size="sm"
                   onClick={handleAction}
                   disabled={actionType === 'decline' && !declineReason.trim()}
-                  borderRadius="md"
-                  px="4"
-                  py="2"
-                  fontSize="sm"
-                  fontWeight="600"
-                  boxShadow="sm"
-                  _disabled={{
-                    opacity: 0.5,
-                    cursor: "not-allowed"
-                  }}
                 >
                   {actionType === 'start-review' && 'Start Review'}
                   {actionType === 'approve' && 'Approve'}
@@ -1357,60 +2522,59 @@ export default function WorkQueuePage() {
                   {actionType === 'complete' && 'Complete'}
                 </Button>
               </HStack>
-            </Dialog.Footer>
-          </Dialog.Content>
-        </Dialog.Positioner>
-      </Dialog.Root>
+        </ModalFooter>
+      </Modal>
 
       {/* Comments Modal */}
-      <Dialog.Root open={commentsModalOpen} onOpenChange={(e: { open: boolean }) => setCommentsModalOpen(e.open)}>
-        <Dialog.Backdrop bg="blackAlpha.600" backdropFilter="blur(4px)" />
-        <Dialog.Positioner>
-          <Dialog.Content
-            maxW="2xl"
-            borderRadius="xl"
-            boxShadow="2xl"
-            border="1px"
-            borderColor="gray.200"
-          >
-            <Dialog.Header pb="4" borderBottom="1px" borderColor="gray.100">
+      <Modal
+        isOpen={commentsModalOpen}
+        onClose={() => setCommentsModalOpen(false)}
+        size="large"
+        closeOnBackdropClick={true}
+        closeOnEsc={true}
+      >
+        <ModalHeader>
               <HStack gap="3" align="center" mb="1">
                 <Box
                   p="2"
                   borderRadius="lg"
+                  _focus={{ boxShadow: 'none', outline: 'none', border: 'none', borderWidth: 0, borderStyle: 'none', borderColor: 'transparent' }}
+                  _focusVisible={{ boxShadow: 'none', outline: 'none', border: 'none', borderWidth: 0, borderStyle: 'none', borderColor: 'transparent' }}
+                  _active={{ boxShadow: 'none', outline: 'none', border: 'none', borderWidth: 0, borderStyle: 'none', borderColor: 'transparent' }}
+                  _hover={{ boxShadow: 'none', outline: 'none', border: 'none', borderWidth: 0, borderStyle: 'none', borderColor: 'transparent' }}
                   bgGradient="linear(to-br, blue.100, blue.200)"
                   display="flex"
                   alignItems="center"
                   justifyContent="center"
                 >
-                  <Icon as={FiMessageSquare} boxSize="4" color="blue.600" />
+              <IconWrapper><FiMessageSquare size={16} color="#3182CE" /></IconWrapper>
                 </Box>
                 <VStack align="start" gap="0">
-                  <Dialog.Title fontSize="lg" fontWeight="700" color="gray.900">
+              <Typography fontSize="lg" fontWeight="700" color="gray.900">
                     Comments - {selectedApp?.workItemNumber || selectedApp?.id}
-                  </Dialog.Title>
-                  <Dialog.Description fontSize="sm" color="gray.600" mt="0.5">
+              </Typography>
+              <Typography fontSize="sm" color="gray.600" mt="0.5">
                     View and add comments for this work item
-                  </Dialog.Description>
+              </Typography>
                 </VStack>
               </HStack>
-            </Dialog.Header>
-            <Dialog.Body py="6">
+        </ModalHeader>
+        <ModalBody>
               <VStack gap="5" align="stretch">
                 <Box maxH="400px" overflowY="auto">
                   {comments.length === 0 ? (
-                    <Text color="gray.600" fontSize="sm">No comments yet</Text>
+                        <Typography color="gray.600" fontSize="sm">No comments yet</Typography>
                   ) : (
                     <VStack gap="3" align="stretch">
                       {comments.map((comment: any, idx: number) => (
                         <Box key={idx} p="3" bg="gray.50" borderRadius="md">
                           <HStack justify="space-between" mb="2">
-                            <Text fontWeight="semibold" fontSize="sm" color="gray.900">{comment.createdBy || 'Unknown'}</Text>
-                            <Text fontSize="xs" color="gray.600">
+                                <Typography fontWeight="semibold" fontSize="sm" color="gray.900">{comment.createdBy || 'Unknown'}</Typography>
+                                <Typography fontSize="xs" color="gray.600">
                               {new Date(comment.createdAt).toLocaleString()}
-                            </Text>
+                                </Typography>
                           </HStack>
-                          <Text fontSize="sm" color="gray.700">{comment.text}</Text>
+                              <Typography fontSize="sm" color="gray.700">{comment.text}</Typography>
                         </Box>
                       ))}
                     </VStack>
@@ -1437,111 +2601,74 @@ export default function WorkQueuePage() {
                   />
                 </Field.Root>
                 <Button
-                  colorScheme="orange"
-                  bgGradient="linear(to-r, orange.500, orange.600)"
-                  _hover={{
-                    bgGradient: "linear(to-r, orange.600, orange.700)",
-                    boxShadow: "md"
-                  }}
+                      variant="primary"
+                      className="mukuru-primary-button"
+                  size="sm"
                   onClick={handleAddComment}
                   disabled={!newComment.trim()}
-                  borderRadius="md"
-                  px="4"
-                  py="2"
-                  fontSize="sm"
-                  fontWeight="600"
-                  boxShadow="sm"
-                  _disabled={{
-                    opacity: 0.5,
-                    cursor: "not-allowed"
-                  }}
                 >
                   Add Comment
                 </Button>
               </VStack>
-            </Dialog.Body>
-            <Dialog.Footer pt="4" borderTop="1px" borderColor="gray.100">
+        </ModalBody>
+        <ModalFooter>
               <Button
-                variant="outline"
+                    variant="secondary"
+            size="sm"
                 onClick={() => setCommentsModalOpen(false)}
-                borderRadius="md"
-                px="4"
-                py="2"
-                fontSize="sm"
-                fontWeight="600"
-                borderWidth="1.5px"
-                _hover={{
-                  bg: "gray.50",
-                  borderColor: "gray.400"
-                }}
               >
                 Close
               </Button>
-            </Dialog.Footer>
-          </Dialog.Content>
-        </Dialog.Positioner>
-      </Dialog.Root>
+        </ModalFooter>
+      </Modal>
 
       {/* History Modal */}
-      <Dialog.Root open={historyModalOpen} onOpenChange={(e: { open: boolean }) => setHistoryModalOpen(e.open)}>
-        <Dialog.Backdrop bg="blackAlpha.600" backdropFilter="blur(4px)" />
-        <Dialog.Positioner>
-          <Dialog.Content
-            maxW="2xl"
-            borderRadius="xl"
-            boxShadow="2xl"
-            border="1px"
-            borderColor="gray.200"
-          >
-            <Dialog.Header pb="4" borderBottom="1px" borderColor="gray.100">
-              <Dialog.Title fontSize="lg" fontWeight="700" color="gray.900">
+      <Modal
+        isOpen={historyModalOpen}
+        onClose={() => setHistoryModalOpen(false)}
+        title={`History - ${selectedApp?.workItemNumber || selectedApp?.id}`}
+        size="large"
+        closeOnBackdropClick={true}
+        closeOnEsc={true}
+      >
+        <ModalHeader>
+          <Typography fontSize="lg" fontWeight="700" color="gray.900">
                 History - {selectedApp?.workItemNumber || selectedApp?.id}
-              </Dialog.Title>
-            </Dialog.Header>
-            <Dialog.Body py="6">
+          </Typography>
+        </ModalHeader>
+        <ModalBody>
               <Box maxH="500px" overflowY="auto">
                 {history.length === 0 ? (
-                    <Text color="gray.600" fontSize="sm">No history available</Text>
+                        <Typography color="gray.600" fontSize="sm">No history available</Typography>
                 ) : (
                   <VStack gap="2" align="stretch">
                     {history.map((entry: any, idx: number) => (
                       <Box key={idx} p="3" borderLeft="3px" borderColor="orange.500" bg="gray.50" borderRadius="md">
                         <HStack justify="space-between" mb="1">
-                          <Text fontWeight="semibold" fontSize="sm" color="gray.900">{entry.action || entry.description}</Text>
-                          <Text fontSize="xs" color="gray.600">
+                              <Typography fontWeight="semibold" fontSize="sm" color="gray.900">{entry.action || entry.description}</Typography>
+                              <Typography fontSize="xs" color="gray.600">
                             {new Date(entry.timestamp || entry.createdAt).toLocaleString()}
-                          </Text>
+                              </Typography>
                         </HStack>
                         {entry.performedBy && (
-                          <Text fontSize="xs" color="gray.600">By: {entry.performedBy}</Text>
+                              <Typography fontSize="xs" color="gray.600">By: {entry.performedBy}</Typography>
                         )}
                       </Box>
                     ))}
                   </VStack>
                 )}
               </Box>
-            </Dialog.Body>
-            <Dialog.Footer pt="4" borderTop="1px" borderColor="gray.100">
+        </ModalBody>
+        <ModalFooter>
               <Button
-                variant="outline"
+                    variant="secondary"
+            size="sm"
                 onClick={() => setHistoryModalOpen(false)}
-                borderRadius="md"
-                px="4"
-                py="2"
-                fontSize="sm"
-                fontWeight="600"
-                borderWidth="1.5px"
-                _hover={{
-                  bg: "gray.50",
-                  borderColor: "gray.400"
-                }}
               >
                 Close
               </Button>
-            </Dialog.Footer>
-          </Dialog.Content>
-        </Dialog.Positioner>
-      </Dialog.Root>
+        </ModalFooter>
+      </Modal>
 
       {/* Toaster is rendered automatically by Chakra UI */}
     </Flex>

@@ -120,8 +120,24 @@ async function request<T>(endpoint: string, options?: RequestInit): Promise<T> {
     });
 
     if (!response.ok) {
-      const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
-      throw new Error(errorData.error || `API request failed: ${response.status} ${response.statusText}`);
+      let errorData: any = { error: 'Unknown error' };
+      try {
+        const text = await response.text();
+        try {
+          errorData = JSON.parse(text);
+        } catch {
+          errorData = { error: text || `HTTP ${response.status}: ${response.statusText}` };
+        }
+      } catch {
+        errorData = { error: `HTTP ${response.status}: ${response.statusText}` };
+      }
+      
+      // Provide more detailed error message
+      const errorMessage = errorData.details || errorData.message || errorData.error || `API request failed: ${response.status} ${response.statusText}`;
+      const error = new Error(errorMessage);
+      (error as any).status = response.status;
+      (error as any).details = errorData;
+      throw error;
     }
 
     return response.json();
@@ -158,13 +174,19 @@ export const dashboardApi = {
    * Get entity type distribution
    */
   async getEntityTypeDistribution(partnerId?: string): Promise<EntityTypeDistribution[]> {
-    return request<EntityTypeDistribution[]>(`/api/entity-type-distribution${partnerId ? `?partnerId=${partnerId}` : ''}`);
+    const result = await request<Array<{ name: string; value: number }>>(`/api/entity-type-distribution${partnerId ? `?partnerId=${partnerId}` : ''}`);
+    // Map backend format { name, value } to frontend format { type, count }
+    return result.map(item => ({
+      type: item.name,
+      count: item.value
+    }));
   },
 
   /**
    * Get application trends (last 7 days)
    */
   async getApplicationTrends(days: number = 7, partnerId?: string): Promise<DailyTrend[]> {
+    // The trends API route already handles the mapping, so we can call it directly
     return request<DailyTrend[]>(`/api/trends?days=${days}${partnerId ? `&partnerId=${partnerId}` : ''}`);
   },
 

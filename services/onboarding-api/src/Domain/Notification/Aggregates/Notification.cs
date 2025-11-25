@@ -5,7 +5,7 @@ namespace OnboardingApi.Domain.Notification.Aggregates;
 
 public class Notification
 {
-    private readonly List<INotification> _domainEvents = new();
+    private readonly List<IDomainEvent> _domainEvents = new();
 
     public NotificationId Id { get; private set; }
     public NotificationType Type { get; private set; }
@@ -27,7 +27,7 @@ public class Notification
     public string? ErrorMessage { get; private set; }
     public int RetryCount { get; private set; }
     public int MaxRetries { get; private set; } = 3;
-    public IReadOnlyList<INotification> DomainEvents => _domainEvents.AsReadOnly();
+    public IReadOnlyList<IDomainEvent> DomainEvents => _domainEvents.AsReadOnly();
 
     private Notification() { } // EF Core
 
@@ -152,7 +152,7 @@ public class Notification
 
     public bool IsExpired => ScheduledAt.HasValue && ScheduledAt.Value.AddDays(7) < DateTime.UtcNow;
 
-    private void AddDomainEvent(INotification domainEvent)
+    private void AddDomainEvent(IDomainEvent domainEvent)
     {
         _domainEvents.Add(domainEvent);
     }

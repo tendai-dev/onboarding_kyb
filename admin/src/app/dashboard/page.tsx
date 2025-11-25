@@ -4,32 +4,62 @@ import {
   Box, 
   VStack, 
   HStack,
-  Text,
   SimpleGrid,
   Flex,
   Spinner,
-  Icon
+  Avatar
 } from "@chakra-ui/react";
+import { Typography, Card, AlertBar, IconWrapper, ChevronRightIcon, DocumentIcon, WarningIcon, AppIcon } from "@/lib/mukuruImports";
 import { useState, useEffect } from "react";
 import { useSession } from "next-auth/react";
 import AdminSidebar from "../../components/AdminSidebar";
+import PortalHeader from "../../components/PortalHeader";
+import { useSidebar } from "../../contexts/SidebarContext";
 import { 
   FiFileText, 
   FiClock, 
   FiAlertTriangle, 
   FiCheckCircle, 
   FiXCircle,
-  FiFile
+  FiFile,
+  FiTrendingUp,
+  FiBarChart,
+  FiZap
 } from "react-icons/fi";
-import { EntityTypeChart, ApplicationTrendsChart, ChartLegend } from "../../components/Charts";
-import dashboardApi, { DashboardStats, EntityTypeDistribution, DailyTrend } from "../../lib/dashboardApi";
+import { EntityTypeChart, ApplicationTrendsChart, ChartLegend, StatusPieChart } from "../../components/Charts";
+import { fetchDashboardStats, fetchEntityTypeDistribution, fetchApplicationTrends, fetchDashboardProjection, DashboardStats, EntityTypeDistribution, DailyTrend } from "../../services";
+import { logger } from "../../lib/logger";
 
 export default function AdminDashboard() {
-  const { data: session } = useSession();
+  const { data: session, status } = useSession();
+  const { condensed } = useSidebar();
   
-  // Get user's first name from session
-  const userName = session?.user?.name || "User";
-  const firstName = userName.split(" ")[0];
+  // Debug session in development
+  useEffect(() => {
+    if (process.env.NODE_ENV === 'development' && session) {
+      logger.debug('[Dashboard] Session', {
+        hasSession: !!session,
+        hasUser: !!session.user,
+        userName: session.user?.name,
+        userEmail: session.user?.email,
+        userId: session.user?.id,
+        status,
+      });
+    }
+  }, [session, status]);
+  
+  // Get user's name from session - prioritize name, fallback to email
+  const userName = session?.user?.name || session?.user?.email || "Admin";
+  // Extract first name - if email, get part before @ and split by dot, otherwise get first word
+  let firstName = "admin";
+  if (userName.includes("@")) {
+    // Email format: extract part before @, then get first part before dot
+    const emailPart = userName.split("@")[0];
+    firstName = emailPart.split(".")[0]?.toLowerCase() || emailPart.toLowerCase();
+  } else {
+    // Name format: get first word
+    firstName = userName.split(" ")[0]?.toLowerCase() || "admin";
+  }
   
   // State for dashboard data
   const [dashboardStats, setDashboardStats] = useState<DashboardStats>({
@@ -47,6 +77,7 @@ export default function AdminDashboard() {
   const [trendsData, setTrendsData] = useState<DailyTrend[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [fullDashboard, setFullDashboard] = useState<any>(null);
 
   useEffect(() => {
     loadDashboardData();
@@ -57,363 +88,472 @@ export default function AdminDashboard() {
       setLoading(true);
       setError(null);
       
-      // Fetch all dashboard data in parallel
-      const [stats, entityTypes, trends] = await Promise.all([
-        dashboardApi.getDashboardStats(),
-        dashboardApi.getEntityTypeDistribution(),
-        dashboardApi.getApplicationTrends(7)
+      // Fetch all dashboard data in parallel with better error handling
+      const [statsResult, entityTypesResult, trendsResult, fullDataResult] = await Promise.allSettled([
+        fetchDashboardStats(),
+        fetchEntityTypeDistribution(),
+        fetchApplicationTrends(7),
+        fetchDashboardProjection()
       ]);
       
-      setDashboardStats(stats);
-      setEntityTypeData(entityTypes);
-      setTrendsData(trends);
+      // Handle stats
+      if (statsResult.status === 'fulfilled') {
+        setDashboardStats(statsResult.value);
+      } else {
+        logger.error(statsResult.reason, 'Failed to load dashboard stats', {
+          tags: { error_type: 'dashboard_stats_error' }
+        });
+        setError(statsResult.reason?.message || 'Failed to load dashboard statistics');
+      }
+      
+      // Handle entity types
+      if (entityTypesResult.status === 'fulfilled') {
+        setEntityTypeData(entityTypesResult.value);
+      } else {
+        logger.error(entityTypesResult.reason, 'Failed to load entity types', {
+          tags: { error_type: 'entity_types_error' }
+        });
+        // Don't set error for this, just log it
+      }
+      
+      // Handle trends
+      if (trendsResult.status === 'fulfilled') {
+        setTrendsData(trendsResult.value);
+      } else {
+        logger.error(trendsResult.reason, 'Failed to load trends', {
+          tags: { error_type: 'trends_error' }
+        });
+        // Don't set error for this, just log it
+      }
+      
+      // Handle full dashboard data
+      if (fullDataResult.status === 'fulfilled') {
+        setFullDashboard(fullDataResult.value);
+      } else {
+        console.error('Failed to load full dashboard:', fullDataResult.reason);
+        // Don't set error for this, just log it
+      }
     } catch (err) {
       console.error('Failed to load dashboard data:', err);
-      setError(err instanceof Error ? err.message : 'Failed to load dashboard data');
+      setError(err instanceof Error ? err.message : 'Failed to load dashboard data. Please ensure the backend services are running.');
     } finally {
       setLoading(false);
     }
   };
 
-  if (loading) {
+  // Prepare pie chart data
+  const pieChartData = [
+    { name: 'Pending Review', value: dashboardStats.pendingReview, color: '#3182ce' },
+    { name: 'Completed', value: dashboardStats.completed, color: '#38a169' },
+    { name: 'Incomplete', value: dashboardStats.incomplete, color: '#dd6b20' },
+    { name: 'Risk Review', value: dashboardStats.riskReview, color: '#e53e3e' },
+    { name: 'Declined', value: dashboardStats.declined, color: '#718096' }
+  ].filter(item => item.value > 0);
+
+  // Don't render until session is loaded to prevent hydration mismatch
+  if (status === 'loading') {
     return (
       <Flex minH="100vh" bg="gray.50">
         <AdminSidebar />
-        <Box flex="1" ml="240px" display="flex" alignItems="center" justifyContent="center">
+        <PortalHeader />
+        <Box flex="1" ml={condensed ? "72px" : "280px"} mt="90px" display="flex" alignItems="center" justifyContent="center" transition="margin-left 0.3s ease">
           <VStack gap="4">
             <Spinner size="xl" color="orange.500" />
-            <Text color="gray.600">Loading dashboard data...</Text>
+            <Typography color="gray.600">Loading session...</Typography>
           </VStack>
         </Box>
       </Flex>
     );
   }
 
+  if (loading) {
+    return (
+      <Flex minH="100vh" bg="gray.50">
+        <AdminSidebar />
+        <PortalHeader />
+        <Box flex="1" ml={condensed ? "72px" : "280px"} mt="90px" display="flex" alignItems="center" justifyContent="center" transition="margin-left 0.3s ease">
+          <VStack gap="4">
+            <Spinner size="xl" color="orange.500" />
+            <Typography color="gray.600">Loading dashboard...</Typography>
+          </VStack>
+        </Box>
+      </Flex>
+    );
+  }
 
   return (
     <Flex minH="100vh" bg="gray.50">
-      {/* Left Sidebar */}
       <AdminSidebar />
+      <PortalHeader />
 
       {/* Main Content */}
-      <Box flex="1" ml="240px">
-        {/* Top Header */}
-       
-
-        {/* Main Content Area */}
-        <Box p="6" bg="gray.50">
-        <VStack gap="6" align="stretch">
+      <Box 
+        flex="1" 
+        ml={condensed ? "72px" : "280px"}
+        mt="90px"
+        minH="calc(100vh - 90px)"
+        width={condensed ? "calc(100% - 72px)" : "calc(100% - 280px)"}
+        bg="gray.50"
+        overflowX="hidden"
+        transition="margin-left 0.3s ease, width 0.3s ease"
+      >
+        <Box width="full" px="6" py="8">
+          <VStack gap="8" align="stretch" width="full">
             {/* Error Message */}
             {error && (
-              <Box
-                p="4"
-                bg="red.50"
-                border="1px"
-                borderColor="red.200"
-                borderRadius="md"
-                color="red.700"
-              >
-                <HStack gap="2">
-                  <Icon as={FiAlertTriangle} boxSize="5" />
-                  <Text fontWeight="medium">{error}</Text>
-                </HStack>
-              </Box>
+              <AlertBar
+                status="error"
+                title="API request failed"
+                description={error}
+              />
             )}
             
-            {/* Welcome Section */}
-          <Box>
-              <VStack align="start" gap="2" mb="6">
-                <Text fontSize="2xl" fontWeight="bold" color="gray.800">Welcome, {firstName}</Text>
-                <Text fontSize="md" color="gray.600">Monitor KYB applications and manage compliance workflows</Text>
+            {/* Welcome Section - matching screenshot exactly */}
+            <Box mb="6">
+              <VStack align="start" gap="2">
+                <Typography fontSize="3xl" fontWeight="bold" color="#111827">
+                  Hello {firstName}
+                </Typography>
+                <Typography fontSize="md" color="#374151">
+                  Here you'll find everything you need to manage your services, teams and partners
+                </Typography>
               </VStack>
             </Box>
 
             {/* Key Metrics Cards */}
-            <Box>
-              <SimpleGrid columns={{ base: 1, md: 2, lg: 6 }} gap="4">
-                <Box 
-                  bg="white" 
-                  p="4" 
-                  borderRadius="lg" 
-                  boxShadow="0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06)" 
-                  border="1px" 
-                  borderColor="gray.200"
-                  _hover={{ boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)" }}
-                  transition="all 0.2s"
-                >
-                  <VStack align="start" gap="3">
-                    <HStack gap="3" align="center" width="full">
-                      <Text fontSize="sm" fontWeight="medium" color="gray.700" whiteSpace="nowrap">Total Applications</Text>
-                      <FiFileText size={16} color="#6B7280" />
-                    </HStack>
-                    <Text fontSize="2xl" fontWeight="bold" color="gray.900">{dashboardStats.totalApplications}</Text>
-                  </VStack>
-                </Box>
-              
-                <Box 
-                  bg="white" 
-                  p="4" 
-                  borderRadius="lg" 
-                  boxShadow="0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06)" 
-                  border="1px" 
-                  borderColor="gray.200"
-                  _hover={{ boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)" }}
-                  transition="all 0.2s"
-                >
-                  <VStack align="start" gap="3">
-                    <HStack gap="3" align="center" width="full">
-                      <Text fontSize="sm" fontWeight="medium" color="gray.700" whiteSpace="nowrap">Pending Review</Text>
-                      <FiClock size={16} color="#3182ce" />
-                    </HStack>
-                    <Text fontSize="2xl" fontWeight="bold" color="blue.500">{dashboardStats.pendingReview}</Text>
-                  </VStack>
-                </Box>
+            <Box width="full">
+              <SimpleGrid columns={{ base: 1, sm: 2, md: 3, lg: 4, xl: 6 }} gap="4" width="full" mb="6">
+                <Card width="full" bg="white">
+                  <Flex alignItems="center" justifyContent="space-between" w="100%" h="100%" mb="4">
+                    <Flex alignItems="center" gap="12px" my="auto">
+                      <Avatar.Root bg="mukuru.orange.100/20" height="36px" width="36px" display="flex" alignItems="center" justifyContent="center">
+                        <IconWrapper>
+                          <DocumentIcon color="#F05423" height="24px" width="24px" />
+                        </IconWrapper>
+                      </Avatar.Root>
+                      <Typography color="gray.800" fontSize="16px" fontWeight="black" lineHeight="24px">
+                        Total Applications
+                      </Typography>
+                    </Flex>
+                    <Box justifySelf="flex-end">
+                      <ChevronRightIcon color="#F05423" width="20px" height="20px" />
+                    </Box>
+                  </Flex>
+                  <Typography color="gray.800" fontFamily="Madera" fontSize="30px" fontWeight="black" letterSpacing="0%" lineHeight="40px">
+                    {dashboardStats.totalApplications.toLocaleString()}
+                  </Typography>
+                </Card>
 
-                <Box 
-                  bg="white" 
-                  p="4" 
-                  borderRadius="lg" 
-                  boxShadow="0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06)" 
-                  border="1px" 
-                  borderColor="gray.200"
-                  _hover={{ boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)" }}
-                  transition="all 0.2s"
-                >
-                  <VStack align="start" gap="3">
-                    <HStack gap="3" align="center" width="full">
-                      <Text fontSize="sm" fontWeight="medium" color="gray.700" whiteSpace="nowrap">Risk Review</Text>
-                      <FiAlertTriangle size={16} color="#d69e2e" />
-                    </HStack>
-                    <Text fontSize="2xl" fontWeight="bold" color="orange.500">{dashboardStats.riskReview}</Text>
-                  </VStack>
-                </Box>
+                <Card width="full" bg="white">
+                  <Flex alignItems="center" justifyContent="space-between" w="100%" h="100%" mb="4">
+                    <Flex alignItems="center" gap="12px" my="auto">
+                      <Avatar.Root bg="blue.100" height="36px" width="36px" display="flex" alignItems="center" justifyContent="center">
+                        <IconWrapper>
+                          <FiClock size={24} color="#3182CE" />
+                        </IconWrapper>
+                      </Avatar.Root>
+                      <Typography color="gray.800" fontSize="16px" fontWeight="black" lineHeight="24px">
+                        Pending Review
+                      </Typography>
+                    </Flex>
+                    <Box justifySelf="flex-end">
+                      <ChevronRightIcon color="#F05423" width="20px" height="20px" />
+                    </Box>
+                  </Flex>
+                  <Typography color="blue.600" fontFamily="Madera" fontSize="30px" fontWeight="black" letterSpacing="0%" lineHeight="40px">
+                    {dashboardStats.pendingReview.toLocaleString()}
+                  </Typography>
+                </Card>
 
-                <Box 
-                  bg="white" 
-                  p="4" 
-                  borderRadius="lg" 
-                  boxShadow="0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06)" 
-                  border="1px" 
-                  borderColor="gray.200"
-                  _hover={{ boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)" }}
-                  transition="all 0.2s"
-                >
-                  <VStack align="start" gap="3">
-                    <HStack gap="3" align="center" width="full">
-                      <Text fontSize="sm" fontWeight="medium" color="gray.700" whiteSpace="nowrap">Completed</Text>
-                      <FiCheckCircle size={16} color="#38a169" />
+                <Card width="full" bg="white">
+                  <Flex alignItems="center" justifyContent="space-between" w="100%" h="100%" mb="4">
+                    <Flex alignItems="center" gap="12px" my="auto">
+                      <Avatar.Root bg="mukuru.orange.100/20" height="36px" width="36px" display="flex" alignItems="center" justifyContent="center">
+                        <IconWrapper>
+                          <WarningIcon color="#F05423" height="24px" width="24px" />
+                        </IconWrapper>
+                      </Avatar.Root>
+                      <Typography color="gray.800" fontSize="16px" fontWeight="black" lineHeight="24px">
+                        Risk Review
+                      </Typography>
+                    </Flex>
+                    <Box justifySelf="flex-end">
+                      <ChevronRightIcon color="#F05423" width="20px" height="20px" />
+                    </Box>
+                  </Flex>
+                  <Typography color="orange.600" fontFamily="Madera" fontSize="30px" fontWeight="black" letterSpacing="0%" lineHeight="40px">
+                    {dashboardStats.riskReview.toLocaleString()}
+                  </Typography>
+                </Card>
+
+                <Card width="full" bg="white">
+                  <Flex alignItems="center" justifyContent="space-between" w="100%" h="100%" mb="4">
+                    <Flex alignItems="center" gap="12px" my="auto">
+                      <Avatar.Root bg="green.100" height="36px" width="36px" display="flex" alignItems="center" justifyContent="center">
+                        <IconWrapper>
+                          <FiCheckCircle size={24} color="#38A169" />
+                        </IconWrapper>
+                      </Avatar.Root>
+                      <Typography color="gray.800" fontSize="16px" fontWeight="black" lineHeight="24px">
+                        Completed
+                      </Typography>
+                    </Flex>
+                    <Box justifySelf="flex-end">
+                      <ChevronRightIcon color="#F05423" width="20px" height="20px" />
+                    </Box>
+                  </Flex>
+                  <Typography color="green.600" fontFamily="Madera" fontSize="30px" fontWeight="black" letterSpacing="0%" lineHeight="40px">
+                    {dashboardStats.completed.toLocaleString()}
+                  </Typography>
+                </Card>
+
+                <Card width="full" bg="white">
+                  <Flex alignItems="center" justifyContent="space-between" w="100%" h="100%" mb="4">
+                    <Flex alignItems="center" gap="12px" my="auto">
+                      <Avatar.Root bg="mukuru.orange.100/20" height="36px" width="36px" display="flex" alignItems="center" justifyContent="center">
+                        <IconWrapper>
+                          <DocumentIcon color="#F05423" height="24px" width="24px" />
+                        </IconWrapper>
+                      </Avatar.Root>
+                      <Typography color="gray.800" fontSize="16px" fontWeight="black" lineHeight="24px">
+                        Incomplete
+                      </Typography>
+                    </Flex>
+                    <Box justifySelf="flex-end">
+                      <ChevronRightIcon color="#F05423" width="20px" height="20px" />
+                    </Box>
+                  </Flex>
+                  <Typography color="orange.600" fontFamily="Madera" fontSize="30px" fontWeight="black" letterSpacing="0%" lineHeight="40px">
+                    {dashboardStats.incomplete.toLocaleString()}
+                  </Typography>
+                </Card>
+
+                <Card width="full" bg="white">
+                  <Flex alignItems="center" justifyContent="space-between" w="100%" h="100%" mb="4">
+                    <Flex alignItems="center" gap="12px" my="auto">
+                      <Avatar.Root bg="red.100" height="36px" width="36px" display="flex" alignItems="center" justifyContent="center">
+                        <IconWrapper>
+                          <FiXCircle size={24} color="#E53E3E" />
+                        </IconWrapper>
+                      </Avatar.Root>
+                      <Typography color="gray.800" fontSize="16px" fontWeight="black" lineHeight="24px">
+                        Declined
+                      </Typography>
+                    </Flex>
+                    <Box justifySelf="flex-end">
+                      <ChevronRightIcon color="#F05423" width="20px" height="20px" />
+                    </Box>
+                  </Flex>
+                  <Typography color="red.600" fontFamily="Madera" fontSize="30px" fontWeight="black" letterSpacing="0%" lineHeight="40px">
+                    {dashboardStats.declined.toLocaleString()}
+                  </Typography>
+                </Card>
+              </SimpleGrid>
+            </Box>
+
+            {/* Additional Statistics Cards */}
+            <Box width="full">
+              <SimpleGrid columns={{ base: 1, sm: 2, md: 2, lg: 4 }} gap="4" width="full">
+                <Card width="full" bg="white">
+                  <Flex alignItems="center" justifyContent="space-between" w="100%" h="100%" mb="4">
+                    <Flex alignItems="center" gap="12px" my="auto">
+                      <Avatar.Root bg="gray.100" height="36px" width="36px" display="flex" alignItems="center" justifyContent="center">
+                        <IconWrapper>
+                          <FiClock size={24} color="#9CA3AF" />
+                        </IconWrapper>
+                      </Avatar.Root>
+                      <Typography color="gray.800" fontSize="16px" fontWeight="black" lineHeight="24px">
+                        Avg Processing Time
+                      </Typography>
+                    </Flex>
+                    <Box justifySelf="flex-end">
+                      <ChevronRightIcon color="#F05423" width="20px" height="20px" />
+                    </Box>
+                  </Flex>
+                  <Typography color="gray.800" fontFamily="Madera" fontSize="30px" fontWeight="black" letterSpacing="0%" lineHeight="40px">
+                    {dashboardStats.avgProcessingTime > 0 
+                      ? `${dashboardStats.avgProcessingTime.toFixed(1)} days`
+                      : 'N/A'}
+                  </Typography>
+                </Card>
+
+                <Card width="full" bg="white">
+                  <Flex alignItems="center" justifyContent="space-between" w="100%" h="100%" mb="4">
+                    <Flex alignItems="center" gap="12px" my="auto">
+                      <Avatar.Root bg="green.100" height="36px" width="36px" display="flex" alignItems="center" justifyContent="center">
+                        <IconWrapper>
+                          <FiTrendingUp size={24} color="#38A169" />
+                        </IconWrapper>
+                      </Avatar.Root>
+                      <Typography color="gray.800" fontSize="16px" fontWeight="black" lineHeight="24px">
+                        Success Rate
+                      </Typography>
+                    </Flex>
+                    <Box justifySelf="flex-end">
+                      <ChevronRightIcon color="#F05423" width="20px" height="20px" />
+                    </Box>
+                  </Flex>
+                  <Typography color="green.600" fontFamily="Madera" fontSize="30px" fontWeight="black" letterSpacing="0%" lineHeight="40px">
+                    {dashboardStats.successRate > 0 
+                      ? `${(dashboardStats.successRate * 100).toFixed(1)}%`
+                      : '0%'}
+                  </Typography>
+                </Card>
+
+                <Card width="full" bg="white">
+                  <Flex alignItems="center" justifyContent="space-between" w="100%" h="100%" mb="4">
+                    <Flex alignItems="center" gap="12px" my="auto">
+                      <Avatar.Root bg="blue.100" height="36px" width="36px" display="flex" alignItems="center" justifyContent="center">
+                        <IconWrapper>
+                          <FiZap size={24} color="#3182CE" />
+                        </IconWrapper>
+                      </Avatar.Root>
+                      <Typography color="gray.800" fontSize="16px" fontWeight="black" lineHeight="24px">
+                        New This Month
+                      </Typography>
+                    </Flex>
+                    <Box justifySelf="flex-end">
+                      <ChevronRightIcon color="#F05423" width="20px" height="20px" />
+                    </Box>
+                  </Flex>
+                  <Typography color="blue.600" fontFamily="Madera" fontSize="30px" fontWeight="black" letterSpacing="0%" lineHeight="40px">
+                    {fullDashboard?.cases?.newCasesThisMonth?.toLocaleString() || '0'}
+                  </Typography>
+                  {fullDashboard?.cases?.newCasesGrowthPercentage !== undefined && (
+                    <HStack gap="1" mt="2">
+                      <FiTrendingUp size={14} color={fullDashboard.cases.newCasesGrowthPercentage >= 0 ? "#38A169" : "#E53E3E"} />
+                      <Typography fontSize="xs" color={fullDashboard.cases.newCasesGrowthPercentage >= 0 ? "green.600" : "red.600"}>
+                        {fullDashboard.cases.newCasesGrowthPercentage >= 0 ? '+' : ''}{fullDashboard.cases.newCasesGrowthPercentage.toFixed(1)}% vs last month
+                      </Typography>
                     </HStack>
-                    <Text fontSize="2xl" fontWeight="bold" color="green.500">{dashboardStats.completed}</Text>
-                  </VStack>
-                </Box>
-              
-                <Box 
-                  bg="white" 
-                  p="4" 
-                  borderRadius="lg" 
-                  boxShadow="0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06)" 
-                  border="1px" 
-                  borderColor="gray.200"
-                  _hover={{ boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)" }}
-                  transition="all 0.2s"
-                >
-                  <VStack align="start" gap="3">
-                    <HStack gap="3" align="center" width="full">
-                      <Text fontSize="sm" fontWeight="medium" color="gray.700" whiteSpace="nowrap">Incomplete</Text>
-                      <FiFile size={16} color="#dd6b20" />
-                    </HStack>
-                    <Text fontSize="2xl" fontWeight="bold" color="orange.500">{dashboardStats.incomplete}</Text>
-                  </VStack>
-                </Box>
-              
-                <Box 
-                  bg="white" 
-                  p="4" 
-                  borderRadius="lg" 
-                  boxShadow="0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06)" 
-                  border="1px" 
-                  borderColor="gray.200"
-                  _hover={{ boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)" }}
-                  transition="all 0.2s"
-                >
-                  <VStack align="start" gap="3">
-                    <HStack gap="3" align="center" width="full">
-                      <Text fontSize="sm" fontWeight="medium" color="gray.700" whiteSpace="nowrap">Declined</Text>
-                      <FiXCircle size={16} color="#e53e3e" />
-                    </HStack>
-                    <Text fontSize="2xl" fontWeight="bold" color="red.500">{dashboardStats.declined}</Text>
-                  </VStack>
-                </Box>
-            </SimpleGrid>
-          </Box>
+                  )}
+                </Card>
+
+                <Card width="full" bg="white">
+                  <Flex alignItems="center" justifyContent="space-between" w="100%" h="100%" mb="4">
+                    <Flex alignItems="center" gap="12px" my="auto">
+                      <Avatar.Root bg="green.100" height="36px" width="36px" display="flex" alignItems="center" justifyContent="center">
+                        <IconWrapper>
+                          <FiBarChart size={24} color="#38A169" />
+                        </IconWrapper>
+                      </Avatar.Root>
+                      <Typography color="gray.800" fontSize="16px" fontWeight="black" lineHeight="24px">
+                        Approval Rate
+                      </Typography>
+                    </Flex>
+                    <Box justifySelf="flex-end">
+                      <ChevronRightIcon color="#F05423" width="20px" height="20px" />
+                    </Box>
+                  </Flex>
+                  <Typography color="green.600" fontFamily="Madera" fontSize="30px" fontWeight="black" letterSpacing="0%" lineHeight="40px">
+                    {fullDashboard?.performance?.approvalRate 
+                      ? `${(fullDashboard.performance.approvalRate * 100).toFixed(1)}%`
+                      : dashboardStats.totalApplications > 0
+                      ? `${((dashboardStats.completed / dashboardStats.totalApplications) * 100).toFixed(1)}%`
+                      : '0%'}
+                  </Typography>
+                </Card>
+              </SimpleGrid>
+            </Box>
 
             {/* Charts Section */}
-            <SimpleGrid columns={{ base: 1, lg: 2 }} gap="8">
+            <SimpleGrid columns={{ base: 1, lg: 2 }} gap="6" width="full">
               {/* Application Status Distribution */}
-          <Box>
-                <Box bg="white" p="4" borderRadius="lg" boxShadow="sm" border="1px" borderColor="gray.200">
-                  <VStack align="start" gap="3">
-                    <VStack align="start" gap="1">
-                      <Text fontSize="md" fontWeight="semibold" color="gray.800">Application Status Distribution</Text>
-                      <Text fontSize="sm" color="gray.600">Current status breakdown of all applications</Text>
-                    </VStack>
-                    
-                    {/* Pie Chart with Adjacent Labels */}
-                    <Box width="320px" height="320px" position="relative" mx="auto">
-                      <Box 
-                        width="260px" 
-                        height="260px" 
-                        bg="gray.100" 
-                        position="relative" 
-                        overflow="visible"
-                        borderRadius="50%"
-                        mx="auto"
-                      >
-                        {/* Pie segments */}
-                        <Box
-                          position="absolute"
-                          top="0"
-                          left="0"
-                          width="100%"
-                          height="100%"
-                          borderRadius="50%"
-                          background="conic-gradient(
-                            #3182ce 0deg 90deg,
-                            #38a169 90deg 180deg,
-                            #e53e3e 180deg 270deg,
-                            #dd6b20 270deg 360deg
-                          )"
-                        />
-                        <Box 
-                          width="130px" 
-                          height="130px" 
-                          bg="white" 
-                          position="absolute" 
-                          top="50%" 
-                          left="50%" 
-                          transform="translate(-50%, -50%)" 
-                          borderRadius="50%"
-                        />
-                      </Box>
-                      
-                      {/* Labels positioned adjacent to slices */}
-                      <Text 
-                        position="absolute" 
-                        top="20px" 
-                        right="-60px" 
-                        fontSize="sm" 
-                        fontWeight="medium" 
-                        color="blue.500"
-                        whiteSpace="nowrap"
-                      >
-                        Submitted {dashboardStats.totalApplications > 0 ? Math.round((dashboardStats.pendingReview / dashboardStats.totalApplications) * 100) : 0}%
-                      </Text>
-                      
-                      <Text 
-                        position="absolute" 
-                        top="20px" 
-                        left="-60px" 
-                        fontSize="sm" 
-                        fontWeight="medium" 
-                        color="orange.500"
-                        whiteSpace="nowrap"
-                      >
-                        In Progress {dashboardStats.totalApplications > 0 ? Math.round((dashboardStats.incomplete / dashboardStats.totalApplications) * 100) : 0}%
-                      </Text>
-                      
-                      <Text 
-                        position="absolute" 
-                        bottom="20px" 
-                        left="-60px" 
-                        fontSize="sm" 
-                        fontWeight="medium" 
-                        color="red.500"
-                        whiteSpace="nowrap"
-                      >
-                        Risk Review {dashboardStats.totalApplications > 0 ? Math.round((dashboardStats.riskReview / dashboardStats.totalApplications) * 100) : 0}%
-                      </Text>
-                      
-                      <Text 
-                        position="absolute" 
-                        bottom="20px" 
-                        right="-60px" 
-                        fontSize="sm" 
-                        fontWeight="medium" 
-                        color="green.500"
-                        whiteSpace="nowrap"
-                      >
-                        Complete {dashboardStats.totalApplications > 0 ? Math.round((dashboardStats.completed / dashboardStats.totalApplications) * 100) : 0}%
-                      </Text>
-                    </Box>
+              <Card width="full" bg="white" style={{ width: '100%', height: 'auto' }}>
+                <VStack align="start" gap="6" width="full" p="6">
+                  <VStack align="start" gap="1" width="full">
+                    <Typography fontSize="lg" fontWeight="semibold" color="gray.900">
+                      Application Status Distribution
+                    </Typography>
+                    <Typography fontSize="sm" color="gray.600">
+                      Current status breakdown of all applications
+                    </Typography>
                   </VStack>
-                </Box>
-              </Box>
+                  
+                  {pieChartData.length > 0 ? (
+                    <Box width="100%" height="320px" style={{ minWidth: '300px', minHeight: '320px' }}>
+                      <StatusPieChart data={pieChartData} />
+                    </Box>
+                  ) : (
+                    <Box width="100%" height="320px" display="flex" alignItems="center" justifyContent="center" bg="gray.50" borderRadius="md">
+                      <VStack gap="2">
+                        <IconWrapper>
+                          <FiFileText size={32} color="#9CA3AF" />
+                        </IconWrapper>
+                        <Typography color="gray.500" fontSize="sm">No application status data available</Typography>
+                      </VStack>
+                    </Box>
+                  )}
+                </VStack>
+              </Card>
 
               {/* Applications by Entity Type */}
-              <Box>
-                <Box 
-                  bg="white" 
-                  p="4" 
-                  borderRadius="lg" 
-                  boxShadow="sm" 
-                  border="1px" 
-                  borderColor="gray.200"
-                >
-                  <VStack align="start" gap="3">
-                    <VStack align="start" gap="1">
-                      <Text fontSize="md" fontWeight="semibold" color="gray.800">Applications by Entity Type</Text>
-                      <Text fontSize="sm" color="gray.600">Distribution across business types</Text>
-                    </VStack>
-                    
-                    {/* Working Bar Chart */}
-                    {entityTypeData.length > 0 ? (
-                      <EntityTypeChart data={entityTypeData} height={320} />
-                    ) : (
-                      <Box height="320px" display="flex" alignItems="center" justifyContent="center">
-                        <Text color="gray.500">No entity type data available</Text>
-                      </Box>
-                    )}
+              <Card width="full" bg="white" style={{ width: '100%', height: 'auto' }}>
+                <VStack align="start" gap="6" width="full" p="6">
+                  <VStack align="start" gap="1" width="full">
+                    <Typography fontSize="lg" fontWeight="semibold" color="gray.900">
+                      Applications by Entity Type
+                    </Typography>
+                    <Typography fontSize="sm" color="gray.600">
+                      Distribution across business types
+                    </Typography>
                   </VStack>
-                </Box>
-              </Box>
+                  
+                  {entityTypeData.length > 0 ? (
+                    <Box width="100%" height="320px" style={{ minWidth: '300px', minHeight: '320px' }}>
+                      <EntityTypeChart data={entityTypeData} height={320} />
+                    </Box>
+                  ) : (
+                    <Box width="100%" height="320px" display="flex" alignItems="center" justifyContent="center" bg="gray.50" borderRadius="md">
+                      <VStack gap="2">
+                        <IconWrapper>
+                          <FiBarChart size={32} color="#9CA3AF" />
+                        </IconWrapper>
+                        <Typography color="gray.500" fontSize="sm">No entity type data available</Typography>
+                      </VStack>
+                    </Box>
+                  )}
+                </VStack>
+              </Card>
             </SimpleGrid>
 
             {/* Application Trend */}
-          <Box>
-              <Box 
-                bg="white" 
-                p="8" 
-                borderRadius="xl" 
-                boxShadow="0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06)" 
-                border="1px" 
-                borderColor="gray.100"
-              >
-                <VStack align="start" gap="6">
-                  <VStack align="start" gap="2">
-                    <Text fontSize="xl" fontWeight="bold" color="gray.900">Application Trend</Text>
-                    <Text fontSize="sm" color="gray.600" fontWeight="medium">New applications over the last 7 days</Text>
-                  </VStack>
-                  
-                  {/* Working Line Chart */}
-                  {trendsData.length > 0 ? (
-                    <>
-                      <ApplicationTrendsChart data={trendsData} />
+            <Card width="full" bg="white" style={{ width: '100%', height: 'auto' }}>
+              <VStack align="start" gap="6" width="full" p="6">
+                <VStack align="start" gap="1" width="full">
+                  <Typography fontSize="lg" fontWeight="semibold" color="gray.900">
+                    Application Trend
+                  </Typography>
+                  <Typography fontSize="sm" color="gray.600">
+                    New applications over the last 7 days
+                  </Typography>
+                </VStack>
+                
+                {trendsData.length > 0 ? (
+                  <Box width="100%" height="300px" style={{ minWidth: '300px', minHeight: '300px' }}>
+                    <ApplicationTrendsChart data={trendsData} />
+                    <Box mt="4">
                       <ChartLegend items={[
                         { name: "Applications", color: "#dd6b20" },
                         { name: "Completed", color: "#38a169" }
                       ]} />
-                    </>
-                  ) : (
-                    <Box height="300px" display="flex" alignItems="center" justifyContent="center">
-                      <Text color="gray.500">No trend data available</Text>
                     </Box>
-                  )}
-                </VStack>
-              </Box>
-          </Box>
-        </VStack>
+                  </Box>
+                ) : (
+                  <Box width="100%" height="300px" display="flex" alignItems="center" justifyContent="center" bg="gray.50" borderRadius="md">
+                    <VStack gap="2">
+                      <IconWrapper>
+                        <FiTrendingUp size={32} color="#9CA3AF" />
+                      </IconWrapper>
+                      <Typography color="gray.500" fontSize="sm">No trend data available</Typography>
+                    </VStack>
+                  </Box>
+                )}
+              </VStack>
+            </Card>
+          </VStack>
         </Box>
-    </Box>
+      </Box>
     </Flex>
   );
 }

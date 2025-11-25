@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth';
+import { auth } from '@/lib/auth';
+import { logger } from '@/lib/logger';
 
 /**
  * Migration API route - routes through centralized proxy for BFF pattern
@@ -12,7 +12,7 @@ async function forwardRequest(
   params?: { path?: string[] }
 ) {
   try {
-    const session = await getServerSession(authOptions);
+    const session = await auth();
     
     // Get the path segments from route params or pathname
     const pathSegments = params?.path || [];
@@ -83,7 +83,9 @@ async function forwardRequest(
       headers: responseHeaders,
     });
   } catch (error) {
-    console.error('[Migration API] Error:', error);
+    logger.error(error, '[Migration API] Error', {
+      tags: { error_type: 'api_route_error' }
+    });
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
     return NextResponse.json(
       { error: 'Migration API request failed', details: errorMessage },

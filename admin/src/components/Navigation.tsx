@@ -17,7 +17,8 @@ import {
 } from "@chakra-ui/react";
 import { motion } from "framer-motion";
 import { useState } from "react";
-import { Button, Link } from "@chakra-ui/react";
+import { Button } from "@chakra-ui/react";
+import { Link } from "@/lib/mukuruImports";
 
 const MotionBox = motion(Box);
 

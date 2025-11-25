@@ -5,16 +5,10 @@ import {
   Container,
   VStack,
   HStack,
-  Text,
-  Badge,
   Flex,
-  Button,
-  Icon,
-  Spinner,
-  Alert,
-  AlertTitle,
-  AlertDescription
+  Spinner
 } from "@chakra-ui/react";
+import { Typography, Tag, Button, IconWrapper, AlertBar } from "@/lib/mukuruImports";
 import { FiSettings, FiEdit3, FiPlus, FiTrash2, FiList } from "react-icons/fi";
 import AdminSidebar from "../../components/AdminSidebar";
 import Link from "next/link";
@@ -84,7 +78,7 @@ export default function WizardConfigurationsPage() {
         <Box flex="1" ml="280px" display="flex" alignItems="center" justifyContent="center">
           <VStack gap="4">
             <Spinner size="xl" color="orange.500" />
-            <Text color="gray.600">Loading wizard configurations...</Text>
+            <Typography color="gray.700" fontWeight="500">Loading wizard configurations...</Typography>
           </VStack>
         </Box>
       </Flex>
@@ -103,25 +97,25 @@ export default function WizardConfigurationsPage() {
           <Container maxW="8xl">
             <Flex justify="space-between" align="center">
               <HStack gap="3" align="center">
-                <Icon as={FiSettings} boxSize="6" color="orange.500" />
+                <IconWrapper><FiSettings size={24} color="#FF6B35" /></IconWrapper>
                 <VStack align="start" gap="1">
-                  <Text as="h1" fontSize="2xl" fontWeight="bold" color="gray.800">
+                  <Typography as="h1" fontSize="2xl" fontWeight="bold" color="gray.900">
                     Wizard Configurations
-                  </Text>
-                  <Text color="gray.600" fontSize="md">
+                  </Typography>
+                  <Typography color="gray.700" fontSize="md" fontWeight="500">
                     Configure multi-step wizards for entity type applications
-                  </Text>
+                  </Typography>
                 </VStack>
               </HStack>
               <Link href="/wizard-configurations/create">
                 <Button
-                  colorScheme="orange"
+                  variant="primary"
                   size="md"
                   bg="#FF6B35"
                   _hover={{ bg: "#E55A2B" }}
                   _active={{ bg: "#CC4A1F" }}
                 >
-                  <Icon as={FiPlus} mr="2" />
+                  <IconWrapper><FiPlus size={16} /></IconWrapper>
                   New Wizard Configuration
                 </Button>
               </Link>
@@ -132,11 +126,12 @@ export default function WizardConfigurationsPage() {
         {/* Error Alert */}
         {error && (
           <Container maxW="8xl" py="4">
-            <Alert.Root status="error" borderRadius="md">
-              <Icon as={FiSettings} />
-              <AlertTitle>Error!</AlertTitle>
-              <AlertDescription>{error}</AlertDescription>
-            </Alert.Root>
+            <AlertBar
+              status="error"
+              title="Error!"
+              description={error}
+              icon={<IconWrapper><FiSettings size={20} /></IconWrapper>}
+            />
           </Container>
         )}
 
@@ -152,22 +147,22 @@ export default function WizardConfigurationsPage() {
               textAlign="center"
             >
               <VStack gap="4">
-                <Icon as={FiSettings} boxSize="12" color="gray.400" />
-                <Text fontSize="lg" fontWeight="semibold" color="gray.700">
+                <IconWrapper><FiSettings size={48} color="#A0AEC0" /></IconWrapper>
+                <Typography fontSize="lg" fontWeight="bold" color="gray.800">
                   No wizard configurations yet
-                </Text>
-                <Text color="gray.600" fontSize="md">
+                </Typography>
+                <Typography color="gray.700" fontSize="md" fontWeight="500">
                   Get started by creating your first wizard configuration
-                </Text>
+                </Typography>
                 <Link href="/wizard-configurations/create">
                   <Button
-                    colorScheme="orange"
+                    variant="primary"
                     size="md"
                     bg="#FF6B35"
                     _hover={{ bg: "#E55A2B" }}
                     _active={{ bg: "#CC4A1F" }}
                   >
-                    <Icon as={FiPlus} mr="2" />
+                    <IconWrapper><FiPlus size={16} /></IconWrapper>
                     Create First Configuration
                   </Button>
                 </Link>
@@ -190,56 +185,66 @@ export default function WizardConfigurationsPage() {
                     <VStack align="start" gap="3" flex="1">
                       {/* Title and Status */}
                       <HStack gap="3" align="center">
-                        <Text fontSize="lg" fontWeight="bold" color="gray.800">
-                          {config.entityTypeDisplayName || 'Unknown Entity Type'}
-                        </Text>
-                        <Badge 
-                          colorScheme={config.isActive ? 'green' : 'gray'}
-                          size="lg"
-                          px="3"
-                          py="1"
+                        <Typography fontSize="lg" fontWeight="bold" color="gray.900">
+                          {config.entityTypeDisplayName || config.entity_type_display_name || 'Unknown Entity Type'}
+                        </Typography>
+                        <Tag 
+                          variant={config.isActive ? 'success' : 'inactive'}
+                          style={config.isActive ? {
+                            backgroundColor: '#22C55E',
+                            color: '#FFFFFF',
+                            fontWeight: '600',
+                            border: 'none',
+                            padding: '4px 12px',
+                            fontSize: '12px',
+                          } : {}}
                         >
                           {config.isActive ? 'Active' : 'Inactive'}
-                        </Badge>
+                        </Tag>
                       </HStack>
 
                       {/* Steps Info */}
                       <HStack gap="4">
                         <HStack gap="2">
-                          <Icon as={FiList} color="gray.500" />
-                          <Text fontSize="sm" color="gray.600">
+                          <IconWrapper><FiList size={16} color="#4A5568" /></IconWrapper>
+                          <Typography fontSize="sm" fontWeight="medium" color="gray.700">
                             {config.steps.length} {config.steps.length === 1 ? 'Step' : 'Steps'}
-                          </Text>
+                          </Typography>
                         </HStack>
-                        <Text fontSize="xs" color="gray.500">
-                          Created: {new Date(config.createdAt).toLocaleDateString()}
-                        </Text>
-                        <Text fontSize="xs" color="gray.500">
-                          Updated: {new Date(config.updatedAt).toLocaleDateString()}
-                        </Text>
+                        <Typography fontSize="sm" fontWeight="medium" color="gray.600">
+                          Created: <span style={{ color: '#2D3748', fontWeight: '600' }}>{new Date(config.createdAt || config.created_at || '').toLocaleDateString()}</span>
+                        </Typography>
+                        <Typography fontSize="sm" fontWeight="medium" color="gray.600">
+                          Updated: <span style={{ color: '#2D3748', fontWeight: '600' }}>{new Date(config.updatedAt || config.updated_at || '').toLocaleDateString()}</span>
+                        </Typography>
                       </HStack>
 
                       {/* Steps Preview */}
                       {config.steps.length > 0 && (
                         <VStack align="start" gap="2" w="100%">
-                          <Text fontSize="sm" fontWeight="semibold" color="gray.700">
+                          <Typography fontSize="sm" fontWeight="bold" color="gray.800">
                             Steps:
-                          </Text>
+                          </Typography>
                           <HStack gap="2" wrap="wrap">
                             {config.steps
                               .sort((a, b) => a.stepNumber - b.stepNumber)
                               .map((step) => (
-                                <Badge
+                                <Tag
                                   key={step.id}
-                                  variant="outline"
-                                  colorScheme="blue"
-                                  size="sm"
-                                  px="2"
-                                  py="1"
-                                  borderRadius="md"
+                                  variant="info"
+                                  style={{
+                                    backgroundColor: '#EDF2F7',
+                                    color: '#2D3748',
+                                    border: '1px solid #CBD5E0',
+                                    fontWeight: '500',
+                                    padding: '6px 12px',
+                                  }}
                                 >
-                                  {step.stepNumber}. {step.title}
-                                </Badge>
+                                  <span style={{ fontWeight: '700', color: '#FF6B35', marginRight: '4px' }}>
+                                    {step.stepNumber}.
+                                  </span>
+                                  {step.title}
+                                </Tag>
                               ))}
                           </HStack>
                         </VStack>
@@ -249,26 +254,59 @@ export default function WizardConfigurationsPage() {
                     {/* Actions */}
                     <HStack gap="3">
                       <Link href={`/wizard-configurations/edit/${config.id}`}>
-                        <Button
-                          variant="outline"
-                          colorScheme="gray"
-                          size="md"
+                        <Box
+                          as="button"
+                          display="inline-flex"
+                          alignItems="center"
+                          gap="2"
+                          px="4"
+                          py="2"
+                          bg="white"
+                          border="1px solid"
+                          borderColor="orange.500"
+                          borderRadius="md"
+                          fontWeight="600"
+                          color="orange.500"
+                          cursor="pointer"
+                          _hover={{ 
+                            bg: "orange.50", 
+                            borderColor: "orange.600",
+                            color: "orange.600"
+                          }}
+                          transition="all 0.2s"
                         >
-                          <Icon as={FiEdit3} mr="2" />
-                          Edit
-                        </Button>
+                          <IconWrapper><FiEdit3 size={16} color="#FF6B35" /></IconWrapper>
+                          <Typography as="span" color="orange.500" fontWeight="600">Edit</Typography>
+                        </Box>
                       </Link>
-                      <Button
-                        variant="outline"
-                        colorScheme="red"
-                        size="md"
-                        onClick={() => handleDelete(config.id)}
-                        loading={deleting === config.id}
-                        loadingText="Deleting..."
+                      <Box
+                        as="button"
+                        display="inline-flex"
+                        alignItems="center"
+                        gap="2"
+                        px="4"
+                        py="2"
+                        bg="white"
+                        border="1px solid"
+                        borderColor="red.500"
+                        borderRadius="md"
+                        fontWeight="600"
+                        color="red.500"
+                        cursor={deleting === config.id ? "not-allowed" : "pointer"}
+                        _hover={deleting === config.id ? {} : { 
+                          bg: "red.50", 
+                          borderColor: "red.600",
+                          color: "red.600"
+                        }}
+                        transition="all 0.2s"
+                        onClick={() => !deleting && handleDelete(config.id)}
+                        opacity={deleting === config.id ? 0.6 : 1}
                       >
-                        <Icon as={FiTrash2} mr="2" />
-                        Delete
-                      </Button>
+                        <IconWrapper><FiTrash2 size={16} color="#E53E3E" /></IconWrapper>
+                        <Typography as="span" color="red.500" fontWeight="600">
+                        {deleting === config.id ? "Deleting..." : "Delete"}
+                        </Typography>
+                      </Box>
                     </HStack>
                   </Flex>
                 </Box>

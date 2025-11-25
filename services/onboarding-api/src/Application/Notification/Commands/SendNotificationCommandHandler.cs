@@ -1,6 +1,6 @@
 using MediatR;
 using OnboardingApi.Application.Notification.Interfaces;
-using OnboardingApi.Domain.Notification.Aggregates;
+using DomainNotification = OnboardingApi.Domain.Notification.Aggregates.Notification;
 
 namespace OnboardingApi.Application.Notification.Commands;
 
@@ -20,7 +20,7 @@ public class SendNotificationCommandHandler : IRequestHandler<SendNotificationCo
     public async Task<SendNotificationResult> Handle(SendNotificationCommand request, CancellationToken cancellationToken)
     {
         // Create notification
-        var notification = Notification.Create(
+        var notification = DomainNotification.Create(
             request.Type,
             request.Channel,
             request.Recipient,

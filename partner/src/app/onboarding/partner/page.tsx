@@ -17,7 +17,7 @@ import * as Yup from "yup";
 import { useState } from "react";
 import { Button, Input } from "@chakra-ui/react";
 
-const MotionBox = motion(Box);
+const MotionBox = motion.create(Box);
 const MotionCard = motion.div;
 
 const steps = [

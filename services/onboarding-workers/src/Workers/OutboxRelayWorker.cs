@@ -103,6 +103,24 @@ public class OutboxRelayWorker : BackgroundService
         int batchSize,
         CancellationToken cancellationToken)
     {
+        // Check if the outbox_events table exists in this schema
+        var tableExistsSql = $@"
+            SELECT EXISTS (
+                SELECT FROM information_schema.tables 
+                WHERE table_schema = @Schema 
+                AND table_name = 'outbox_events'
+            )";
+
+        await using var checkCmd = new NpgsqlCommand(tableExistsSql, connection);
+        checkCmd.Parameters.AddWithValue("@Schema", schema);
+        var tableExists = await checkCmd.ExecuteScalarAsync(cancellationToken) as bool? ?? false;
+
+        if (!tableExists)
+        {
+            _logger.LogDebug("Outbox table does not exist in schema {Schema}, skipping", schema);
+            return;
+        }
+
         // Select unprocessed events with pessimistic lock (FOR UPDATE SKIP LOCKED)
         var selectSql = $@"
             SELECT id, aggregate_id, aggregate_type, event_type, payload, occurred_at

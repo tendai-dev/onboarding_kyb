@@ -49,7 +49,7 @@ import { uploadFilesToDocumentService, mapRequirementCodeToDocumentType, Documen
 import { integrationService } from "@/services/integrationService";
 import { getIconComponent, getEntityTypeIcon } from "@/utils/iconUtils";
 
-const MotionBox = motion(Box);
+const MotionBox = motion.create(Box);
 
 interface EntityTypeOption {
   value: string;
@@ -153,9 +153,11 @@ export default function EnhancedNewPartnerApplicationPage() {
           }
         });
         
+        console.log(`[Enhanced Page] Loaded ${mappedTypes.length} entity types from backend`);
         setEntityTypes(mappedTypes);
       } catch (err) {
         console.error('Error loading entity types:', err);
+        console.error('Error details:', err instanceof Error ? err.message : String(err));
         setEntityTypesError('Failed to load entity types. Please try again later.');
         showToast({
           status: "error",
@@ -1799,7 +1801,7 @@ export default function EnhancedNewPartnerApplicationPage() {
                 </Link>
                 <Button variant="outline" size="sm" onClick={() => logout('http://localhost:3000/')}>Logout</Button>
                 <Link href="/partner/application/enhanced">
-                  <Button size="sm" borderRadius="full" px="6" fontWeight="medium" bg="black" color="white" _hover={{ bg: "gray.900" }}>
+                  <Button size="sm" variant="solid" className="mukuru-primary-button" borderRadius="full" px="6" fontWeight="medium">
                     <Icon as={FiArrowRight} mr="2" />
                     New Application
                   </Button>

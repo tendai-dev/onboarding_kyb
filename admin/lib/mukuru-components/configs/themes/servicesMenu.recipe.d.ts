@@ -1,2 +1,0 @@
-export declare const servicesMenuRecipe: import("@chakra-ui/react").SlotRecipeDefinition<"content" | "grid" | "icon" | "item" | "trigger" | "activeItem" | "gridItem" | "singleItem" | "footerLink" | "footerLabel", import("@chakra-ui/react").SlotRecipeVariantRecord<"content" | "grid" | "icon" | "item" | "trigger" | "activeItem" | "gridItem" | "singleItem" | "footerLink" | "footerLabel">>;
-//# sourceMappingURL=servicesMenu.recipe.d.ts.map

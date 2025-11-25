@@ -1,0 +1,98 @@
+stages:
+  - lint
+  - test
+  - build
+
+variables:
+  NODE_VERSION: "20"
+
+# Lint job
+lint:
+  stage: lint
+  image: node:${NODE_VERSION}
+  cache:
+    paths:
+      - admin/node_modules/
+  before_script:
+    - cd admin
+    - npm ci
+  script:
+    - npm run lint
+  only:
+    - merge_requests
+    - main
+    - develop
+
+# Test job with coverage
+test:
+  stage: test
+  image: node:${NODE_VERSION}
+  cache:
+    paths:
+      - admin/node_modules/
+  before_script:
+    - cd admin
+    - npm ci
+  script:
+    - npm run test:coverage
+  coverage: '/Lines\s*:\s*(\d+\.\d+)%/'
+  artifacts:
+    reports:
+      coverage_report:
+        coverage_format: cobertura
+        path: admin/coverage/cobertura-coverage.xml
+    paths:
+      - admin/coverage/
+    expire_in: 1 week
+  only:
+    - merge_requests
+    - main
+    - develop
+
+# Coverage threshold check
+coverage_check:
+  stage: test
+  image: node:${NODE_VERSION}
+  cache:
+    paths:
+      - admin/node_modules/
+  before_script:
+    - cd admin
+    - npm ci
+  script:
+    - |
+      npm run test:coverage
+      # Check if coverage meets threshold (80%)
+      COVERAGE=$(npm run test:coverage 2>&1 | grep -oP 'Lines\s*:\s*\K\d+\.\d+' | head -1)
+      if (( $(echo "$COVERAGE < 80" | bc -l) )); then
+        echo "Coverage $COVERAGE% is below 80% threshold"
+        exit 1
+      else
+        echo "Coverage $COVERAGE% meets 80% threshold"
+      fi
+  only:
+    - merge_requests
+    - main
+    - develop
+
+# Build job
+build:
+  stage: build
+  image: node:${NODE_VERSION}
+  cache:
+    paths:
+      - admin/node_modules/
+  before_script:
+    - cd admin
+    - npm ci
+  script:
+    - npm run build
+  artifacts:
+    paths:
+      - admin/.next/
+    expire_in: 1 week
+  only:
+    - merge_requests
+    - main
+    - develop
+

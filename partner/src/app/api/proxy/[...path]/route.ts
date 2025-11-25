@@ -2,80 +2,39 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getToken } from 'next-auth/jwt';
 import { getTokenSession, storeTokenSession } from '@/lib/redis-session';
 
-const DEFAULT_TARGET = process.env.PROXY_TARGET || 'http://localhost:8090';
-const MESSAGING_TARGET = process.env.PROXY_TARGET_MESSAGING || process.env.MESSAGING_TARGET || 'http://localhost:8087';
-const PROJECTIONS_TARGET = process.env.PROXY_TARGET_PROJECTIONS || process.env.PROJECTIONS_TARGET || 'http://localhost:8007';
-const ONBOARDING_TARGET = process.env.PROXY_TARGET_ONBOARDING || process.env.ONBOARDING_TARGET || 'http://localhost:8001';
-const DOCUMENT_TARGET = process.env.PROXY_TARGET_DOCUMENT || process.env.DOCUMENT_TARGET || 'http://localhost:8008';
+// All services are now consolidated into the unified onboarding-api
+const UNIFIED_API_TARGET = process.env.PROXY_TARGET || process.env.ONBOARDING_TARGET || 'http://localhost:8001';
 const AUTH_TARGET = process.env.PROXY_TARGET_AUTH || process.env.AUTH_TARGET || 'http://localhost:8090';
 
 function resolveUpstream(pathname: string, search: string) {
-  // Supports service-specific proxying by prefixing the path after /api/proxy
-  // Examples:
-  //  - /api/proxy/messaging/api/v1/messages -> PROXY_TARGET_MESSAGING
-  //  - /api/proxy/projections/api/v1/* -> PROXY_TARGET_PROJECTIONS
-  //  - /api/proxy/... -> DEFAULT_TARGET
+  // All services are now consolidated into the unified onboarding-api
+  // Route /api/users/* to authentication service (if separate)
+  // Everything else goes to unified API
   const afterProxy = pathname.split('/api/proxy')[1] || '';
 
-  if (afterProxy.startsWith('/messaging')) {
-    const trimmed = afterProxy.replace('/messaging', '');
-    return `${MESSAGING_TARGET}${trimmed}${search}`;
-  }
-
-  if (afterProxy.startsWith('/projections/v1')) {
-    const trimmed = afterProxy.replace('/projections/v1', '');
-    return `${PROJECTIONS_TARGET}${trimmed}${search}`;
-  }
-  
-  if (afterProxy.startsWith('/projections')) {
-    const trimmed = afterProxy.replace('/projections', '');
-    return `${PROJECTIONS_TARGET}${trimmed}${search}`;
-  }
-
-  // Route /api/users/* to authentication service
+  // Route /api/users/* to authentication service (if still separate)
   if (afterProxy.startsWith('/api/users')) {
     return `${AUTH_TARGET}${afterProxy}${search}`;
   }
 
-  // Route /api/v1/cases/* to onboarding API
-  if (afterProxy.startsWith('/api/v1/cases')) {
-    return `${ONBOARDING_TARGET}${afterProxy}${search}`;
-  }
-
-  // Route /api/v1/documents/* to document service
-  if (afterProxy.startsWith('/api/v1/documents')) {
-    return `${DOCUMENT_TARGET}${afterProxy}${search}`;
-  }
-
-  // Route /api/v1/sync to projections API (for syncing cases)
-  if (afterProxy.startsWith('/api/v1/sync')) {
-    return `${PROJECTIONS_TARGET}${afterProxy}${search}`;
-  }
-
-  // Route /api/v1/risk-assessments to risk service
-  if (afterProxy.startsWith('/api/v1/risk-assessments') || afterProxy.startsWith('/risk-assessments')) {
-    const riskPath = afterProxy.replace('/api/v1', '');
-    return `${RISK_TARGET}/api/v1${riskPath}${search}`;
-  }
-
-  // Route /api/v1/entitytypes, /api/v1/requirements, /api/v1/wizardconfigurations to entity config service
-  if (afterProxy.startsWith('/api/v1/entitytypes') || 
-      afterProxy.startsWith('/api/v1/requirements') || 
-      afterProxy.startsWith('/api/v1/wizardconfigurations')) {
-    return `${ENTITY_CONFIG_TARGET}${afterProxy}${search}`;
-  }
-
-  // Route /projections/v1 to projections API
-  if (afterProxy.startsWith('/projections/v1')) {
-    const trimmed = afterProxy.replace('/projections/v1', '/api/v1');
-    return `${PROJECTIONS_TARGET}${trimmed}${search}`;
-  }
-
-  return `${DEFAULT_TARGET}${afterProxy}${search}`;
+  // All other routes go to unified onboarding-api
+  return `${UNIFIED_API_TARGET}${afterProxy}${search}`;
 }
 
 async function forward(req: NextRequest) {
   const url = resolveUpstream(req.nextUrl.pathname, req.nextUrl.search);
+  
+  // Debug logging for messaging endpoints
+  if (req.nextUrl.pathname.includes('/messages')) {
+    console.log(`[Proxy] Messaging request - routing to: ${url}`);
+    const userHeaders = ['X-User-Id', 'X-User-Email', 'X-User-Name', 'X-User-Role'];
+    const headerValues: Record<string, string> = {};
+    for (const headerName of userHeaders) {
+      const value = req.headers.get(headerName) || req.headers.get(headerName.toLowerCase());
+      if (value) headerValues[headerName] = value;
+    }
+    console.log(`[Proxy] User headers received:`, headerValues);
+  }
   
   // Debug logging for document uploads
   if (req.nextUrl.pathname.includes('/documents/upload')) {
@@ -221,6 +180,13 @@ async function forward(req: NextRequest) {
     const res = await fetch(url, init);
     const body = await res.arrayBuffer();
 
+    // Log 500 errors for debugging
+    if (res.status === 500) {
+      const errorBody = new TextDecoder().decode(body);
+      console.error(`[Proxy] Backend 500 error for ${url}:`, errorBody);
+      console.error(`[Proxy] Request headers sent:`, Object.keys(headers).map(k => `${k}: ${headers[k]?.substring(0, 50)}`));
+    }
+
     const respHeaders = new Headers();
     res.headers.forEach((v, k) => respHeaders.set(k, v));
     // ensure CORS for browser even though this is same-origin
@@ -259,5 +225,3 @@ export const PUT = forward;
 export const PATCH = forward;
 export const DELETE = forward;
 export const OPTIONS = forward;
-
-

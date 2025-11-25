@@ -36,7 +36,7 @@ import { getAuthUser } from "@/lib/auth/session";
 import { generateUserIdFromEmail } from "@/lib/api";
 import { riskApiService, RiskAssessmentDto, RiskAssessmentFormData } from "@/services/riskApi";
 
-const MotionBox = motion(Box);
+const MotionBox = motion.create(Box);
 
 export default function RiskAssessmentPage() {
   const params = useParams();

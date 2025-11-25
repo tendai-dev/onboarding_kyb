@@ -5,21 +5,13 @@ import {
   Container, 
   VStack, 
   HStack,
-  Text,
   Flex,
   Image,
   Circle,
   SimpleGrid,
-  Icon,
-  Button,
-  Badge,
-  Card,
-  Input,
   Textarea,
   Progress,
-  Alert,
   Separator,
-  Dialog,
   Field
 } from "@chakra-ui/react";
 import { 
@@ -53,6 +45,8 @@ import {
 } from "../../../lib/entitySchemaRenderer";
 import { DynamicFieldRenderer } from "../../../components/DynamicFieldRenderer";
 import { DocumentViewer } from "../../../components/DocumentViewer";
+import { Typography, Button, Card, Input, Modal, ModalHeader, ModalBody, ModalFooter, AlertBar, Tag, IconWrapper } from "@/lib/mukuruImports";
+import { logger } from "../../../lib/logger";
 
 // Application interface matching what the detail page expects
 interface Application {
@@ -161,26 +155,35 @@ export default function AdminApplicationDetailsPage() {
       }
 
       // Fetch documents for this case
-      console.log('Fetching documents for case:', caseId);
+      logger.debug('Fetching documents for case', { caseId });
       const response = await fetch(`/api/proxy/api/v1/documents/case/${caseId}`);
       
       if (!response.ok) {
         const errorText = await response.text();
-        console.error('Failed to fetch documents:', response.status, errorText);
+        logger.error(new Error(`Failed to fetch documents: ${response.status}`), 'Failed to fetch documents', {
+          tags: { error_type: 'documents_fetch_error' },
+          extra: { status: response.status, errorText }
+        });
         throw new Error(`Failed to fetch documents: ${response.status} ${response.statusText}`);
       }
 
       const documents = await response.json();
-      console.log('Documents received:', documents);
+      logger.debug('Documents received', { count: documents?.length || 0 });
       
       if (!Array.isArray(documents)) {
-        console.error('Documents response is not an array:', documents);
+        logger.error(new Error('Documents response is not an array'), 'Invalid documents response', {
+          tags: { error_type: 'documents_format_error' },
+          extra: { documents }
+        });
         await SweetAlert.warning("Invalid Response", "The server returned an invalid response. Please try again.");
         return;
       }
       
       if (documents.length === 0) {
-        console.warn('No documents found for case:', caseId);
+        logger.warn('No documents found for case', {
+          tags: { warning_type: 'no_documents' },
+          extra: { caseId }
+        });
         // Try to find documents by searching all documents
         // This handles cases where documents might have been uploaded but caseId wasn't properly set
         const allDocsResponse = await fetch(`/api/proxy/api/v1/documents?skip=0&take=1000`);
@@ -188,7 +191,7 @@ export default function AdminApplicationDetailsPage() {
           const allDocs = await allDocsResponse.json();
           const allDocumentsList = allDocs.items || [];
           
-          console.log(`Found ${allDocumentsList.length} total documents in system`);
+          logger.debug('Found total documents in system', { count: allDocumentsList.length });
           
           // First, try to match by caseId (case-insensitive, string comparison)
           let matchingDocs = allDocumentsList.filter((d: any) => {
@@ -197,7 +200,7 @@ export default function AdminApplicationDetailsPage() {
             return docCaseId === searchCaseId || d.caseId === caseId;
           });
           
-          console.log(`Found ${matchingDocs.length} documents by caseId match`);
+          logger.debug('Found documents by caseId match', { count: matchingDocs.length });
           
           // If no caseId match and we have a filename, try to find by filename
           if (matchingDocs.length === 0 && fileData?.fileName) {
@@ -226,12 +229,12 @@ export default function AdminApplicationDetailsPage() {
               return false;
             });
             
-            console.log(`Found ${matchingDocs.length} documents by filename "${fileData.fileName}":`, matchingDocs);
+            logger.debug('Found documents by filename', { count: matchingDocs.length, fileName: fileData.fileName });
           }
           
           // If still no matches and there's only 1 document in the system, use it (last resort)
           if (matchingDocs.length === 0 && allDocumentsList.length === 1) {
-            console.log('⚠️ Only 1 document in system, using it as fallback');
+            logger.debug('Only 1 document in system, using it as fallback');
             matchingDocs = allDocumentsList;
           }
           
@@ -245,26 +248,30 @@ export default function AdminApplicationDetailsPage() {
                 const dFileName = d.fileName?.toLowerCase() || '';
                 return /\.(png|jpg|jpeg|gif|bmp|webp|svg)$/i.test(dFileName);
               });
-              console.log(`Found ${matchingDocs.length} image documents as fallback`);
+              logger.debug('Found image documents as fallback', { count: matchingDocs.length });
             }
           }
           
           if (matchingDocs.length > 0) {
             // Use the matching documents (even if caseId doesn't match)
             documents.push(...matchingDocs);
-            console.log('✅ Using fallback documents (caseId may not match):', documents.map((d: any) => ({
-              fileName: d.fileName,
-              caseId: d.caseId,
-              searchingFor: caseId
-            })));
+            logger.debug('Using fallback documents (caseId may not match)', { 
+              documents: documents.map((d: any) => ({
+                fileName: d.fileName,
+                caseId: d.caseId,
+                searchingFor: caseId
+              }))
+            });
           } else {
             // Show all available documents for debugging
-            console.log('All documents in system:', allDocumentsList.map((d: any) => ({
-              fileName: d.fileName,
-              caseId: d.caseId
-            })));
-            console.log('Searching for caseId:', caseId);
-            console.log('File data:', fileData);
+            logger.debug('All documents in system', {
+              documents: allDocumentsList.map((d: any) => ({
+                fileName: d.fileName,
+                caseId: d.caseId
+              })),
+              searchingFor: caseId,
+              fileData: fileData?.fileName
+            });
             
             // Provide more helpful message based on the situation
             let message = `No documents found for application ${caseId}.\n\n`;
@@ -356,7 +363,7 @@ export default function AdminApplicationDetailsPage() {
         const downloadResponse = await fetch(`/api/proxy/api/v1/documents/download/${encodeURIComponent(doc.storageKey)}`);
         if (downloadResponse.ok) {
           const downloadData = await downloadResponse.json();
-          console.log('Download URL response:', downloadData);
+          logger.debug('Download URL response received');
           
           // Try all possible field names for the URL (C# serializes to camelCase by default)
           downloadUrl = downloadData.downloadUrl || 
@@ -372,25 +379,34 @@ export default function AdminApplicationDetailsPage() {
           if (downloadUrl && doc.storageKey) {
             // Use our proxy endpoint instead of direct MinIO URL
             downloadUrl = `/api/proxy-document?storageKey=${encodeURIComponent(doc.storageKey)}`;
-            console.log('Using proxy endpoint for document:', downloadUrl);
+            logger.debug('Using proxy endpoint for document', { downloadUrl });
           } else if (downloadUrl) {
             // If we don't have storageKey but have a URL, still proxy it
             downloadUrl = `/api/proxy-document?url=${encodeURIComponent(downloadUrl)}`;
-            console.log('Using proxy endpoint with URL:', downloadUrl);
+            logger.debug('Using proxy endpoint with URL', { downloadUrl });
           }
           
-          console.log('Extracted download URL:', downloadUrl);
+          logger.debug('Extracted download URL', { downloadUrl });
           
           // If still no URL, log the full response for debugging
           if (!downloadUrl) {
-            console.error('Could not extract URL from response. Full response:', JSON.stringify(downloadData, null, 2));
+            logger.error(new Error('Could not extract URL from response'), 'Failed to extract download URL', {
+              tags: { error_type: 'url_extraction_error' },
+              extra: { downloadData }
+            });
           }
         } else {
           const errorText = await downloadResponse.text();
-          console.warn('Download URL request failed:', downloadResponse.status, errorText);
+          logger.warn('Download URL request failed', {
+            tags: { warning_type: 'download_url_failed' },
+            extra: { status: downloadResponse.status, errorText }
+          });
         }
       } catch (err) {
-        console.warn('Failed to get download URL from storage key:', err);
+        logger.warn('Failed to get download URL from storage key', {
+          tags: { warning_type: 'storage_key_download_failed' },
+          extra: { error: err }
+        });
       }
       
       // Method 2: Try download endpoint with document ID
@@ -412,10 +428,13 @@ export default function AdminApplicationDetailsPage() {
               downloadUrl = `/api/proxy-document?url=${encodeURIComponent(downloadUrl)}`;
             }
             
-            console.log('Download URL from document ID:', downloadUrl);
+            logger.debug('Download URL from document ID', { downloadUrl });
           }
         } catch (err) {
-          console.warn('Failed to get download URL from document ID:', err);
+          logger.warn('Failed to get download URL from document ID', {
+            tags: { warning_type: 'document_id_download_failed' },
+            extra: { error: err }
+          });
         }
       }
       
@@ -450,18 +469,27 @@ export default function AdminApplicationDetailsPage() {
               downloadUrl = `/api/proxy-document?url=${encodeURIComponent(downloadUrl)}`;
             }
             
-            console.log('Download URL from POST endpoint:', downloadUrl);
+            logger.debug('Download URL from POST endpoint', { downloadUrl });
           } else {
             const errorText = await downloadResponse.text();
-            console.warn('POST download URL request failed:', downloadResponse.status, errorText);
+            logger.warn('POST download URL request failed', {
+              tags: { warning_type: 'post_download_failed' },
+              extra: { status: downloadResponse.status, errorText }
+            });
           }
         } catch (err) {
-          console.warn('Failed to get download URL from POST endpoint:', err);
+          logger.warn('Failed to get download URL from POST endpoint', {
+            tags: { warning_type: 'post_endpoint_failed' },
+            extra: { error: err }
+          });
         }
       }
       
       if (!downloadUrl) {
-        console.error('All download URL methods failed. Document:', doc);
+        logger.error(new Error('All download URL methods failed'), 'Failed to get download URL', {
+          tags: { error_type: 'all_download_methods_failed' },
+          extra: { document: doc }
+        });
         throw new Error(`Failed to get download URL for document. StorageKey: ${doc.storageKey}, DocumentId: ${doc.id}`);
       }
 
@@ -472,7 +500,9 @@ export default function AdminApplicationDetailsPage() {
       setViewingDocumentUrl(downloadUrl);
       setDocumentViewerOpen(true);
     } catch (err) {
-      console.error('Error viewing document:', err);
+      logger.error(err, 'Error viewing document', {
+        tags: { error_type: 'document_view_error' }
+      });
       await SweetAlert.error("View Failed", err instanceof Error ? err.message : 'Failed to view document. Please try again.');
     }
   };
@@ -519,9 +549,10 @@ export default function AdminApplicationDetailsPage() {
         }
       }
       
-      console.log('[Application Loader] Entity type code from metadata (raw):', metadata.entity_type_code || metadata.entityTypeCode);
-      console.log('[Application Loader] Entity type code (cleaned):', entityTypeCode);
-      console.log('[Application Loader] Full metadata:', metadata);
+      logger.debug('[Application Loader] Entity type code from metadata', {
+        raw: metadata.entity_type_code || metadata.entityTypeCode,
+        cleaned: entityTypeCode
+      });
       
       // Map status from backend to frontend
       const statusMap: Record<string, Application['status']> = {
@@ -567,15 +598,19 @@ export default function AdminApplicationDetailsPage() {
       
       // Fetch entity schema using the EXACT entity_type_code from metadata (no normalization)
       if (entityTypeCode) {
-        console.log('[Application Loader] Using entity_type_code from application metadata:', entityTypeCode);
+        logger.debug('[Application Loader] Using entity_type_code from application metadata', { entityTypeCode });
         await loadEntitySchema(entityTypeCode, data);
       } else {
-        console.error('[Application Loader] ❌ No entity_type_code found in application metadata');
-        console.error('[Application Loader] Available metadata keys:', Object.keys(metadata));
+        logger.error(new Error('No entity_type_code found in application metadata'), '[Application Loader] Missing entity type code', {
+          tags: { error_type: 'missing_entity_type_code' },
+          extra: { availableKeys: Object.keys(metadata) }
+        });
       }
     } catch (err) {
       setError('Failed to load application');
-      console.error('Error loading application:', err);
+      logger.error(err, 'Error loading application', {
+        tags: { error_type: 'application_load_error' }
+      });
     } finally {
       setLoading(false);
     }
@@ -587,29 +622,38 @@ export default function AdminApplicationDetailsPage() {
       
       // Use the entity type code DIRECTLY from the application metadata - no normalization needed
       // This is the exact code that was used when the application was created
-      console.log('[Schema Loader] Using entity type code directly from application:', entityTypeCode);
+        logger.debug('[Schema Loader] Using entity type code directly from application', { entityTypeCode });
       
       if (!entityTypeCode || entityTypeCode.trim() === '') {
-        console.error('[Schema Loader] ❌ Entity type code is empty or invalid');
+        logger.error(new Error('Entity type code is empty or invalid'), '[Schema Loader] Invalid entity type code', {
+          tags: { error_type: 'invalid_entity_type_code' }
+        });
         return;
       }
       
       const schema = await fetchEntitySchema(entityTypeCode.trim(), applicationData);
       
       if (schema) {
-        console.log('[Schema Loader] ✅ Successfully loaded entity schema:', schema);
-        console.log('[Schema Loader] Sections count:', schema.sections.length);
-        schema.sections.forEach((section, idx) => {
-          console.log(`[Schema Loader] Section ${idx + 1}:`, section.title, `(${section.fields.length} fields)`);
+        logger.debug('[Schema Loader] Successfully loaded entity schema', {
+          sectionsCount: schema.sections.length,
+          sections: schema.sections.map((section, idx) => ({
+            index: idx + 1,
+            title: section.title,
+            fieldsCount: section.fields.length
+          }))
         });
         setEntitySchema(schema);
       } else {
-        console.error('[Schema Loader] ❌ No entity schema found for:', entityTypeCode);
-        console.error('[Schema Loader] This means the page will show an error instead of fields!');
+        logger.error(new Error(`No entity schema found for: ${entityTypeCode}`), '[Schema Loader] Missing entity schema', {
+          tags: { error_type: 'missing_entity_schema' },
+          extra: { entityTypeCode }
+        });
       }
     } catch (err) {
-      console.error('[Schema Loader] ❌ Error loading entity schema:', err);
-      console.error('[Schema Loader] Stack:', err instanceof Error ? err.stack : 'No stack trace');
+      logger.error(err, '[Schema Loader] Error loading entity schema', {
+        tags: { error_type: 'schema_load_error' },
+        extra: { stack: err instanceof Error ? err.stack : 'No stack trace' }
+      });
       // Don't set error state - schema is optional, fallback to hardcoded fields
     } finally {
       setSchemaLoading(false);
@@ -651,7 +695,9 @@ export default function AdminApplicationDetailsPage() {
       
       await SweetAlert.success("Status Updated", `Application status has been updated to ${tempStatusUpdate}`);
     } catch (err) {
-      console.error('Error updating status:', err);
+      logger.error(err, 'Error updating status', {
+        tags: { error_type: 'status_update_error' }
+      });
       await SweetAlert.error("Update Failed", err instanceof Error ? err.message : 'Failed to update status');
     } finally {
       setIsUpdating(false);
@@ -688,7 +734,9 @@ export default function AdminApplicationDetailsPage() {
         throw new Error(errorData.error || `Failed to add comment: ${response.status}`);
       }
     } catch (err) {
-      console.error('Error adding comment:', err);
+      logger.error(err, 'Error adding comment', {
+        tags: { error_type: 'comment_add_error' }
+      });
       await SweetAlert.error("Comment Failed", err instanceof Error ? err.message : 'Failed to add comment');
     } finally {
       setIsCommenting(false);
@@ -732,7 +780,9 @@ export default function AdminApplicationDetailsPage() {
 
       await SweetAlert.success("Export Successful", "Application data has been exported");
     } catch (err) {
-      console.error('Error exporting data:', err);
+      logger.error(err, 'Error exporting data', {
+        tags: { error_type: 'data_export_error' }
+      });
       await SweetAlert.error("Export Failed", err instanceof Error ? err.message : 'Failed to export data');
     } finally {
       setIsExporting(false);
@@ -832,8 +882,8 @@ export default function AdminApplicationDetailsPage() {
         <AdminSidebar />
         <Box flex="1" ml="280px" display="flex" alignItems="center" justifyContent="center">
           <VStack gap="4">
-            <Icon as={FiFileText} boxSize="8" color="orange.500" />
-            <Text color="gray.600">Loading application details...</Text>
+            <IconWrapper><FiFileText size={32} color="#DD6B20" /></IconWrapper>
+            <Typography color="gray.600">Loading application details...</Typography>
           </VStack>
         </Box>
       </Flex>
@@ -846,14 +896,14 @@ export default function AdminApplicationDetailsPage() {
         <AdminSidebar />
         <Box flex="1" ml="280px" display="flex" alignItems="center" justifyContent="center">
           <VStack gap="4">
-            <Alert.Root status="error" borderRadius="md">
-              <Icon as={FiAlertTriangle} />
-              <Alert.Title>Error!</Alert.Title>
-              <Alert.Description>{error || 'Application not found'}</Alert.Description>
-            </Alert.Root>
+            <AlertBar
+              status="error"
+              title="Error!"
+              description={error || 'Application not found'}
+            />
             <Link href="/work-queue">
-              <Button variant="outline" colorScheme="gray">
-                <Icon as={FiArrowLeft} mr="2" />
+              <Button variant="secondary">
+                <IconWrapper><FiArrowLeft size={16} /></IconWrapper>
                 Back to Work Queue
               </Button>
             </Link>
@@ -893,10 +943,10 @@ export default function AdminApplicationDetailsPage() {
                   alignItems="center"
                   justifyContent="center"
                 >
-                  <Icon as={FiFileText} boxSize="5" color="white" />
+                  <IconWrapper><FiFileText size={20} color="white" /></IconWrapper>
                 </Box>
                 <VStack align="start" gap="0.5">
-                  <Text 
+                  <Typography 
                     as="h1" 
                     fontSize="2xl" 
                     fontWeight="800" 
@@ -905,50 +955,30 @@ export default function AdminApplicationDetailsPage() {
                     lineHeight="1.2"
                   >
                     Application Review
-                  </Text>
+                  </Typography>
                   <HStack gap="2" align="center">
-                    <Text color="gray.600" fontSize="sm" fontWeight="500">
+                    <Typography color="gray.600" fontSize="sm" fontWeight="500">
                       {application.legalName}
-                    </Text>
-                    <Text color="gray.400" fontSize="xs">•</Text>
-                    <Text color="gray.500" fontSize="sm" fontWeight="500">
+                    </Typography>
+                    <Typography color="gray.400" fontSize="xs">•</Typography>
+                    <Typography color="gray.500" fontSize="sm" fontWeight="500">
                       {application.entityType}
-                    </Text>
+                    </Typography>
                   </HStack>
                 </VStack>
               </HStack>
               <HStack gap="3" align="center">
-                <Badge
-                  colorScheme={getStatusColor(application.status)}
-                  size="md"
-                  px="3"
-                  py="1"
-                  borderRadius="full"
-                  fontSize="xs"
-                  fontWeight="600"
-                  textTransform="uppercase"
-                  letterSpacing="0.05em"
-                  boxShadow="sm"
+                <Tag
+                  variant={getStatusColor(application.status) === 'green' ? 'success' : getStatusColor(application.status) === 'red' ? 'danger' : 'info'}
                 >
                   {application.status}
-                </Badge>
+                </Tag>
                 <Link href="/work-queue">
                   <Button 
-                    variant="outline" 
-                    colorScheme="gray"
-                    borderRadius="lg"
-                    fontWeight="500"
-                    px="3"
+                    variant="secondary"
                     size="md"
-                    _hover={{ 
-                      bg: "gray.50",
-                      borderColor: "gray.300",
-                      transform: "translateY(-1px)",
-                      boxShadow: "sm"
-                    }}
-                    transition="all 0.2s"
                   >
-                    <Icon as={FiArrowLeft} mr="1.5" boxSize="4" />
+                    <IconWrapper><FiArrowLeft size={16} /></IconWrapper>
                     Back to Queue
                   </Button>
                 </Link>
@@ -1006,7 +1036,7 @@ export default function AdminApplicationDetailsPage() {
                           flexShrink={0}
                           mx="auto"
                         >
-                          <Icon as={step.icon} boxSize="5" />
+                          <IconWrapper><step.icon size={20} /></IconWrapper>
                         </Circle>
                         {index < adminSteps.length - 1 && (
                           <Box
@@ -1040,7 +1070,7 @@ export default function AdminApplicationDetailsPage() {
                         _hover={{ transform: "translateY(-1px)" }}
                         px="1"
                       >
-                        <Text 
+                        <Typography 
                           fontSize="xs" 
                           fontWeight={currentStep === step.id ? "700" : "600"} 
                           color={currentStep === step.id ? "gray.900" : "gray.700"}
@@ -1051,8 +1081,8 @@ export default function AdminApplicationDetailsPage() {
                           w="full"
                         >
                           {step.title}
-                        </Text>
-                        <Text 
+                        </Typography>
+                        <Typography 
                           fontSize="10px" 
                           color={currentStep === step.id ? "gray.600" : "gray.500"}
                           fontWeight={currentStep === step.id ? "500" : "400"}
@@ -1063,7 +1093,7 @@ export default function AdminApplicationDetailsPage() {
                           w="full"
                         >
                           {step.subtitle}
-                        </Text>
+                        </Typography>
                       </VStack>
                     </Flex>
                   ))}
@@ -1089,7 +1119,7 @@ export default function AdminApplicationDetailsPage() {
               if (schemaLoading || !entitySchema) {
                 return (
                   <VStack gap="6" align="stretch" w="full">
-                    <Card.Root 
+                    <Card 
                       bg="white" 
                       borderRadius="xl" 
                       border="1px" 
@@ -1098,29 +1128,27 @@ export default function AdminApplicationDetailsPage() {
                       boxShadow="md"
                       w="full"
                     >
-                      <Card.Body>
-                        <VStack gap="4" align="center" py="8" w="full">
-                          <Box
-                            p="3"
-                            borderRadius="lg"
-                            bgGradient="linear(to-br, orange.100, orange.200)"
-                            display="flex"
-                            alignItems="center"
-                            justifyContent="center"
-                          >
-                            <Icon as={FiFileText} boxSize="6" color="orange.600" />
-                          </Box>
-                          <Text fontSize="md" color="gray.700" fontWeight="600" textAlign="center">
-                            Loading entity schema from database...
-                          </Text>
-                          <Progress.Root value={undefined} size="md" colorScheme="orange" w="full" maxW="300px">
-                            <Progress.Track>
-                              <Progress.Range />
-                            </Progress.Track>
-                          </Progress.Root>
-                        </VStack>
-                      </Card.Body>
-                    </Card.Root>
+                      <VStack gap="4" align="center" py="8" w="full">
+                        <Box
+                          p="3"
+                          borderRadius="lg"
+                          bgGradient="linear(to-br, orange.100, orange.200)"
+                          display="flex"
+                          alignItems="center"
+                          justifyContent="center"
+                        >
+                          <IconWrapper><FiFileText size={24} color="#DD6B20" /></IconWrapper>
+                        </Box>
+                        <Typography fontSize="md" color="gray.700" fontWeight="600" textAlign="center">
+                          Loading entity schema from database...
+                        </Typography>
+                        <Progress.Root value={undefined} size="md" colorScheme="orange" w="full" maxW="300px">
+                          <Progress.Track>
+                            <Progress.Range />
+                          </Progress.Track>
+                        </Progress.Root>
+                      </VStack>
+                    </Card>
                   </VStack>
                 );
               }
@@ -1128,7 +1156,7 @@ export default function AdminApplicationDetailsPage() {
               if (!currentStepData) {
                 return (
                   <VStack gap="6" align="stretch" w="full">
-                    <Card.Root 
+                    <Card 
                       bg="white" 
                       borderRadius="xl" 
                       border="1px" 
@@ -1138,32 +1166,12 @@ export default function AdminApplicationDetailsPage() {
                       bgGradient="linear(to-br, white, yellow.50)"
                       w="full"
                     >
-                      <Card.Body>
-                        <Alert.Root status="warning" borderRadius="lg" p="4">
-                          <HStack gap="3" align="flex-start" w="full">
-                            <Box
-                              p="2"
-                              borderRadius="md"
-                              bg="yellow.100"
-                              display="flex"
-                              alignItems="center"
-                              justifyContent="center"
-                              flexShrink={0}
-                            >
-                              <Icon as={FiAlertTriangle} boxSize="5" color="yellow.600" />
-                            </Box>
-                            <VStack align="start" gap="1" flex="1">
-                              <Alert.Title fontSize="md" fontWeight="700" color="gray.900">
-                                Step Not Found
-                              </Alert.Title>
-                              <Alert.Description fontSize="sm" color="gray.700">
-                                Step {currentStep} could not be found in the schema.
-                              </Alert.Description>
-                            </VStack>
-                          </HStack>
-                        </Alert.Root>
-                      </Card.Body>
-                    </Card.Root>
+                      <AlertBar
+                        status="warning"
+                        title="Step Not Found"
+                        description={`Step ${currentStep} could not be found in the schema.`}
+                      />
+                    </Card>
                   </VStack>
                 );
               }
@@ -1181,7 +1189,7 @@ export default function AdminApplicationDetailsPage() {
               if (!currentSection) {
                 return (
                   <VStack gap="6" align="stretch" w="full">
-                    <Card.Root 
+                    <Card 
                       bg="white" 
                       borderRadius="xl" 
                       border="1px" 
@@ -1191,32 +1199,12 @@ export default function AdminApplicationDetailsPage() {
                       bgGradient="linear(to-br, white, yellow.50)"
                       w="full"
                     >
-                      <Card.Body>
-                        <Alert.Root status="warning" borderRadius="lg" p="4">
-                          <HStack gap="3" align="flex-start" w="full">
-                            <Box
-                              p="2"
-                              borderRadius="md"
-                              bg="yellow.100"
-                              display="flex"
-                              alignItems="center"
-                              justifyContent="center"
-                              flexShrink={0}
-                            >
-                              <Icon as={FiAlertTriangle} boxSize="5" color="yellow.600" />
-                            </Box>
-                            <VStack align="start" gap="1" flex="1">
-                              <Alert.Title fontSize="md" fontWeight="700" color="gray.900">
-                                Section Not Found
-                              </Alert.Title>
-                              <Alert.Description fontSize="sm" color="gray.700">
-                                The section for step "{currentStepData.title}" could not be found in the schema.
-                              </Alert.Description>
-                            </VStack>
-                          </HStack>
-                        </Alert.Root>
-                      </Card.Body>
-                    </Card.Root>
+                      <AlertBar
+                        status="warning"
+                        title="Section Not Found"
+                        description={`The section for step "${currentStepData.title}" could not be found in the schema.`}
+                      />
+                    </Card>
                   </VStack>
                 );
               }
@@ -1225,7 +1213,7 @@ export default function AdminApplicationDetailsPage() {
               return (
                 <VStack gap="6" align="stretch" w="full">
                   {schemaLoading ? (
-                    <Card.Root 
+                    <Card 
                       bg="white" 
                       borderRadius="xl" 
                       border="1px" 
@@ -1234,8 +1222,7 @@ export default function AdminApplicationDetailsPage() {
                       boxShadow="md"
                       w="full"
                     >
-                      <Card.Body>
-                        <VStack gap="4" align="center" py="8" w="full">
+                      <VStack gap="4" align="center" py="8" w="full">
                           <Box
                             p="3"
                             borderRadius="lg"
@@ -1244,21 +1231,20 @@ export default function AdminApplicationDetailsPage() {
                             alignItems="center"
                             justifyContent="center"
                           >
-                            <Icon as={FiFileText} boxSize="6" color="orange.600" />
+                            <IconWrapper><FiFileText size={24} color="#DD6B20" /></IconWrapper>
                           </Box>
-                          <Text fontSize="md" color="gray.700" fontWeight="600" textAlign="center">
+                          <Typography fontSize="md" color="gray.700" fontWeight="600" textAlign="center">
                             Loading entity schema from database...
-                          </Text>
+                          </Typography>
                           <Progress.Root value={undefined} size="md" colorScheme="orange" w="full" maxW="300px">
                             <Progress.Track>
                               <Progress.Range />
                             </Progress.Track>
                           </Progress.Root>
                         </VStack>
-                      </Card.Body>
-                    </Card.Root>
+                    </Card>
                   ) : (
-                    <Card.Root 
+                    <Card 
                       bg="white" 
                       borderRadius="xl" 
                       border="1px" 
@@ -1268,7 +1254,7 @@ export default function AdminApplicationDetailsPage() {
                       transition="all 0.2s"
                       w="full"
                     >
-                      <Card.Header pb="4" borderBottom="1px" borderColor="gray.100">
+                      <Box pb="4" borderBottom="1px" borderColor="gray.100" mb="4">
                         <HStack justify="space-between" align="flex-start" w="full">
                           <VStack align="start" gap="1.5" flex="1">
                             <HStack gap="2.5" align="center">
@@ -1281,9 +1267,9 @@ export default function AdminApplicationDetailsPage() {
                                 justifyContent="center"
                                 flexShrink={0}
                               >
-                                <Icon as={currentStepData.icon} boxSize="4" color="blue.600" />
+                                <IconWrapper><currentStepData.icon size={16} color="#3182CE" /></IconWrapper>
                               </Box>
-                              <Text 
+                              <Typography 
                                 fontSize="lg" 
                                 fontWeight="700" 
                                 color="gray.900"
@@ -1291,10 +1277,10 @@ export default function AdminApplicationDetailsPage() {
                                 lineHeight="1.3"
                               >
                                 {currentSection.title}
-                              </Text>
+                              </Typography>
                             </HStack>
                             {currentSection.description && (
-                              <Text 
+                              <Typography 
                                 fontSize="sm" 
                                 color="gray.600"
                                 fontWeight="500"
@@ -1302,27 +1288,17 @@ export default function AdminApplicationDetailsPage() {
                                 lineHeight="1.4"
                               >
                                 {currentSection.description}
-                              </Text>
+                              </Typography>
                             )}
                           </VStack>
-                          <Badge 
-                            colorScheme="green" 
-                            fontSize="10px" 
-                            px="2.5"
-                            py="0.5"
-                            borderRadius="full"
-                            fontWeight="700"
-                            textTransform="uppercase"
-                            letterSpacing="0.05em"
-                            boxShadow="sm"
-                            flexShrink={0}
-                            ml="4"
+                          <Tag 
+                            variant="success"
                           >
                             Schema-Driven
-                          </Badge>
+                          </Tag>
                         </HStack>
-                      </Card.Header>
-                      <Card.Body pt="6">
+                      </Box>
+                      <Box pt="6">
                         <SimpleGrid columns={{ base: 1, md: 2 }} gap="6" w="full">
                           {currentSection.fields.map((field) => (
                             <Box key={field.code} w="full">
@@ -1334,13 +1310,13 @@ export default function AdminApplicationDetailsPage() {
                             </Box>
                           ))}
                         </SimpleGrid>
-                      </Card.Body>
-                    </Card.Root>
+                      </Box>
+                    </Card>
                   )}
 
                   {/* Quick Actions - only show on first step */}
                   {currentStep === 1 && (
-                    <Card.Root 
+                    <Card 
                       bg="white" 
                       borderRadius="xl" 
                       border="1px" 
@@ -1349,7 +1325,7 @@ export default function AdminApplicationDetailsPage() {
                       boxShadow="md"
                       w="full"
                     >
-                      <Card.Header pb="4">
+                      <Box pb="4" mb="4">
                         <HStack gap="2.5" align="center">
                           <Box
                             p="1.5"
@@ -1360,9 +1336,9 @@ export default function AdminApplicationDetailsPage() {
                             justifyContent="center"
                             flexShrink={0}
                           >
-                            <Icon as={FiCheckSquare} boxSize="4" color="purple.600" />
+                            <IconWrapper><FiCheckSquare size={16} color="#805AD5" /></IconWrapper>
                           </Box>
-                          <Text 
+                          <Typography 
                             fontSize="lg" 
                             fontWeight="700" 
                             color="gray.900"
@@ -1370,90 +1346,36 @@ export default function AdminApplicationDetailsPage() {
                             lineHeight="1.3"
                           >
                             Quick Actions
-                          </Text>
+                          </Typography>
                         </HStack>
-                      </Card.Header>
-                      <Card.Body pt="0">
+                      </Box>
+                      <Box pt="0">
                         <HStack gap="3" wrap="wrap" align="center">
                           <Button
-                            colorScheme="orange"
-                            bgGradient="linear(to-r, orange.500, orange.600)"
-                            _hover={{ 
-                              bgGradient: "linear(to-r, orange.600, orange.700)",
-                              transform: "translateY(-1px)",
-                              boxShadow: "md"
-                            }}
-                            _active={{ transform: "translateY(0)" }}
+                            variant="primary"
                             onClick={() => setIsStatusModalOpen(true)}
-                            borderRadius="md"
-                            px="4"
-                            py="2.5"
-                            h="auto"
-                            fontWeight="600"
-                            fontSize="sm"
-                            boxShadow="sm"
-                            transition="all 0.2s"
-                            display="flex"
-                            alignItems="center"
-                            justifyContent="center"
                           >
-                            <Icon as={FiEdit3} mr="1.5" boxSize="4" />
+                            <IconWrapper><FiEdit3 size={16} /></IconWrapper>
                             Update Status
                           </Button>
                           <Button 
-                            variant="outline" 
-                            colorScheme="blue"
+                            variant="secondary"
                             onClick={() => setIsCommentModalOpen(true)}
-                            borderRadius="md"
-                            px="4"
-                            py="2.5"
-                            h="auto"
-                            fontWeight="600"
-                            fontSize="sm"
-                            borderWidth="1.5px"
-                            _hover={{ 
-                              bg: "blue.50",
-                              borderColor: "blue.400",
-                              transform: "translateY(-1px)",
-                              boxShadow: "sm"
-                            }}
-                            transition="all 0.2s"
-                            display="flex"
-                            alignItems="center"
-                            justifyContent="center"
                           >
-                            <Icon as={FiMessageSquare} mr="1.5" boxSize="4" />
+                            <IconWrapper><FiMessageSquare size={16} /></IconWrapper>
                             Add Comment
                           </Button>
                           <Button 
-                            variant="outline" 
-                            colorScheme="green"
+                            variant="secondary"
                             onClick={handleExportData}
-                            loading={isExporting}
-                            borderRadius="md"
-                            px="4"
-                            py="2.5"
-                            h="auto"
-                            fontWeight="600"
-                            fontSize="sm"
-                            borderWidth="1.5px"
-                            _hover={{ 
-                              bg: "green.50",
-                              borderColor: "green.400",
-                              transform: "translateY(-1px)",
-                              boxShadow: "sm"
-                            }}
-                            transition="all 0.2s"
-                            display="flex"
-                            alignItems="center"
-                            justifyContent="center"
+                            disabled={isExporting}
                           >
-                            <Icon as={FiDownload} mr="1.5" boxSize="4" />
+                            <IconWrapper><FiDownload size={16} /></IconWrapper>
                             {isExporting ? 'Exporting...' : 'Export Data'}
                           </Button>
                         </HStack>
-                      </Card.Body>
-                    </Card.Root>
+                      </Box>
+                    </Card>
                   )}
                           </VStack>
               );
@@ -1474,34 +1396,11 @@ export default function AdminApplicationDetailsPage() {
             w="full"
           >
             <Button
-              variant="outline"
-              colorScheme="gray"
+              variant="secondary"
               onClick={() => setCurrentStep(Math.max(1, currentStep - 1))}
               disabled={currentStep === 1}
-              borderRadius="md"
-              px="3"
-              py="2"
-              h="auto"
-              fontWeight="600"
-              fontSize="sm"
-              borderWidth="1.5px"
-              _hover={{ 
-                bg: "gray.50",
-                borderColor: "gray.400",
-                transform: "translateX(-1px)",
-                boxShadow: "sm"
-              }}
-              _disabled={{
-                opacity: 0.4,
-                cursor: "not-allowed",
-                _hover: {}
-              }}
-              transition="all 0.2s"
-              display="flex"
-              alignItems="center"
-              justifyContent="center"
             >
-              <Icon as={FiArrowLeft} mr="1.5" boxSize="4" />
+              <IconWrapper><FiArrowLeft size={16} /></IconWrapper>
               Previous
             </Button>
             
@@ -1510,31 +1409,8 @@ export default function AdminApplicationDetailsPage() {
                 <Button
                   key={step.id}
                   size="sm"
-                  minW="32px"
-                  h="32px"
-                  variant={currentStep === step.id ? "solid" : "ghost"}
-                  colorScheme={currentStep === step.id ? "orange" : "gray"}
+                  variant={currentStep === step.id ? "primary" : "ghost"}
                   onClick={() => setCurrentStep(step.id)}
-                  borderRadius="md"
-                  fontWeight={currentStep === step.id ? "700" : "500"}
-                  bg={currentStep === step.id 
-                    ? "linear-gradient(135deg, orange.500, orange.600)" 
-                    : "transparent"}
-                  bgGradient={currentStep === step.id 
-                    ? "linear(to-br, orange.500, orange.600)" 
-                    : undefined}
-                  color={currentStep === step.id ? "white" : "gray.600"}
-                  boxShadow={currentStep === step.id ? "sm" : "none"}
-                  _hover={{
-                    bg: currentStep === step.id 
-                      ? "linear-gradient(135deg, orange.600, orange.700)" 
-                      : "gray.200",
-                    transform: "scale(1.05)"
-                  }}
-                  transition="all 0.2s"
-                  display="flex"
-                  alignItems="center"
-                  justifyContent="center"
                 >
                   {step.id}
                 </Button>
@@ -1542,74 +1418,53 @@ export default function AdminApplicationDetailsPage() {
             </HStack>
 
             <Button
-              colorScheme="orange"
-              bgGradient="linear(to-r, orange.500, orange.600)"
-              _hover={{ 
-                bgGradient: "linear(to-r, orange.600, orange.700)",
-                transform: "translateX(1px)",
-                boxShadow: "md"
-              }}
-              _active={{ transform: "translateX(0)" }}
+              variant="primary"
               onClick={() => setCurrentStep(Math.min(adminSteps.length, currentStep + 1))}
               disabled={currentStep === adminSteps.length}
-              borderRadius="md"
-              px="3"
-              py="2"
-              h="auto"
-              fontWeight="600"
-              fontSize="sm"
-              boxShadow="sm"
-              _disabled={{
-                opacity: 0.4,
-                cursor: "not-allowed",
-                _hover: {}
-              }}
-              transition="all 0.2s"
-              display="flex"
-              alignItems="center"
-              justifyContent="center"
             >
               Next
-              <Icon as={FiArrowRight} ml="1.5" boxSize="4" />
+              <IconWrapper><FiArrowRight size={16} /></IconWrapper>
             </Button>
           </HStack>
       </Container>
     </Box>
 
     {/* Status Update Modal */}
-    <Dialog.Root open={isStatusModalOpen} onOpenChange={(e) => setIsStatusModalOpen(e.open)}>
-      <Dialog.Backdrop bg="blackAlpha.600" backdropFilter="blur(4px)" />
-      <Dialog.Positioner>
-        <Dialog.Content
-          maxW="500px"
-          borderRadius="xl"
-          boxShadow="2xl"
-          border="1px"
-          borderColor="gray.200"
-        >
-          <Dialog.Header pb="4" borderBottom="1px" borderColor="gray.100">
-            <HStack gap="3" align="center" mb="1">
-              <Box
-                p="2"
-                borderRadius="lg"
-                bgGradient="linear(to-br, orange.100, orange.200)"
-                display="flex"
-                alignItems="center"
-                justifyContent="center"
-              >
-                <Icon as={FiEdit3} boxSize="4" color="orange.600" />
-              </Box>
-              <VStack align="start" gap="0">
-                <Dialog.Title fontSize="lg" fontWeight="700" color="gray.900">
-                  Update Application Status
-                </Dialog.Title>
-                <Dialog.Description fontSize="sm" color="gray.600" mt="0.5">
-                  Change the status of this application
-                </Dialog.Description>
-              </VStack>
-            </HStack>
-          </Dialog.Header>
-          <Dialog.Body py="6">
+    <Modal
+      isOpen={isStatusModalOpen}
+      onClose={() => {
+        setIsStatusModalOpen(false);
+        setTempStatusUpdate(statusUpdate);
+        setTempComment("");
+      }}
+      title="Update Application Status"
+      size="small"
+      closeOnBackdropClick={true}
+      closeOnEsc={true}
+    >
+      <ModalHeader>
+        <HStack gap="3" align="center" mb="1">
+          <Box
+            p="2"
+            borderRadius="lg"
+            bgGradient="linear(to-br, orange.100, orange.200)"
+            display="flex"
+            alignItems="center"
+            justifyContent="center"
+          >
+            <IconWrapper><FiEdit3 size={16} color="#DD6B20" /></IconWrapper>
+          </Box>
+          <VStack align="start" gap="0">
+            <Typography fontSize="lg" fontWeight="700" color="gray.900">
+              Update Application Status
+            </Typography>
+            <Typography fontSize="sm" color="gray.600" mt="0.5">
+              Change the status of this application
+            </Typography>
+          </VStack>
+        </HStack>
+      </ModalHeader>
+      <ModalBody>
             <VStack gap="5" align="stretch">
               <Field.Root>
                 <Field.Label fontSize="sm" fontWeight="600" color="gray.700" mb="2">
@@ -1648,7 +1503,7 @@ export default function AdminApplicationDetailsPage() {
               </Field.Root>
               <Field.Root>
                 <Field.Label fontSize="sm" fontWeight="600" color="gray.700" mb="2">
-                  Notes <Text as="span" color="gray.400" fontWeight="400">(Optional)</Text>
+                  Notes <Typography as="span" color="gray.400" fontWeight="400">(Optional)</Typography>
                 </Field.Label>
                 <Textarea
                   placeholder="Add notes about this status change..."
@@ -1667,162 +1522,107 @@ export default function AdminApplicationDetailsPage() {
                 />
               </Field.Root>
             </VStack>
-          </Dialog.Body>
-          <Dialog.Footer pt="4" borderTop="1px" borderColor="gray.100">
-            <HStack gap="3" justify="flex-end" w="full">
-              <Button
-                variant="outline"
-                onClick={() => {
-                  setIsStatusModalOpen(false);
-                  setTempStatusUpdate(statusUpdate);
-                  setTempComment("");
-                }}
-                borderRadius="md"
-                px="4"
-                py="2"
-                fontSize="sm"
-                fontWeight="600"
-                borderWidth="1.5px"
-                _hover={{
-                  bg: "gray.50",
-                  borderColor: "gray.400"
-                }}
-              >
-                Cancel
-              </Button>
-              <Button
-                colorScheme="orange"
-                bgGradient="linear(to-r, orange.500, orange.600)"
-                _hover={{
-                  bgGradient: "linear(to-r, orange.600, orange.700)",
-                  boxShadow: "md"
-                }}
-                onClick={handleStatusUpdate}
-                loading={isUpdating}
-                disabled={!tempStatusUpdate}
-                borderRadius="md"
-                px="4"
-                py="2"
-                fontSize="sm"
-                fontWeight="600"
-                boxShadow="sm"
-                _disabled={{
-                  opacity: 0.5,
-                  cursor: "not-allowed"
-                }}
-              >
-                Update Status
-              </Button>
-            </HStack>
-          </Dialog.Footer>
-        </Dialog.Content>
-      </Dialog.Positioner>
-    </Dialog.Root>
+        </ModalBody>
+        <ModalFooter>
+          <HStack gap="3" justify="flex-end" w="full">
+            <Button
+              variant="secondary"
+              onClick={() => {
+                setIsStatusModalOpen(false);
+                setTempStatusUpdate(statusUpdate);
+                setTempComment("");
+              }}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="primary"
+              onClick={handleStatusUpdate}
+              disabled={isUpdating || !tempStatusUpdate}
+            >
+              Update Status
+            </Button>
+          </HStack>
+        </ModalFooter>
+      </Modal>
 
     {/* Add Comment Modal */}
-    <Dialog.Root open={isCommentModalOpen} onOpenChange={(e) => setIsCommentModalOpen(e.open)}>
-      <Dialog.Backdrop bg="blackAlpha.600" backdropFilter="blur(4px)" />
-      <Dialog.Positioner>
-        <Dialog.Content
-          maxW="500px"
-          borderRadius="xl"
-          boxShadow="2xl"
-          border="1px"
-          borderColor="gray.200"
-        >
-          <Dialog.Header pb="4" borderBottom="1px" borderColor="gray.100">
-            <HStack gap="3" align="center" mb="1">
-              <Box
-                p="2"
-                borderRadius="lg"
-                bgGradient="linear(to-br, blue.100, blue.200)"
-                display="flex"
-                alignItems="center"
-                justifyContent="center"
-              >
-                <Icon as={FiMessageSquare} boxSize="4" color="blue.600" />
-              </Box>
-              <VStack align="start" gap="0">
-                <Dialog.Title fontSize="lg" fontWeight="700" color="gray.900">
-                  Add Comment
-                </Dialog.Title>
-                <Dialog.Description fontSize="sm" color="gray.600" mt="0.5">
-                  Add a comment or note to this application
-                </Dialog.Description>
-              </VStack>
-            </HStack>
-          </Dialog.Header>
-          <Dialog.Body py="6">
-            <Field.Root>
-              <Field.Label fontSize="sm" fontWeight="600" color="gray.700" mb="2">
-                Comment
-              </Field.Label>
-              <Textarea
-                placeholder="Enter your comment here..."
-                value={tempComment}
-                onChange={(e) => setTempComment(e.target.value)}
-                rows={6}
-                borderRadius="md"
-                borderWidth="1.5px"
-                borderColor="gray.300"
-                fontSize="sm"
-                color="gray.900"
-                _focus={{
-                  borderColor: "blue.400",
-                  boxShadow: "0 0 0 1px blue.400"
-                }}
-              />
-            </Field.Root>
-          </Dialog.Body>
-          <Dialog.Footer pt="4" borderTop="1px" borderColor="gray.100">
-            <HStack gap="3" justify="flex-end" w="full">
-              <Button
-                variant="outline"
-                onClick={() => {
-                  setIsCommentModalOpen(false);
-                  setTempComment("");
-                }}
-                borderRadius="md"
-                px="4"
-                py="2"
-                fontSize="sm"
-                fontWeight="600"
-                borderWidth="1.5px"
-                _hover={{
-                  bg: "gray.50",
-                  borderColor: "gray.400"
-                }}
-              >
-                Cancel
-              </Button>
-              <Button
-                colorScheme="blue"
-                bgGradient="linear(to-r, blue.500, blue.600)"
-                _hover={{
-                  bgGradient: "linear(to-r, blue.600, blue.700)",
-                  boxShadow: "md"
-                }}
-                onClick={handleAddComment}
-                loading={isCommenting}
-                disabled={!tempComment.trim()}
-                borderRadius="md"
-                px="4"
-                py="2"
-                fontSize="sm"
-                fontWeight="600"
-                boxShadow="sm"
-                _disabled={{
-                  opacity: 0.5,
-                  cursor: "not-allowed"
-                }}
-              >
-                Add Comment
-              </Button>
-            </HStack>
-          </Dialog.Footer>
-        </Dialog.Content>
-      </Dialog.Positioner>
-    </Dialog.Root>
+    <Modal
+      isOpen={isCommentModalOpen}
+      onClose={() => {
+        setIsCommentModalOpen(false);
+        setTempComment("");
+      }}
+      title="Add Comment"
+      size="small"
+      closeOnBackdropClick={true}
+      closeOnEsc={true}
+    >
+      <ModalHeader>
+        <HStack gap="3" align="center" mb="1">
+          <Box
+            p="2"
+            borderRadius="lg"
+            bgGradient="linear(to-br, blue.100, blue.200)"
+            display="flex"
+            alignItems="center"
+            justifyContent="center"
+          >
+            <IconWrapper><FiMessageSquare size={16} color="#3182CE" /></IconWrapper>
+          </Box>
+          <VStack align="start" gap="0">
+            <Typography fontSize="lg" fontWeight="700" color="gray.900">
+              Add Comment
+            </Typography>
+            <Typography fontSize="sm" color="gray.600" mt="0.5">
+              Add a comment or note to this application
+            </Typography>
+          </VStack>
+        </HStack>
+      </ModalHeader>
+      <ModalBody>
+        <Field.Root>
+          <Field.Label fontSize="sm" fontWeight="600" color="gray.700" mb="2">
+            Comment
+          </Field.Label>
+          <Textarea
+            placeholder="Enter your comment here..."
+            value={tempComment}
+            onChange={(e) => setTempComment(e.target.value)}
+            rows={6}
+            borderRadius="md"
+            borderWidth="1.5px"
+            borderColor="gray.300"
+            fontSize="sm"
+            color="gray.900"
+            _focus={{
+              borderColor: "blue.400",
+              boxShadow: "0 0 0 1px blue.400"
+            }}
+          />
+        </Field.Root>
+      </ModalBody>
+      <ModalFooter>
+        <HStack gap="3" justify="flex-end" w="full">
+          <Button
+            variant="secondary"
+            onClick={() => {
+              setIsCommentModalOpen(false);
+              setTempComment("");
+            }}
+          >
+            Cancel
+          </Button>
+          <Button
+            variant="primary"
+            onClick={handleAddComment}
+            disabled={isCommenting || !tempComment.trim()}
+          >
+            Add Comment
+          </Button>
+        </HStack>
+      </ModalFooter>
+    </Modal>
 
       {/* Document Viewer Modal */}
       <DocumentViewer

@@ -5,18 +5,13 @@ import {
   Container,
   VStack,
   HStack,
-  Text,
-  Input,
   Textarea,
-  Button,
   Flex,
-  Icon,
   Field,
   Spinner,
-  Alert,
-  AlertTitle,
-  AlertDescription
+  Input as ChakraInput
 } from "@chakra-ui/react";
+import { Typography, Input, Button, IconWrapper, AlertBar } from "@/lib/mukuruImports";
 import { FiFileText, FiX } from "react-icons/fi";
 import AdminSidebar from "../../../components/AdminSidebar";
 import { useState, useEffect } from "react";
@@ -25,7 +20,15 @@ import { entityConfigApiService, RequirementType, FieldType, RequirementsMetadat
 
 export default function CreateRequirementPage() {
   const router = useRouter();
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<{
+    code: string;
+    displayName: string;
+    description: string;
+    type: RequirementType;
+    fieldType: FieldType;
+    validationRules: string;
+    helpText: string;
+  }>({
     code: '',
     displayName: '',
     description: '',
@@ -102,7 +105,7 @@ export default function CreateRequirementPage() {
         <Box flex="1" ml="280px" display="flex" alignItems="center" justifyContent="center">
           <VStack gap="4">
             <Spinner size="xl" color="orange.500" />
-            <Text color="gray.600">Loading form...</Text>
+            <Typography color="gray.600">Loading form...</Typography>
           </VStack>
         </Box>
       </Flex>
@@ -120,12 +123,12 @@ export default function CreateRequirementPage() {
         <Box bg="white" borderBottom="1px" borderColor="gray.200" py="8">
           <Container maxW="8xl">
             <VStack align="start" gap="2">
-              <Text as="h1" fontSize="3xl" fontWeight="bold" color="gray.800">
+              <Typography as="h1" fontSize="3xl" fontWeight="bold" color="gray.800">
                 Create Requirement
-              </Text>
-              <Text color="gray.600" fontSize="lg">
+              </Typography>
+              <Typography color="gray.600" fontSize="lg">
                 Define a requirement field that can be assigned to entity types.
-              </Text>
+              </Typography>
             </VStack>
           </Container>
         </Box>
@@ -133,10 +136,11 @@ export default function CreateRequirementPage() {
         {/* Error Alert */}
         {error && (
           <Container maxW="8xl" py="4">
-            <Alert.Root status="error" borderRadius="md">
-              <AlertTitle>Error!</AlertTitle>
-              <AlertDescription>{error}</AlertDescription>
-            </Alert.Root>
+            <AlertBar
+              status="error"
+              title="Error!"
+              description={error}
+            />
           </Container>
         )}
 
@@ -149,18 +153,18 @@ export default function CreateRequirementPage() {
                 <Field.Label fontSize="sm" fontWeight="medium" color="gray.700">
                   Code *
                 </Field.Label>
-                <Input
+                <ChakraInput
                   value={formData.code}
-                  onChange={(e) => setFormData(prev => ({ ...prev, code: e.target.value.toUpperCase() }))}
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFormData(prev => ({ ...prev, code: e.target.value.toUpperCase() }))}
                   placeholder="e.g., REGISTRATION_NUMBER, TAX_ID"
                   bg="gray.50"
                   borderColor="gray.300"
                   _focus={{ borderColor: "orange.500", boxShadow: "0 0 0 1px #FF6B35" }}
                   required
                 />
-                <Text fontSize="xs" color="gray.500">
+                <Typography fontSize="xs" color="gray.500">
                   Uppercase letters, numbers, and underscores only (used in code)
-                </Text>
+                </Typography>
               </Field.Root>
 
               {/* Display Name */}
@@ -168,18 +172,18 @@ export default function CreateRequirementPage() {
                 <Field.Label fontSize="sm" fontWeight="medium" color="gray.700">
                   Display Name *
                 </Field.Label>
-                <Input
+                <ChakraInput
                   value={formData.displayName}
-                  onChange={(e) => setFormData(prev => ({ ...prev, displayName: e.target.value }))}
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFormData(prev => ({ ...prev, displayName: e.target.value }))}
                   placeholder="e.g., Registration Number, Tax ID"
                   bg="gray.50"
                   borderColor="gray.300"
                   _focus={{ borderColor: "orange.500", boxShadow: "0 0 0 1px #FF6B35" }}
                   required
                 />
-                <Text fontSize="xs" color="gray.500">
+                <Typography fontSize="xs" color="gray.500">
                   User-facing name (shown in forms)
-                </Text>
+                </Typography>
               </Field.Root>
 
               {/* Description */}
@@ -225,9 +229,9 @@ export default function CreateRequirementPage() {
                     </option>
                   ))}
                 </select>
-                <Text fontSize="xs" color="gray.500">
+                <Typography fontSize="xs" color="gray.500">
                   Category of this requirement
-                </Text>
+                </Typography>
               </Field.Root>
 
               {/* Field Type */}
@@ -255,9 +259,9 @@ export default function CreateRequirementPage() {
                     </option>
                   ))}
                 </select>
-                <Text fontSize="xs" color="gray.500">
+                <Typography fontSize="xs" color="gray.500">
                   How this field should be displayed in forms
-                </Text>
+                </Typography>
               </Field.Root>
 
               {/* Validation Rules */}
@@ -277,9 +281,9 @@ export default function CreateRequirementPage() {
                   fontSize="sm"
                   _focus={{ borderColor: "orange.500", boxShadow: "0 0 0 1px #FF6B35" }}
                 />
-                <Text fontSize="xs" color="gray.500">
+                <Typography fontSize="xs" color="gray.500">
                   JSON format validation rules (optional)
-                </Text>
+                </Typography>
               </Field.Root>
 
               {/* Help Text */}
@@ -297,37 +301,29 @@ export default function CreateRequirementPage() {
                   minH="80px"
                   _focus={{ borderColor: "orange.500", boxShadow: "0 0 0 1px #FF6B35" }}
                 />
-                <Text fontSize="xs" color="gray.500">
+                <Typography fontSize="xs" color="gray.500">
                   Optional help text shown to users
-                </Text>
+                </Typography>
               </Field.Root>
 
               {/* Action Buttons */}
               <Flex gap="4" justify="start" pt="6">
                 <Button
                   onClick={handleCreate}
-                  colorScheme="orange"
-                  bg="#FF6B35"
-                  _hover={{ bg: "#E55A2B" }}
-                  _active={{ bg: "#CC4A1F" }}
-                  size="lg"
-                  px="8"
-                  loading={saving}
-                  loadingText="Creating..."
-                  disabled={loading || !metadata}
+                  variant="primary"
+                  size="md"
+                  disabled={loading || !metadata || saving}
                 >
-                  <Icon as={FiFileText} mr="2" />
-                  Create
+                  <IconWrapper><FiFileText size={16} /></IconWrapper>
+                  {saving ? "Creating..." : "Create"}
                 </Button>
                 <Button
                   onClick={handleCancel}
-                  variant="outline"
-                  colorScheme="gray"
-                  size="lg"
-                  px="8"
+                  variant="secondary"
+                  size="md"
                   disabled={saving || loading}
                 >
-                  <Icon as={FiX} mr="2" />
+                  <IconWrapper><FiX size={16} /></IconWrapper>
                   Cancel
                 </Button>
               </Flex>

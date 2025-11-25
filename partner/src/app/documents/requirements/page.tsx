@@ -15,7 +15,7 @@ import { useState } from "react";
 import { Button } from "@chakra-ui/react";
 import { documentValidation } from '../../../utils/validation';
 
-const MotionBox = motion(Box);
+const MotionBox = motion.create(Box);
 
 const entityTypes = [
   { value: 'pty_ltd', label: 'Private Company / Limited Liability Company' },

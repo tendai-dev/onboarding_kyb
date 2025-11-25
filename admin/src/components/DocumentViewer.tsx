@@ -3,16 +3,13 @@
 import React, { useState, useEffect } from 'react';
 import {
   Box,
-  Dialog,
   HStack,
   VStack,
-  Text,
-  Button,
-  Icon,
   Spinner,
   Flex,
   Image,
 } from '@chakra-ui/react';
+import { Typography, Button, Modal, ModalHeader, ModalBody, IconWrapper } from '@/lib/mukuruImports';
 import { FiDownload, FiX, FiFileText } from 'react-icons/fi';
 
 interface DocumentViewerProps {
@@ -77,83 +74,49 @@ export function DocumentViewer({
   };
 
   return (
-    <Dialog.Root open={isOpen} onOpenChange={(e) => {
-      if (!e.open) {
-        onClose();
+    <Modal
+      isOpen={isOpen}
+      onClose={onClose}
+      size="large"
+      header={
+        <HStack justify="space-between" align="center" w="full">
+          <VStack align="start" gap="0">
+            <Typography fontSize="lg" fontWeight="700" color="black">
+              {fileName}
+            </Typography>
+            <Typography fontSize="sm" color="black">
+              {documentType && `${documentType} • `}
+              {fileSize && formatFileSize(fileSize)}
+            </Typography>
+          </VStack>
+          <HStack gap="2">
+            {onDownload && (
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={onDownload}
+              >
+                <IconWrapper><FiDownload size={16} /></IconWrapper>
+                Download
+              </Button>
+            )}
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={onClose}
+            >
+              <IconWrapper><FiX size={16} /></IconWrapper>
+            </Button>
+          </HStack>
+        </HStack>
       }
-    }}>
-      <Dialog.Backdrop 
-        bg="blackAlpha.600" 
-        backdropFilter="blur(2px)"
-        position="fixed"
-        top="0"
-        left="0"
-        right="0"
-        bottom="0"
-        zIndex={999}
-      />
-      <Dialog.Positioner
-        position="fixed"
-        top="0"
-        left="0"
-        right="0"
-        bottom="0"
-        display="flex"
-        alignItems="center"
-        justifyContent="center"
-        zIndex={1000}
-      >
-        <Dialog.Content 
-          maxW="90vw" 
-          w="90vw"
-          maxH="90vh" 
-          h="90vh"
-          borderRadius="xl" 
-          boxShadow="2xl"
-          display="flex"
-          flexDirection="column"
-          overflow="hidden"
-          bg="white"
-          position="relative"
-        >
-          <Dialog.Header pb="4" borderBottom="1px" borderColor="gray.200">
-            <HStack justify="space-between" align="center">
-              <VStack align="start" gap="0">
-                <Dialog.Title fontSize="lg" fontWeight="700" color="black">
-                  {fileName}
-                </Dialog.Title>
-                <Dialog.Description fontSize="sm" color="black">
-                  {documentType && `${documentType} • `}
-                  {fileSize && formatFileSize(fileSize)}
-                </Dialog.Description>
-              </VStack>
-              <HStack gap="2">
-                {onDownload && (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={onDownload}
-                  >
-                    <Icon as={FiDownload} style={{ marginRight: '8px' }} />
-                    Download
-                  </Button>
-                )}
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={onClose}
-                >
-                  <Icon as={FiX} />
-                </Button>
-              </HStack>
-            </HStack>
-          </Dialog.Header>
-          <Dialog.Body p="0" overflow="hidden" flex="1" display="flex" flexDirection="column">
+    >
+      <Box p="0" overflow="hidden" flex="1" display="flex" flexDirection="column" maxH="90vh">
             {loading && !documentUrl ? (
               <Flex justify="center" align="center" minH="400px">
                 <VStack gap="4">
                   <Spinner size="xl" color="orange.500" />
-                  <Text color="black">Loading document...</Text>
+                  <Typography color="black">Loading document...</Typography>
                 </VStack>
               </Flex>
             ) : documentUrl ? (
@@ -227,13 +190,12 @@ export function DocumentViewer({
                       zIndex={5}
                     >
                       <HStack gap="2" justify="center">
-                        <Text fontSize="sm" color="black">
+                        <Typography fontSize="sm" color="black">
                           PDF not displaying?
-                        </Text>
+                        </Typography>
                         <Button
-                          size="xs"
-                          colorScheme="orange"
-                          variant="outline"
+                          size="sm"
+                          variant="secondary"
                           onClick={() => {
                             if (onDownload) {
                               onDownload();
@@ -249,16 +211,16 @@ export function DocumentViewer({
                   )}
                   {iframeFailed && (
                     <Box p="8" textAlign="center" minH="400px" display="flex" flexDirection="column" justifyContent="center" alignItems="center">
-                      <Icon as={FiFileText} boxSize="16" color="black" mb="4" />
-                      <Text fontSize="lg" fontWeight="medium" color="black" mb="2">
+                      <IconWrapper><FiFileText size={64} color="black" /></IconWrapper>
+                      <Typography fontSize="lg" fontWeight="medium" color="black" mb="2" mt="4">
                         {fileName}
-                      </Text>
-                      <Text color="black" mb="6" textAlign="center" maxW="400px">
+                      </Typography>
+                      <Typography color="black" mb="6" textAlign="center" maxW="400px">
                         Your browser cannot display PDFs inline. Click the button below to open the PDF in a new tab.
-                      </Text>
+                      </Typography>
                       <Button
-                        colorScheme="orange"
-                        size="lg"
+                        variant="primary"
+                        size="md"
                         onClick={() => {
                           if (onDownload) {
                             onDownload();
@@ -267,7 +229,7 @@ export function DocumentViewer({
                           }
                         }}
                       >
-                        <Icon as={FiDownload} style={{ marginRight: '8px' }} />
+                        <IconWrapper><FiDownload size={16} /></IconWrapper>
                         Open PDF in New Tab
                       </Button>
                     </Box>
@@ -288,7 +250,7 @@ export function DocumentViewer({
                     >
                       <VStack gap="4">
                         <Spinner size="xl" color="orange.500" />
-                        <Text color="black">Loading PDF...</Text>
+                        <Typography color="black">Loading PDF...</Typography>
                       </VStack>
                     </Flex>
                   )}
@@ -296,20 +258,20 @@ export function DocumentViewer({
               ) : (
                 <Box p="4" bg="gray.50" minH="400px">
                   <VStack gap="4" align="center" justify="center" minH="400px">
-                    <Icon as={FiFileText} boxSize="12" color="black" />
-                    <Text fontSize="lg" fontWeight="medium" color="black">
+                    <IconWrapper><FiFileText size={48} color="black" /></IconWrapper>
+                    <Typography fontSize="lg" fontWeight="medium" color="black">
                       {fileName}
-                    </Text>
-                    <Text fontSize="sm" color="black" textAlign="center">
+                    </Typography>
+                    <Typography fontSize="sm" color="black" textAlign="center">
                       This file type cannot be previewed in the browser.
                       <br />
                       Click the download button to view it.
-                    </Text>
+                    </Typography>
                     <Button
-                      colorScheme="orange"
+                      variant="primary"
                       onClick={onDownload}
                     >
-                      <Icon as={FiDownload} style={{ marginRight: '8px' }} />
+                      <IconWrapper><FiDownload size={16} /></IconWrapper>
                       Download to View
                     </Button>
                   </VStack>
@@ -318,14 +280,12 @@ export function DocumentViewer({
             ) : (
               <Flex justify="center" align="center" minH="400px">
                 <VStack gap="4">
-                  <Text color="black">Document not available</Text>
+                  <Typography color="black">Document not available</Typography>
                 </VStack>
               </Flex>
             )}
-          </Dialog.Body>
-        </Dialog.Content>
-      </Dialog.Positioner>
-    </Dialog.Root>
+      </Box>
+    </Modal>
   );
 }
 

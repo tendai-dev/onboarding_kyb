@@ -84,10 +84,10 @@ export async function GET(
     // Try Projections API first via proxy
     let proxyPath: string;
     if (isGuid) {
-      proxyPath = `/api/proxy/projections/v1/cases/${id}`;
+      proxyPath = `/api/proxy/api/v1/projections/cases/${id}`;
     } else {
       // For case numbers, try by-number endpoint
-      proxyPath = `/api/proxy/projections/v1/cases/by-number/${encodeURIComponent(id)}`;
+      proxyPath = `/api/proxy/api/v1/cases/by-number/${encodeURIComponent(id)}`;
     }
     
     const proxyUrl = new URL(proxyPath, request.url);
@@ -198,7 +198,7 @@ export async function GET(
           
           if (formConfigId) {
             // Fetch by form config ID (most specific) - this is the entity type ID
-            entityConfigUrl = `${ENTITY_CONFIG_API_BASE}/api/v1/entitytypes/${formConfigId}`;
+            entityConfigUrl = `${ENTITY_CONFIG_API_BASE}/api/v1/entity-types/${formConfigId}`;
             if (formVersion) {
               entityConfigUrl += `?version=${encodeURIComponent(formVersion)}&includeRequirements=true`;
             } else {
@@ -207,7 +207,7 @@ export async function GET(
           } else if (entityTypeCode) {
             // Fetch by entity type code (fallback)
             // First get all entity types and find the one matching the code
-            const allTypesUrl = `${ENTITY_CONFIG_API_BASE}/api/v1/entitytypes?includeRequirements=true`;
+            const allTypesUrl = `${ENTITY_CONFIG_API_BASE}/api/v1/entity-types?includeRequirements=true`;
             const allTypesResponse = await fetch(allTypesUrl, {
               headers: { 'Content-Type': 'application/json' },
               signal: AbortSignal.timeout(5000)
@@ -226,7 +226,7 @@ export async function GET(
                 : null;
               
               if (matchingType?.id) {
-                entityConfigUrl = `${ENTITY_CONFIG_API_BASE}/api/v1/entitytypes/${matchingType.id}?includeRequirements=true`;
+                entityConfigUrl = `${ENTITY_CONFIG_API_BASE}/api/v1/entity-types/${matchingType.id}?includeRequirements=true`;
               } else {
                 console.warn(`Entity type with code "${entityTypeCode}" not found. Available codes:`, 
                   Array.isArray(allTypes) ? allTypes.map((et: any) => et.code).join(', ') : 'none');

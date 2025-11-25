@@ -1,4 +1,4 @@
-version: '3.8'
+name: onboarding-platform
 
 services:
   # Database
@@ -9,6 +9,8 @@ services:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
       POSTGRES_DB: postgres
+      POSTGRES_MULTIPLE_DATABASES: kyb_case
+      POSTGRES_MULTIPLE_USERS: kyb:kyb_password
     ports:
       - "5432:5432"
     volumes:
@@ -119,12 +121,29 @@ services:
       start_period: 120s
     restart: unless-stopped
 
-  # === CORE MICROSERVICES ===
+  # === CORE SERVICES ===
   
-  # Case/Application API (formerly onboarding-api)
-  kyb-case-api:
+  # Database Migrations - Run independently before starting the API
+  # This ensures migrations are applied safely without data loss
+  onboarding-migrations:
+    build:
+      context: ./services/onboarding-api
+      dockerfile: src/Migrations/Dockerfile
+    container_name: onboarding-migrations
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Production
+      - ConnectionStrings__PostgreSQL=Host=postgres;Database=kyb_case;Username=kyb;Password=kyb_password
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: "no"
+    profiles:
+      - migrations  # Only run when explicitly requested: docker-compose --profile migrations up onboarding-migrations
+
+  # Onboarding API - Consolidated API service (all HTTP endpoints)
+  onboarding-api:
     build: ./services/onboarding-api
-    container_name: kyb_case_api
+    container_name: onboarding-api
     ports:
       - "8001:8001"
     environment:
@@ -141,8 +160,8 @@ services:
       - Kafka__ProducerTopics__CaseRejected=kyb.case.rejected.v1
       - Outbox__PollIntervalMs=300
       # Keycloak authentication removed - service now uses direct API authentication
-      - EntityConfig__BaseUrl=http://kyb-entity-config-api:8003
-      - SERVICE_NAME=kyb-case-api
+      # Entity Configuration is now part of onboarding-api
+      - SERVICE_NAME=onboarding-api
     depends_on:
       - postgres
       - redis
@@ -154,33 +173,10 @@ services:
       timeout: 10s
       retries: 5
 
-  # Entity Configuration Service
-  kyb-entity-config-api:
-    build: ./services/entity-configuration-service
-    container_name: kyb_entity_config_api
-    ports:
-      - "8003:8003"
-    environment:
-      - ASPNETCORE_ENVIRONMENT=Development
-      - ASPNETCORE_URLS=http://0.0.0.0:8003
-      - ConnectionStrings__DefaultConnection=Host=postgres;Database=entity_configuration;Username=kyb;Password=kyb_password
-      - ConnectionStrings__Redis=redis:6379
-      # Keycloak authentication removed - service now uses direct API authentication
-      - SERVICE_NAME=kyb-entity-config-api
-    depends_on:
-      - postgres
-      - redis
-    restart: unless-stopped
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8003/health/ready"]
-      interval: 30s
-      timeout: 10s
-      retries: 5
-
-  # Unified Workers Service (consolidates outbox-relay, compliance-refresh-job, and other background workers)
+  # Onboarding Workers - Background job processing service
   onboarding-workers:
     build: ./services/onboarding-workers
-    container_name: onboarding_workers
+    container_name: onboarding-workers
     environment:
       - ASPNETCORE_ENVIRONMENT=Development
       - ConnectionStrings__PostgreSQL=Host=postgres;Database=kyb_case;Username=kyb;Password=kyb_password
@@ -197,286 +193,23 @@ services:
       - postgres
       - redis
       - kafka
-      - kyb-case-api
+      - onboarding-api
     restart: unless-stopped
     healthcheck:
-      test: ["CMD-SHELL", "ps aux | grep -v grep | grep dotnet || exit 1"]
+      test: ["CMD-SHELL", "test -f /app/OnboardingWorkers.dll && exit 0 || exit 1"]
       interval: 30s
       timeout: 10s
       retries: 3
+      start_period: 10s
 
-  # Legacy Outbox Relay (deprecated - use onboarding-workers instead)
-  # outbox-relay:
-  #   build: ./services/outbox-relay
-  #   container_name: kyb_outbox_relay
-  #   environment:
-  #     - OUTBOX__DB=Host=postgres;Database=kyb_case;Username=kyb;Password=kyb_password
-  #     - KAFKA__BROKERS=kafka:9092
-  #     - PUBLISH__TOPIC_CASE_SUBMITTED=kyb.case.submitted.v1
-  #     - PUBLISH__TOPIC_CASE_UPDATED=kyb.case.updated.v1
-  #     - SERVICE_NAME=outbox-relay
-  #   depends_on:
-  #     - postgres
-  #     - kafka
-  #     - kyb-case-api
-  #   restart: unless-stopped
-
-  # Work Queue Service
-  kyb-work-queue-service:
-    build: ./services/work-queue-service
-    container_name: kyb_work_queue_service
-    ports:
-      - "8005:8005"
-    environment:
-      - ASPNETCORE_ENVIRONMENT=Development
-      - ASPNETCORE_URLS=http://0.0.0.0:8005
-      - ConnectionStrings__PostgreSQL=Host=postgres;Database=work_queue;Username=kyb;Password=kyb_password
-      - ConnectionStrings__Redis=redis:6379
-      - Kafka__BootstrapServers=kafka:9092
-      - Kafka__ConsumerGroup=work-queue-service
-      - Kafka__DomainEventsTopic=kyb.case.submitted.v1
-      - Kafka__Subscribe__CaseSubmitted=kyb.case.submitted.v1
-      - Kafka__Subscribe__CaseUpdated=kyb.case.updated.v1
-      - Kafka__Publish__TaskCreated=kyb.task.created.v1
-      - Kafka__Publish__TaskCompleted=kyb.task.completed.v1
-      # Keycloak authentication removed - service now uses direct API authentication
-      - CaseApi__BaseUrl=http://kyb-case-api:8001
-      - WorkQueue__ServiceUrl=http://localhost:8005
-      - WorkQueue__SyncIntervalMilliseconds=1
-      - SERVICE_NAME=kyb-work-queue-service
-    depends_on:
-      - postgres
-      - redis
-      - kafka
-      - kyb-case-api
-    restart: unless-stopped
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8005/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 5
-
-# Risk/Scoring Service
-  kyb-risk-api:
-    build: ./services/risk-service
-    container_name: kyb_risk_api
-    ports:
-      - "8006:8006"
-    environment:
-      - ASPNETCORE_ENVIRONMENT=Development
-      - ASPNETCORE_URLS=http://0.0.0.0:8006
-      - ConnectionStrings__PostgreSQL=Host=postgres;Database=risk;Username=kyb;Password=kyb_password
-      - ConnectionStrings__Redis=redis:6379
-      - Kafka__BootstrapServers=kafka:9092
-      - Kafka__ConsumerGroup=risk-service
-      - Kafka__Subscribe__CaseSubmitted=kyb.case.submitted.v1
-      - Kafka__Subscribe__CaseUpdated=kyb.case.updated.v1
-      - Kafka__Publish__RiskAssessed=kyb.risk.assessed.v1
-      - SERVICE_NAME=kyb-risk-api
-    depends_on:
-      - postgres
-      - redis
-      - kafka
-      - kyb-case-api
-    restart: unless-stopped
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8006/health/ready"]
-      interval: 30s
-      timeout: 10s
-      retries: 5
-
-  # Projections API (Read Model)
-  kyb-projections-api:
-    build: ./services/projections-api
-    container_name: kyb_projections_api
-    ports:
-      - "8007:8007"
-    environment:
-      - ASPNETCORE_ENVIRONMENT=Development
-      - ASPNETCORE_URLS=http://0.0.0.0:8007
-      - ConnectionStrings__PostgreSQL=Host=postgres;Database=projections;Username=kyb;Password=kyb_password
-      - ConnectionStrings__OnboardingDatabase=Host=postgres;Database=kyb_case;Username=kyb;Password=kyb_password
-      - Kafka__BootstrapServers=kafka:9092
-      - Kafka__ConsumerGroup=projections-service
-      - Kafka__Subscribe__CaseEvents=kyb.case.*.v1
-      - Kafka__Subscribe__TaskEvents=kyb.task.*.v1
-      - Kafka__Subscribe__DocEvents=kyb.doc.*.v1
-      - SERVICE_NAME=kyb-projections-api
-      # Azure AD configuration for admin authentication
-      - AzureAd__TenantId=${AZURE_AD_TENANT_ID:-dd5a90ad-b0ae-463b-bef5-5bae77f1adf2}
-      - AzureAd__ClientId=${AZURE_AD_CLIENT_ID:-66879744-7f08-4acd-9a4d-b90da1ee0e59}
-      - AzureAd__AdminGroupId=${AZURE_AD_ADMIN_GROUP_ID:-}
-    depends_on:
-      - postgres
-      - kafka
-      - kyb-case-api
-    restart: unless-stopped
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8007/health/ready"]
-      interval: 30s
-      timeout: 10s
-      retries: 5
-
-  # Document Service
-  kyb-document-api:
-    build: ./services/document-service
-    container_name: kyb_document_api
-    ports:
-      - "8008:8008"
-    environment:
-      - ASPNETCORE_ENVIRONMENT=Development
-      - ASPNETCORE_URLS=http://0.0.0.0:8008
-      - Authentication__Enabled=false
-      - ConnectionStrings__PostgreSQL=Host=postgres;Database=documents;Username=kyb;Password=kyb_password
-      - Storage__Endpoint=minio:9000
-      - Storage__AccessKey=minioadmin
-      - Storage__SecretKey=minioadmin
-      - Storage__UseSSL=false
-      - Storage__BucketName=kyb-docs
-      - ClamAv__Host=clamav
-      - ClamAv__Port=3310
-      - Kafka__BootstrapServers=kafka:9092
-      - Kafka__Publish__DocUploaded=kyb.doc.uploaded.v1
-      - Kafka__Publish__DocVerified=kyb.doc.verified.v1
-      # Keycloak authentication removed - service now uses direct API authentication
-      - SERVICE_NAME=kyb-document-api
-    depends_on:
-      - postgres
-      - minio
-      - clamav
-      - kafka
-    restart: unless-stopped
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8008/health/ready"]
-      interval: 30s
-      timeout: 10s
-      retries: 5
-
-  # Notification Service (CONSOLIDATED into onboarding-api - can be removed after testing)
-  # Notification endpoints are now available at: http://kyb-case-api:8001/api/v1/notifications
-  # kyb-notification-api:
-  #   build: ./services/notification-service
-  #   container_name: kyb_notification_api
-  #   ports:
-  #     - "8010:8010"
-  #   environment:
-  #     - ASPNETCORE_ENVIRONMENT=Development
-  #     - ASPNETCORE_URLS=http://0.0.0.0:8010
-  #     - ConnectionStrings__PostgreSQL=Host=postgres;Database=notifications;Username=kyb;Password=kyb_password
-  #     - Kafka__BootstrapServers=kafka:9092
-  #     - Kafka__ConsumerGroup=notification-service
-  #     - Kafka__Subscribe__AllEvents=kyb.*.*.v1
-  #     - SMTP__Host=smtp.gmail.com
-  #     - SMTP__Port=587
-  #     - SMTP__Username=
-  #     - SMTP__Password=
-  #     # Keycloak authentication removed - service now uses direct API authentication
-  #     - SERVICE_NAME=kyb-notification-api
-  #   depends_on:
-  #     - postgres
-  #     - kafka
-  #   restart: unless-stopped
-  #   healthcheck:
-  #     test: ["CMD", "curl", "-f", "http://localhost:8010/health/ready"]
-  #     interval: 30s
-  #     timeout: 10s
-  #     retries: 5
-
-  # Audit Service (CONSOLIDATED into onboarding-api - can be removed after testing)
-  # Audit endpoints are now available at: http://kyb-case-api:8001/api/v1/audit-logs
-  # kyb-audit-api:
-  #   build: ./services/auditlog-service
-  #   container_name: kyb_audit_api
-  #   ports:
-  #     - "8011:8011"
-  #   environment:
-  #     - ASPNETCORE_ENVIRONMENT=Development
-  #     - ASPNETCORE_URLS=http://0.0.0.0:8011
-  #     - ConnectionStrings__PostgreSQL=Host=postgres;Database=auditlog;Username=kyb;Password=kyb_password
-  #     - Kafka__BootstrapServers=kafka:9092
-  #     - Kafka__ConsumerGroup=audit-service
-  #     - Kafka__Subscribe__AllEvents=kyb.*.*.v1
-  #     - Kafka__Subscribe__AuditEvents=audit.logged.v1
-  #     - SERVICE_NAME=kyb-audit-api
-  #   depends_on:
-  #     - postgres
-  #     - kafka
-  #   restart: unless-stopped
-  #   healthcheck:
-  #     test: ["CMD", "curl", "-f", "http://localhost:8011/health/ready"]
-  #     interval: 30s
-  #     timeout: 10s
-  #     retries: 5
-
-  # Checklist Service (CONSOLIDATED into onboarding-api - can be removed after testing)
-  # Checklist endpoints are now available at: http://kyb-case-api:8001/api/v1/checklists
-  # kyb-checklist-api:
-  #   build: ./services/checklist-service
-  #   container_name: kyb_checklist_api
-  #   ports:
-  #     - "8086:8086"
-  #   environment:
-  #     - ASPNETCORE_ENVIRONMENT=Development
-  #     - ASPNETCORE_URLS=http://0.0.0.0:8086
-  #     - ConnectionStrings__PostgreSQL=Host=postgres;Database=checklist;Username=postgres;Password=postgres
-  #     # Keycloak authentication removed - service now uses direct API authentication
-  #     - SERVICE_NAME=kyb-checklist-api
-  #   depends_on:
-  #     - postgres
-  #   restart: unless-stopped
-  #   healthcheck:
-  #     test: ["CMD", "curl", "-f", "http://localhost:8086/health"]
-  #     interval: 30s
-  #     timeout: 10s
-  #     retries: 5
-
-  # Messaging Service
-  kyb-messaging-api:
-    build: ./services/messaging-service
-    container_name: kyb_messaging_api
-    ports:
-      - "8087:8087"
-    environment:
-      - ASPNETCORE_ENVIRONMENT=Development
-      - ASPNETCORE_URLS=http://0.0.0.0:8087
-      - ConnectionStrings__PostgreSQL=Host=postgres;Database=messaging;Username=postgres;Password=postgres
-      - Kafka__BootstrapServers=kafka:9092
-      # Keycloak authentication removed - service now uses direct API authentication
-      - SERVICE_NAME=kyb-messaging-api
-    depends_on:
-      - postgres
-      - kafka
-    restart: unless-stopped
-
-  # Webhook Handler
-  kyb-webhook-handler:
-    build: ./services/webhook-dispatcher
-    container_name: kyb_webhook_handler
-    ports:
-      - "8089:8089"
-    environment:
-      - ASPNETCORE_ENVIRONMENT=Development
-      - ASPNETCORE_URLS=http://0.0.0.0:8089
-      - ConnectionStrings__PostgreSQL=Host=postgres;Database=webhooks;Username=postgres;Password=postgres
-      - SERVICE_NAME=kyb-webhook-handler
-    depends_on:
-      - postgres
-    restart: unless-stopped
-
-  # API Gateway
-  gateway:
+  # API Gateway (all routes point to onboarding-api)
+  onboarding-gateway:
     build: ./gateway
-    container_name: gateway
+    container_name: onboarding-gateway
     ports:
       - "8000:80"
     depends_on:
-      - kyb-case-api
-      - kyb-entity-config-api
-      - kyb-work-queue-service
-      - kyb-projections-api
-      - kyb-document-api
-      - kyb-notification-api
-      - kyb-audit-api
+      - onboarding-api
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost/health"]

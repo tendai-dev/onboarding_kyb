@@ -1,498 +1,296 @@
 "use client";
 
-import { 
-  Box, 
-  VStack, 
-  HStack,
-  Text,
-  Icon,
-  Separator,
-  Button,
-  Menu
-} from "@chakra-ui/react";
-import Image from "next/image";
-import Link from "next/link";
+import { useState, useMemo, useEffect } from "react";
 import { usePathname, useRouter } from "next/navigation";
-import { useSession, signOut } from "next-auth/react";
-import { useState } from "react";
-import { 
-  FiGrid, 
-  FiList, 
-  FiBarChart, 
-  FiSearch, 
-  FiFileText, 
-  FiCheckSquare,
-  FiSettings,
-  FiUser,
-  FiChevronDown,
-  FiUsers,
-  FiMessageSquare,
-  FiShield,
-  FiRefreshCw,
-  FiUpload,
-  FiMail,
-  FiBell,
-  FiClipboard,
-  FiZap,
-  FiLock,
-  FiLogOut,
-  FiEdit
-} from "react-icons/fi";
+import { PortalNavigationSidebar } from "@/lib/mukuruImports";
+import {
+  ProductIcon,
+  UserIcon,
+  PartnerIcon,
+  DocumentIcon,
+  SettingsIcon,
+  HelpIcon,
+  AppIcon,
+  FileOpenIcon,
+  NotificationIcon,
+  MailIcon,
+  FilterIcon,
+  WarningIcon,
+} from "@/lib/mukuruImports";
+import { Box } from "@chakra-ui/react";
+import { useSidebar } from "../contexts/SidebarContext";
 
 export default function AdminSidebar() {
   const pathname = usePathname();
-  const { data: session, status } = useSession();
   const router = useRouter();
-  const [imageError, setImageError] = useState(false);
-  const [isLoggingOut, setIsLoggingOut] = useState(false);
-  
-  // Get user information from session
-  const userName = session?.user?.name || "User";
-  const userEmail = session?.user?.email || "";
-  const userImage = session?.user?.image || null;
-  // Format name better - extract first name and last name properly
-  const formatUserName = (name: string): string => {
-    if (!name || name === "User") return "User";
-    // Split by space and take first and last name
-    const parts = name.trim().split(/\s+/);
-    if (parts.length === 1) return parts[0];
-    // Return "First Last" format, but limit to 2 parts max
-    return `${parts[0]} ${parts[parts.length - 1]}`;
-  };
-  const displayName = formatUserName(userName);
+  const { condensed, setCondensed } = useSidebar();
+  const [activeItemId, setActiveItemId] = useState("dashboard");
 
-  const handleLogout = async () => {
-    try {
-      setIsLoggingOut(true);
-      
-      // Call logout API to clear Redis session
-      await fetch("/api/auth/logout", {
-        method: "POST",
-      });
-
-      // Sign out from NextAuth
-      await signOut({
-        callbackUrl: "/",
-        redirect: true,
-      });
-    } catch (error) {
-      console.error("Logout error:", error);
-      // Show error - could use a toast library here if needed
-      console.error("Logout failed:", error);
-      setIsLoggingOut(false);
+  // Update activeItemId based on pathname
+  useEffect(() => {
+    if (pathname === "/dashboard") {
+      setActiveItemId("dashboard");
+    } else if (pathname?.startsWith("/work-queue")) {
+      setActiveItemId("work-queue");
+    } else if (pathname?.startsWith("/applications")) {
+      setActiveItemId("applications");
+    } else if (pathname?.startsWith("/review") || pathname?.startsWith("/risk-review") || pathname?.startsWith("/approvals")) {
+      setActiveItemId("reviews");
+    } else if (pathname?.startsWith("/documents")) {
+      setActiveItemId("documents");
+    } else if (pathname?.startsWith("/requirements")) {
+      setActiveItemId("requirements");
+    } else if (pathname?.startsWith("/entity-types")) {
+      setActiveItemId("entity-types");
+    } else if (pathname?.startsWith("/checklists")) {
+      setActiveItemId("checklists");
+    } else if (pathname?.startsWith("/wizard-configurations")) {
+      setActiveItemId("wizard-configurations");
+    } else if (pathname?.startsWith("/rules-and-permissions")) {
+      setActiveItemId("rules-and-permissions");
+    } else if (pathname?.startsWith("/audit-log")) {
+      setActiveItemId("audit-log");
+    } else if (pathname?.startsWith("/messages")) {
+      setActiveItemId("messages");
+    } else if (pathname?.startsWith("/notifications")) {
+      setActiveItemId("notifications");
+    } else if (pathname?.startsWith("/data-migration")) {
+      setActiveItemId("data-migration");
+    } else if (pathname?.startsWith("/refreshes")) {
+      setActiveItemId("refreshes");
+    } else if (pathname?.startsWith("/reports")) {
+      setActiveItemId("reports");
+    } else if (pathname?.startsWith("/profile")) {
+      setActiveItemId("profile");
+    } else if (pathname?.startsWith("/settings")) {
+      setActiveItemId("settings");
     }
+  }, [pathname]);
+
+  const navigationItems = useMemo(() => [
+    {
+      id: "dashboard",
+      label: "Dashboard",
+      icon: <ProductIcon width="20" height="20" />,
+      onClick: () => {
+        setActiveItemId("dashboard");
+        router.push("/dashboard");
+      },
+    },
+    {
+      id: "work-queue",
+      label: "Work Queue",
+      icon: <FilterIcon width="20" height="20" />,
+      onClick: () => {
+        setActiveItemId("work-queue");
+        router.push("/work-queue");
+      },
+    },
+    {
+      id: "applications",
+      label: "Applications",
+      icon: <AppIcon width="20" height="20" />,
+      onClick: () => {
+        setActiveItemId("applications");
+        router.push("/applications");
+      },
+    },
+    {
+      id: "reviews",
+      label: "Reviews",
+      icon: <DocumentIcon width="20" height="20" />,
+      onClick: () => {
+        setActiveItemId("reviews");
+        router.push("/review");
+      },
+      subItems: [
+        {
+          id: "risk-review",
+          label: "Risk Review",
+          onClick: () => {
+            setActiveItemId("reviews");
+            router.push("/risk-review");
+          },
+        },
+        {
+          id: "approvals",
+          label: "Approvals",
+          onClick: () => {
+            setActiveItemId("reviews");
+            router.push("/approvals");
+          },
+        },
+      ],
+    },
+    {
+      id: "documents",
+      label: "Documents",
+      icon: <FileOpenIcon width="20" height="20" />,
+      onClick: () => {
+        setActiveItemId("documents");
+        router.push("/documents");
+      },
+    },
+    {
+      id: "configuration",
+      label: "Configuration",
+      icon: <SettingsIcon width="20" height="20" />,
+      onClick: () => {
+        setActiveItemId("configuration");
+        router.push("/requirements");
+      },
+      subItems: [
+        {
+          id: "requirements",
+          label: "Requirements",
+          onClick: () => {
+            setActiveItemId("configuration");
+            router.push("/requirements");
+          },
+        },
+        {
+          id: "entity-types",
+          label: "Entity Types",
+          onClick: () => {
+            setActiveItemId("configuration");
+            router.push("/entity-types");
+          },
+        },
+        {
+          id: "checklists",
+          label: "Checklists",
+          onClick: () => {
+            setActiveItemId("configuration");
+            router.push("/checklists");
+          },
+        },
+        {
+          id: "wizard-configurations",
+          label: "Wizard Configurations",
+          onClick: () => {
+            setActiveItemId("configuration");
+            router.push("/wizard-configurations");
+          },
+        },
+        {
+          id: "rules-and-permissions",
+          label: "Rules & Permissions",
+          onClick: () => {
+            setActiveItemId("configuration");
+            router.push("/rules-and-permissions");
+          },
+        },
+      ],
+    },
+    {
+      id: "system",
+      label: "System",
+      icon: <WarningIcon width="20" height="20" />,
+      onClick: () => {
+        setActiveItemId("system");
+        router.push("/audit-log");
+      },
+      subItems: [
+        {
+          id: "audit-log",
+          label: "Audit Log",
+          onClick: () => {
+            setActiveItemId("system");
+            router.push("/audit-log");
+          },
+        },
+        {
+          id: "messages",
+          label: "Messages",
+          onClick: () => {
+            setActiveItemId("system");
+            router.push("/messages");
+          },
+        },
+        {
+          id: "notifications",
+          label: "Notifications",
+          onClick: () => {
+            setActiveItemId("system");
+            router.push("/notifications");
+          },
+        },
+        {
+          id: "data-migration",
+          label: "Data Migration",
+          onClick: () => {
+            setActiveItemId("system");
+            router.push("/data-migration");
+          },
+        },
+        {
+          id: "refreshes",
+          label: "Refreshes",
+          onClick: () => {
+            setActiveItemId("system");
+            router.push("/refreshes");
+          },
+        },
+      ],
+    },
+    {
+      id: "reports",
+      label: "Reports",
+      icon: <DocumentIcon width="20" height="20" />,
+      onClick: () => {
+        setActiveItemId("reports");
+        router.push("/reports");
+      },
+    },
+    {
+      id: "profile",
+      label: "Profile",
+      icon: <UserIcon width="20" height="20" />,
+      onClick: () => {
+        setActiveItemId("profile");
+        router.push("/profile");
+      },
+    },
+  ], [router]);
+
+  const helpCentreItem = {
+    id: "help-centre",
+    label: "Help Centre",
+    icon: <HelpIcon width="20" height="20" />,
+    onClick: () => {
+      console.log("Help Centre");
+      // Add help centre navigation if needed
+    },
   };
-
-  const navigationItems = [
-    { path: "/dashboard", label: "Dashboard", icon: FiGrid },
-    { path: "/work-queue", label: "Work Queue", icon: FiList },
-    { path: "/applications", label: "Applications", icon: FiFileText },
-    { path: "/messages", label: "Messages", icon: FiMessageSquare },
-    { path: "/reports", label: "Reports", icon: FiBarChart },
-    { path: "/audit-log", label: "Audit Log", icon: FiSearch }
-  ];
-
-  const riskManagementItems = [
-    { path: "/risk-review", label: "Risk Review", icon: FiShield },
-    { path: "/approvals", label: "Approvals", icon: FiCheckSquare },
-    { path: "/refreshes", label: "Refreshes", icon: FiRefreshCw }
-  ];
-
-  const dataManagementItems = [
-    { path: "/documents", label: "Documents", icon: FiFileText },
-    { path: "/data-migration", label: "Data Migration", icon: FiUpload },
-    { path: "/checklists", label: "Checklists", icon: FiClipboard },
-    { path: "/notifications", label: "Notifications", icon: FiBell }
-  ];
 
   return (
-    <Box 
-      width="240px" 
-      bg="white" 
-      borderRight="1px" 
-      borderColor="gray.200"
+    <Box
       position="fixed"
+      left="0"
+      top="0"
       height="100vh"
+      width={condensed ? "72px" : "280px"}
+      borderRight="1px solid"
+      borderColor="rgba(55, 58, 54, 0.15)"
+      zIndex="1000"
+      className="sidebar-wrapper"
+      bg="#F9FAFB"
       overflowY="auto"
-      boxShadow="sm"
-      zIndex="10"
+      transition="width 0.3s ease"
     >
-      <VStack align="stretch" gap="0" height="100%">
-        {/* Profile Card Header */}
-        <Box p="4" borderBottom="1px" borderColor="gray.100" bg="gray.50">
-          <Menu.Root>
-            <Menu.Trigger asChild>
-              <Box
-                cursor="pointer"
-                transition="opacity 0.2s"
-                borderRadius="md"
-                p="2"
-                _hover={{ bg: "gray.100", opacity: 0.8 }}
-              >
-                <HStack gap="3">
-                  {userImage && !imageError ? (
-                    <Box
-                      width="40px"
-                      height="40px"
-                      borderRadius="lg"
-                      overflow="hidden"
-                      flexShrink={0}
-                      position="relative"
-                    >
-                      <Image
-                        src={userImage}
-                        alt={userName}
-                        width={40}
-                        height={40}
-                        style={{ objectFit: "cover" }}
-                        onError={() => setImageError(true)}
-                        unoptimized
-                      />
-                    </Box>
-                  ) : (
-                    <Box 
-                      width="40px" 
-                      height="40px" 
-                      bg="orange.500" 
-                      color="white" 
-                      borderRadius="lg" 
-                      display="flex" 
-                      alignItems="center" 
-                      justifyContent="center"
-                      flexShrink={0}
-                    >
-                      <Icon as={FiUser} boxSize="5" />
-                    </Box>
-                  )}
-                  <VStack align="start" gap="0" flex="1" minW="0">
-                    <Text fontSize="sm" fontWeight="bold" color="gray.800" lineClamp={1}>
-                      {status === "loading" ? "Loading..." : displayName}
-                    </Text>
-                    <Text fontSize="xs" color="gray.500">Administrator</Text>
-                    {userEmail && (
-                      <Text fontSize="xs" color="gray.400" lineClamp={1}>
-                        {userEmail}
-                      </Text>
-                    )}
-                  </VStack>
-                  <Icon as={FiChevronDown} color="gray.400" boxSize="4" />
-                </HStack>
-              </Box>
-            </Menu.Trigger>
-            <Menu.Content>
-              <Menu.Item value="profile" onSelect={() => router.push("/profile")}>
-                <HStack gap="2">
-                  <Icon as={FiUser} />
-                  <Text>View Profile</Text>
-                </HStack>
-              </Menu.Item>
-              <Menu.Item value="settings" onSelect={() => router.push("/settings")}>
-                <HStack gap="2">
-                  <Icon as={FiSettings} />
-                  <Text>Settings</Text>
-                </HStack>
-              </Menu.Item>
-              <Menu.Separator />
-              <Menu.Item 
-                value="logout" 
-                onSelect={handleLogout}
-                disabled={isLoggingOut}
-                color="red.600"
-              >
-                <HStack gap="2">
-                  <Icon as={FiLogOut} />
-                  <Text>{isLoggingOut ? "Logging out..." : "Sign Out"}</Text>
-                </HStack>
-              </Menu.Item>
-            </Menu.Content>
-          </Menu.Root>
-        </Box>
-
-        {/* Navigation */}
-        <VStack align="stretch" gap="0" flex="1" p="3">
-          {/* Main Navigation */}
-          <VStack align="stretch" gap="1" mb="6">
-            {navigationItems.map((item) => {
-              const IconComponent = item.icon;
-              const isActive = pathname === item.path;
-              return (
-                <Link key={item.path} href={item.path}>
-                  <HStack 
-                    gap="3" 
-                    p="2.5" 
-                    borderRadius="md" 
-                    bg={isActive ? "orange.50" : "transparent"}
-                    cursor="pointer"
-                    _hover={{ 
-                      bg: isActive ? "orange.100" : "gray.50",
-                      transform: "translateX(2px)"
-                    }}
-                    transition="all 0.2s ease"
-                    borderLeft={isActive ? "3px solid" : "3px solid transparent"}
-                    borderLeftColor={isActive ? "orange.500" : "transparent"}
-                  >
-                    <Icon 
-                      as={IconComponent} 
-                      boxSize="4" 
-                      color={isActive ? "orange.600" : "gray.500"} 
-                    />
-                    <Text 
-                      fontSize="sm" 
-                      color={isActive ? "orange.700" : "gray.700"}
-                      fontWeight={isActive ? "semibold" : "medium"}
-                    >
-                      {item.label}
-                    </Text>
-                  </HStack>
-                </Link>
-              );
-            })}
-          </VStack>
-
-          <Separator my="2" />
-
-          {/* Risk Management Section */}
-          <VStack align="stretch" gap="1" mb="4">
-            <Text 
-              fontSize="xs" 
-              fontWeight="semibold" 
-              color="gray.400" 
-              textTransform="uppercase" 
-              letterSpacing="wide" 
-              mb="2"
-              px="2"
-            >
-              Risk Management
-            </Text>
-            
-            {riskManagementItems.map((item) => {
-              const IconComponent = item.icon;
-              const isActive = pathname === item.path;
-              return (
-                <Link key={item.path} href={item.path}>
-                  <HStack 
-                    gap="3" 
-                    p="2.5" 
-                    borderRadius="md" 
-                    bg={isActive ? "orange.50" : "transparent"}
-                    cursor="pointer"
-                    _hover={{ 
-                      bg: isActive ? "orange.100" : "gray.50",
-                      transform: "translateX(2px)"
-                    }}
-                    transition="all 0.2s ease"
-                    borderLeft={isActive ? "3px solid" : "3px solid transparent"}
-                    borderLeftColor={isActive ? "orange.500" : "transparent"}
-                  >
-                    <Icon 
-                      as={IconComponent} 
-                      boxSize="4" 
-                      color={isActive ? "orange.600" : "gray.500"} 
-                    />
-                    <Text 
-                      fontSize="sm" 
-                      color={isActive ? "orange.700" : "gray.700"}
-                      fontWeight={isActive ? "semibold" : "medium"}
-                    >
-                      {item.label}
-                    </Text>
-                  </HStack>
-                </Link>
-              );
-            })}
-          </VStack>
-
-          <Separator my="2" />
-
-          {/* Data Management Section */}
-          <VStack align="stretch" gap="1" mb="4">
-            <Text 
-              fontSize="xs" 
-              fontWeight="semibold" 
-              color="gray.400" 
-              textTransform="uppercase" 
-              letterSpacing="wide" 
-              mb="2"
-              px="2"
-            >
-              Data Management
-            </Text>
-            
-            {dataManagementItems.map((item) => {
-              const IconComponent = item.icon;
-              const isActive = pathname === item.path;
-              return (
-                <Link key={item.path} href={item.path}>
-                  <HStack 
-                    gap="3" 
-                    p="2.5" 
-                    borderRadius="md" 
-                    bg={isActive ? "orange.50" : "transparent"}
-                    cursor="pointer"
-                    _hover={{ 
-                      bg: isActive ? "orange.100" : "gray.50",
-                      transform: "translateX(2px)"
-                    }}
-                    transition="all 0.2s ease"
-                    borderLeft={isActive ? "3px solid" : "3px solid transparent"}
-                    borderLeftColor={isActive ? "orange.500" : "transparent"}
-                  >
-                    <Icon 
-                      as={IconComponent} 
-                      boxSize="4" 
-                      color={isActive ? "orange.600" : "gray.500"} 
-                    />
-                    <Text 
-                      fontSize="sm" 
-                      color={isActive ? "orange.700" : "gray.700"}
-                      fontWeight={isActive ? "semibold" : "medium"}
-                    >
-                      {item.label}
-                    </Text>
-                  </HStack>
-                </Link>
-              );
-            })}
-          </VStack>
-
-          <Separator my="2" />
-
-          {/* Configuration Section */}
-          <VStack align="stretch" gap="1">
-            <Text 
-              fontSize="xs" 
-              fontWeight="semibold" 
-              color="gray.400" 
-              textTransform="uppercase" 
-              letterSpacing="wide" 
-              mb="2"
-              px="2"
-            >
-              Configuration
-            </Text>
-            
-            <Link href="/entity-types">
-              <HStack 
-                gap="3" 
-                p="2.5" 
-                borderRadius="md" 
-                bg={pathname === "/entity-types" ? "orange.50" : "transparent"}
-                cursor="pointer"
-                _hover={{ 
-                  bg: pathname === "/entity-types" ? "orange.100" : "gray.50",
-                  transform: "translateX(2px)"
-                }}
-                transition="all 0.2s ease"
-                borderLeft={pathname === "/entity-types" ? "3px solid" : "3px solid transparent"}
-                borderLeftColor={pathname === "/entity-types" ? "orange.500" : "transparent"}
-              >
-                <Icon 
-                  as={FiFileText} 
-                  boxSize="4" 
-                  color={pathname === "/entity-types" ? "orange.600" : "gray.500"} 
-                />
-                <Text 
-                  fontSize="sm" 
-                  color={pathname === "/entity-types" ? "orange.700" : "gray.700"}
-                  fontWeight={pathname === "/entity-types" ? "semibold" : "medium"}
-                >
-                  Entity Types
-                </Text>
-              </HStack>
-            </Link>
-
-            <Link href="/requirements">
-              <HStack 
-                gap="3" 
-                p="2.5" 
-                borderRadius="md" 
-                bg={pathname === "/requirements" ? "orange.50" : "transparent"}
-                cursor="pointer"
-                _hover={{ 
-                  bg: pathname === "/requirements" ? "orange.100" : "gray.50",
-                  transform: "translateX(2px)"
-                }}
-                transition="all 0.2s ease"
-                borderLeft={pathname === "/requirements" ? "3px solid" : "3px solid transparent"}
-                borderLeftColor={pathname === "/requirements" ? "orange.500" : "transparent"}
-              >
-                <Icon 
-                  as={FiCheckSquare} 
-                  boxSize="4" 
-                  color={pathname === "/requirements" ? "orange.600" : "gray.500"} 
-                />
-                <Text 
-                  fontSize="sm" 
-                  color={pathname === "/requirements" ? "orange.700" : "gray.700"}
-                  fontWeight={pathname === "/requirements" ? "semibold" : "medium"}
-                >
-                  Requirements
-                </Text>
-              </HStack>
-            </Link>
-
-            <Link href="/wizard-configurations">
-              <HStack 
-                gap="3" 
-                p="2.5" 
-                borderRadius="md" 
-                bg={pathname?.startsWith("/wizard-configurations") ? "orange.50" : "transparent"}
-                cursor="pointer"
-                _hover={{ 
-                  bg: pathname?.startsWith("/wizard-configurations") ? "orange.100" : "gray.50",
-                  transform: "translateX(2px)"
-                }}
-                transition="all 0.2s ease"
-                borderLeft={pathname?.startsWith("/wizard-configurations") ? "3px solid" : "3px solid transparent"}
-                borderLeftColor={pathname?.startsWith("/wizard-configurations") ? "orange.500" : "transparent"}
-              >
-                <Icon 
-                  as={FiZap} 
-                  boxSize="4" 
-                  color={pathname?.startsWith("/wizard-configurations") ? "orange.600" : "gray.500"} 
-                />
-                <Text 
-                  fontSize="sm" 
-                  color={pathname?.startsWith("/wizard-configurations") ? "orange.700" : "gray.700"}
-                  fontWeight={pathname?.startsWith("/wizard-configurations") ? "semibold" : "medium"}
-                >
-                  Wizard Configurations
-                </Text>
-              </HStack>
-            </Link>
-
-            <Link href="/rules-and-permissions">
-              <HStack 
-                gap="3" 
-                p="2.5" 
-                borderRadius="md" 
-                bg={pathname?.startsWith("/rules-and-permissions") ? "orange.50" : "transparent"}
-                cursor="pointer"
-                _hover={{ 
-                  bg: pathname?.startsWith("/rules-and-permissions") ? "orange.100" : "gray.50",
-                  transform: "translateX(2px)"
-                }}
-                transition="all 0.2s ease"
-                borderLeft={pathname?.startsWith("/rules-and-permissions") ? "3px solid" : "3px solid transparent"}
-                borderLeftColor={pathname?.startsWith("/rules-and-permissions") ? "orange.500" : "transparent"}
-              >
-                <Icon 
-                  as={FiLock} 
-                  boxSize="4" 
-                  color={pathname?.startsWith("/rules-and-permissions") ? "orange.600" : "gray.500"} 
-                />
-                <Text 
-                  fontSize="sm" 
-                  color={pathname?.startsWith("/rules-and-permissions") ? "orange.700" : "gray.700"}
-                  fontWeight={pathname?.startsWith("/rules-and-permissions") ? "semibold" : "medium"}
-                >
-                  Rules and Permissions
-                </Text>
-              </HStack>
-            </Link>
-          </VStack>
-        </VStack>
-      </VStack>
+      <PortalNavigationSidebar
+        navigationItems={navigationItems}
+        helpCentreItem={helpCentreItem}
+        {...({ activeItemId } as any)}
+        condensed={condensed}
+        onToggleCollapse={setCondensed}
+        onLogoClick={() => {
+          setActiveItemId("dashboard");
+          router.push("/dashboard");
+        }}
+        expandedWidth="280px"
+        condensedWidth="72px"
+      />
     </Box>
   );
 }

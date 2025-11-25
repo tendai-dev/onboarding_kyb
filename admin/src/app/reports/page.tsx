@@ -4,20 +4,17 @@ import {
   Box, 
   VStack, 
   HStack,
-  Text,
   SimpleGrid,
   Flex,
-  Badge,
-  Button,
-  Input,
-  Spinner,
-  Icon
+  Spinner
 } from "@chakra-ui/react";
+import { Typography, Tag, Button, Input, IconWrapper } from "@/lib/mukuruImports";
 import { useState, useEffect } from "react";
 import AdminSidebar from "../../components/AdminSidebar";
 import { FiTrendingUp, FiTrendingDown, FiAlertCircle } from "react-icons/fi";
 import { ApplicationTrendsChart, ProcessingTimeChart, ChartLegend } from "../../components/Charts";
-import dashboardApi, { DashboardProjection } from "../../lib/dashboardApi";
+import { fetchDashboardProjection, fetchApplicationTrends, DashboardProjection } from "../../services";
+import { logger } from "../../lib/logger";
 
 interface PerformanceMetric {
   value: string;
@@ -141,8 +138,8 @@ export default function ReportsPage() {
         
         // Fetch dashboard data and trends in parallel
         const [dashboard, trends] = await Promise.all([
-          dashboardApi.getDashboard(),
-          dashboardApi.getApplicationTrends(30)
+          fetchDashboardProjection(),
+          fetchApplicationTrends(30)
         ]);
         
         // Store dashboard data for KPI calculations
@@ -157,7 +154,9 @@ export default function ReportsPage() {
         // Calculate processing time distribution
         calculateProcessingTimeDistribution(dashboard);
       } catch (err) {
-        console.error('Failed to load reports data:', err);
+        logger.error(err, 'Failed to load reports data', {
+          tags: { error_type: 'reports_load_error' }
+        });
         setError(err instanceof Error ? err.message : 'Failed to load reports data');
       } finally {
         setLoading(false);
@@ -215,7 +214,7 @@ export default function ReportsPage() {
         <Box flex="1" ml="280px" display="flex" alignItems="center" justifyContent="center">
           <VStack gap="4">
             <Spinner size="xl" color="orange.500" />
-            <Text color="gray.600">Loading reports data...</Text>
+            <Typography color="gray.600">Loading reports data...</Typography>
           </VStack>
         </Box>
       </Flex>
@@ -235,10 +234,10 @@ export default function ReportsPage() {
             p="4"
           >
             <HStack gap="2">
-              <Icon as={FiAlertCircle} boxSize="5" color="red.600" />
+              <IconWrapper><FiAlertCircle size={20} color="#E53E3E" /></IconWrapper>
               <VStack align="start" gap="1" flex="1">
-                <Text fontWeight="semibold" color="red.700">Error loading reports</Text>
-                <Text fontSize="sm" color="red.600">{error}</Text>
+                <Typography fontWeight="semibold" color="red.700">Error loading reports</Typography>
+                <Typography fontSize="sm" color="red.600">{error}</Typography>
               </VStack>
             </HStack>
           </Box>
@@ -256,7 +255,7 @@ export default function ReportsPage() {
       <Box flex="1" ml="280px">
         {/* Top Header */}
         <Box bg="white" borderBottom="1px" borderColor="gray.200" py="6" px="8" boxShadow="sm">
-          <Text fontSize="2xl" fontWeight="bold" color="gray.900">Reports & Analytics</Text>
+          <Typography fontSize="2xl" fontWeight="bold" color="gray.900">Reports & Analytics</Typography>
         </Box>
 
         {/* Main Content Area */}
@@ -265,8 +264,8 @@ export default function ReportsPage() {
             {/* Performance Metrics */}
             <Box>
               <VStack align="start" gap="2" mb="6">
-                <Text fontSize="2xl" fontWeight="bold" color="gray.900">Performance Metrics</Text>
-                <Text fontSize="lg" color="gray.600" fontWeight="medium">Key performance indicators for KYB compliance operations</Text>
+                <Typography fontSize="2xl" fontWeight="bold" color="gray.900">Performance Metrics</Typography>
+                <Typography fontSize="lg" color="gray.600" fontWeight="medium">Key performance indicators for KYB compliance operations</Typography>
               </VStack>
               
               <SimpleGrid columns={{ base: 1, md: 2, lg: 4 }} gap="6">
@@ -286,13 +285,13 @@ export default function ReportsPage() {
                         <FiTrendingUp size={16} color="#3182ce" />
                       </Box>
                       <VStack align="start" gap="1">
-                        <Text fontSize="3xl" fontWeight="bold" color="gray.900">{performanceMetrics.adoptionRate.value}</Text>
-                        <Text fontSize="sm" color="gray.600" fontWeight="medium">Adoption Rate</Text>
+                        <Typography fontSize="3xl" fontWeight="bold" color="gray.900">{performanceMetrics.adoptionRate.value}</Typography>
+                        <Typography fontSize="sm" color="gray.600" fontWeight="medium">Adoption Rate</Typography>
                       </VStack>
                     </HStack>
-                    <Text fontSize="sm" color={performanceMetrics.adoptionRate.trendColor} fontWeight="medium">
+                    <Typography fontSize="sm" color={performanceMetrics.adoptionRate.trendColor} fontWeight="medium">
                       {performanceMetrics.adoptionRate.trend}
-                    </Text>
+                    </Typography>
                   </VStack>
                 </Box>
 
@@ -312,13 +311,13 @@ export default function ReportsPage() {
                         <FiTrendingUp size={16} color="#38a169" />
                       </Box>
                       <VStack align="start" gap="1">
-                        <Text fontSize="3xl" fontWeight="bold" color="gray.900">{performanceMetrics.avgProcessingTime.value}</Text>
-                        <Text fontSize="sm" color="gray.600" fontWeight="medium">Avg. Processing Time</Text>
+                        <Typography fontSize="3xl" fontWeight="bold" color="gray.900">{performanceMetrics.avgProcessingTime.value}</Typography>
+                        <Typography fontSize="sm" color="gray.600" fontWeight="medium">Avg. Processing Time</Typography>
                       </VStack>
                     </HStack>
-                    <Text fontSize="sm" color={performanceMetrics.avgProcessingTime.trendColor} fontWeight="medium">
+                    <Typography fontSize="sm" color={performanceMetrics.avgProcessingTime.trendColor} fontWeight="medium">
                       {performanceMetrics.avgProcessingTime.trend}
-                    </Text>
+                    </Typography>
                   </VStack>
                 </Box>
 
@@ -338,13 +337,13 @@ export default function ReportsPage() {
                         <FiTrendingUp size={16} color="#805ad5" />
                       </Box>
                       <VStack align="start" gap="1">
-                        <Text fontSize="3xl" fontWeight="bold" color="gray.900">{performanceMetrics.percentile90Time.value}</Text>
-                        <Text fontSize="sm" color="gray.600" fontWeight="medium">90th Percentile Time</Text>
+                        <Typography fontSize="3xl" fontWeight="bold" color="gray.900">{performanceMetrics.percentile90Time.value}</Typography>
+                        <Typography fontSize="sm" color="gray.600" fontWeight="medium">90th Percentile Time</Typography>
                       </VStack>
                     </HStack>
-                    <Text fontSize="sm" color={performanceMetrics.percentile90Time.trendColor} fontWeight="medium">
+                    <Typography fontSize="sm" color={performanceMetrics.percentile90Time.trendColor} fontWeight="medium">
                       {performanceMetrics.percentile90Time.trend}
-                    </Text>
+                    </Typography>
                   </VStack>
                 </Box>
 
@@ -364,13 +363,13 @@ export default function ReportsPage() {
                         <FiTrendingUp size={16} color="#dd6b20" />
                       </Box>
                       <VStack align="start" gap="1">
-                        <Text fontSize="3xl" fontWeight="bold" color="gray.900">{performanceMetrics.firstPassRate.value}</Text>
-                        <Text fontSize="sm" color="gray.600" fontWeight="medium">First-Pass Rate</Text>
+                        <Typography fontSize="3xl" fontWeight="bold" color="gray.900">{performanceMetrics.firstPassRate.value}</Typography>
+                        <Typography fontSize="sm" color="gray.600" fontWeight="medium">First-Pass Rate</Typography>
                       </VStack>
                     </HStack>
-                    <Text fontSize="sm" color={performanceMetrics.firstPassRate.trendColor} fontWeight="medium">
+                    <Typography fontSize="sm" color={performanceMetrics.firstPassRate.trendColor} fontWeight="medium">
                       {performanceMetrics.firstPassRate.trend}
-                    </Text>
+                    </Typography>
                   </VStack>
                 </Box>
               </SimpleGrid>
@@ -379,8 +378,8 @@ export default function ReportsPage() {
             {/* Monthly Application Trends */}
             <Box>
               <VStack align="start" gap="2" mb="6">
-                <Text fontSize="2xl" fontWeight="bold" color="gray.900">Monthly Application Trends</Text>
-                <Text fontSize="lg" color="gray.600" fontWeight="medium">Application volume and completion rates over time</Text>
+                <Typography fontSize="2xl" fontWeight="bold" color="gray.900">Monthly Application Trends</Typography>
+                <Typography fontSize="lg" color="gray.600" fontWeight="medium">Application volume and completion rates over time</Typography>
               </VStack>
               
               <Box 
@@ -402,8 +401,8 @@ export default function ReportsPage() {
             {/* Processing Time Distribution */}
             <Box>
               <VStack align="start" gap="2" mb="6">
-                <Text fontSize="2xl" fontWeight="bold" color="gray.800">Processing Time Distribution</Text>
-                <Text fontSize="lg" color="gray.600">How quickly applications are completed</Text>
+                <Typography fontSize="2xl" fontWeight="bold" color="gray.800">Processing Time Distribution</Typography>
+                <Typography fontSize="lg" color="gray.600">How quickly applications are completed</Typography>
               </VStack>
               
               <Box 
@@ -421,8 +420,8 @@ export default function ReportsPage() {
             {/* Key Performance Indicators */}
             <Box>
               <VStack align="start" gap="2" mb="6">
-                <Text fontSize="2xl" fontWeight="bold" color="gray.800">Key Performance Indicators</Text>
-                <Text fontSize="lg" color="gray.600">Progress towards operational targets</Text>
+                <Typography fontSize="2xl" fontWeight="bold" color="gray.800">Key Performance Indicators</Typography>
+                <Typography fontSize="lg" color="gray.600">Progress towards operational targets</Typography>
               </VStack>
               
               <Box bg="white" p="6" borderRadius="lg" boxShadow="sm" border="1px" borderColor="gray.200">
@@ -430,10 +429,10 @@ export default function ReportsPage() {
                   {kpiData.map((kpi, index) => (
                     <Box key={index}>
                       <HStack justify="space-between" mb="2">
-                        <Text fontSize="sm" fontWeight="medium" color="gray.700">{kpi.name}</Text>
+                        <Typography fontSize="sm" fontWeight="medium" color="gray.700">{kpi.name}</Typography>
                         <HStack gap="2">
-                          <Text fontSize="sm" fontWeight="bold" color="gray.800">{kpi.current}%</Text>
-                          <Text fontSize="xs" color="gray.500">Target: {kpi.target}%</Text>
+                          <Typography fontSize="sm" fontWeight="bold" color="gray.800">{kpi.current}%</Typography>
+                          <Typography fontSize="xs" color="gray.500">Target: {kpi.target}%</Typography>
                         </HStack>
                       </HStack>
                       <Box width="100%" height="8px" bg="gray.100" borderRadius="full" overflow="hidden">

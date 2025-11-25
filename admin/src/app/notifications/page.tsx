@@ -5,16 +5,12 @@ import {
   Container, 
   VStack, 
   HStack,
-  Text,
-  Button,
-  Input,
   SimpleGrid,
-  Badge,
-  Icon,
   Flex,
   Spinner,
   Textarea
 } from "@chakra-ui/react";
+import { Search, Typography, Button, Tag, IconWrapper } from "@/lib/mukuruImports";
 import { 
   FiSearch, 
   FiFilter, 
@@ -224,35 +220,28 @@ export default function NotificationsPage() {
           {/* Header */}
           <Flex justify="space-between" align="center">
             <VStack align="start" gap="1">
-              <Text fontSize="3xl" fontWeight="bold" color="gray.800">
+              <Typography fontSize="3xl" fontWeight="bold" color="gray.800">
                 Notifications
-              </Text>
-              <Text color="gray.600">
+              </Typography>
+              <Typography color="gray.600">
                 Manage system notifications and alerts
-              </Text>
+              </Typography>
             </VStack>
             
             <HStack gap="3">
               <Button
-                bg="#FF6B35"
-                color="white"
-                _hover={{ bg: "#E55A2B" }}
-                _active={{ bg: "#CC4A1F" }}
+                variant="primary"
                 size="sm"
               >
-                <HStack gap="2">
-                  <Icon as={FiPlus} />
-                  <Text>New Notification</Text>
-                </HStack>
+                <IconWrapper><FiPlus size={16} /></IconWrapper>
+                New Notification
               </Button>
               <Button
-                variant="outline"
+                variant="secondary"
                 size="sm"
               >
-                <HStack gap="2">
-                  <Icon as={FiSettings} />
-                  <Text>Settings</Text>
-                </HStack>
+                <IconWrapper><FiSettings size={16} /></IconWrapper>
+                Settings
               </Button>
             </HStack>
           </Flex>
@@ -261,49 +250,49 @@ export default function NotificationsPage() {
           <SimpleGrid columns={{ base: 1, md: 4 }} gap="4">
             <Box bg="white" p="4" borderRadius="lg" boxShadow="sm">
               <VStack gap="2">
-                <Icon as={FiBell} boxSize="6" color="green.500" />
-                <Text fontSize="2xl" fontWeight="bold" color="green.600">
+                <IconWrapper><FiBell size={24} color="#38A169" /></IconWrapper>
+                <Typography fontSize="2xl" fontWeight="bold" color="green.600">
                   {activeCount}
-                </Text>
-                <Text fontSize="sm" color="gray.600" textAlign="center">
+                </Typography>
+                <Typography fontSize="sm" color="gray.600" textAlign="center">
                   Active Notifications
-                </Text>
+                </Typography>
               </VStack>
             </Box>
             
             <Box bg="white" p="4" borderRadius="lg" boxShadow="sm">
               <VStack gap="2">
-                <Icon as={FiMail} boxSize="6" color="blue.500" />
-                <Text fontSize="2xl" fontWeight="bold" color="blue.600">
+                <IconWrapper><FiMail size={24} color="#3182CE" /></IconWrapper>
+                <Typography fontSize="2xl" fontWeight="bold" color="blue.600">
                   {emailCount}
-                </Text>
-                <Text fontSize="sm" color="gray.600" textAlign="center">
+                </Typography>
+                <Typography fontSize="sm" color="gray.600" textAlign="center">
                   Email Notifications
-                </Text>
+                </Typography>
               </VStack>
             </Box>
             
             <Box bg="white" p="4" borderRadius="lg" boxShadow="sm">
               <VStack gap="2">
-                <Icon as={FiBell} boxSize="6" color="purple.500" />
-                <Text fontSize="2xl" fontWeight="bold" color="purple.600">
+                <IconWrapper><FiBell size={24} color="#805AD5" /></IconWrapper>
+                <Typography fontSize="2xl" fontWeight="bold" color="purple.600">
                   {systemCount}
-                </Text>
-                <Text fontSize="sm" color="gray.600" textAlign="center">
+                </Typography>
+                <Typography fontSize="sm" color="gray.600" textAlign="center">
                   System Notifications
-                </Text>
+                </Typography>
               </VStack>
             </Box>
             
             <Box bg="white" p="4" borderRadius="lg" boxShadow="sm">
               <VStack gap="2">
-                <Icon as={FiClock} boxSize="6" color="red.500" />
-                <Text fontSize="2xl" fontWeight="bold" color="red.600">
+                <IconWrapper><FiClock size={24} color="#E53E3E" /></IconWrapper>
+                <Typography fontSize="2xl" fontWeight="bold" color="red.600">
                   {immediateCount}
-                </Text>
-                <Text fontSize="sm" color="gray.600" textAlign="center">
+                </Typography>
+                <Typography fontSize="sm" color="gray.600" textAlign="center">
                   Immediate Alerts
-                </Text>
+                </Typography>
               </VStack>
             </Box>
           </SimpleGrid>
@@ -312,16 +301,12 @@ export default function NotificationsPage() {
           <Box bg="white" p="6" borderRadius="lg" boxShadow="sm">
             <HStack gap="4">
               <Box flex="1">
-                <HStack>
-                  <Icon as={FiSearch} color="gray.400" />
-                  <Input
+                <Box flex="1" maxW="400px">
+                  <Search
                     placeholder="Search notifications..."
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    border="none"
-                    _focus={{ boxShadow: "none" }}
+                    onSearchChange={(query) => setSearchTerm(query)}
                   />
-                </HStack>
+                </Box>
               </Box>
               
               <select
@@ -346,9 +331,9 @@ export default function NotificationsPage() {
             {/* Notifications List */}
             <Box flex="1" bg="white" borderRadius="lg" boxShadow="sm" overflow="hidden">
               <Box p="4" borderBottom="1px" borderColor="gray.200">
-                <Text fontSize="lg" fontWeight="semibold" color="gray.800">
+                <Typography fontSize="lg" fontWeight="semibold" color="gray.800">
                   Notification Templates
-                </Text>
+                </Typography>
               </Box>
               
               <Box overflowY="auto" height="calc(100% - 60px)">
@@ -366,50 +351,35 @@ export default function NotificationsPage() {
                     <VStack gap="2" align="stretch">
                       <Flex justify="space-between" align="start">
                         <VStack align="start" gap="1">
-                          <Text fontSize="md" fontWeight="semibold" color="gray.800">
+                          <Typography fontSize="md" fontWeight="semibold" color="gray.800">
                             {notification.name}
-                          </Text>
-                          <Text fontSize="sm" color="gray.600">
+                          </Typography>
+                          <Typography fontSize="sm" color="gray.600">
                             {notification.description}
-                          </Text>
+                          </Typography>
                         </VStack>
                         
                         <VStack gap="1" align="end">
-                        <Badge
-                          bg={`${getTypeColor(notification.type)}.500`}
-                          color="white"
-                          variant="solid"
-                          fontSize="xs"
-                        >
+                        <Tag variant={getTypeColor(notification.type) === 'blue' ? 'info' : getTypeColor(notification.type) === 'green' ? 'success' : 'info'}>
                           {notification.type}
-                        </Badge>
-                          <Badge
-                            bg={`${getFrequencyColor(notification.frequency)}.500`}
-                            color="white"
-                            variant="subtle"
-                            fontSize="xs"
-                          >
+                        </Tag>
+                          <Tag variant={getFrequencyColor(notification.frequency) === 'red' ? 'danger' : getFrequencyColor(notification.frequency) === 'orange' ? 'warning' : 'info'}>
                             {notification.frequency}
-                          </Badge>
-                          <Badge
-                            bg={notification.isActive ? "green.500" : "gray.500"}
-                            color="white"
-                            variant="subtle"
-                            fontSize="xs"
-                          >
+                          </Tag>
+                          <Tag variant={notification.isActive ? 'success' : 'inactive'}>
                             {notification.isActive ? "Active" : "Inactive"}
-                          </Badge>
+                          </Tag>
                         </VStack>
                       </Flex>
                       
-                      <Text fontSize="sm" color="gray.600">
+                      <Typography fontSize="sm" color="gray.600">
                         Trigger: {notification.trigger}
-                      </Text>
+                      </Typography>
                       
                       <HStack justify="space-between" fontSize="sm" color="gray.600">
-                        <Text>Recipients: {notification.recipients.length}</Text>
+                        <Typography>Recipients: {notification.recipients.length}</Typography>
                         {notification.lastSent && (
-                          <Text>Last sent: {new Date(notification.lastSent).toLocaleDateString()}</Text>
+                          <Typography>Last sent: {new Date(notification.lastSent).toLocaleDateString()}</Typography>
                         )}
                       </HStack>
                     </VStack>
@@ -427,39 +397,29 @@ export default function NotificationsPage() {
                     <VStack gap="2" align="stretch">
                       <Flex justify="space-between" align="start">
                         <VStack align="start" gap="1">
-                          <Text fontSize="lg" fontWeight="semibold" color="gray.800">
+                          <Typography fontSize="lg" fontWeight="semibold" color="gray.800">
                             {selectedNotification.name}
-                          </Text>
-                          <Text fontSize="sm" color="gray.600">
+                          </Typography>
+                          <Typography fontSize="sm" color="gray.600">
                             {selectedNotification.description}
-                          </Text>
+                          </Typography>
                         </VStack>
                         
                         <HStack gap="2">
-                          <Badge
-                            bg={`${getTypeColor(selectedNotification.type)}.500`}
-                            color="white"
-                            variant="solid"
-                            fontSize="xs"
-                          >
+                          <Tag variant={getTypeColor(selectedNotification.type) === 'blue' ? 'info' : getTypeColor(selectedNotification.type) === 'green' ? 'success' : 'info'}>
                             {selectedNotification.type}
-                          </Badge>
-                          <Badge
-                            bg={`${getFrequencyColor(selectedNotification.frequency)}.500`}
-                            color="white"
-                            variant="solid"
-                            fontSize="xs"
-                          >
+                          </Tag>
+                          <Tag variant={getFrequencyColor(selectedNotification.frequency) === 'red' ? 'danger' : getFrequencyColor(selectedNotification.frequency) === 'orange' ? 'warning' : 'info'}>
                             {selectedNotification.frequency}
-                          </Badge>
+                          </Tag>
                         </HStack>
                       </Flex>
                       
                       <HStack gap="4" fontSize="sm" color="gray.600">
-                        <Text>Recipients: {selectedNotification.recipients.length}</Text>
-                        <Text>Status: {selectedNotification.isActive ? "Active" : "Inactive"}</Text>
+                        <Typography>Recipients: {selectedNotification.recipients.length}</Typography>
+                        <Typography>Status: {selectedNotification.isActive ? "Active" : "Inactive"}</Typography>
                         {selectedNotification.lastSent && (
-                          <Text>Last sent: {new Date(selectedNotification.lastSent).toLocaleDateString()}</Text>
+                          <Typography>Last sent: {new Date(selectedNotification.lastSent).toLocaleDateString()}</Typography>
                         )}
                       </HStack>
                     </VStack>
@@ -469,18 +429,18 @@ export default function NotificationsPage() {
                   <Box p="4" flex="1" overflowY="auto">
                     <VStack gap="4" align="stretch">
                       <Box>
-                        <Text fontSize="sm" fontWeight="medium" color="gray.700" mb="2">
+                        <Typography fontSize="sm" fontWeight="medium" color="gray.700" mb="2">
                           Trigger Condition:
-                        </Text>
-                        <Text fontSize="sm" color="gray.600" p="3" bg="gray.50" borderRadius="md">
+                        </Typography>
+                        <Typography fontSize="sm" color="gray.600" p="3" bg="gray.50" borderRadius="md">
                           {selectedNotification.trigger}
-                        </Text>
+                        </Typography>
                       </Box>
                       
                       <Box>
-                        <Text fontSize="sm" fontWeight="medium" color="gray.700" mb="2">
+                        <Typography fontSize="sm" fontWeight="medium" color="gray.700" mb="2">
                           Email Template:
-                        </Text>
+                        </Typography>
                         <Textarea
                           value={selectedNotification.template}
                           readOnly
@@ -491,14 +451,14 @@ export default function NotificationsPage() {
                       </Box>
                       
                       <Box>
-                        <Text fontSize="sm" fontWeight="medium" color="gray.700" mb="2">
+                        <Typography fontSize="sm" fontWeight="medium" color="gray.700" mb="2">
                           Recipients:
-                        </Text>
+                        </Typography>
                         <VStack gap="1" align="stretch">
                           {selectedNotification.recipients.map((recipient, index) => (
-                            <Text key={index} fontSize="sm" color="gray.600" p="2" bg="gray.50" borderRadius="md">
+                            <Typography key={index} fontSize="sm" color="gray.600" p="2" bg="gray.50" borderRadius="md">
                               {recipient}
-                            </Text>
+                            </Typography>
                           ))}
                         </VStack>
                       </Box>
@@ -538,34 +498,27 @@ export default function NotificationsPage() {
                             boxShadow="sm"
                           />
                         </Box>
-                        <Text fontSize="sm" color="gray.700">
+                        <Typography fontSize="sm" color="gray.700">
                           {selectedNotification.isActive ? "Active" : "Inactive"}
-                        </Text>
+                        </Typography>
                       </HStack>
                       
                       <HStack gap="2">
                         <Button
                           size="sm"
-                          variant="outline"
+                          variant="secondary"
                           onClick={() => setIsEditing(true)}
                         >
-                          <HStack gap="2">
-                            <Icon as={FiEdit} />
-                            <Text>Edit</Text>
-                          </HStack>
+                          <IconWrapper><FiEdit size={16} /></IconWrapper>
+                          Edit
                         </Button>
                         
                         <Button
                           size="sm"
-                          variant="outline"
-                          borderColor="red.300"
-                          color="red.600"
-                          _hover={{ bg: "red.50" }}
+                          variant="secondary"
                         >
-                          <HStack gap="2">
-                            <Icon as={FiTrash2} />
-                            <Text>Delete</Text>
-                          </HStack>
+                          <IconWrapper><FiTrash2 size={16} /></IconWrapper>
+                          Delete
                         </Button>
                       </HStack>
                     </HStack>
@@ -574,10 +527,10 @@ export default function NotificationsPage() {
               ) : (
                 <Flex justify="center" align="center" height="100%">
                   <VStack gap="4">
-                    <Icon as={FiBell} boxSize="12" color="gray.400" />
-                    <Text fontSize="lg" color="gray.600">
+                    <IconWrapper><FiBell size={48} color="#9CA3AF" /></IconWrapper>
+                    <Typography fontSize="lg" color="gray.600">
                       Select a notification to view details
-                    </Text>
+                    </Typography>
                   </VStack>
                 </Flex>
               )}
@@ -588,17 +541,15 @@ export default function NotificationsPage() {
           <Box bg="white" p="6" borderRadius="lg" boxShadow="sm">
             <VStack gap="4" align="stretch">
               <Flex justify="space-between" align="center">
-                <Text fontSize="lg" fontWeight="semibold" color="gray.800">
+                <Typography fontSize="lg" fontWeight="semibold" color="gray.800">
                   Notification Rules
-                </Text>
+                </Typography>
                 <Button
-                  variant="outline"
+                  variant="secondary"
                   size="sm"
                 >
-                  <HStack gap="2">
-                    <Icon as={FiPlus} />
-                    <Text>New Rule</Text>
-                  </HStack>
+                  <IconWrapper><FiPlus size={16} /></IconWrapper>
+                  New Rule
                 </Button>
               </Flex>
 
@@ -615,47 +566,37 @@ export default function NotificationsPage() {
                     <VStack gap="3" align="stretch">
                       <Flex justify="space-between" align="start">
                         <VStack align="start" gap="1">
-                          <Text fontSize="md" fontWeight="semibold" color="gray.800">
+                          <Typography fontSize="md" fontWeight="semibold" color="gray.800">
                             {rule.name}
-                          </Text>
-                          <Text fontSize="sm" color="gray.600">
+                          </Typography>
+                          <Typography fontSize="sm" color="gray.600">
                             {rule.action}
-                          </Text>
+                          </Typography>
                         </VStack>
                         
                         <VStack gap="1" align="end">
-                          <Badge
-                            bg={`${getPriorityColor(rule.priority)}.500`}
-                            color="white"
-                            variant="solid"
-                            fontSize="xs"
-                          >
+                          <Tag variant={getPriorityColor(rule.priority) === 'red' ? 'danger' : getPriorityColor(rule.priority) === 'orange' ? 'warning' : 'info'}>
                             {rule.priority}
-                          </Badge>
-                          <Badge
-                            bg={rule.isActive ? "green.500" : "gray.500"}
-                            color="white"
-                            variant="subtle"
-                            fontSize="xs"
-                          >
+                          </Tag>
+                          <Tag variant={rule.isActive ? 'success' : 'inactive'}>
                             {rule.isActive ? "Active" : "Inactive"}
-                          </Badge>
+                          </Tag>
                         </VStack>
                       </Flex>
 
                       <Box>
-                        <Text fontSize="sm" fontWeight="medium" color="gray.700" mb="1">
+                        <Typography fontSize="sm" fontWeight="medium" color="gray.700" mb="1">
                           Condition:
-                        </Text>
-                        <Text fontSize="sm" color="gray.600" p="2" bg="white" borderRadius="md">
+                        </Typography>
+                        <Typography fontSize="sm" color="gray.600" p="2" bg="white" borderRadius="md">
                           {rule.condition}
-                        </Text>
+                        </Typography>
                       </Box>
 
                       <HStack justify="space-between" fontSize="sm" color="gray.600">
-                        <Text>Rule ID: {rule.id}</Text>
+                        <Typography>Rule ID: {rule.id}</Typography>
                         {rule.lastTriggered && (
-                          <Text>Last triggered: {new Date(rule.lastTriggered).toLocaleDateString()}</Text>
+                          <Typography>Last triggered: {new Date(rule.lastTriggered).toLocaleDateString()}</Typography>
                         )}
                       </HStack>
 
@@ -691,24 +632,18 @@ export default function NotificationsPage() {
                         
                         <HStack gap="1">
                           <Button
-                            size="xs"
+                            size="sm"
                             variant="ghost"
                           >
-                            <HStack gap="1">
-                              <Icon as={FiEdit} />
-                              <Text>Edit</Text>
-                            </HStack>
+                            <IconWrapper><FiEdit size={14} /></IconWrapper>
+                            Edit
                           </Button>
                           <Button
-                            size="xs"
+                            size="sm"
                             variant="ghost"
-                            color="red.600"
-                            _hover={{ bg: "red.50" }}
                           >
-                            <HStack gap="1">
-                              <Icon as={FiTrash2} />
-                              <Text>Delete</Text>
-                            </HStack>
+                            <IconWrapper><FiTrash2 size={14} /></IconWrapper>
+                            Delete
                           </Button>
                         </HStack>
                       </HStack>

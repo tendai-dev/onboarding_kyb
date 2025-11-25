@@ -5,16 +5,16 @@ import {
   Container,
   VStack,
   HStack,
-  Text,
-  Input,
   Textarea,
-  Button,
   Flex,
-  Icon,
   Field,
-  Spinner
+  Spinner,
+  Input as ChakraInput
 } from "@chakra-ui/react";
-import { FiFileText, FiX } from "react-icons/fi";
+import { Typography, Input, Button, IconWrapper, AlertBar } from "@/lib/mukuruImports";
+import { FiFileText, FiX, FiArrowLeft } from "react-icons/fi";
+import PortalHeader from "../../../../components/PortalHeader";
+import { useSidebar } from "../../../../contexts/SidebarContext";
 import AdminSidebar from "../../../../components/AdminSidebar";
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
@@ -41,6 +41,7 @@ const fieldTypes = [
 
 export default function EditRequirementPage({ params }: { params: { id: string } }) {
   const router = useRouter();
+  const { condensed } = useSidebar();
   const { id } = params;
 
   const [formData, setFormData] = useState({
@@ -114,10 +115,20 @@ export default function EditRequirementPage({ params }: { params: { id: string }
     return (
       <Flex minH="100vh" bg="gray.50">
         <AdminSidebar />
-        <Box flex="1" ml="280px" display="flex" alignItems="center" justifyContent="center">
+        <PortalHeader />
+        <Box 
+          flex="1" 
+          ml={condensed ? "72px" : "280px"} 
+          mt="90px"
+          minH="calc(100vh - 90px)"
+          width={condensed ? "calc(100% - 72px)" : "calc(100% - 280px)"}
+          display="flex" 
+          alignItems="center" 
+          justifyContent="center"
+        >
           <VStack gap="4">
             <Spinner size="xl" color="orange.500" />
-            <Text color="black" fontWeight="500">Loading requirement...</Text>
+            <Typography color="black" fontWeight="500">Loading requirement...</Typography>
           </VStack>
         </Box>
       </Flex>
@@ -128,28 +139,30 @@ export default function EditRequirementPage({ params }: { params: { id: string }
     return (
       <Flex minH="100vh" bg="gray.50">
         <AdminSidebar />
-        <Box flex="1" ml="280px" p="8">
-          <Box 
-            bg="red.50" 
-            border="1px" 
-            borderColor="red.200" 
-            borderRadius="lg" 
-            p="6"
-            boxShadow="sm"
+        <PortalHeader />
+        <Box 
+          flex="1" 
+          ml={condensed ? "72px" : "280px"} 
+          mt="90px"
+          minH="calc(100vh - 90px)"
+          width={condensed ? "calc(100% - 72px)" : "calc(100% - 280px)"}
+          p="8"
           >
-            <Text color="black" fontWeight="600" mb="4">{error}</Text>
+          <Container maxW="8xl">
+            <AlertBar
+              status="error"
+              title="Error!"
+              description={error}
+            />
             <Button 
               mt="4" 
               onClick={() => router.push("/requirements")}
-              colorScheme="orange"
-              borderRadius="lg"
-              fontWeight="500"
-              transition="all 0.2s ease"
-              _hover={{ transform: "translateY(-1px)", boxShadow: "md" }}
+              variant="primary"
+              className="mukuru-primary-button"
             >
               Go Back
             </Button>
-          </Box>
+          </Container>
         </Box>
       </Flex>
     );
@@ -159,53 +172,94 @@ export default function EditRequirementPage({ params }: { params: { id: string }
     <Flex minH="100vh" bg="gray.50">
       {/* Left Sidebar */}
       <AdminSidebar />
+      <PortalHeader />
 
       {/* Main Content */}
-      <Box flex="1" ml="280px" bg="gray.50">
+      <Box 
+        flex="1" 
+        ml={condensed ? "72px" : "280px"} 
+        mt="90px"
+        minH="calc(100vh - 90px)"
+        width={condensed ? "calc(100% - 72px)" : "calc(100% - 280px)"}
+        bg="gray.50"
+        transition="margin-left 0.3s ease, width 0.3s ease"
+      >
         {/* Header */}
         <Box 
           bg="white" 
           borderBottom="1px solid" 
           borderColor="gray.200" 
-          py="6"
-          px="0"
+          py="4"
           position="sticky"
-          top="0"
+          top="90px"
           zIndex="10"
           boxShadow="0 1px 2px 0 rgba(0, 0, 0, 0.05)"
         >
-          <Container maxW="4xl" px="6">
-            <VStack align="start" gap="1">
-              <Text 
+          <Container maxW="8xl" px="10">
+            <VStack align="start" gap="3" w="100%">
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={() => router.push("/requirements")}
+                className="mukuru-secondary-button"
+                style={{
+                  padding: '6px 12px',
+                  minWidth: '80px',
+                  height: '32px',
+                  border: '1px solid #E5E7EB',
+                  backgroundColor: 'white',
+                  color: '#374151',
+                  fontWeight: '500',
+                  fontSize: '14px'
+                }}
+              >
+                <IconWrapper><FiArrowLeft size={14} /></IconWrapper>
+                Back
+              </Button>
+              <VStack align="start" gap="1" w="100%">
+              <Typography 
                 as="h1" 
-                fontSize="2xl" 
-                fontWeight="700" 
-                color="black"
+                  fontSize="24px" 
+                  fontWeight="600" 
+                  color="#111827"
+                  lineHeight="1.3"
                 letterSpacing="-0.01em"
               >
                 Edit Requirement
-              </Text>
-              <Text 
-                color="black" 
-                fontSize="sm"
-                opacity={0.65}
+              </Typography>
+              <Typography 
+                  color="#6B7280" 
+                  fontSize="14px"
                 fontWeight="400"
+                  lineHeight="1.4"
               >
                 Define a requirement field that can be assigned to entity types.
-              </Text>
+              </Typography>
+              </VStack>
             </VStack>
           </Container>
         </Box>
 
+        {/* Error Alert */}
+        {error && (
+          <Container maxW="8xl" py="3" px="10">
+            <AlertBar
+              status="error"
+              title="Error!"
+              description={error}
+            />
+          </Container>
+        )}
+
         {/* Form Content */}
-        <Container maxW="4xl" py="6" px="6">
+        <Container maxW="8xl" py="6" px="10" w="100%">
           <Box 
             bg="white" 
-            borderRadius="lg" 
+            borderRadius="xl" 
             border="1px solid" 
             borderColor="gray.200" 
             p="6" 
-            boxShadow="sm"
+            boxShadow="0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06)"
             position="relative"
             overflow="hidden"
             _before={{
@@ -221,32 +275,31 @@ export default function EditRequirementPage({ params }: { params: { id: string }
             <VStack align="stretch" gap="6">
               {/* Basic Information Section */}
               <Box>
-                <Text 
-                  fontSize="sm" 
-                  fontWeight="700" 
-                  color="black" 
-                  mb="4"
-                  pb="2"
-                  borderBottom="1px solid"
-                  borderColor="gray.200"
+                <Box pb="3" borderBottom="1px solid" borderColor="gray.100">
+                <Typography 
+                    fontSize="16px" 
+                    fontWeight="600" 
+                    color="#111827" 
+                    letterSpacing="-0.01em"
                 >
                   Basic Information
-                </Text>
+                </Typography>
+                </Box>
                 <VStack align="stretch" gap="4" mt="3">
                   {/* Display Name */}
-                  <Field.Root>
-                    <Field.Label 
-                      fontSize="xs" 
+                  <VStack align="start" gap="2">
+                    <Typography 
+                      fontSize="12px" 
                       fontWeight="600" 
-                      color="black"
-                      mb="1.5"
+                      color="#374151"
                       textTransform="uppercase"
+                      letterSpacing="0.05em"
                     >
                       Display Name
-                    </Field.Label>
-                    <Input
+                    </Typography>
+                    <ChakraInput
                       value={formData.displayName}
-                      onChange={(e) => setFormData(prev => ({ ...prev, displayName: e.target.value }))}
+                      onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFormData(prev => ({ ...prev, displayName: e.target.value }))}
                       placeholder="Registration Certificate / Incorporation Document"
                       bg="white"
                       borderColor="gray.300"
@@ -265,22 +318,22 @@ export default function EditRequirementPage({ params }: { params: { id: string }
                       }}
                       transition="all 0.2s ease"
                     />
-                    <Text fontSize="xs" color="black" opacity={0.6} mt="1.5" fontWeight="400">
+                    <Typography fontSize="12px" color="#6B7280" fontWeight="400">
                       User-facing name (shown in forms)
-                    </Text>
-                  </Field.Root>
+                    </Typography>
+                  </VStack>
 
                   {/* Description */}
-                  <Field.Root>
-                    <Field.Label 
-                      fontSize="xs" 
+                  <VStack align="start" gap="2">
+                    <Typography 
+                      fontSize="12px" 
                       fontWeight="600" 
-                      color="black"
-                      mb="1.5"
+                      color="#374151"
                       textTransform="uppercase"
+                      letterSpacing="0.05em"
                     >
                       Description
-                    </Field.Label>
+                    </Typography>
                     <Textarea
                       value={formData.description}
                       onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
@@ -304,36 +357,35 @@ export default function EditRequirementPage({ params }: { params: { id: string }
                       }}
                       transition="all 0.2s ease"
                     />
-                  </Field.Root>
+                  </VStack>
                 </VStack>
               </Box>
 
               {/* Field Configuration Section */}
               <Box>
-                <Text 
-                  fontSize="sm" 
-                  fontWeight="700" 
-                  color="black" 
-                  mb="4"
-                  pb="2"
-                  borderBottom="1px solid"
-                  borderColor="gray.200"
+                <Box pb="3" borderBottom="1px solid" borderColor="gray.100">
+                <Typography 
+                    fontSize="16px" 
+                    fontWeight="600" 
+                    color="#111827" 
+                    letterSpacing="-0.01em"
                 >
                   Field Configuration
-                </Text>
+                </Typography>
+                </Box>
                 <VStack align="stretch" gap="4" mt="3">
                   {/* Field Type - Read Only */}
-                  <Field.Root>
-                    <Field.Label 
-                      fontSize="xs" 
+                  <VStack align="start" gap="2">
+                    <Typography 
+                      fontSize="12px" 
                       fontWeight="600" 
-                      color="black"
-                      mb="1.5"
+                      color="#374151"
                       textTransform="uppercase"
+                      letterSpacing="0.05em"
                     >
                       Field Type
-                    </Field.Label>
-                    <Input
+                    </Typography>
+                    <ChakraInput
                       value={formData.fieldType}
                       disabled
                       bg="gray.50"
@@ -347,22 +399,22 @@ export default function EditRequirementPage({ params }: { params: { id: string }
                       opacity={0.7}
                       cursor="not-allowed"
                     />
-                    <Text fontSize="xs" color="black" opacity={0.6} mt="1.5" fontWeight="400">
+                    <Typography fontSize="12px" color="#6B7280" fontWeight="400">
                       Field type cannot be changed after creation
-                    </Text>
-                  </Field.Root>
+                    </Typography>
+                  </VStack>
 
                   {/* Validation Rules */}
-                  <Field.Root>
-                    <Field.Label 
-                      fontSize="xs" 
+                  <VStack align="start" gap="2">
+                    <Typography 
+                      fontSize="12px" 
                       fontWeight="600" 
-                      color="black"
-                      mb="1.5"
+                      color="#374151"
                       textTransform="uppercase"
+                      letterSpacing="0.05em"
                     >
                       Validation Rules (JSON)
-                    </Field.Label>
+                    </Typography>
                     <Textarea
                       value={formData.validationRules}
                       onChange={(e) => setFormData(prev => ({ ...prev, validationRules: e.target.value }))}
@@ -387,22 +439,22 @@ export default function EditRequirementPage({ params }: { params: { id: string }
                       }}
                       transition="all 0.2s ease"
                     />
-                    <Text fontSize="xs" color="black" opacity={0.6} mt="1.5" fontWeight="400">
+                    <Typography fontSize="12px" color="#6B7280" fontWeight="400">
                       JSON format validation rules
-                    </Text>
-                  </Field.Root>
+                    </Typography>
+                  </VStack>
 
                   {/* Help Text */}
-                  <Field.Root>
-                    <Field.Label 
-                      fontSize="xs" 
+                  <VStack align="start" gap="2">
+                    <Typography 
+                      fontSize="12px" 
                       fontWeight="600" 
-                      color="black"
-                      mb="1.5"
+                      color="#374151"
                       textTransform="uppercase"
+                      letterSpacing="0.05em"
                     >
                       Help Text
-                    </Field.Label>
+                    </Typography>
                     <Textarea
                       value={formData.helpText}
                       onChange={(e) => setFormData(prev => ({ ...prev, helpText: e.target.value }))}
@@ -426,46 +478,38 @@ export default function EditRequirementPage({ params }: { params: { id: string }
                       }}
                       transition="all 0.2s ease"
                     />
-                    <Text fontSize="xs" color="black" opacity={0.6} mt="1.5" fontWeight="400">
+                    <Typography fontSize="12px" color="#6B7280" fontWeight="400">
                       Optional help text shown to users
-                    </Text>
-                  </Field.Root>
+                    </Typography>
+                  </VStack>
                 </VStack>
               </Box>
 
               {/* Status Section */}
               <Box>
-                <Text 
-                  fontSize="sm" 
-                  fontWeight="700" 
-                  color="black" 
-                  mb="4"
-                  pb="2"
-                  borderBottom="1px solid"
-                  borderColor="gray.200"
+                <Box pb="3" borderBottom="1px solid" borderColor="gray.100">
+                <Typography 
+                    fontSize="16px" 
+                    fontWeight="600" 
+                    color="#111827" 
+                    letterSpacing="-0.01em"
                 >
                   Status
-                </Text>
+                </Typography>
+                </Box>
                 <HStack justify="space-between" align="center" mt="3">
-                  <VStack align="start" gap="0.5">
-                    <Text fontSize="xs" fontWeight="600" color="black" textTransform="uppercase">
+                  <VStack align="start" gap="1">
+                    <Typography fontSize="12px" fontWeight="600" color="#374151" textTransform="uppercase" letterSpacing="0.05em">
                       Active Status
-                    </Text>
-                    <Text fontSize="xs" color="black" opacity={0.6} fontWeight="400">
+                    </Typography>
+                    <Typography fontSize="12px" color="#6B7280" fontWeight="400">
                       Make this requirement available for use
-                    </Text>
+                    </Typography>
                   </VStack>
                   <Button
                     onClick={() => setFormData(prev => ({ ...prev, isActive: !prev.isActive }))}
-                    colorScheme={formData.isActive ? "orange" : "gray"}
-                    variant={formData.isActive ? "solid" : "outline"}
+                    variant={formData.isActive ? "primary" : "secondary"}
                     size="md"
-                    px="6"
-                    py="2"
-                    borderRadius="md"
-                    fontWeight="500"
-                    transition="all 0.2s ease"
-                    _hover={{ transform: "translateY(-1px)", boxShadow: "sm" }}
                   >
                     {formData.isActive ? "Active" : "Inactive"}
                   </Button>
@@ -473,50 +517,36 @@ export default function EditRequirementPage({ params }: { params: { id: string }
               </Box>
 
               {/* Action Buttons */}
-              <Flex gap="3" justify="flex-end" pt="4" borderTop="1px solid" borderColor="gray.200" mt="4">
+              <Flex gap="3" justify="flex-end" align="center" pt="4" borderTop="1px solid" borderColor="gray.200" mt="2">
                 <Button
                   onClick={handleCancel}
-                  variant="outline"
-                  colorScheme="gray"
-                  size="md"
-                  px="6"
-                  py="2"
-                  borderRadius="md"
-                  fontWeight="500"
+                  variant="secondary"
+                  size="sm"
                   disabled={saving || loading}
-                  borderColor="gray.300"
-                  color="black"
-                  _hover={{ 
-                    bg: "gray.50",
-                    borderColor: "gray.400"
+                  className="mukuru-secondary-button"
+                  style={{
+                    minWidth: '100px',
+                    height: '36px',
+                    fontSize: '14px'
                   }}
-                  transition="all 0.2s ease"
                 >
-                  <Icon as={FiX} mr="2" />
+                  <IconWrapper><FiX size={14} /></IconWrapper>
                   Cancel
                 </Button>
                 <Button
                   onClick={handleUpdate}
-                  colorScheme="orange"
-                  bg="#FF6B35"
-                  color="white"
-                  _hover={{ 
-                    bg: "#E55A2B",
-                    boxShadow: "md"
+                  variant="primary"
+                  size="sm"
+                  disabled={loading || saving}
+                  className="mukuru-primary-button"
+                  style={{
+                    minWidth: '120px',
+                    height: '36px',
+                    fontSize: '14px'
                   }}
-                  _active={{ bg: "#CC4A1F" }}
-                  size="md"
-                  px="6"
-                  py="2"
-                  borderRadius="md"
-                  fontWeight="600"
-                  loading={saving}
-                  loadingText="Updating..."
-                  disabled={loading}
-                  transition="all 0.2s ease"
                 >
-                  <Icon as={FiFileText} mr="2" />
-                  Update
+                  <IconWrapper><FiFileText size={14} /></IconWrapper>
+                  {saving ? "Updating..." : "Update"}
                 </Button>
               </Flex>
             </VStack>

@@ -35,12 +35,25 @@ public class GetOnboardingsQueryHandler : IRequestHandler<GetOnboardingsQuery, L
 
     public async Task<List<OnboardingCaseDto>> Handle(GetOnboardingsQuery request, CancellationToken cancellationToken)
     {
-        _logger.LogDebug("Fetching onboardings for user {UserId} with limit {Limit}, offset {Offset}", 
-            request.UserId, request.Limit, request.Offset);
+        _logger.LogDebug("Fetching onboardings for user {UserId} with limit {Limit}, offset {Offset}, status {Status}, assignee {Assignee}", 
+            request.UserId, request.Limit, request.Offset, request.Status ?? "all", request.Assignee ?? "all");
 
-        // TODO: Implement proper filtering and pagination
-        // For now, return empty list as the repository methods need to be implemented
-        var onboardings = await _repository.GetByPartnerIdAsync(Guid.Parse(request.UserId), cancellationToken);
+        if (!Guid.TryParse(request.UserId, out var partnerId))
+        {
+            _logger.LogWarning("Invalid UserId format: {UserId}", request.UserId);
+            return new List<OnboardingCaseDto>();
+        }
+
+        // Use the new repository method with filtering and pagination
+        var (onboardings, totalCount) = await _repository.GetByPartnerIdWithFiltersAsync(
+            partnerId,
+            request.Limit,
+            request.Offset,
+            request.Status,
+            request.Assignee,
+            cancellationToken);
+
+        _logger.LogDebug("Retrieved {Count} onboardings out of {TotalCount} total", onboardings.Count(), totalCount);
 
         return onboardings.Select(MapToDto).ToList();
     }

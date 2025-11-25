@@ -5,22 +5,13 @@ import {
   Container, 
   VStack, 
   HStack,
-  Text,
   Flex,
   SimpleGrid,
-  Icon,
-  Button,
-  Badge,
-  Card,
-  Input,
   Textarea,
   Progress,
-  Alert,
-  Dialog,
-  Field,
-  Tabs,
   Separator,
-  Spinner
+  Spinner,
+  Field
 } from "@chakra-ui/react";
 import { 
   FiFileText, 
@@ -53,12 +44,24 @@ import { useParams, useRouter } from "next/navigation";
 import { useState, useEffect } from "react";
 import AdminSidebar from "../../../components/AdminSidebar";
 import { DocumentViewer } from "../../../components/DocumentViewer";
-import workQueueApi, { Application } from "../../../lib/workQueueApi";
+import {
+  fetchWorkItemById,
+  fetchMyWorkItems,
+  fetchWorkItems,
+  approveWorkItemUseCase,
+  declineWorkItemUseCase,
+  completeWorkItemUseCase,
+  submitForApprovalUseCase,
+  addCommentUseCase,
+  fetchWorkItemComments,
+  fetchWorkItemHistory,
+  WorkItemApplication,
+} from "../../../services";
+import { logger } from "../../../lib/logger";
 import { useSession } from "next-auth/react";
-import { createToaster } from "@chakra-ui/react";
-import { useRef } from "react";
 import { fetchEntitySchema } from "../../../lib/entitySchemaRenderer";
 import { riskApiService, RiskAssessmentDto } from "../../../services/riskApi";
+import { Typography, Button, Card, Input, Modal, ModalHeader, ModalBody, ModalFooter, AlertBar, Tag, IconWrapper, TabsRoot, TabsList, TabsTrigger, TabsIndicator, TabsContent } from "@/lib/mukuruImports";
 
 const MotionBox = motion(Box);
 
@@ -68,7 +71,7 @@ export default function ReviewPage() {
   const { data: session } = useSession();
   const workItemId = params?.id as string;
   
-  const [workItem, setWorkItem] = useState<Application | null>(null);
+  const [workItem, setWorkItem] = useState<WorkItemApplication | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [currentStep, setCurrentStep] = useState(1);
@@ -113,10 +116,13 @@ export default function ReviewPage() {
   // Action loading states
   const [actionLoading, setActionLoading] = useState(false);
   
-  const toasterRef = useRef(createToaster({
-    placement: "top-end",
-    pauseOnPageIdle: true,
-  }));
+  // Toast notifications
+  const [toast, setToast] = useState<{ title: string; description: string; type: 'success' | 'error' | 'warning' | 'info' } | null>(null);
+  
+  const showToast = (title: string, description: string, type: 'success' | 'error' | 'warning' | 'info' = 'info', duration: number = 5000) => {
+    setToast({ title, description, type });
+    setTimeout(() => setToast(null), duration);
+  };
 
   useEffect(() => {
     if (workItemId) {
@@ -155,13 +161,13 @@ export default function ReviewPage() {
       setError(null);
       
       // Get work item details
-      const result = await workQueueApi.getMyWorkItems(1, 1000);
-      const item = result.data.find(w => w.workItemId === workItemId || w.id === workItemId);
+      const result = await fetchMyWorkItems(1, 1000);
+      const item = result.items.find(w => w.workItemId === workItemId || w.id === workItemId);
       
       if (!item) {
         // Try getting from all work items
-        const allResult = await workQueueApi.getWorkItems({ pageSize: 1000 });
-        const foundItem = allResult.data.find(w => w.workItemId === workItemId || w.id === workItemId);
+        const allResult = await fetchWorkItems({ pageSize: 1000 });
+        const foundItem = allResult.items.find(w => w.workItemId === workItemId || w.id === workItemId);
         
         if (!foundItem) {
           setError('Work item not found');
@@ -182,20 +188,24 @@ export default function ReviewPage() {
 
   const loadComments = async () => {
     try {
-      const commentsData = await workQueueApi.getWorkItemComments(workItemId);
+      const commentsData = await fetchWorkItemComments(workItemId);
       setComments(commentsData);
     } catch (err) {
-      console.error('Error loading comments:', err);
+      logger.error(err, 'Error loading comments', {
+        tags: { error_type: 'comments_load_error' }
+      });
       setComments([]);
     }
   };
 
   const loadHistory = async () => {
     try {
-      const historyData = await workQueueApi.getWorkItemHistory(workItemId);
+      const historyData = await fetchWorkItemHistory(workItemId);
       setHistory(historyData);
     } catch (err) {
-      console.error('Error loading history:', err);
+      logger.error(err, 'Error loading history', {
+        tags: { error_type: 'history_load_error' }
+      });
       setHistory([]);
     }
   };
@@ -205,25 +215,15 @@ export default function ReviewPage() {
     
     setActionLoading(true);
     try {
-      await workQueueApi.approveWorkItem(workItem.workItemId || workItem.id, reviewNotes);
-      toasterRef.current.create({
-        title: 'Approved',
-        description: 'Work item has been approved successfully',
-        type: 'success',
-        duration: 3000,
-      });
+      await approveWorkItemUseCase(workItem.workItemId || workItem.id, reviewNotes);
+      showToast('Approved', 'Work item has been approved successfully', 'success', 3000);
       setApproveModalOpen(false);
       setReviewNotes("");
       await loadWorkItem();
       router.push('/work-queue');
     } catch (err: any) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to approve work item';
-      toasterRef.current.create({
-        title: 'Approval failed',
-        description: errorMessage,
-        type: 'error',
-        duration: 5000,
-      });
+      showToast('Approval failed', errorMessage, 'error', 5000);
     } finally {
       setActionLoading(false);
     }
@@ -234,25 +234,15 @@ export default function ReviewPage() {
     
     setActionLoading(true);
     try {
-      await workQueueApi.declineWorkItem(workItem.workItemId || workItem.id, declineReason);
-      toasterRef.current.create({
-        title: 'Declined',
-        description: 'Work item has been declined',
-        type: 'success',
-        duration: 3000,
-      });
+      await declineWorkItemUseCase(workItem.workItemId || workItem.id, declineReason);
+      showToast('Declined', 'Work item has been declined', 'success', 3000);
       setDeclineModalOpen(false);
       setDeclineReason("");
       await loadWorkItem();
       router.push('/work-queue');
     } catch (err: any) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to decline work item';
-      toasterRef.current.create({
-        title: 'Decline failed',
-        description: errorMessage,
-        type: 'error',
-        duration: 5000,
-      });
+      showToast('Decline failed', errorMessage, 'error', 5000);
     } finally {
       setActionLoading(false);
     }
@@ -263,25 +253,15 @@ export default function ReviewPage() {
     
     setActionLoading(true);
     try {
-      await workQueueApi.completeWorkItem(workItem.workItemId || workItem.id, reviewNotes);
-      toasterRef.current.create({
-        title: 'Completed',
-        description: 'Work item has been completed successfully',
-        type: 'success',
-        duration: 3000,
-      });
+      await completeWorkItemUseCase(workItem.workItemId || workItem.id, reviewNotes);
+      showToast('Completed', 'Work item has been completed successfully', 'success', 3000);
       setCompleteModalOpen(false);
       setReviewNotes("");
       await loadWorkItem();
       router.push('/work-queue');
     } catch (err: any) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to complete work item';
-      toasterRef.current.create({
-        title: 'Completion failed',
-        description: errorMessage,
-        type: 'error',
-        duration: 5000,
-      });
+      showToast('Completion failed', errorMessage, 'error', 5000);
     } finally {
       setActionLoading(false);
     }
@@ -292,25 +272,15 @@ export default function ReviewPage() {
     
     setActionLoading(true);
     try {
-      await workQueueApi.submitForApproval(workItem.workItemId || workItem.id, reviewNotes);
-      toasterRef.current.create({
-        title: 'Submitted',
-        description: 'Work item has been submitted for approval',
-        type: 'success',
-        duration: 3000,
-      });
+      await submitForApprovalUseCase(workItem.workItemId || workItem.id, reviewNotes);
+      showToast('Submitted', 'Work item has been submitted for approval', 'success', 3000);
       setSubmitApprovalModalOpen(false);
       setReviewNotes("");
       await loadWorkItem();
       router.push('/work-queue');
     } catch (err: any) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to submit for approval';
-      toasterRef.current.create({
-        title: 'Submission failed',
-        description: errorMessage,
-        type: 'error',
-        duration: 5000,
-      });
+      showToast('Submission failed', errorMessage, 'error', 5000);
     } finally {
       setActionLoading(false);
     }
@@ -321,23 +291,13 @@ export default function ReviewPage() {
     
     setActionLoading(true);
     try {
-      await workQueueApi.addComment(workItem.workItemId || workItem.id, newComment);
-      toasterRef.current.create({
-        title: 'Comment added',
-        description: 'Your comment has been added',
-        type: 'success',
-        duration: 3000,
-      });
+      await addCommentUseCase(workItem.workItemId || workItem.id, newComment);
+      showToast('Comment added', 'Your comment has been added', 'success', 3000);
       setNewComment("");
       await loadComments();
     } catch (err: any) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to add comment';
-      toasterRef.current.create({
-        title: 'Comment failed',
-        description: errorMessage,
-        type: 'error',
-        duration: 5000,
-      });
+      showToast('Comment failed', errorMessage, 'error', 5000);
     } finally {
       setActionLoading(false);
     }
@@ -370,7 +330,7 @@ export default function ReviewPage() {
           entityTypeCode = String(entityTypeCode).trim();
         }
         
-        console.log('[Review Page] Extracted entity type code:', entityTypeCode);
+        logger.debug('[Review Page] Extracted entity type code', { entityTypeCode });
         
         if (entityTypeCode) {
           // Fetch entity schema
@@ -392,7 +352,9 @@ export default function ReviewPage() {
         }
       }
     } catch (err) {
-      console.error('Error loading application data:', err);
+      logger.error(err, 'Error loading application data', {
+        tags: { error_type: 'application_data_load_error' }
+      });
     }
   };
 
@@ -435,9 +397,9 @@ export default function ReviewPage() {
       if (applicationData && requirementMap.size > 0) {
         const metadata = applicationData.metadataJson ? JSON.parse(applicationData.metadataJson) : {};
         
-        console.log('[Document Mapping] Application metadata keys:', Object.keys(metadata));
-        console.log('[Document Mapping] Requirement map:', Array.from(requirementMap.entries()));
-        console.log('[Document Mapping] Documents to map:', docs.map(d => ({ 
+        logger.debug('[Document Mapping] Application metadata keys', { keys: Object.keys(metadata) });
+        logger.debug('[Document Mapping] Requirement map', { entries: Array.from(requirementMap.entries()) });
+        logger.debug('[Document Mapping] Documents to map', { docs: docs.map(d => ({ 
           id: d.id, 
           fileName: d.fileName, 
           documentNumber: d.documentNumber,
@@ -484,7 +446,7 @@ export default function ReviewPage() {
                 const metadataDocIdStr = String(metadataDocId).toLowerCase();
                 if (metadataDocIdStr === docId || docId === metadataDocIdStr) {
                   requirementName = reqName;
-                  console.log(`[Document Mapping] ✅ Matched ${doc.fileName} to ${reqName} via ${key}`);
+                  logger.debug(`[Document Mapping] ✅ Matched ${doc.fileName} to ${reqName} via ${key}`);
                   break;
                 }
               }
@@ -534,7 +496,7 @@ export default function ReviewPage() {
                       docFileName.includes(metadataStr) ||
                       docNumber.includes(metadataStr)) {
                     requirementName = reqName;
-                    console.log(`[Document Mapping] ✅ Matched ${doc.fileName} to ${reqName} via ${key}`);
+                    logger.debug(`[Document Mapping] ✅ Matched ${doc.fileName} to ${reqName} via ${key}`);
                     break;
                   }
                   
@@ -588,7 +550,7 @@ export default function ReviewPage() {
           }
           
           if (!requirementName) {
-            console.log(`[Document Mapping] ⚠️ Could not match ${doc.fileName} to any requirement`);
+            logger.debug(`[Document Mapping] ⚠️ Could not match ${doc.fileName} to any requirement`);
           }
           
           return {
@@ -600,7 +562,9 @@ export default function ReviewPage() {
       
       setDocuments(docs);
     } catch (err) {
-      console.error('Error loading documents:', err);
+      logger.error(err, 'Error loading documents', {
+        tags: { error_type: 'documents_load_error' }
+      });
       setDocumentsError(err instanceof Error ? err.message : 'Failed to load documents');
       setDocuments([]);
     } finally {
@@ -611,12 +575,7 @@ export default function ReviewPage() {
   const handleViewDocument = async (document: any) => {
     try {
       if (!document || !document.storageKey) {
-        toasterRef.current.create({
-          title: 'Document error',
-          description: 'Document storage key not found',
-          type: 'error',
-          duration: 3000,
-        });
+        showToast('Document error', 'Document storage key not found', 'error', 3000);
         return;
       }
 
@@ -629,13 +588,10 @@ export default function ReviewPage() {
       setViewingDocumentSize(document.sizeBytes);
       setDocumentViewerOpen(true);
     } catch (err) {
-      console.error('Error viewing document:', err);
-      toasterRef.current.create({
-        title: 'View failed',
-        description: err instanceof Error ? err.message : 'Failed to view document',
-        type: 'error',
-        duration: 5000,
+      logger.error(err, 'Error viewing document', {
+        tags: { error_type: 'document_view_error' }
       });
+      showToast('View failed', err instanceof Error ? err.message : 'Failed to view document', 'error', 5000);
     }
   };
 
@@ -729,7 +685,9 @@ export default function ReviewPage() {
         }
       }
     } catch (err) {
-      console.error('Error loading risk assessment:', err);
+      logger.error(err, 'Error loading risk assessment', {
+        tags: { error_type: 'risk_assessment_load_error' }
+      });
       setRiskAssessment(null);
     } finally {
       setRiskAssessmentLoading(false);
@@ -738,12 +696,7 @@ export default function ReviewPage() {
 
   const handleSaveRiskAssessment = async () => {
     if (!workItem || !manualRiskLevel || !riskJustification.trim()) {
-      toasterRef.current.create({
-        title: 'Validation Error',
-        description: 'Please select a risk level and provide a justification',
-        type: 'error',
-        duration: 5000,
-      });
+      showToast('Validation Error', 'Please select a risk level and provide a justification', 'error', 5000);
       return;
     }
 
@@ -779,24 +732,16 @@ export default function ReviewPage() {
         riskJustification
       );
 
-      toasterRef.current.create({
-        title: 'Risk Assessment Saved',
-        description: 'Manual risk level has been saved successfully',
-        type: 'success',
-        duration: 3000,
-      });
+      showToast('Risk Assessment Saved', 'Manual risk level has been saved successfully', 'success', 3000);
 
       // Reload risk assessment and work item
       await loadRiskAssessment();
       await loadWorkItem();
     } catch (err: any) {
-      console.error('Error saving risk assessment:', err);
-      toasterRef.current.create({
-        title: 'Save Failed',
-        description: err instanceof Error ? err.message : 'Failed to save risk assessment',
-        type: 'error',
-        duration: 5000,
+      logger.error(err, 'Error saving risk assessment', {
+        tags: { error_type: 'risk_assessment_save_error' }
       });
+      showToast('Save Failed', err instanceof Error ? err.message : 'Failed to save risk assessment', 'error', 5000);
     } finally {
       setSavingRiskAssessment(false);
     }
@@ -827,7 +772,7 @@ export default function ReviewPage() {
         <AdminSidebar />
         <Box flex="1" ml="240px" display="flex" alignItems="center" justifyContent="center">
           <VStack gap="4">
-            <Text color="gray.600">Loading work item...</Text>
+            <Typography color="gray.600">Loading work item...</Typography>
           </VStack>
         </Box>
       </Flex>
@@ -840,13 +785,13 @@ export default function ReviewPage() {
         <AdminSidebar />
         <Box flex="1" ml="240px" display="flex" alignItems="center" justifyContent="center">
           <VStack gap="4">
-            <Alert.Root status="error">
-              <Icon as={FiAlertTriangle} />
-              <Alert.Title>Error</Alert.Title>
-              <Alert.Description>{error || 'Work item not found'}</Alert.Description>
-            </Alert.Root>
+            <AlertBar
+              status="error"
+              title="Error"
+              description={error || 'Work item not found'}
+            />
             <Link href="/work-queue">
-              <Button variant="outline">Back to Work Queue</Button>
+              <Button variant="secondary">Back to Work Queue</Button>
             </Link>
           </VStack>
         </Box>
@@ -871,26 +816,26 @@ export default function ReviewPage() {
           <HStack justify="space-between" align="center">
             <VStack align="start" gap="1">
               <HStack gap="3">
-                <Text fontSize="2xl" fontWeight="bold" color="gray.900">
+                <Typography fontSize="2xl" fontWeight="bold" color="gray.900">
                   Review Work Item
-                </Text>
-                <Badge colorScheme={getStatusColor(workItem.status)} size="md">
+                </Typography>
+                <Tag variant={getStatusColor(workItem.status) === 'green' ? 'success' : getStatusColor(workItem.status) === 'red' ? 'danger' : 'info'}>
                   {workItem.status}
-                </Badge>
+                </Tag>
                 {workItem.riskLevel && (
-                  <Badge colorScheme={getRiskColor(workItem.riskLevel)} size="md">
+                  <Tag variant={getRiskColor(workItem.riskLevel) === 'red' ? 'danger' : getRiskColor(workItem.riskLevel) === 'orange' ? 'warning' : 'info'}>
                     {workItem.riskLevel} Risk
-                  </Badge>
+                  </Tag>
                 )}
               </HStack>
-              <Text color="gray.600" fontSize="sm">
+              <Typography color="gray.600" fontSize="sm">
                 {workItem.workItemNumber || workItem.id} • {workItem.legalName}
-              </Text>
+              </Typography>
             </VStack>
             <HStack gap="2">
               <Link href="/work-queue">
-                <Button variant="outline" size="sm">
-                  <Icon as={FiArrowLeft} mr="2" />
+                <Button variant="secondary" size="sm">
+                  <IconWrapper><FiArrowLeft size={16} /></IconWrapper>
                   Back to Queue
                 </Button>
               </Link>
@@ -917,15 +862,15 @@ export default function ReviewPage() {
                       cursor="pointer"
                       onClick={() => setCurrentStep(step.id)}
                     >
-                      <Icon as={step.icon} />
+                      <IconWrapper><step.icon size={16} /></IconWrapper>
                     </Box>
-                    <Text 
+                    <Typography 
                       fontSize="sm" 
                       fontWeight={currentStep === step.id ? "bold" : "medium"}
                       color={currentStep >= step.id ? "gray.900" : "gray.600"}
                     >
                       {step.title}
-                    </Text>
+                    </Typography>
                     {index < reviewSteps.length - 1 && (
                       <Box flex="1" h="2px" bg={currentStep > step.id ? "orange.500" : "gray.200"} ml="2" />
                     )}
@@ -943,136 +888,128 @@ export default function ReviewPage() {
             >
               {currentStep === 1 && (
                 <SimpleGrid columns={{ base: 1, md: 2 }} gap="6">
-                  <Card.Root bg="white" boxShadow="md">
-                    <Card.Header>
-                      <Text fontWeight="bold" fontSize="lg">Work Item Details</Text>
-                    </Card.Header>
-                    <Card.Body>
+                  <Card bg="white" boxShadow="md" p="6">
+                    <Typography fontWeight="bold" fontSize="lg" mb="4">Work Item Details</Typography>
+                    <Box>
                       <VStack align="stretch" gap="3">
                         <HStack justify="space-between">
-                          <Text color="gray.600">Work Item #</Text>
-                          <Text fontWeight="semibold">{workItem.workItemNumber || workItem.id}</Text>
+                          <Typography color="gray.600">Work Item #</Typography>
+                          <Typography fontWeight="semibold">{workItem.workItemNumber || workItem.id}</Typography>
                         </HStack>
                         <HStack justify="space-between">
-                          <Text color="gray.600">Applicant Name</Text>
-                          <Text fontWeight="semibold">{workItem.legalName}</Text>
+                          <Typography color="gray.600">Applicant Name</Typography>
+                          <Typography fontWeight="semibold">{workItem.legalName}</Typography>
                         </HStack>
                         <HStack justify="space-between">
-                          <Text color="gray.600">Entity Type</Text>
-                          <Text fontWeight="semibold">{workItem.entityType}</Text>
+                          <Typography color="gray.600">Entity Type</Typography>
+                          <Typography fontWeight="semibold">{workItem.entityType}</Typography>
                         </HStack>
                         <HStack justify="space-between">
-                          <Text color="gray.600">Country</Text>
-                          <Text fontWeight="semibold">{workItem.country}</Text>
+                          <Typography color="gray.600">Country</Typography>
+                          <Typography fontWeight="semibold">{workItem.country}</Typography>
                         </HStack>
                         <HStack justify="space-between">
-                          <Text color="gray.600">Priority</Text>
-                          <Badge colorScheme={workItem.priority?.toLowerCase() === 'high' ? 'red' : 'orange'}>
+                          <Typography color="gray.600">Priority</Typography>
+                          <Tag variant={workItem.priority?.toLowerCase() === 'high' ? 'danger' : 'warning'}>
                             {workItem.priority || 'Medium'}
-                          </Badge>
+                          </Tag>
                         </HStack>
                         {workItem.dueDate && (
                           <HStack justify="space-between">
-                            <Text color="gray.600">Due Date</Text>
-                            <Text fontWeight="semibold">
+                            <Typography color="gray.600">Due Date</Typography>
+                            <Typography fontWeight="semibold">
                               {new Date(workItem.dueDate).toLocaleDateString()}
-                            </Text>
+                            </Typography>
                           </HStack>
                         )}
                         {workItem.assignedToName && (
                           <HStack justify="space-between">
-                            <Text color="gray.600">Assigned To</Text>
-                            <Text fontWeight="semibold">{workItem.assignedToName}</Text>
+                            <Typography color="gray.600">Assigned To</Typography>
+                            <Typography fontWeight="semibold">{workItem.assignedToName}</Typography>
                           </HStack>
                         )}
                       </VStack>
-                    </Card.Body>
-                  </Card.Root>
+                    </Box>
+                  </Card>
 
-                  <Card.Root bg="white" boxShadow="md">
-                    <Card.Header>
-                      <Text fontWeight="bold" fontSize="lg">Quick Actions</Text>
-                    </Card.Header>
-                    <Card.Body>
-                      <VStack align="stretch" gap="3">
-                        <Button
-                          colorScheme="blue"
-                          onClick={() => setCommentsModalOpen(true)}
-                        >
+                  <Card bg="white" boxShadow="md" p="6">
+                    <Typography fontWeight="bold" fontSize="lg" mb="4">Quick Actions</Typography>
+                    <VStack align="stretch" gap="3">
+                      <Button
+                        variant="primary"
+                        onClick={() => setCommentsModalOpen(true)}
+                      >
+                        <HStack gap="2">
+                          <IconWrapper><FiMessageSquare size={16} /></IconWrapper>
+                          <Typography>View Comments ({comments.length})</Typography>
+                        </HStack>
+                      </Button>
+                      <Button
+                        variant="secondary"
+                        onClick={() => setHistoryModalOpen(true)}
+                      >
+                        <HStack gap="2">
+                          <IconWrapper><FiClock size={16} /></IconWrapper>
+                          <Typography>View History</Typography>
+                        </HStack>
+                      </Button>
+                      <Link href={`/applications/${workItem.applicationId || workItem.id}`}>
+                        <Button variant="secondary" w="full">
                           <HStack gap="2">
-                            <Icon as={FiMessageSquare} />
-                            <Text>View Comments ({comments.length})</Text>
+                            <IconWrapper><FiEye size={16} /></IconWrapper>
+                            <Typography>View Full Application</Typography>
                           </HStack>
                         </Button>
-                        <Button
-                          variant="outline"
-                          onClick={() => setHistoryModalOpen(true)}
-                        >
-                          <HStack gap="2">
-                            <Icon as={FiClock} />
-                            <Text>View History</Text>
-                          </HStack>
-                        </Button>
-                        <Link href={`/applications/${workItem.applicationId || workItem.id}`}>
-                          <Button variant="outline" w="full">
-                            <HStack gap="2">
-                              <Icon as={FiEye} />
-                              <Text>View Full Application</Text>
-                            </HStack>
-                          </Button>
-                        </Link>
-                      </VStack>
-                    </Card.Body>
-                  </Card.Root>
+                      </Link>
+                    </VStack>
+                  </Card>
                 </SimpleGrid>
               )}
 
               {currentStep === 2 && (
-                <Card.Root bg="white" boxShadow="md">
-                  <Card.Header>
-                    <HStack justify="space-between" align="center" w="full">
-                      <Text fontWeight="bold" fontSize="lg">Documents</Text>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={loadDocuments}
-                      >
-                        <HStack gap="1">
-                          <Icon as={FiRefreshCw} />
-                          <Text>Refresh</Text>
-                        </HStack>
-                      </Button>
-                    </HStack>
-                  </Card.Header>
-                  <Card.Body>
+                <Card bg="white" boxShadow="md" p="6">
+                  <HStack justify="space-between" align="center" w="full" mb="4">
+                    <Typography fontWeight="bold" fontSize="lg">Documents</Typography>
+                    <Button
+                      size="sm"
+                      variant="secondary"
+                      onClick={loadDocuments}
+                    >
+                      <HStack gap="1">
+                        <IconWrapper><FiRefreshCw size={16} /></IconWrapper>
+                        <Typography>Refresh</Typography>
+                      </HStack>
+                    </Button>
+                  </HStack>
+                  <Box>
                     {documentsLoading ? (
                       <VStack gap="4" py="8">
                         <Spinner size="lg" color="orange.500" />
-                        <Text color="gray.600">Loading documents...</Text>
+                        <Typography color="gray.600">Loading documents...</Typography>
                       </VStack>
                     ) : documentsError ? (
-                      <Alert.Root status="error" borderRadius="md">
-                        <Icon as={FiAlertTriangle} />
-                        <Alert.Title>Error loading documents</Alert.Title>
-                        <Alert.Description>{documentsError}</Alert.Description>
-                      </Alert.Root>
+                      <AlertBar
+                        status="error"
+                        title="Error loading documents"
+                        description={documentsError}
+                      />
                     ) : documents.length === 0 ? (
                       <VStack gap="4" py="8">
-                        <Icon as={FiFolder} boxSize="12" color="gray.400" />
-                        <Text color="gray.600" fontSize="md">
+                        <IconWrapper><FiFolder size={48} color="#9CA3AF" /></IconWrapper>
+                        <Typography color="gray.600" fontSize="md">
                           No documents found for this application
-                        </Text>
+                        </Typography>
                         <Link href={`/applications/${workItem.applicationId || workItem.id}`}>
-                          <Button variant="outline" colorScheme="blue">
+                          <Button variant="secondary">
                             View Full Application
                           </Button>
                         </Link>
                       </VStack>
                     ) : (
                       <VStack align="stretch" gap="3">
-                        <Text color="gray.600" fontSize="sm" mb="2">
+                        <Typography color="gray.600" fontSize="sm" mb="2">
                           {documents.length} document{documents.length !== 1 ? 's' : ''} found
-                        </Text>
+                        </Typography>
                         <SimpleGrid columns={{ base: 1, md: 2 }} gap="3">
                           {documents.map((doc: any, index: number) => (
                             <Box
@@ -1100,17 +1037,16 @@ export default function ReviewPage() {
                                   justifyContent="center"
                                   flexShrink={0}
                                 >
-                                  <Icon as={FiFileText} boxSize="5" color="orange.600" />
+                                  <IconWrapper><FiFileText size={20} color="#DD6B20" /></IconWrapper>
                                 </Box>
                                 <VStack align="start" gap="1" flex="1" minW="0">
-                                  <Badge 
-                                    colorScheme={doc.requirementName ? "orange" : "blue"} 
-                                    size="sm"
+                                  <Tag 
+                                    variant={doc.requirementName ? "warning" : "info"}
                                     title={doc.requirementName ? `Requirement: ${doc.requirementName}` : undefined}
                                   >
                                     {getDocumentTypeName(doc)}
-                                  </Badge>
-                                  <Text
+                                  </Tag>
+                                  <Typography
                                     fontWeight="semibold"
                                     fontSize="sm"
                                     color="gray.900"
@@ -1122,36 +1058,36 @@ export default function ReviewPage() {
                                     }}
                                   >
                                     {doc.fileName || doc.documentNumber || `Document ${index + 1}`}
-                                  </Text>
+                                  </Typography>
                                   <HStack gap="2" wrap="wrap">
                                     {doc.sizeBytes && (
-                                      <Text fontSize="xs" color="gray.500">
+                                      <Typography fontSize="xs" color="gray.500">
                                         {formatFileSize(doc.sizeBytes)}
-                                      </Text>
+                                      </Typography>
                                     )}
                                   </HStack>
                                   {doc.requirementName && (
-                                    <Text fontSize="xs" color="orange.600" fontWeight="medium" mt="1">
+                                    <Typography fontSize="xs" color="orange.600" fontWeight="medium" mt="1">
                                       📋 {doc.requirementName}
-                                    </Text>
+                                    </Typography>
                                   )}
                                   {doc.uploadedAt && (
-                                    <Text fontSize="xs" color="gray.500">
+                                    <Typography fontSize="xs" color="gray.500">
                                       Uploaded: {new Date(doc.uploadedAt).toLocaleDateString()}
-                                    </Text>
+                                    </Typography>
                                   )}
                                 </VStack>
                                 <Button
                                   size="sm"
-                                  variant="ghost"
+                                  variant="secondary"
                                   onClick={(e) => {
                                     e.stopPropagation();
                                     handleViewDocument(doc);
                                   }}
                                 >
                                   <HStack gap="1">
-                                    <Icon as={FiEye} />
-                                    <Text>View</Text>
+                                    <IconWrapper><FiEye size={16} /></IconWrapper>
+                                    <Typography>View</Typography>
                                   </HStack>
                                 </Button>
                               </HStack>
@@ -1160,37 +1096,35 @@ export default function ReviewPage() {
                         </SimpleGrid>
                         <Separator mt="4" />
                         <Link href={`/applications/${workItem.applicationId || workItem.id}`}>
-                          <Button variant="outline" colorScheme="blue" w="full" mt="2">
-                            <Icon as={FiArrowRight} mr="2" />
+                          <Button variant="secondary" w="full" mt="2">
+                            <IconWrapper><FiArrowRight size={16} /></IconWrapper>
                             View Full Application Details
                           </Button>
                         </Link>
                       </VStack>
                     )}
-                  </Card.Body>
-                </Card.Root>
+                  </Box>
+                </Card>
               )}
 
               {currentStep === 3 && (
-                <Card.Root bg="white" boxShadow="md">
-                  <Card.Header>
-                    <HStack justify="space-between" align="center" w="full">
-                      <Text fontWeight="bold" fontSize="lg">Manual Risk Assessment</Text>
+                <Card bg="white" boxShadow="md" p="6">
+                  <HStack justify="space-between" align="center" w="full" mb="4">
+                    <Typography fontWeight="bold" fontSize="lg">Manual Risk Assessment</Typography>
                       {riskAssessment && (
-                        <Badge colorScheme="green" size="sm">
+                        <Tag variant="success">
                           <HStack gap="1">
-                            <Icon as={FiCheck} />
-                            <Text>Assessed</Text>
+                            <IconWrapper><FiCheck size={14} /></IconWrapper>
+                            <Typography fontSize="sm">Assessed</Typography>
                           </HStack>
-                        </Badge>
+                        </Tag>
                       )}
                     </HStack>
-                  </Card.Header>
-                  <Card.Body>
+                  <Box>
                     {riskAssessmentLoading ? (
                       <VStack gap="4" py="8">
                         <Spinner size="lg" color="orange.500" />
-                        <Text color="gray.600">Loading risk assessment...</Text>
+                        <Typography color="gray.600">Loading risk assessment...</Typography>
                       </VStack>
                     ) : (
                       <VStack align="stretch" gap="6">
@@ -1199,18 +1133,18 @@ export default function ReviewPage() {
                           <Box p="4" bg="gray.50" borderRadius="md" border="1px" borderColor="gray.200">
                             <VStack align="stretch" gap="3">
                               <HStack justify="space-between">
-                                <Text fontWeight="semibold" fontSize="sm" color="gray.700">
+                                <Typography fontWeight="semibold" fontSize="sm" color="gray.700">
                                   Current Risk Level
-                                </Text>
-                                <Badge colorScheme={getRiskColor(riskAssessment.overallRiskLevel)} size="lg">
+                                </Typography>
+                                <Tag variant={getRiskColor(riskAssessment.overallRiskLevel) === 'red' ? 'danger' : getRiskColor(riskAssessment.overallRiskLevel) === 'orange' ? 'warning' : 'info'}>
                                   {riskAssessment.overallRiskLevel}
-                                </Badge>
+                                </Tag>
                               </HStack>
                               {riskAssessment.riskScore !== undefined && (
                                 <Box>
                                   <HStack justify="space-between" mb="2">
-                                    <Text fontSize="sm" color="gray.600">Risk Score</Text>
-                                    <Text fontWeight="bold" fontSize="sm">{riskAssessment.riskScore}%</Text>
+                                    <Typography fontSize="sm" color="gray.600">Risk Score</Typography>
+                                    <Typography fontWeight="bold" fontSize="sm">{riskAssessment.riskScore}%</Typography>
                                   </HStack>
                                   <Progress.Root value={riskAssessment.riskScore} colorScheme={getRiskColor(riskAssessment.overallRiskLevel)}>
                                     <Progress.Track>
@@ -1221,26 +1155,26 @@ export default function ReviewPage() {
                               )}
                               {riskAssessment.assessedBy && (
                                 <HStack gap="2">
-                                  <Text fontSize="xs" color="gray.500">Assessed by:</Text>
-                                  <Text fontSize="xs" fontWeight="medium">{riskAssessment.assessedBy}</Text>
+                                  <Typography fontSize="xs" color="gray.500">Assessed by:</Typography>
+                                  <Typography fontSize="xs" fontWeight="medium">{riskAssessment.assessedBy}</Typography>
                                   {riskAssessment.completedAt && (
                                     <>
-                                      <Text fontSize="xs" color="gray.400">•</Text>
-                                      <Text fontSize="xs" color="gray.500">
+                                      <Typography fontSize="xs" color="gray.400">•</Typography>
+                                      <Typography fontSize="xs" color="gray.500">
                                         {new Date(riskAssessment.completedAt).toLocaleDateString()}
-                                      </Text>
+                                      </Typography>
                                     </>
                                   )}
                                 </HStack>
                               )}
                               {riskAssessment.notes && riskAssessment.notes.includes('MANUAL CLASSIFICATION:') && (
                                 <Box mt="2">
-                                  <Text fontSize="xs" fontWeight="semibold" color="gray.600" mb="1">
+                                  <Typography fontSize="xs" fontWeight="semibold" color="gray.600" mb="1">
                                     Justification:
-                                  </Text>
-                                  <Text fontSize="xs" color="gray.700" fontStyle="italic">
+                                  </Typography>
+                                  <Typography fontSize="xs" color="gray.700" fontStyle="italic">
                                     {riskAssessment.notes.split('MANUAL CLASSIFICATION:')[1]?.trim() || riskAssessment.notes}
-                                  </Text>
+                                  </Typography>
                                 </Box>
                               )}
                             </VStack>
@@ -1251,9 +1185,9 @@ export default function ReviewPage() {
 
                         {/* Manual Risk Determination Form */}
                         <VStack align="stretch" gap="4">
-                          <Text fontWeight="semibold" fontSize="md" color="gray.900">
+                          <Typography fontWeight="semibold" fontSize="md" color="gray.900">
                             Determine Risk Level
-                          </Text>
+                          </Typography>
                           
                           <Field.Root required>
                             <Field.Label>Risk Level</Field.Label>
@@ -1298,7 +1232,7 @@ export default function ReviewPage() {
 
                           <HStack gap="3" justify="flex-end" pt="2">
                             <Button
-                              variant="outline"
+                              variant="secondary"
                               onClick={() => {
                                 setManualRiskLevel(riskAssessment?.overallRiskLevel || workItem?.riskLevel?.toUpperCase() || '');
                                 setRiskJustification('');
@@ -1313,8 +1247,8 @@ export default function ReviewPage() {
                               disabled={!manualRiskLevel || !riskJustification.trim()}
                             >
                               <HStack gap="2">
-                                <Icon as={FiSave} />
-                                <Text>Save Risk Assessment</Text>
+                                <IconWrapper><FiSave size={16} /></IconWrapper>
+                                <Typography>Save Risk Assessment</Typography>
                               </HStack>
                             </Button>
                           </HStack>
@@ -1325,27 +1259,25 @@ export default function ReviewPage() {
                         {/* Additional Actions */}
                         <VStack align="stretch" gap="2">
                           <Link href={`/risk-review?search=${workItem.id}`}>
-                            <Button variant="outline" w="full">
+                            <Button variant="secondary" w="full">
                               <HStack gap="2">
-                                <Icon as={FiShield} />
-                                <Text>View Detailed Risk Assessment</Text>
-                                <Icon as={FiArrowRight} />
+                                <IconWrapper><FiShield size={16} /></IconWrapper>
+                                <Typography>View Detailed Risk Assessment</Typography>
+                                <IconWrapper><FiArrowRight size={16} /></IconWrapper>
                               </HStack>
                             </Button>
                           </Link>
                         </VStack>
                       </VStack>
                     )}
-                  </Card.Body>
-                </Card.Root>
+                  </Box>
+                </Card>
               )}
 
               {currentStep === 4 && (
-                <Card.Root bg="white" boxShadow="md">
-                  <Card.Header>
-                    <Text fontWeight="bold" fontSize="lg">Review & Decision</Text>
-                  </Card.Header>
-                  <Card.Body>
+                <Card bg="white" boxShadow="md" p="6">
+                  <Typography fontWeight="bold" fontSize="lg" mb="4">Review & Decision</Typography>
+                  <Box>
                     <VStack align="stretch" gap="4">
                       <Field.Root>
                         <Field.Label>Review Notes</Field.Label>
@@ -1363,24 +1295,24 @@ export default function ReviewPage() {
                         {workItem.status === 'IN PROGRESS' && (
                           <>
                             <Button
-                              colorScheme="green"
+                              variant="primary"
                               onClick={() => setCompleteModalOpen(true)}
-                              size="lg"
+                              size="md"
                             >
                               <HStack gap="2">
-                                <Icon as={FiCheck} />
-                                <Text>Complete Review</Text>
+                                <IconWrapper><FiCheck size={16} /></IconWrapper>
+                                <Typography>Complete Review</Typography>
                               </HStack>
                             </Button>
                             {workItem.requiresApproval && (
                               <Button
-                                colorScheme="blue"
+                                variant="primary"
                                 onClick={() => setSubmitApprovalModalOpen(true)}
-                                size="lg"
+                                size="md"
                               >
                                 <HStack gap="2">
-                                  <Icon as={FiSend} />
-                                  <Text>Submit for Approval</Text>
+                                  <IconWrapper><FiSend size={16} /></IconWrapper>
+                                  <Typography>Submit for Approval</Typography>
                                 </HStack>
                               </Button>
                             )}
@@ -1389,54 +1321,54 @@ export default function ReviewPage() {
                         {workItem.status === 'RISK REVIEW' && (
                           <>
                             <Button
-                              colorScheme="green"
+                              variant="primary"
                               onClick={() => setApproveModalOpen(true)}
-                              size="lg"
+                              size="md"
                             >
                               <HStack gap="2">
-                                <Icon as={FiCheck} />
-                                <Text>Approve</Text>
+                                <IconWrapper><FiCheck size={16} /></IconWrapper>
+                                <Typography>Approve</Typography>
                               </HStack>
                             </Button>
                             <Button
-                              colorScheme="red"
+                              variant="primary"
                               onClick={() => setDeclineModalOpen(true)}
-                              size="lg"
+                              size="md"
                             >
                               <HStack gap="2">
-                                <Icon as={FiX} />
-                                <Text>Decline</Text>
+                                <IconWrapper><FiX size={16} /></IconWrapper>
+                                <Typography>Decline</Typography>
                               </HStack>
                             </Button>
                           </>
                         )}
                       </SimpleGrid>
                     </VStack>
-                  </Card.Body>
-                </Card.Root>
+                  </Box>
+                </Card>
               )}
             </MotionBox>
 
             {/* Navigation */}
             <HStack justify="space-between" mt="4">
               <Button
-                variant="outline"
+                variant="secondary"
                 onClick={() => setCurrentStep(Math.max(1, currentStep - 1))}
                 disabled={currentStep === 1}
               >
                 <HStack gap="2">
-                  <Icon as={FiArrowLeft} />
-                  <Text>Previous</Text>
+                  <IconWrapper><FiArrowLeft size={16} /></IconWrapper>
+                  <Typography>Previous</Typography>
                 </HStack>
               </Button>
               <Button
-                colorScheme="orange"
+                variant="primary"
                 onClick={() => setCurrentStep(Math.min(reviewSteps.length, currentStep + 1))}
                 disabled={currentStep === reviewSteps.length}
               >
                 <HStack gap="2">
-                  <Text>Next</Text>
-                  <Icon as={FiArrowRight} />
+                  <Typography>Next</Typography>
+                  <IconWrapper><FiArrowRight size={16} /></IconWrapper>
                 </HStack>
               </Button>
             </HStack>
@@ -1445,260 +1377,270 @@ export default function ReviewPage() {
       </Box>
 
       {/* Approve Modal */}
-      <Dialog.Root open={approveModalOpen} onOpenChange={(e) => setApproveModalOpen(e.open)}>
-        <Dialog.Backdrop />
-        <Dialog.Positioner>
-          <Dialog.Content maxW="500px">
-            <Dialog.Header>
-              <Dialog.Title>Approve Work Item</Dialog.Title>
-            </Dialog.Header>
-            <Dialog.Body>
-              <VStack align="stretch" gap="4">
-                <Field.Root>
-                  <Field.Label>Notes (Optional)</Field.Label>
-                  <Textarea
-                    value={reviewNotes}
-                    onChange={(e) => setReviewNotes(e.target.value)}
-                    placeholder="Add approval notes..."
-                    rows={4}
-                  />
-                </Field.Root>
-              </VStack>
-            </Dialog.Body>
-            <Dialog.Footer>
-              <HStack gap="2">
-                <Button variant="outline" onClick={() => setApproveModalOpen(false)}>
-                  Cancel
-                </Button>
-                <Button colorScheme="green" onClick={handleApprove} loading={actionLoading}>
-                  Approve
-                </Button>
-              </HStack>
-            </Dialog.Footer>
-          </Dialog.Content>
-        </Dialog.Positioner>
-      </Dialog.Root>
+      <Modal
+        isOpen={approveModalOpen}
+        onClose={() => setApproveModalOpen(false)}
+        title="Approve Work Item"
+        size="small"
+        closeOnBackdropClick={true}
+        closeOnEsc={true}
+      >
+        <ModalHeader>
+          <Typography fontSize="lg" fontWeight="700" color="gray.900">Approve Work Item</Typography>
+        </ModalHeader>
+        <ModalBody>
+          <VStack align="stretch" gap="4">
+            <Field.Root>
+              <Field.Label>Notes (Optional)</Field.Label>
+              <Textarea
+                value={reviewNotes}
+                onChange={(e) => setReviewNotes(e.target.value)}
+                placeholder="Add approval notes..."
+                rows={4}
+              />
+            </Field.Root>
+          </VStack>
+        </ModalBody>
+        <ModalFooter>
+          <HStack gap="2">
+            <Button variant="secondary" onClick={() => setApproveModalOpen(false)}>
+              Cancel
+            </Button>
+            <Button variant="primary" onClick={handleApprove} disabled={actionLoading}>
+              Approve
+            </Button>
+          </HStack>
+        </ModalFooter>
+      </Modal>
 
       {/* Decline Modal */}
-      <Dialog.Root open={declineModalOpen} onOpenChange={(e) => setDeclineModalOpen(e.open)}>
-        <Dialog.Backdrop />
-        <Dialog.Positioner>
-          <Dialog.Content maxW="500px">
-            <Dialog.Header>
-              <Dialog.Title>Decline Work Item</Dialog.Title>
-            </Dialog.Header>
-            <Dialog.Body>
-              <VStack align="stretch" gap="4">
-                <Field.Root required>
-                  <Field.Label>Reason for Decline</Field.Label>
-                  <Textarea
-                    value={declineReason}
-                    onChange={(e) => setDeclineReason(e.target.value)}
-                    placeholder="Please provide a reason for declining..."
-                    rows={4}
-                  />
-                </Field.Root>
-              </VStack>
-            </Dialog.Body>
-            <Dialog.Footer>
-              <HStack gap="2">
-                <Button variant="outline" onClick={() => setDeclineModalOpen(false)}>
-                  Cancel
-                </Button>
-                <Button 
-                  colorScheme="red" 
-                  onClick={handleDecline} 
-                  loading={actionLoading}
-                  disabled={!declineReason.trim()}
-                >
-                  Decline
-                </Button>
-              </HStack>
-            </Dialog.Footer>
-          </Dialog.Content>
-        </Dialog.Positioner>
-      </Dialog.Root>
+      <Modal
+        isOpen={declineModalOpen}
+        onClose={() => setDeclineModalOpen(false)}
+        title="Decline Work Item"
+        size="small"
+        closeOnBackdropClick={true}
+        closeOnEsc={true}
+      >
+        <ModalHeader>
+          <Typography fontSize="lg" fontWeight="700" color="gray.900">Decline Work Item</Typography>
+        </ModalHeader>
+        <ModalBody>
+          <VStack align="stretch" gap="4">
+            <Field.Root required>
+              <Field.Label>Reason for Decline</Field.Label>
+              <Textarea
+                value={declineReason}
+                onChange={(e) => setDeclineReason(e.target.value)}
+                placeholder="Please provide a reason for declining..."
+                rows={4}
+              />
+            </Field.Root>
+          </VStack>
+        </ModalBody>
+        <ModalFooter>
+          <HStack gap="2">
+            <Button variant="secondary" onClick={() => setDeclineModalOpen(false)}>
+              Cancel
+            </Button>
+            <Button 
+              variant="primary" 
+              onClick={handleDecline} 
+              disabled={actionLoading || !declineReason.trim()}
+            >
+              Decline
+            </Button>
+          </HStack>
+        </ModalFooter>
+      </Modal>
 
       {/* Complete Modal */}
-      <Dialog.Root open={completeModalOpen} onOpenChange={(e) => setCompleteModalOpen(e.open)}>
-        <Dialog.Backdrop />
-        <Dialog.Positioner>
-          <Dialog.Content maxW="500px">
-            <Dialog.Header>
-              <Dialog.Title>Complete Work Item</Dialog.Title>
-            </Dialog.Header>
-            <Dialog.Body>
-              <VStack align="stretch" gap="4">
-                <Field.Root>
-                  <Field.Label>Notes (Optional)</Field.Label>
-                  <Textarea
-                    value={reviewNotes}
-                    onChange={(e) => setReviewNotes(e.target.value)}
-                    placeholder="Add completion notes..."
-                    rows={4}
-                  />
-                </Field.Root>
-              </VStack>
-            </Dialog.Body>
-            <Dialog.Footer>
-              <HStack gap="2">
-                <Button variant="outline" onClick={() => setCompleteModalOpen(false)}>
-                  Cancel
-                </Button>
-                <Button colorScheme="green" onClick={handleComplete} loading={actionLoading}>
-                  Complete
-                </Button>
-              </HStack>
-            </Dialog.Footer>
-          </Dialog.Content>
-        </Dialog.Positioner>
-      </Dialog.Root>
+      <Modal
+        isOpen={completeModalOpen}
+        onClose={() => setCompleteModalOpen(false)}
+        title="Complete Work Item"
+        size="small"
+        closeOnBackdropClick={true}
+        closeOnEsc={true}
+      >
+        <ModalHeader>
+          <Typography fontSize="lg" fontWeight="700" color="gray.900">Complete Work Item</Typography>
+        </ModalHeader>
+        <ModalBody>
+          <VStack align="stretch" gap="4">
+            <Field.Root>
+              <Field.Label>Notes (Optional)</Field.Label>
+              <Textarea
+                value={reviewNotes}
+                onChange={(e) => setReviewNotes(e.target.value)}
+                placeholder="Add completion notes..."
+                rows={4}
+              />
+            </Field.Root>
+          </VStack>
+        </ModalBody>
+        <ModalFooter>
+          <HStack gap="2">
+            <Button variant="secondary" onClick={() => setCompleteModalOpen(false)}>
+              Cancel
+            </Button>
+            <Button variant="primary" onClick={handleComplete} disabled={actionLoading}>
+              Complete
+            </Button>
+          </HStack>
+        </ModalFooter>
+      </Modal>
 
       {/* Submit for Approval Modal */}
-      <Dialog.Root open={submitApprovalModalOpen} onOpenChange={(e) => setSubmitApprovalModalOpen(e.open)}>
-        <Dialog.Backdrop />
-        <Dialog.Positioner>
-          <Dialog.Content maxW="500px">
-            <Dialog.Header>
-              <Dialog.Title>Submit for Approval</Dialog.Title>
-            </Dialog.Header>
-            <Dialog.Body>
-              <VStack align="stretch" gap="4">
-                <Field.Root>
-                  <Field.Label>Notes (Optional)</Field.Label>
-                  <Textarea
-                    value={reviewNotes}
-                    onChange={(e) => setReviewNotes(e.target.value)}
-                    placeholder="Add notes for approval..."
-                    rows={4}
-                  />
-                </Field.Root>
-              </VStack>
-            </Dialog.Body>
-            <Dialog.Footer>
-              <HStack gap="2">
-                <Button variant="outline" onClick={() => setSubmitApprovalModalOpen(false)}>
-                  Cancel
-                </Button>
-                <Button colorScheme="blue" onClick={handleSubmitForApproval} loading={actionLoading}>
-                  Submit
-                </Button>
-              </HStack>
-            </Dialog.Footer>
-          </Dialog.Content>
-        </Dialog.Positioner>
-      </Dialog.Root>
+      <Modal
+        isOpen={submitApprovalModalOpen}
+        onClose={() => setSubmitApprovalModalOpen(false)}
+        title="Submit for Approval"
+        size="small"
+        closeOnBackdropClick={true}
+        closeOnEsc={true}
+      >
+        <ModalHeader>
+          <Typography fontSize="lg" fontWeight="700" color="gray.900">Submit for Approval</Typography>
+        </ModalHeader>
+        <ModalBody>
+          <VStack align="stretch" gap="4">
+            <Field.Root>
+              <Field.Label>Notes (Optional)</Field.Label>
+              <Textarea
+                value={reviewNotes}
+                onChange={(e) => setReviewNotes(e.target.value)}
+                placeholder="Add notes for approval..."
+                rows={4}
+              />
+            </Field.Root>
+          </VStack>
+        </ModalBody>
+        <ModalFooter>
+          <HStack gap="2">
+            <Button variant="secondary" onClick={() => setSubmitApprovalModalOpen(false)}>
+              Cancel
+            </Button>
+            <Button variant="primary" onClick={handleSubmitForApproval} disabled={actionLoading}>
+              Submit
+            </Button>
+          </HStack>
+        </ModalFooter>
+      </Modal>
 
       {/* Comments Modal */}
-      <Dialog.Root open={commentsModalOpen} onOpenChange={(e) => setCommentsModalOpen(e.open)}>
-        <Dialog.Backdrop />
-        <Dialog.Positioner>
-          <Dialog.Content maxW="600px">
-            <Dialog.Header>
-              <Dialog.Title>Comments</Dialog.Title>
-            </Dialog.Header>
-            <Dialog.Body>
-              <VStack align="stretch" gap="4">
-                <Box maxH="400px" overflowY="auto">
-                  {comments.length === 0 ? (
-                    <Text color="gray.600">No comments yet</Text>
-                  ) : (
-                    <VStack align="stretch" gap="3">
-                      {comments.map((comment: any, idx: number) => (
-                        <Box key={idx} p="3" bg="gray.50" borderRadius="md">
-                          <HStack justify="space-between" mb="2">
-                            <Text fontWeight="semibold" fontSize="sm">
-                              {comment.createdBy || comment.authorName || 'Unknown'}
-                            </Text>
-                            <Text fontSize="xs" color="gray.600">
-                              {new Date(comment.createdAt || comment.timestamp).toLocaleString()}
-                            </Text>
-                          </HStack>
-                          <Text fontSize="sm" color="gray.700">
-                            {comment.text || comment.comment}
-                          </Text>
-                        </Box>
-                      ))}
-                    </VStack>
-                  )}
-                </Box>
-                <Separator />
-                <VStack align="stretch" gap="2">
-                  <Field.Root>
-                    <Field.Label>Add Comment</Field.Label>
-                    <Textarea
-                      value={newComment}
-                      onChange={(e) => setNewComment(e.target.value)}
-                      placeholder="Enter your comment..."
-                      rows={3}
-                    />
-                  </Field.Root>
-                  <Button
-                    colorScheme="blue"
-                    onClick={handleAddComment}
-                    loading={actionLoading}
-                    disabled={!newComment.trim()}
-                  >
-                    <HStack gap="2">
-                      <Icon as={FiMessageSquare} />
-                      <Text>Add Comment</Text>
-                    </HStack>
-                  </Button>
+      <Modal
+        isOpen={commentsModalOpen}
+        onClose={() => setCommentsModalOpen(false)}
+        title="Comments"
+        size="large"
+        closeOnBackdropClick={true}
+        closeOnEsc={true}
+      >
+        <ModalHeader>
+          <Typography fontSize="lg" fontWeight="700" color="gray.900">Comments</Typography>
+        </ModalHeader>
+        <ModalBody>
+          <VStack align="stretch" gap="4">
+            <Box maxH="400px" overflowY="auto">
+              {comments.length === 0 ? (
+                <Typography color="gray.600">No comments yet</Typography>
+              ) : (
+                <VStack align="stretch" gap="3">
+                  {comments.map((comment: any, idx: number) => (
+                    <Box key={idx} p="3" bg="gray.50" borderRadius="md">
+                      <HStack justify="space-between" mb="2">
+                        <Typography fontWeight="semibold" fontSize="sm">
+                          {comment.createdBy || comment.authorName || 'Unknown'}
+                        </Typography>
+                        <Typography fontSize="xs" color="gray.600">
+                          {new Date(comment.createdAt || comment.timestamp).toLocaleString()}
+                        </Typography>
+                      </HStack>
+                      <Typography fontSize="sm" color="gray.700">
+                        {comment.text || comment.comment}
+                      </Typography>
+                    </Box>
+                  ))}
                 </VStack>
-              </VStack>
-            </Dialog.Body>
-            <Dialog.Footer>
-              <Button variant="outline" onClick={() => setCommentsModalOpen(false)}>
-                Close
+              )}
+            </Box>
+            <Separator />
+            <VStack align="stretch" gap="2">
+              <Field.Root>
+                <Field.Label>Add Comment</Field.Label>
+                <Textarea
+                  value={newComment}
+                  onChange={(e) => setNewComment(e.target.value)}
+                  placeholder="Enter your comment..."
+                  rows={3}
+                />
+              </Field.Root>
+              <Button
+                variant="primary"
+                onClick={handleAddComment}
+                disabled={actionLoading || !newComment.trim()}
+              >
+                <HStack gap="2">
+                  <IconWrapper><FiMessageSquare size={16} /></IconWrapper>
+                  <Typography>Add Comment</Typography>
+                </HStack>
               </Button>
-            </Dialog.Footer>
-          </Dialog.Content>
-        </Dialog.Positioner>
-      </Dialog.Root>
+            </VStack>
+          </VStack>
+        </ModalBody>
+        <ModalFooter>
+          <Button variant="secondary" onClick={() => setCommentsModalOpen(false)}>
+            Close
+          </Button>
+        </ModalFooter>
+      </Modal>
 
       {/* History Modal */}
-      <Dialog.Root open={historyModalOpen} onOpenChange={(e) => setHistoryModalOpen(e.open)}>
-        <Dialog.Backdrop />
-        <Dialog.Positioner>
-          <Dialog.Content maxW="700px">
-            <Dialog.Header>
-              <Dialog.Title>History</Dialog.Title>
-            </Dialog.Header>
-            <Dialog.Body>
-              <Box maxH="500px" overflowY="auto">
-                {history.length === 0 ? (
-                  <Text color="gray.600">No history available</Text>
-                ) : (
-                  <VStack align="stretch" gap="2">
-                    {history.map((entry: any, idx: number) => (
-                      <Box key={idx} p="3" borderLeft="3px" borderColor="orange.500" bg="gray.50" borderRadius="md">
-                        <HStack justify="space-between" mb="1">
-                          <Text fontWeight="semibold" fontSize="sm">
-                            {entry.action || entry.description || entry.eventType}
-                          </Text>
-                          <Text fontSize="xs" color="gray.600">
-                            {new Date(entry.timestamp || entry.createdAt).toLocaleString()}
-                          </Text>
-                        </HStack>
-                        {entry.performedBy && (
-                          <Text fontSize="xs" color="gray.600">
-                            By: {entry.performedBy}
-                          </Text>
-                        )}
-                      </Box>
-                    ))}
-                  </VStack>
-                )}
-              </Box>
-            </Dialog.Body>
-            <Dialog.Footer>
-              <Button variant="outline" onClick={() => setHistoryModalOpen(false)}>
-                Close
-              </Button>
-            </Dialog.Footer>
-          </Dialog.Content>
-        </Dialog.Positioner>
-      </Dialog.Root>
+      <Modal
+        isOpen={historyModalOpen}
+        onClose={() => setHistoryModalOpen(false)}
+        title="History"
+        size="large"
+        closeOnBackdropClick={true}
+        closeOnEsc={true}
+      >
+        <ModalHeader>
+          <Typography fontSize="lg" fontWeight="700" color="gray.900">History</Typography>
+        </ModalHeader>
+        <ModalBody>
+          <Box maxH="500px" overflowY="auto">
+            {history.length === 0 ? (
+              <Typography color="gray.600">No history available</Typography>
+            ) : (
+              <VStack align="stretch" gap="2">
+                {history.map((entry: any, idx: number) => (
+                  <Box key={idx} p="3" borderLeft="3px" borderColor="orange.500" bg="gray.50" borderRadius="md">
+                    <HStack justify="space-between" mb="1">
+                      <Typography fontWeight="semibold" fontSize="sm">
+                        {entry.action || entry.description || entry.eventType}
+                      </Typography>
+                      <Typography fontSize="xs" color="gray.600">
+                        {new Date(entry.timestamp || entry.createdAt).toLocaleString()}
+                      </Typography>
+                    </HStack>
+                    {entry.performedBy && (
+                      <Typography fontSize="xs" color="gray.600">
+                        By: {entry.performedBy}
+                      </Typography>
+                    )}
+                  </Box>
+                ))}
+              </VStack>
+            )}
+          </Box>
+        </ModalBody>
+        <ModalFooter>
+          <Button variant="secondary" onClick={() => setHistoryModalOpen(false)}>
+            Close
+          </Button>
+        </ModalFooter>
+      </Modal>
 
       {/* Document Viewer */}
       <DocumentViewer

@@ -1,1 +1,0 @@
-{"version":3,"file":"AwardIcon.js","sources":["../../../../src/components/ui/Icons/AwardIcon.tsx"],"sourcesContent":[null],"names":["AwardIcon","props","_jsx","width","height","viewBox","fill","xmlns","children","d"],"mappings":"8CAEaA,EAAuBC,GAClCC,SACEC,MAAM,KACNC,OAAO,KACPC,QAAQ,YACRC,KAAK,OACLC,MAAM,gCACFN,EAAKO,SAETN,EAAA,OAAA,CACEO,EAAE,+wDACFH,KAAK"}

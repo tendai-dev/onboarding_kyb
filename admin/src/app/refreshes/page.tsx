@@ -5,15 +5,11 @@ import {
   Container, 
   VStack, 
   HStack,
-  Text,
-  Button,
-  Input,
   SimpleGrid,
-  Badge,
-  Icon,
   Flex,
   Spinner
 } from "@chakra-ui/react";
+import { Search, Typography, Button, Tag, IconWrapper, Input } from "@/lib/mukuruImports";
 import { 
   FiSearch, 
   FiFilter, 
@@ -28,7 +24,13 @@ import {
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import AdminSidebar from "../../components/AdminSidebar";
-import { workQueueApi, WorkItemDto } from "../../lib/workQueueApi";
+import {
+  fetchItemsDueForRefresh,
+  getWorkItems,
+  markForRefreshUseCase,
+  WorkItemDto,
+} from "../../services";
+import { logger } from "../../lib/logger";
 import { SweetAlert } from "../../utils/sweetAlert";
 
 interface Refresh {
@@ -162,11 +164,11 @@ export default function RefreshesPage() {
       setError(null);
       
       // Get items due for refresh from backend
-      const result = await workQueueApi.getItemsDueForRefresh(1, 100);
+      const result = await fetchItemsDueForRefresh(1, 100);
       const mappedRefreshes = result.items.map(mapWorkItemToRefresh);
       
       // Also get all work items to include those that might be in progress or completed
-      const allItemsResult = await workQueueApi.getWorkItemsAsDto({
+      const allItemsResult = await getWorkItems({
         page: 1,
         pageSize: 100
       });
@@ -174,7 +176,7 @@ export default function RefreshesPage() {
       // Combine and deduplicate by ID
       const allRefreshes = [
         ...mappedRefreshes,
-        ...allItemsResult.data
+        ...allItemsResult.items
           .filter(item => item.nextRefreshDate || item.lastRefreshedAt)
           .map(mapWorkItemToRefresh)
       ];
@@ -187,7 +189,9 @@ export default function RefreshesPage() {
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to load refreshes';
       setError(errorMessage);
-      console.error('Error loading refreshes:', err);
+      logger.error(err, 'Error loading refreshes', {
+        tags: { error_type: 'refreshes_load_error' }
+      });
     } finally {
       setLoading(false);
     }
@@ -268,29 +272,29 @@ export default function RefreshesPage() {
           {/* Header */}
           <Flex justify="space-between" align="center">
             <VStack align="start" gap="1">
-              <Text fontSize="3xl" fontWeight="bold" color="gray.800">
+              <Typography fontSize="3xl" fontWeight="bold" color="gray.800">
                 Refreshes
-              </Text>
-              <Text color="gray.600">
+              </Typography>
+              <Typography color="gray.600">
                 Manage periodic partner and customer refreshes
-              </Text>
+              </Typography>
             </VStack>
             
             <HStack gap="3">
               <Button
-                variant="outline"
+                variant="secondary"
                 size="sm"
                 onClick={loadRefreshes}
               >
-                <Icon as={FiRefreshCw} style={{ marginRight: '8px' }} />
+                <IconWrapper><FiRefreshCw size={16} /></IconWrapper>
                 Refresh
               </Button>
               <Button
-                variant="outline"
+                variant="secondary"
                 size="sm"
                 onClick={() => setSettingsModalOpen(true)}
               >
-                <Icon as={FiSettings} style={{ marginRight: '8px' }} />
+                <IconWrapper><FiSettings size={16} /></IconWrapper>
                 Refresh Settings
               </Button>
             </HStack>
@@ -299,9 +303,9 @@ export default function RefreshesPage() {
           {/* Error Alert */}
           {error && (
             <Box bg="red.50" p="4" borderRadius="lg" border="1px" borderColor="red.200">
-              <Text color="red.800" fontWeight="semibold">
+              <Typography color="red.800" fontWeight="semibold">
                 Error: {error}
-              </Text>
+              </Typography>
             </Box>
           )}
 
@@ -309,14 +313,14 @@ export default function RefreshesPage() {
           {overdueCount > 0 && (
             <Box bg="red.50" p="4" borderRadius="lg" border="1px" borderColor="red.200">
               <HStack gap="3">
-                <Icon as={FiAlertTriangle} boxSize="5" color="red.500" />
+                <IconWrapper><FiAlertTriangle size={20} color="#E53E3E" /></IconWrapper>
                 <VStack align="start" gap="1">
-                  <Text fontWeight="semibold" color="red.800">
+                  <Typography fontWeight="semibold" color="red.800">
                     Overdue Refreshes
-                  </Text>
-                  <Text fontSize="sm" color="red.700">
+                  </Typography>
+                  <Typography fontSize="sm" color="red.700">
                     {overdueCount} refreshes are overdue and require immediate attention
-                  </Text>
+                  </Typography>
                 </VStack>
               </HStack>
             </Box>
@@ -326,49 +330,49 @@ export default function RefreshesPage() {
           <SimpleGrid columns={{ base: 1, md: 4 }} gap="4">
             <Box bg="white" p="4" borderRadius="lg" boxShadow="sm">
               <VStack gap="2">
-                <Icon as={FiAlertTriangle} boxSize="6" color="red.500" />
-                <Text fontSize="2xl" fontWeight="bold" color="red.600">
+                <IconWrapper><FiAlertTriangle size={24} color="#E53E3E" /></IconWrapper>
+                <Typography fontSize="2xl" fontWeight="bold" color="red.600">
                   {overdueCount}
-                </Text>
-                <Text fontSize="sm" color="gray.600" textAlign="center">
+                </Typography>
+                <Typography fontSize="sm" color="gray.600" textAlign="center">
                   Overdue
-                </Text>
+                </Typography>
               </VStack>
             </Box>
             
             <Box bg="white" p="4" borderRadius="lg" boxShadow="sm">
               <VStack gap="2">
-                <Icon as={FiClock} boxSize="6" color="orange.500" />
-                <Text fontSize="2xl" fontWeight="bold" color="orange.600">
+                <IconWrapper><FiClock size={24} color="#DD6B20" /></IconWrapper>
+                <Typography fontSize="2xl" fontWeight="bold" color="orange.600">
                   {dueCount}
-                </Text>
-                <Text fontSize="sm" color="gray.600" textAlign="center">
+                </Typography>
+                <Typography fontSize="sm" color="gray.600" textAlign="center">
                   Due Soon
-                </Text>
+                </Typography>
               </VStack>
             </Box>
             
             <Box bg="white" p="4" borderRadius="lg" boxShadow="sm">
               <VStack gap="2">
-                <Icon as={FiRefreshCw} boxSize="6" color="purple.500" />
-                <Text fontSize="2xl" fontWeight="bold" color="purple.600">
+                <IconWrapper><FiRefreshCw size={24} color="#805AD5" /></IconWrapper>
+                <Typography fontSize="2xl" fontWeight="bold" color="purple.600">
                   {inProgressCount}
-                </Text>
-                <Text fontSize="sm" color="gray.600" textAlign="center">
+                </Typography>
+                <Typography fontSize="sm" color="gray.600" textAlign="center">
                   In Progress
-                </Text>
+                </Typography>
               </VStack>
             </Box>
             
             <Box bg="white" p="4" borderRadius="lg" boxShadow="sm">
               <VStack gap="2">
-                <Icon as={FiCheckCircle} boxSize="6" color="green.500" />
-                <Text fontSize="2xl" fontWeight="bold" color="green.600">
+                <IconWrapper><FiCheckCircle size={24} color="#38A169" /></IconWrapper>
+                <Typography fontSize="2xl" fontWeight="bold" color="green.600">
                   {completedCount}
-                </Text>
-                <Text fontSize="sm" color="gray.600" textAlign="center">
+                </Typography>
+                <Typography fontSize="sm" color="gray.600" textAlign="center">
                   Completed
-                </Text>
+                </Typography>
               </VStack>
             </Box>
           </SimpleGrid>
@@ -376,17 +380,11 @@ export default function RefreshesPage() {
           {/* Search and Filters */}
           <Box bg="white" p="6" borderRadius="lg" boxShadow="sm">
             <HStack gap="4">
-              <Box flex="1">
-                <HStack>
-                  <Icon as={FiSearch} color="gray.400" />
-                  <Input
-                    placeholder="Search by company name or application ID..."
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    border="none"
-                    _focus={{ boxShadow: "none" }}
-                  />
-                </HStack>
+              <Box flex="1" maxW="400px">
+                <Search
+                  placeholder="Search by company name or application ID..."
+                  onSearchChange={(query) => setSearchTerm(query)}
+                />
               </Box>
               
               <select
@@ -427,46 +425,34 @@ export default function RefreshesPage() {
                   {/* Header */}
                   <Flex justify="space-between" align="start">
                     <VStack align="start" gap="1">
-                      <Text fontSize="lg" fontWeight="bold" color="gray.800">
+                      <Typography fontSize="lg" fontWeight="bold" color="gray.800">
                         {refresh.companyName}
-                      </Text>
-                      <Text fontSize="sm" color="gray.600">
+                      </Typography>
+                      <Typography fontSize="sm" color="gray.600">
                         {refresh.applicationId}
-                      </Text>
+                      </Typography>
                     </VStack>
                     
                     <VStack gap="1" align="end">
-                      <Badge
-                        colorScheme={getPriorityColor(refresh.priority)}
-                        variant="solid"
-                        fontSize="xs"
-                      >
+                      <Tag variant={getPriorityColor(refresh.priority) === 'red' ? 'danger' : getPriorityColor(refresh.priority) === 'orange' ? 'warning' : getPriorityColor(refresh.priority) === 'blue' ? 'info' : 'success'}>
                         {refresh.priority}
-                      </Badge>
-                      <Badge
-                        colorScheme={getRiskColor(refresh.riskLevel)}
-                        variant="subtle"
-                        fontSize="xs"
-                      >
+                      </Tag>
+                      <Tag variant={getRiskColor(refresh.riskLevel) === 'red' ? 'danger' : getRiskColor(refresh.riskLevel) === 'orange' ? 'warning' : 'success'}>
                         {refresh.riskLevel} RISK
-                      </Badge>
-                      <Badge
-                        colorScheme={getStatusColor(refresh.status)}
-                        variant="subtle"
-                        fontSize="xs"
-                      >
+                      </Tag>
+                      <Tag variant={getStatusColor(refresh.status) === 'red' ? 'danger' : getStatusColor(refresh.status) === 'orange' ? 'warning' : getStatusColor(refresh.status) === 'purple' ? 'info' : getStatusColor(refresh.status) === 'green' ? 'success' : 'info'}>
                         {refresh.status.replace('_', ' ')}
-                      </Badge>
+                      </Tag>
                     </VStack>
                   </Flex>
 
                   {/* Risk Score */}
                   <VStack gap="2" align="stretch">
                     <HStack justify="space-between">
-                      <Text fontSize="sm" color="gray.600">Risk Score:</Text>
-                      <Text fontSize="sm" fontWeight="bold" color={`${refresh.riskScore >= 70 ? 'red' : refresh.riskScore >= 40 ? 'orange' : 'green'}.600`}>
+                      <Typography fontSize="sm" color="gray.600">Risk Score:</Typography>
+                      <Typography fontSize="sm" fontWeight="bold" color={`${refresh.riskScore >= 70 ? 'red' : refresh.riskScore >= 40 ? 'orange' : 'green'}.600`}>
                         {refresh.riskScore}/100
-                      </Text>
+                      </Typography>
                     </HStack>
                     
                     <Box
@@ -489,59 +475,55 @@ export default function RefreshesPage() {
                   {/* Details */}
                   <VStack gap="2" align="stretch">
                     <HStack justify="space-between">
-                      <Text fontSize="sm" color="gray.600">Entity Type:</Text>
-                      <Text fontSize="sm" fontWeight="medium" color="gray.800">
+                      <Typography fontSize="sm" color="gray.600">Entity Type:</Typography>
+                      <Typography fontSize="sm" fontWeight="medium" color="gray.800">
                         {refresh.entityType}
-                      </Text>
+                      </Typography>
                     </HStack>
                     
                     <HStack justify="space-between">
-                      <Text fontSize="sm" color="gray.600">Country:</Text>
-                      <Text fontSize="sm" fontWeight="medium" color="gray.800">
+                      <Typography fontSize="sm" color="gray.600">Country:</Typography>
+                      <Typography fontSize="sm" fontWeight="medium" color="gray.800">
                         {refresh.country}
-                      </Text>
+                      </Typography>
                     </HStack>
                     
                     <HStack justify="space-between">
-                      <Text fontSize="sm" color="gray.600">Assigned To:</Text>
-                      <Text fontSize="sm" fontWeight="medium" color="gray.800">
+                      <Typography fontSize="sm" color="gray.600">Assigned To:</Typography>
+                      <Typography fontSize="sm" fontWeight="medium" color="gray.800">
                         {refresh.assignedTo}
-                      </Text>
+                      </Typography>
                     </HStack>
                     
                     <HStack justify="space-between">
-                      <Text fontSize="sm" color="gray.600">Refresh Cycle:</Text>
-                      <Badge
-                        colorScheme={getCycleColor(refresh.refreshCycle)}
-                        variant="subtle"
-                        fontSize="xs"
-                      >
+                      <Typography fontSize="sm" color="gray.600">Refresh Cycle:</Typography>
+                      <Tag variant={getCycleColor(refresh.refreshCycle) === 'blue' ? 'info' : getCycleColor(refresh.refreshCycle) === 'orange' ? 'warning' : getCycleColor(refresh.refreshCycle) === 'green' ? 'success' : 'info'}>
                         {refresh.refreshCycle}
-                      </Badge>
+                      </Tag>
                     </HStack>
                   </VStack>
 
                   {/* Dates */}
                   <VStack gap="2" align="stretch">
                     <HStack justify="space-between">
-                      <Text fontSize="sm" color="gray.600">Last Refresh:</Text>
-                      <Text fontSize="sm" fontWeight="medium" color="gray.800">
+                      <Typography fontSize="sm" color="gray.600">Last Refresh:</Typography>
+                      <Typography fontSize="sm" fontWeight="medium" color="gray.800">
                         {new Date(refresh.lastRefreshDate).toLocaleDateString()}
-                      </Text>
+                      </Typography>
                     </HStack>
                     
                     <HStack justify="space-between">
-                      <Text fontSize="sm" color="gray.600">Next Refresh:</Text>
-                      <Text 
+                      <Typography fontSize="sm" color="gray.600">Next Refresh:</Typography>
+                      <Typography 
                         fontSize="sm" 
                         fontWeight="medium" 
                         color={new Date(refresh.nextRefreshDate) < new Date() && refresh.status !== 'COMPLETED' ? 'red.600' : 'gray.800'}
                       >
                         {new Date(refresh.nextRefreshDate).toLocaleDateString()}
                         {new Date(refresh.nextRefreshDate) < new Date() && refresh.status !== 'COMPLETED' && (
-                          <Text as="span" color="red.500" ml="1">(Overdue)</Text>
+                          <Typography as="span" color="red.500" ml="1">(Overdue)</Typography>
                         )}
-                      </Text>
+                      </Typography>
                     </HStack>
                   </VStack>
 
@@ -550,31 +532,32 @@ export default function RefreshesPage() {
                     <Link href={`/applications/${refresh.applicationId}`}>
                       <Button
                         size="sm"
-                        variant="outline"
+                        variant="secondary"
                       >
-                        <Icon as={FiUser} style={{ marginRight: '8px' }} />
+                        <IconWrapper><FiUser size={16} /></IconWrapper>
                         View Application
                       </Button>
                     </Link>
                     
                     <Button
                       size="sm"
-                      colorScheme="orange"
-                      variant="solid"
+                      variant="primary"
                       disabled={refresh.status === 'COMPLETED'}
                       onClick={async () => {
                         if (refresh.workItemId) {
                           try {
-                            await workQueueApi.markForRefresh(refresh.workItemId);
+                            await markForRefreshUseCase(refresh.workItemId);
                             await loadRefreshes();
                           } catch (err) {
-                            console.error('Error marking for refresh:', err);
+                            logger.error(err, 'Error marking for refresh', {
+                              tags: { error_type: 'mark_refresh_error' }
+                            });
                             alert('Failed to start refresh. Please try again.');
                           }
                         }
                       }}
                     >
-                      <Icon as={FiRefreshCw} style={{ marginRight: '8px' }} />
+                      <IconWrapper><FiRefreshCw size={16} /></IconWrapper>
                       {refresh.status === 'COMPLETED' ? 'Completed' : 'Start Refresh'}
                     </Button>
                   </HStack>
@@ -593,13 +576,13 @@ export default function RefreshesPage() {
               boxShadow="sm"
             >
               <VStack gap="4">
-                <Icon as={FiRefreshCw} boxSize="12" color="gray.400" />
-                <Text fontSize="lg" color="gray.600">
+                <IconWrapper><FiRefreshCw size={48} color="#A0AEC0" /></IconWrapper>
+                <Typography fontSize="lg" color="gray.600">
                   No refreshes found
-                </Text>
-                <Text fontSize="sm" color="gray.500">
+                </Typography>
+                <Typography fontSize="sm" color="gray.500">
                   Try adjusting your search criteria or filters
-                </Text>
+                </Typography>
               </VStack>
             </Box>
           )}
@@ -632,20 +615,20 @@ export default function RefreshesPage() {
             onClick={(e) => e.stopPropagation()}
           >
             <VStack gap="4" align="stretch">
-              <Text fontSize="lg" fontWeight="bold" color="gray.900">
+              <Typography fontSize="lg" fontWeight="bold" color="gray.900">
                 Refresh Settings
-              </Text>
+              </Typography>
               
-              <Text color="gray.900" fontSize="sm">
+              <Typography color="gray.900" fontSize="sm">
                 Configure refresh cycles and settings for partner and customer compliance reviews.
-              </Text>
+              </Typography>
               
               {/* Default Refresh Cycles */}
               <Box>
-                <Text fontWeight="semibold" mb="3" fontSize="sm" color="gray.900">Default Refresh Cycles by Risk Level:</Text>
+                <Typography fontWeight="semibold" mb="3" fontSize="sm" color="gray.900">Default Refresh Cycles by Risk Level:</Typography>
                 <VStack gap="3" align="stretch">
                   <HStack justify="space-between" align="center">
-                    <Text fontSize="sm" color="gray.900" minW="120px">Low Risk:</Text>
+                    <Typography fontSize="sm" color="gray.900" minW="120px">Low Risk:</Typography>
                     <select
                       value={settings.lowRiskCycle}
                       onChange={(e) => setSettings({...settings, lowRiskCycle: e.target.value as any})}
@@ -665,7 +648,7 @@ export default function RefreshesPage() {
                     </select>
                   </HStack>
                   <HStack justify="space-between" align="center">
-                    <Text fontSize="sm" color="gray.900" minW="120px">Medium Risk:</Text>
+                    <Typography fontSize="sm" color="gray.900" minW="120px">Medium Risk:</Typography>
                     <select
                       value={settings.mediumRiskCycle}
                       onChange={(e) => setSettings({...settings, mediumRiskCycle: e.target.value as any})}
@@ -685,7 +668,7 @@ export default function RefreshesPage() {
                     </select>
                   </HStack>
                   <HStack justify="space-between" align="center">
-                    <Text fontSize="sm" color="gray.900" minW="120px">High Risk:</Text>
+                    <Typography fontSize="sm" color="gray.900" minW="120px">High Risk:</Typography>
                     <select
                       value={settings.highRiskCycle}
                       onChange={(e) => setSettings({...settings, highRiskCycle: e.target.value as any})}
@@ -705,7 +688,7 @@ export default function RefreshesPage() {
                     </select>
                   </HStack>
                   <HStack justify="space-between" align="center">
-                    <Text fontSize="sm" color="gray.900" minW="120px">Critical Risk:</Text>
+                    <Typography fontSize="sm" color="gray.900" minW="120px">Critical Risk:</Typography>
                     <select
                       value={settings.criticalRiskCycle}
                       onChange={(e) => setSettings({...settings, criticalRiskCycle: e.target.value as any})}
@@ -729,21 +712,15 @@ export default function RefreshesPage() {
 
               {/* Notification Threshold */}
               <Box>
-                <Text fontWeight="semibold" mb="2" fontSize="sm" color="gray.900">Due Date Notification Threshold:</Text>
+                <Typography fontWeight="semibold" mb="2" fontSize="sm" color="gray.900">Due Date Notification Threshold:</Typography>
                 <HStack align="center" gap="2">
-                  <Text fontSize="sm" color="gray.900">Mark items as "Due"</Text>
+                  <Typography fontSize="sm" color="gray.900">Mark items as "Due"</Typography>
                   <Input
                     type="number"
                     value={settings.dueDaysThreshold}
-                    onChange={(e) => setSettings({...settings, dueDaysThreshold: parseInt(e.target.value) || 30})}
-                    size="sm"
-                    w="80px"
-                    min="1"
-                    max="365"
-                    color="gray.900"
-                    _placeholder={{ color: "gray.400" }}
+                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSettings({...settings, dueDaysThreshold: parseInt(e.target.value) || 30})}
                   />
-                  <Text fontSize="sm" color="gray.900">days before refresh date</Text>
+                  <Typography fontSize="sm" color="gray.900">days before refresh date</Typography>
                 </HStack>
               </Box>
 
@@ -751,15 +728,14 @@ export default function RefreshesPage() {
               <Box>
                 <HStack justify="space-between" align="center">
                   <VStack align="start" gap="0">
-                    <Text fontWeight="semibold" fontSize="sm" color="gray.900">Enable Automatic Refresh Process:</Text>
-                    <Text fontSize="xs" color="gray.900">
+                    <Typography fontWeight="semibold" fontSize="sm" color="gray.900">Enable Automatic Refresh Process:</Typography>
+                    <Typography fontSize="xs" color="gray.900">
                       Scheduled job runs daily to identify items due for refresh
-                    </Text>
+                    </Typography>
                   </VStack>
                   <Button
                     size="sm"
-                    colorScheme={settings.enableAutoRefresh ? "green" : "gray"}
-                    variant={settings.enableAutoRefresh ? "solid" : "outline"}
+                    variant={settings.enableAutoRefresh ? "primary" : "secondary"}
                     onClick={() => setSettings({...settings, enableAutoRefresh: !settings.enableAutoRefresh})}
                   >
                     {settings.enableAutoRefresh ? "Enabled" : "Disabled"}
@@ -770,17 +746,17 @@ export default function RefreshesPage() {
               {/* Job Schedule Info */}
               {settings.enableAutoRefresh && (
                 <Box bg="blue.50" p="3" borderRadius="md" border="1px" borderColor="blue.200">
-                  <Text fontSize="xs" color="gray.900">
-                    <Text as="span" fontWeight="semibold">Schedule:</Text> Daily at 2 AM UTC
+                  <Typography fontSize="xs" color="gray.900">
+                    <Typography as="span" fontWeight="semibold">Schedule:</Typography> Daily at 2 AM UTC
                     <br />
-                    <Text as="span" fontWeight="semibold">Cron:</Text> {settings.refreshJobSchedule}
-                  </Text>
+                    <Typography as="span" fontWeight="semibold">Cron:</Typography> {settings.refreshJobSchedule}
+                  </Typography>
                 </Box>
               )}
 
               <HStack justify="flex-end" mt="4" gap="2">
                 <Button
-                  variant="outline"
+                  variant="secondary"
                   onClick={() => setSettingsModalOpen(false)}
                 >
                   Cancel
@@ -808,7 +784,9 @@ export default function RefreshesPage() {
                       await SweetAlert.success('Settings Saved', 'Refresh settings have been saved successfully!');
                       setSettingsModalOpen(false);
                     } catch (err) {
-                      console.error('Error saving settings:', err);
+                      logger.error(err, 'Error saving settings', {
+                        tags: { error_type: 'settings_save_error' }
+                      });
                       const errorMessage = err instanceof Error ? err.message : 'Failed to save settings. Please try again.';
                       await SweetAlert.error('Save Failed', errorMessage);
                     } finally {

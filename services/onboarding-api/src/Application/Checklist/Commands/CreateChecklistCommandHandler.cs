@@ -1,7 +1,7 @@
 using MediatR;
 using OnboardingApi.Application.Checklist.Interfaces;
-using OnboardingApi.Domain.Checklist.Aggregates;
 using OnboardingApi.Domain.Checklist.ValueObjects;
+using DomainChecklist = OnboardingApi.Domain.Checklist.Aggregates.Checklist;
 
 namespace OnboardingApi.Application.Checklist.Commands;
 
@@ -24,7 +24,7 @@ public class CreateChecklistCommandHandler : IRequestHandler<CreateChecklistComm
         var templates = await _templateService.GetTemplatesAsync(request.Type, cancellationToken);
 
         // Create checklist
-        var checklist = Checklist.Create(
+        var checklist = DomainChecklist.Create(
             request.CaseId,
             request.Type,
             request.PartnerId,

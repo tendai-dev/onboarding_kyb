@@ -1,6 +1,8 @@
 using FluentValidation;
+using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Filters;
+using Microsoft.Extensions.DependencyInjection;
 using OnboardingApi.Presentation.Models;
 using Sentry;
 
@@ -79,22 +81,49 @@ public class GlobalExceptionFilter : IExceptionFilter
                 break;
 
             default:
-                errorResponse = ErrorResponse.InternalServerError(requestId);
+                // In development, include exception details for debugging
+                if (context.HttpContext.RequestServices.GetService<IHostEnvironment>()?.IsDevelopment() == true)
+                {
+                    var details = new List<ErrorDetail>
+                    {
+                        new ErrorDetail { Field = "exceptionType", Message = context.Exception.GetType().Name },
+                        new ErrorDetail { Field = "innerException", Message = context.Exception.InnerException?.Message ?? "None" }
+                    };
+                    if (!string.IsNullOrEmpty(context.Exception.StackTrace))
+                    {
+                        details.Add(new ErrorDetail { Field = "stackTrace", Message = context.Exception.StackTrace });
+                    }
+                    
+                    errorResponse = new ErrorResponse
+                    {
+                        Name = "InternalServerError",
+                        Message = context.Exception.Message,
+                        DebugId = requestId,
+                        Details = details
+                    };
+                }
+                else
+                {
+                    errorResponse = ErrorResponse.InternalServerError(requestId);
+                }
                 statusCode = StatusCodes.Status500InternalServerError;
                 break;
         }
 
         // Report to Sentry with context
-        SentrySdk.WithScope(scope =>
+        if (SentrySdk.IsEnabled)
         {
-            scope.SetTag("request_id", requestId);
-            scope.SetTag("endpoint", context.HttpContext.Request.Path);
-            scope.SetTag("method", context.HttpContext.Request.Method);
-            scope.SetTag("exception_type", context.Exception.GetType().Name);
-            scope.SetExtra("status_code", statusCode);
-            scope.SetExtra("user", context.HttpContext.User?.Identity?.Name ?? "anonymous");
-            SentrySdk.CaptureException(context.Exception);
-        });
+            SentrySdk.ConfigureScope(scope =>
+            {
+                scope.SetTag("request_id", requestId);
+                scope.SetTag("endpoint", context.HttpContext.Request.Path);
+                scope.SetTag("method", context.HttpContext.Request.Method);
+                scope.SetTag("exception_type", context.Exception.GetType().Name);
+                scope.SetExtra("status_code", statusCode);
+                scope.SetExtra("user", context.HttpContext.User?.Identity?.Name ?? "anonymous");
+                SentrySdk.CaptureException(context.Exception);
+            });
+        }
 
         context.Result = new ObjectResult(errorResponse)
         {

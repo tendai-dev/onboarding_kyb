@@ -5,16 +5,13 @@ import {
   Container, 
   VStack, 
   HStack,
-  Text,
-  Button,
-  Input,
   Textarea,
-  Badge,
   Icon,
   Flex,
   Spinner,
   Avatar,
 } from "@chakra-ui/react";
+import { Search, Typography, Button, Tag, IconWrapper, Modal, ModalHeader, ModalBody, ModalFooter, Input } from "@/lib/mukuruImports";
 import { 
   FiSend, 
   FiPaperclip, 
@@ -46,6 +43,7 @@ import { pushNotificationService } from "../../lib/pushNotifications";
 import { messageTemplatesService } from "../../lib/messageTemplates";
 import { messageExportService } from "../../lib/messageExport";
 import { uploadFileToDocumentService } from "../../lib/documentUpload";
+import { logger } from "../../lib/logger";
 import Link from "next/link";
 
 interface DisplayMessage {
@@ -116,7 +114,7 @@ export default function MessagesPage() {
 
         // Set up event listeners
         const unsubscribeReceive = signalRService.on("ReceiveMessage", async (message: any) => {
-          console.log('[Admin Messages] Received SignalR message:', message);
+          logger.debug('[Admin Messages] Received SignalR message', { messageId: message.id });
           
           // Show push notification for new messages
           if (document.hidden || !selectedThread || message.threadId !== selectedThread.id) {
@@ -127,7 +125,9 @@ export default function MessagesPage() {
                 message.threadId
               );
             } catch (error) {
-              console.error('[Messages] Failed to show notification:', error);
+              logger.error(error, '[Messages] Failed to show notification', {
+                tags: { error_type: 'notification_error' }
+              });
             }
           }
           
@@ -180,7 +180,9 @@ export default function MessagesPage() {
               try {
                 await loadThreadMessages(selectedThread.id);
               } catch (error) {
-                console.error('[Admin Messages] Failed to reload messages after SignalR update:', error);
+                logger.error(error, '[Admin Messages] Failed to reload messages after SignalR update', {
+                  tags: { error_type: 'messages_reload_error' }
+                });
               }
             }, 500);
           }
@@ -231,7 +233,9 @@ export default function MessagesPage() {
           signalRService.disconnect();
         };
       } catch (error) {
-        console.error('[Messages] Failed to connect SignalR:', error);
+        logger.error(error, '[Messages] Failed to connect SignalR', {
+          tags: { error_type: 'signalr_connection_error' }
+        });
         setSignalRConnected(false);
       }
     };
@@ -246,15 +250,22 @@ export default function MessagesPage() {
       const guidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
       if (guidRegex.test(selectedThread.id) && selectedThread.id !== '00000000-0000-0000-0000-000000000000') {
         signalRService.joinThread(selectedThread.id).catch(error => {
-          console.error('[Messages] Failed to join thread:', error);
+          logger.error(error, '[Messages] Failed to join thread', {
+            tags: { error_type: 'thread_join_error' }
+          });
         });
         return () => {
           signalRService.leaveThread(selectedThread.id).catch(error => {
-            console.error('[Messages] Failed to leave thread:', error);
+            logger.error(error, '[Messages] Failed to leave thread', {
+              tags: { error_type: 'thread_leave_error' }
+            });
           });
         };
       } else {
-        console.warn('[Messages] Invalid thread ID, skipping join:', selectedThread.id);
+        logger.warn('[Messages] Invalid thread ID, skipping join', {
+          tags: { warning_type: 'invalid_thread_id' },
+          extra: { threadId: selectedThread.id }
+        });
       }
     }
   }, [selectedThread, signalRConnected]);
@@ -266,14 +277,20 @@ export default function MessagesPage() {
         const response = await fetch('/api/proxy/messaging/api/v1/messages/diagnostic/identity');
         if (response.ok) {
           const identity = await response.json();
-          console.log('[Messages] Identity Diagnostic:', identity);
+          logger.debug('[Messages] Identity Diagnostic', { identity });
         } else {
           // Non-critical - endpoint might not be available in all environments
-          console.warn('[Messages] Identity diagnostic endpoint returned:', response.status);
+          logger.warn('[Messages] Identity diagnostic endpoint returned non-OK status', {
+            tags: { warning_type: 'diagnostic_endpoint_error' },
+            extra: { status: response.status }
+          });
         }
       } catch (err) {
         // Non-critical - just log and continue
-        console.warn('[Messages] Failed to get identity (non-critical):', err);
+        logger.warn('[Messages] Failed to get identity (non-critical)', {
+          tags: { warning_type: 'identity_check_failed' },
+          extra: { error: err }
+        });
       }
     };
     checkIdentity();
@@ -323,21 +340,23 @@ export default function MessagesPage() {
     try {
       setLoading(true);
       setError(null);
-      console.log("[Messages] Loading threads...");
+      logger.debug("[Messages] Loading threads...");
       // Use getAllThreads for admin to see all messages
       let result;
       try {
         result = await messagingApi.getAllThreads(1, 100);
-        console.log("[Messages] Using getAllThreads - loaded all threads");
+        logger.debug("[Messages] Using getAllThreads - loaded all threads");
       } catch (allThreadsError) {
         // Fallback to getMyThreads if getAllThreads fails (e.g., not admin)
-        console.warn("[Messages] getAllThreads failed, falling back to getMyThreads:", allThreadsError);
+        logger.warn("[Messages] getAllThreads failed, falling back to getMyThreads", {
+          tags: { warning_type: 'getallthreads_fallback' },
+          extra: { error: allThreadsError }
+        });
         result = await messagingApi.getMyThreads(1, 100);
       }
-      console.log("[Messages] Threads loaded:", {
+      logger.debug("[Messages] Threads loaded", {
         totalCount: result.totalCount,
-        itemsCount: result.items?.length || 0,
-        items: result.items
+        itemsCount: result.items?.length || 0
       });
       setThreads(result.items || []);
       // Clear error if successful
@@ -346,7 +365,10 @@ export default function MessagesPage() {
       }
       // Log if no threads found
       if (!result.items || result.items.length === 0) {
-        console.warn("[Messages] No threads found. TotalCount:", result.totalCount);
+        logger.warn("[Messages] No threads found", {
+          tags: { warning_type: 'no_threads' },
+          extra: { totalCount: result.totalCount }
+        });
       }
     } catch (err) {
       if (typeof window !== 'undefined') {
@@ -468,9 +490,12 @@ export default function MessagesPage() {
       if (unreadMessages.length > 0) {
         // Mark as read in background without blocking
         Promise.all(unreadMessages.map(msg => 
-          messagingApi.markMessageRead(msg.id).catch(err => 
-            console.warn("Failed to mark message as read:", err)
-          )
+          messagingApi.markMessageRead(msg.id).catch(err => {
+            logger.warn("Failed to mark message as read", {
+              tags: { warning_type: 'mark_read_failed' },
+              extra: { error: err }
+            });
+          })
         )).then(() => {
           // Only reload threads/unread count after a delay to avoid refresh loops
           // Use a longer delay and check if component is still mounted
@@ -502,7 +527,9 @@ export default function MessagesPage() {
         });
       }
     } catch (err) {
-      console.error("Failed to load messages:", err);
+      logger.error(err, "Failed to load messages", {
+        tags: { error_type: 'messages_load_error' }
+      });
     } finally {
       setLoadingMessages(false);
     }
@@ -624,7 +651,10 @@ export default function MessagesPage() {
                 description: `Message attachment: ${file.name}`
               };
             } catch (error) {
-              console.error(`Failed to upload attachment ${file.name}:`, error);
+              logger.error(error, `Failed to upload attachment ${file.name}`, {
+                tags: { error_type: 'attachment_upload_error' },
+                extra: { fileName: file.name }
+              });
               setAttachmentUploadProgress(prev => ({ ...prev, [file.name]: -1 })); // -1 indicates error
               
               // Ask user if they want to continue without this attachment
@@ -652,7 +682,9 @@ export default function MessagesPage() {
             }
           }));
         } catch (error) {
-          console.error('Error uploading attachments:', error);
+          logger.error(error, 'Error uploading attachments', {
+            tags: { error_type: 'attachments_upload_error' }
+          });
           if (error instanceof Error && error.message.includes("User cancelled")) {
             setUploadingAttachments(false);
             setAttachmentUploadProgress({});
@@ -665,7 +697,7 @@ export default function MessagesPage() {
         }
       }
       
-      console.log('Sending message:', {
+      logger.debug('Sending message', {
         applicationId: selectedThread.applicationId,
         content: newMessage.content.substring(0, 50) + '...',
         receiverId: newMessage.receiverId || 'none',
@@ -714,7 +746,9 @@ export default function MessagesPage() {
         throw new Error(result.errorMessage || "Failed to send message");
       }
     } catch (err) {
-      console.error("Failed to send message:", err);
+      logger.error(err, "Failed to send message", {
+        tags: { error_type: 'message_send_error' }
+      });
       const errorMessage = err instanceof Error ? err.message : "Failed to send message";
       setError(errorMessage);
       await SweetAlert.error("Failed to Send", errorMessage);
@@ -800,50 +834,41 @@ export default function MessagesPage() {
             {/* Header */}
             <Flex justify="space-between" align="center" flexShrink={0}>
               <VStack align="start" gap="1">
-                <Text fontSize="2xl" fontWeight="bold" color="gray.900">
+                <Typography fontSize="2xl" fontWeight="bold" color="gray.900">
                   Messages
-                </Text>
-                <Text fontSize="sm" color="gray.600">
+                </Typography>
+                <Typography fontSize="sm" color="gray.600">
                   Communicate with partners and customers
-                </Text>
+                </Typography>
               </VStack>
               
               <HStack gap="3">
                 <Button
-                  bg="gray.800"
-                  color="white"
+                  variant="secondary"
                   size="sm"
-                  _hover={{ bg: "gray.700" }}
                   disabled
-                  fontWeight="normal"
                 >
                   {unreadCount} Unread
                 </Button>
                 {signalRConnected ? (
-                  <Badge colorScheme="green" variant="solid" fontSize="xs" px="2" py="1" borderRadius="md">
+                  <Tag variant="success">
                     ● Live
-                  </Badge>
+                  </Tag>
                 ) : (
-                  <Badge colorScheme="gray" variant="solid" fontSize="xs" px="2" py="1" borderRadius="md">
+                  <Tag variant="inactive">
                     Offline
-                  </Badge>
+                  </Tag>
                 )}
                 <Button
-                  bg="black"
-                  color="white"
+                  variant="primary"
                   size="sm"
-                  _hover={{ bg: "gray.800" }}
                   onClick={handleComposeNew}
-                  fontWeight="normal"
                 >
-                  <HStack gap="2">
-                    <Icon as={FiPlus} />
-                    <Text>New Message</Text>
-                  </HStack>
+                  <IconWrapper><FiPlus size={16} /></IconWrapper>
+                  New Message
                 </Button>
                 <Button
-                  variant="outline"
-                  bg="white"
+                  variant="secondary"
                   size="sm"
                   onClick={() => {
                     loadThreads();
@@ -852,12 +877,9 @@ export default function MessagesPage() {
                       loadThreadMessages(selectedThread.id);
                     }
                   }}
-                  fontWeight="normal"
                 >
-                  <HStack gap="2">
-                    <Icon as={FiRefreshCw} />
-                    <Text>Refresh</Text>
-                  </HStack>
+                  <IconWrapper><FiRefreshCw size={16} /></IconWrapper>
+                  Refresh
                 </Button>
               </HStack>
             </Flex>
@@ -866,8 +888,8 @@ export default function MessagesPage() {
             {sendSuccess && (
               <Box p="3" bg="green.50" borderRadius="md" border="1px" borderColor="green.200" flexShrink={0}>
                 <HStack gap="2">
-                  <Icon as={FiCheckCircle} color="green.500" boxSize="4" flexShrink="0" />
-                  <Text fontSize="sm" fontWeight="medium" color="green.800">Message sent successfully!</Text>
+                  <IconWrapper><FiCheckCircle size={16} color="#38A169" /></IconWrapper>
+                  <Typography fontSize="sm" fontWeight="medium" color="green.800">Message sent successfully!</Typography>
                 </HStack>
               </Box>
             )}
@@ -877,16 +899,15 @@ export default function MessagesPage() {
               <Box p="3" bg="red.50" borderRadius="md" border="1px" borderColor="red.200" flexShrink={0}>
                 <HStack gap="2" justify="space-between" align="start">
                   <HStack gap="2" flex="1">
-                    <Icon as={FiAlertCircle} color="red.500" boxSize="4" flexShrink="0" />
+                    <IconWrapper><FiAlertCircle size={16} color="#E53E3E" /></IconWrapper>
                     <VStack align="start" gap="1" flex="1">
-                      <Text fontSize="sm" fontWeight="medium" color="red.800">Error loading messages</Text>
-                      <Text fontSize="xs" color="red.700">{error}</Text>
+                      <Typography fontSize="sm" fontWeight="medium" color="red.800">Error loading messages</Typography>
+                      <Typography fontSize="xs" color="red.700">{error}</Typography>
                     </VStack>
                   </HStack>
                   <Button
-                    size="xs"
-                    colorScheme="red"
-                    variant="outline"
+                    size="sm"
+                    variant="secondary"
                     onClick={() => {
                       setError(null);
                       loadThreads();
@@ -906,20 +927,14 @@ export default function MessagesPage() {
                 {/* Search and Filter */}
                 <Box p="3" borderBottom="1px" borderColor="gray.200" bg="gray.50" flexShrink={0}>
                   <VStack gap="2" align="stretch">
-                    <HStack gap="2" align="center">
-                      <Icon as={FiSearch} color="gray.400" boxSize="4" flexShrink={0} />
-                      <Input
+                    <Box flex="1" maxW="300px">
+                      <Search
                         placeholder="Search messages..."
-                        value={searchTerm}
-                        onChange={(e) => setSearchTerm(e.target.value)}
-                        bg="white"
-                        borderRadius="md"
-                        size="sm"
-                        pl="2"
+                        onSearchChange={(query) => setSearchTerm(query)}
                       />
-                    </HStack>
+                    </Box>
                     <HStack gap="2">
-                      <Icon as={FiFilter} color="gray.400" boxSize="4" />
+                      <IconWrapper><FiFilter size={16} color="#A0AEC0" /></IconWrapper>
                        <select
                          value={filterType}
                          onChange={(e) => setFilterType(e.target.value)}
@@ -941,24 +956,20 @@ export default function MessagesPage() {
                     </HStack>
                     <HStack gap="2">
                       <Button
-                        size="xs"
-                        variant={filterArchived ? "solid" : "outline"}
-                        colorScheme={filterArchived ? "orange" : "gray"}
+                        size="sm"
+                        variant={filterArchived ? "primary" : "secondary"}
                         onClick={() => setFilterArchived(!filterArchived)}
-                        fontSize="xs"
                       >
-                        <Icon as={FiArchive} boxSize="3" />
-                        <Text ml="1">{filterArchived ? "Show Archived" : "Hide Archived"}</Text>
+                        <IconWrapper><FiArchive size={14} /></IconWrapper>
+                        {filterArchived ? "Show Archived" : "Hide Archived"}
                       </Button>
                       <Button
-                        size="xs"
-                        variant={filterStarred ? "solid" : "outline"}
-                        colorScheme={filterStarred ? "yellow" : "gray"}
+                        size="sm"
+                        variant={filterStarred ? "primary" : "secondary"}
                         onClick={() => setFilterStarred(!filterStarred)}
-                        fontSize="xs"
                       >
-                        <Icon as={FiStar} boxSize="3" fill={filterStarred ? "currentColor" : "none"} />
-                        <Text ml="1">Starred</Text>
+                        <IconWrapper><FiStar size={14} /></IconWrapper>
+                        Starred
                       </Button>
                     </HStack>
                   </VStack>
@@ -969,12 +980,12 @@ export default function MessagesPage() {
                   {filteredThreads.length === 0 && !loading ? (
                     <Flex justify="center" align="center" height="100%" minH="300px">
                       <VStack gap="3">
-                        <Icon as={FiMessageSquare} boxSize="10" color="gray.300" />
-                        <Text color="gray.500" fontSize="sm" fontWeight="medium">No messages found</Text>
+                        <IconWrapper><FiMessageSquare size={40} color="#CBD5E0" /></IconWrapper>
+                        <Typography color="gray.500" fontSize="sm" fontWeight="medium">No messages found</Typography>
                         {searchTerm || filterType !== "ALL" ? (
-                          <Text color="gray.400" fontSize="xs">Try adjusting your search or filter</Text>
+                          <Typography color="gray.400" fontSize="xs">Try adjusting your search or filter</Typography>
                         ) : (
-                          <Text color="gray.400" fontSize="xs">Messages will appear here when available</Text>
+                          <Typography color="gray.400" fontSize="xs">Messages will appear here when available</Typography>
                         )}
                       </VStack>
                     </Flex>
@@ -1030,38 +1041,32 @@ export default function MessagesPage() {
                                     {thread.unreadCount}
                                   </Box>
                                 )}
-                                <Text fontSize="xs" fontWeight="semibold" color="gray.700" overflow="hidden" textOverflow="ellipsis" whiteSpace="nowrap">
+                                <Typography fontSize="xs" fontWeight="semibold" color="gray.700" overflow="hidden" textOverflow="ellipsis" whiteSpace="nowrap">
                                   {thread.applicantName}
-                                </Text>
+                                </Typography>
                               </HStack>
-                              <Text fontSize="2xs" color="gray.500" flexShrink={0} ml="2">
+                              <Typography fontSize="2xs" color="gray.500" flexShrink={0} ml="2">
                                 {new Date(thread.lastMessageAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
-                              </Text>
+                              </Typography>
                             </Flex>
                             
                             {thread.lastMessage && (
-                              <Text fontSize="xs" color="gray.600" lineHeight="1.4" style={{
+                              <Typography fontSize="xs" color="gray.600" lineHeight="1.4" style={{
                                 display: "-webkit-box",
                                 WebkitLineClamp: 2,
                                 WebkitBoxOrient: "vertical",
                                 overflow: "hidden"
                               }}>
                                 {thread.lastMessage.content}
-                              </Text>
+                              </Typography>
                             )}
                             
                             <HStack gap="2" fontSize="2xs" color="gray.500">
-                              <Badge
-                                colorScheme="purple"
-                                variant="subtle"
-                                fontSize="2xs"
-                                px="1.5"
-                                py="0.5"
-                              >
+                              <Tag variant="info">
                                 {thread.applicationReference || thread.applicationId.substring(0, 8)}
-                              </Badge>
-                              <Text>•</Text>
-                              <Text>{thread.messageCount} msgs</Text>
+                              </Tag>
+                              <Typography>•</Typography>
+                              <Typography>{thread.messageCount} msgs</Typography>
                             </HStack>
                           </VStack>
                         </Box>
@@ -1080,15 +1085,15 @@ export default function MessagesPage() {
                       <VStack gap="2" align="stretch">
                         <Flex justify="space-between" align="start">
                           <VStack align="start" gap="1">
-                            <Text fontSize="md" fontWeight="semibold" color="gray.900">
+                            <Typography fontSize="md" fontWeight="semibold" color="gray.900">
                               {getSubjectFromThread(selectedThread)}
-                            </Text>
-                            <Text fontSize="sm" color="gray.600">
+                            </Typography>
+                            <Typography fontSize="sm" color="gray.600">
                               {selectedThread.applicantName}
-                            </Text>
+                            </Typography>
                           </VStack>
                           <Link href={`/applications/${selectedThread.applicationId}`}>
-                            <Button size="sm" variant="outline" fontSize="xs">
+                            <Button size="sm" variant="secondary">
                               View Application
                             </Button>
                           </Link>
@@ -1096,12 +1101,12 @@ export default function MessagesPage() {
                         
                         <HStack gap="4" fontSize="xs" color="gray.600">
                           <HStack gap="1">
-                            <Icon as={FiUser} boxSize="3" />
-                            <Text>Assigned: {selectedThread.assignedAdminName || "Unassigned"}</Text>
+                            <IconWrapper><FiUser size={12} /></IconWrapper>
+                            <Typography>Assigned: {selectedThread.assignedAdminName || "Unassigned"}</Typography>
                           </HStack>
                           <HStack gap="1">
-                            <Icon as={FiMessageSquare} boxSize="3" />
-                            <Text>{selectedThread.messageCount} messages</Text>
+                            <IconWrapper><FiMessageSquare size={12} /></IconWrapper>
+                            <Typography>{selectedThread.messageCount} messages</Typography>
                           </HStack>
                         </HStack>
                       </VStack>
@@ -1112,18 +1117,12 @@ export default function MessagesPage() {
                       {/* Message Search */}
                       {messages.length > 0 && (
                         <Box mb="3" flexShrink={0}>
-                          <HStack gap="2" align="center">
-                            <Icon as={FiSearch} color="gray.400" boxSize="4" flexShrink={0} />
-                            <Input
+                          <Box flex="1" maxW="300px">
+                            <Search
                               placeholder="Search messages in thread..."
-                              value={messageSearchTerm}
-                              onChange={(e) => setMessageSearchTerm(e.target.value)}
-                              bg="white"
-                              borderRadius="md"
-                              size="sm"
-                              pl="2"
+                              onSearchChange={(query) => setMessageSearchTerm(query)}
                             />
-                          </HStack>
+                          </Box>
                         </Box>
                       )}
                       {loadingMessages ? (
@@ -1133,13 +1132,13 @@ export default function MessagesPage() {
                       ) : filteredMessages.length === 0 ? (
                         <Flex justify="center" align="center" height="100%" minH="300px">
                           <VStack gap="3">
-                            <Icon as={FiMessageSquare} boxSize="10" color="gray.300" />
-                            <Text color="gray.500" fontSize="sm" fontWeight="medium">
+                            <IconWrapper><FiMessageSquare size={40} color="#CBD5E0" /></IconWrapper>
+                            <Typography color="gray.500" fontSize="sm" fontWeight="medium">
                               {messageSearchTerm ? "No messages match your search" : "No messages in this thread"}
-                            </Text>
+                            </Typography>
                             {messageSearchTerm && (
                               <Button
-                                size="xs"
+                                size="sm"
                                 variant="ghost"
                                 onClick={() => setMessageSearchTerm("")}
                               >
@@ -1154,7 +1153,7 @@ export default function MessagesPage() {
                           const isAdmin = isFromAdmin(message);
                           // Debug logging
                           if (filteredMessages.indexOf(message) < 2) {
-                            console.log('[Messages] Rendering message:', {
+                            logger.debug('[Messages] Rendering message', {
                               sender: message.sender,
                               senderType: message.senderType,
                               isAdmin,
@@ -1189,22 +1188,22 @@ export default function MessagesPage() {
                               >
                                 <VStack gap="1.5" align="stretch">
                                   <Flex justify="space-between" align="center" gap="2">
-                                    <Text fontSize="xs" fontWeight="semibold" color={isAdmin ? "white" : "gray.800"}>
+                                    <Typography fontSize="xs" fontWeight="semibold" color={isAdmin ? "white" : "gray.800"}>
                                       {message.sender.split(',')[0].trim()}
-                                    </Text>
-                                    <Text fontSize="2xs" color={isAdmin ? "orange.100" : "gray.500"}>
+                                    </Typography>
+                                    <Typography fontSize="2xs" color={isAdmin ? "orange.100" : "gray.500"}>
                                       {new Date(message.timestamp).toLocaleString('en-US', {
                                         month: 'short',
                                         day: 'numeric',
                                         hour: 'numeric',
                                         minute: '2-digit'
                                       })}
-                                    </Text>
+                                    </Typography>
                                   </Flex>
                                   
-                                  <Text fontSize="sm" whiteSpace="pre-wrap" lineHeight="1.5" color={isAdmin ? "white" : "gray.700"}>
+                                  <Typography fontSize="sm" whiteSpace="pre-wrap" lineHeight="1.5" color={isAdmin ? "white" : "gray.700"}>
                                     {message.content}
-                                  </Text>
+                                  </Typography>
                               
                                   {message.attachments && message.attachments.length > 0 && (
                                     <Box mt="2" p="2" bg={isAdmin ? "orange.600" : "blue.50"} borderRadius="md" border={isAdmin ? "none" : "1px"} borderColor={isAdmin ? "transparent" : "blue.100"}>
@@ -1212,24 +1211,20 @@ export default function MessagesPage() {
                                         {message.attachments.map((attachment, idx) => (
                                           <HStack key={idx} gap="2" justify="space-between">
                                             <HStack gap="2" flex="1" minW="0">
-                                              <Icon as={FiPaperclip} boxSize="3" color={isAdmin ? "white" : "blue.600"} flexShrink={0} />
+                                              <IconWrapper><FiPaperclip size={12} color={isAdmin ? "white" : "#3182CE"} /></IconWrapper>
                                               <VStack align="start" gap="0" flex="1" minW="0">
-                                                <Text fontSize="2xs" color={isAdmin ? "white" : "blue.700"} fontWeight="medium" overflow="hidden" textOverflow="ellipsis" whiteSpace="nowrap">
+                                                <Typography fontSize="2xs" color={isAdmin ? "white" : "blue.700"} fontWeight="medium" overflow="hidden" textOverflow="ellipsis" whiteSpace="nowrap">
                                                   {attachment.fileName || `Attachment ${idx + 1}`}
-                                                </Text>
-                                                <Text fontSize="2xs" color={isAdmin ? "orange.100" : "blue.600"}>
+                                                </Typography>
+                                                <Typography fontSize="2xs" color={isAdmin ? "orange.100" : "blue.600"}>
                                                   {(attachment.fileSizeBytes / 1024).toFixed(1)} KB
-                                                </Text>
+                                                </Typography>
                                               </VStack>
                                             </HStack>
                                             {(attachment.storageUrl || attachment.storageKey) && (
                                               <Button
-                                                size="xs"
-                                                variant={isAdmin ? "solid" : "outline"}
-                                                fontSize="2xs"
-                                                bg={isAdmin ? "orange.700" : undefined}
-                                                color={isAdmin ? "white" : undefined}
-                                                _hover={{ bg: isAdmin ? "orange.800" : undefined }}
+                                                size="sm"
+                                                variant={isAdmin ? "primary" : "secondary"}
                                                 onClick={async () => {
                                                   try {
                                                     let downloadUrl = attachment.storageUrl;
@@ -1243,7 +1238,9 @@ export default function MessagesPage() {
                                                           downloadUrl = result.url || result.downloadUrl || '';
                                                         }
                                                       } catch (error) {
-                                                        console.error('Failed to get download URL:', error);
+                                                        logger.error(error, 'Failed to get download URL', {
+                                                          tags: { error_type: 'download_url_error' }
+                                                        });
                                                       }
                                                     }
                                                     
@@ -1256,7 +1253,9 @@ export default function MessagesPage() {
                                                           downloadUrl = result.url || result.downloadUrl || '';
                                                         }
                                                       } catch (error) {
-                                                        console.error('Failed to get document download URL:', error);
+                                                        logger.error(error, 'Failed to get document download URL', {
+                                                          tags: { error_type: 'document_download_url_error' }
+                                                        });
                                                       }
                                                     }
                                                     
@@ -1266,14 +1265,16 @@ export default function MessagesPage() {
                                                       await SweetAlert.warning("Download Unavailable", "Download URL is not available for this attachment.");
                                                     }
                                                   } catch (error) {
-                                                    console.error('Error downloading attachment:', error);
+                                                    logger.error(error, 'Error downloading attachment', {
+                                                      tags: { error_type: 'attachment_download_error' }
+                                                    });
                                                     await SweetAlert.error("Download Failed", "Failed to download attachment. Please try again.");
                                                   }
                                                 }}
                                                 flexShrink={0}
                                               >
-                                                <Icon as={FiDownload} boxSize="3" />
-                                                <Text ml="1">Download</Text>
+                                                <IconWrapper><FiDownload size={12} /></IconWrapper>
+                                                <Typography ml="1">Download</Typography>
                                               </Button>
                                             )}
                                           </HStack>
@@ -1285,44 +1286,38 @@ export default function MessagesPage() {
                                   {/* Reply context */}
                                   {message.replyToMessageId && (
                                     <Box mt="2" p="2" bg={isAdmin ? "orange.600" : "gray.100"} borderRadius="md" borderLeft={isAdmin ? "none" : "3px"} borderColor={isAdmin ? "transparent" : "blue.400"}>
-                                      <Text fontSize="2xs" color={isAdmin ? "orange.100" : "gray.600"} fontStyle="italic" style={{
+                                      <Typography fontSize="2xs" color={isAdmin ? "orange.100" : "gray.600"} fontStyle="italic" style={{
                                         display: "-webkit-box",
                                         WebkitLineClamp: 2,
                                         WebkitBoxOrient: "vertical",
                                         overflow: "hidden"
                                       }}>
                                         Replying to: {messages.find(m => m.id === message.replyToMessageId)?.content.substring(0, 100) || 'Previous message'}
-                                      </Text>
+                                      </Typography>
                                     </Box>
                                   )}
                                   
                                   {/* Message actions */}
                                   <HStack gap="1" mt="2" justify="flex-end">
-                                    <Button
-                                      size="xs"
-                                      variant="ghost"
-                                      color={isAdmin ? "white" : "gray.600"}
-                                      _hover={{ bg: isAdmin ? "orange.600" : "gray.100" }}
-                                      onClick={() => setReplyingTo(message)}
-                                      title="Reply"
-                                    >
-                                      <Icon as={FiCornerUpRight} />
-                                    </Button>
-                                    <Button
-                                      size="xs"
-                                      variant="ghost"
-                                      color={isAdmin ? "white" : "gray.600"}
-                                      _hover={{ bg: isAdmin ? "orange.600" : "gray.100" }}
-                                      onClick={() => setForwardingMessage(message)}
-                                      title="Forward"
-                                    >
-                                      <Icon as={FiShare2} />
-                                    </Button>
-                                    <Button
-                                      size="xs"
-                                      variant="ghost"
-                                      color={isAdmin ? "white" : "gray.600"}
-                                      _hover={{ bg: isAdmin ? "orange.600" : "gray.100" }}
+                                              <Button
+                                                size="icon"
+                                                variant="ghost"
+                                                onClick={() => setReplyingTo(message)}
+                                                title="Reply"
+                                              >
+                                                <IconWrapper><FiCornerUpRight size={14} /></IconWrapper>
+                                              </Button>
+                                              <Button
+                                                size="icon"
+                                                variant="ghost"
+                                                onClick={() => setForwardingMessage(message)}
+                                                title="Forward"
+                                              >
+                                                <IconWrapper><FiShare2 size={14} /></IconWrapper>
+                                              </Button>
+                                              <Button
+                                                size="icon"
+                                                variant="ghost"
                                       onClick={async () => {
                                         try {
                                           const result = await messagingApi.starMessage(message.id);
@@ -1333,22 +1328,18 @@ export default function MessagesPage() {
                                             }
                                           }
                                         } catch (error) {
-                                          console.error('Failed to star message:', error);
+                                          logger.error(error, 'Failed to star message', {
+                                            tags: { error_type: 'star_message_error' }
+                                          });
                                         }
                                       }}
                                       title={message.isStarred ? "Unstar" : "Star"}
                                     >
-                                      <Icon 
-                                        as={FiStar} 
-                                        color={message.isStarred ? "yellow.500" : (isAdmin ? "white" : "gray.400")}
-                                        fill={message.isStarred ? "yellow.500" : "none"}
-                                      />
+                                      <IconWrapper><FiStar size={14} color={message.isStarred ? "#ECC94B" : (isAdmin ? "white" : "#A0AEC0")} /></IconWrapper>
                                     </Button>
                                     <Button
-                                      size="xs"
+                                      size="icon"
                                       variant="ghost"
-                                      color={isAdmin ? "white" : "red.600"}
-                                      _hover={{ bg: isAdmin ? "orange.600" : "red.50" }}
                                       onClick={async () => {
                                         const result = await SweetAlert.confirm(
                                           'Delete Message',
@@ -1375,14 +1366,16 @@ export default function MessagesPage() {
                                             await SweetAlert.error('Delete Failed', deleteResult.errorMessage || 'Failed to delete message');
                                           }
                                         } catch (error) {
-                                          console.error('Failed to delete message:', error);
+                                          logger.error(error, 'Failed to delete message', {
+                                            tags: { error_type: 'delete_message_error' }
+                                          });
                                           SweetAlert.close();
                                           await SweetAlert.error('Delete Failed', 'Failed to delete message. Please try again.');
                                         }
                                       }}
                                       title="Delete"
                                     >
-                                      <Icon as={FiTrash2} />
+                                      <IconWrapper><FiTrash2 size={16} /></IconWrapper>
                                     </Button>
                                   </HStack>
                                 </VStack>
@@ -1410,20 +1403,19 @@ export default function MessagesPage() {
                           <Box p="2" bg="blue.50" borderRadius="md" borderLeft="3px" borderColor="blue.400">
                             <HStack justify="space-between">
                               <VStack align="start" gap="0" flex="1" minW="0">
-                                <Text fontSize="2xs" fontWeight="semibold" color="blue.800">
+                                <Typography fontSize="2xs" fontWeight="semibold" color="blue.800">
                                   Replying to {replyingTo.sender}
-                                </Text>
-                                <Text fontSize="2xs" color="blue.600" overflow="hidden" textOverflow="ellipsis" whiteSpace="nowrap">
+                                </Typography>
+                                <Typography fontSize="2xs" color="blue.600" overflow="hidden" textOverflow="ellipsis" whiteSpace="nowrap">
                                   {replyingTo.content.substring(0, 100)}
-                                </Text>
+                                </Typography>
                               </VStack>
                               <Button
-                                size="xs"
+                                size="icon"
                                 variant="ghost"
                                 onClick={() => setReplyingTo(null)}
-                                flexShrink={0}
                               >
-                                <Icon as={FiX} boxSize="3" />
+                                <IconWrapper><FiX size={12} /></IconWrapper>
                               </Button>
                             </HStack>
                           </Box>
@@ -1465,30 +1457,30 @@ export default function MessagesPage() {
                               return (
                                 <HStack key={idx} p="2" bg={hasError ? "red.50" : "gray.50"} borderRadius="md" justify="space-between" border={hasError ? "1px" : "none"} borderColor={hasError ? "red.200" : "transparent"}>
                                   <HStack gap="2" flex="1" minW="0">
-                                    <Icon as={FiPaperclip} boxSize="3" flexShrink="0" color={hasError ? "red.500" : "gray.600"} />
+                                    <IconWrapper><FiPaperclip size={12} color={hasError ? "#E53E3E" : "#718096"} /></IconWrapper>
                                     <VStack align="start" gap="0" flex="1" minW="0">
-                                      <Text fontSize="xs" fontWeight="medium" overflow="hidden" textOverflow="ellipsis" whiteSpace="nowrap" color={hasError ? "red.700" : "gray.800"}>
+                                      <Typography fontSize="xs" fontWeight="medium" overflow="hidden" textOverflow="ellipsis" whiteSpace="nowrap" color={hasError ? "red.700" : "gray.800"}>
                                         {file.name}
-                                      </Text>
+                                      </Typography>
                                       <HStack gap="2" align="center">
-                                        <Text fontSize="2xs" color={hasError ? "red.600" : "gray.500"}>
+                                        <Typography fontSize="2xs" color={hasError ? "red.600" : "gray.500"}>
                                           {(file.size / 1024).toFixed(1)} KB
-                                        </Text>
+                                        </Typography>
                                         {isUploading && (
-                                          <Text fontSize="2xs" color="blue.600">
+                                          <Typography fontSize="2xs" color="blue.600">
                                             {progress}%
-                                          </Text>
+                                          </Typography>
                                         )}
                                         {hasError && (
-                                          <Text fontSize="2xs" color="red.600" fontWeight="medium">
+                                          <Typography fontSize="2xs" color="red.600" fontWeight="medium">
                                             Upload failed
-                                          </Text>
+                                          </Typography>
                                         )}
                                       </HStack>
                                     </VStack>
                                   </HStack>
                                   <Button
-                                    size="xs"
+                                    size="icon"
                                     variant="ghost"
                                     onClick={() => {
                                       setSelectedAttachments(prev => prev.filter((_, i) => i !== idx));
@@ -1498,10 +1490,8 @@ export default function MessagesPage() {
                                         return updated;
                                       });
                                     }}
-                                    flexShrink={0}
-                                    colorScheme={hasError ? "red" : "gray"}
                                   >
-                                    <Icon as={FiX} boxSize="3" />
+                                    <IconWrapper><FiX size={12} /></IconWrapper>
                                   </Button>
                                 </HStack>
                               );
@@ -1511,9 +1501,9 @@ export default function MessagesPage() {
                         
                         {/* Typing indicator */}
                         {selectedThread && isTyping[selectedThread.id] && (
-                          <Text fontSize="2xs" color="gray.500" fontStyle="italic">
+                          <Typography fontSize="2xs" color="gray.500" fontStyle="italic">
                             {isTyping[selectedThread.id].userName} is typing...
-                          </Text>
+                                    </Typography>
                         )}
                         
                         <HStack justify="space-between" gap="2">
@@ -1529,19 +1519,16 @@ export default function MessagesPage() {
                               }}
                             />
                             <Button
-                              variant="outline"
+                              variant="secondary"
                               size="sm"
                               onClick={() => fileInputRef.current?.click()}
-                              fontSize="xs"
                             >
-                              <HStack gap="1.5">
-                                <Icon as={FiPaperclip} boxSize="3" />
-                                <Text>Attach</Text>
-                              </HStack>
+                              <IconWrapper><FiPaperclip size={12} /></IconWrapper>
+                              <Typography>Attach</Typography>
                             </Button>
                             {selectedThread && (
                               <Button
-                                variant="outline"
+                                variant="secondary"
                                 size="sm"
                                 onClick={async () => {
                                   try {
@@ -1553,30 +1540,31 @@ export default function MessagesPage() {
                                       }
                                     }
                                   } catch (error) {
-                                    console.error('Failed to archive thread:', error);
+                                    logger.error(error, 'Failed to archive thread', {
+                                      tags: { error_type: 'archive_thread_error' }
+                                    });
                                     await SweetAlert.error('Archive Failed', 'Failed to archive thread. Please try again.');
                                   }
                                 }}
                                 fontSize="xs"
                               >
-                                <Icon as={FiArchive} boxSize="3" />
-                                <Text ml="1.5">{selectedThread.isArchived ? "Unarchive" : "Archive"}</Text>
+                                <IconWrapper><FiArchive size={12} /></IconWrapper>
+                                <Typography ml="1.5">{selectedThread.isArchived ? "Unarchive" : "Archive"}</Typography>
                               </Button>
                             )}
                           </HStack>
                           
                           <Button
-                            colorScheme="orange"
+                            variant="primary"
                             size="sm"
                             onClick={handleSendMessage}
                             disabled={sending || uploadingAttachments}
-                            fontSize="xs"
                           >
                             <HStack gap="1.5">
-                              {(sending || uploadingAttachments) ? <Spinner size="xs" /> : <Icon as={FiSend} boxSize="3" />}
-                              <Text>
+                              {(sending || uploadingAttachments) ? <Spinner size="xs" /> : <IconWrapper><FiSend size={12} /></IconWrapper>}
+                              <Typography>
                                 {uploadingAttachments ? "Uploading..." : sending ? "Sending..." : "Send"}
-                              </Text>
+                              </Typography>
                             </HStack>
                           </Button>
                         </HStack>
@@ -1586,14 +1574,14 @@ export default function MessagesPage() {
                   ) : showCompose ? (
                     <Flex justify="center" align="center" height="100%">
                       <VStack gap="4" p="8">
-                        <Text fontSize="md" fontWeight="semibold" color="gray.800">
+                        <Typography fontSize="md" fontWeight="semibold" color="gray.800">
                           Compose New Message
-                        </Text>
-                        <Text fontSize="sm" color="gray.600" textAlign="center">
+                                    </Typography>
+                        <Typography fontSize="sm" color="gray.600" textAlign="center">
                           To send a message, please select a thread or navigate to an application to start a conversation.
-                        </Text>
+                                    </Typography>
                         <Button
-                          variant="outline"
+                          variant="secondary"
                           size="sm"
                           onClick={() => setShowCompose(false)}
                         >
@@ -1604,10 +1592,10 @@ export default function MessagesPage() {
                   ) : (
                     <Flex justify="center" align="center" height="100%">
                       <VStack gap="3">
-                        <Icon as={FiMessageSquare} boxSize="10" color="gray.300" />
-                        <Text fontSize="sm" color="gray.500" fontWeight="medium">
+                        <IconWrapper><FiMessageSquare size={40} color="#CBD5E0" /></IconWrapper>
+                        <Typography fontSize="sm" color="gray.500" fontWeight="medium">
                           Select a message to view details
-                        </Text>
+                                    </Typography>
                       </VStack>
                     </Flex>
                   )}
@@ -1618,135 +1606,115 @@ export default function MessagesPage() {
         </Box>
 
       {/* Forward Message Modal */}
-      {forwardingMessage && (
-        <Box
-          position="fixed"
-          top="0"
-          left="0"
-          right="0"
-          bottom="0"
-          bg="blackAlpha.600"
-          zIndex="1000"
-          display="flex"
-          alignItems="center"
-          justifyContent="center"
-          onClick={() => setForwardingMessage(null)}
-        >
-          <Box
-            bg="white"
-            borderRadius="xl"
-            p="6"
-            maxW="600px"
-            width="90%"
-            onClick={(e) => e.stopPropagation()}
-            boxShadow="xl"
-          >
-            <VStack gap="4" align="stretch">
-              <HStack justify="space-between">
-                <Text fontSize="lg" fontWeight="semibold" color="gray.800">
-                  Forward Message
-                </Text>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setForwardingMessage(null)}
-                >
-                  <Icon as={FiX} />
-                </Button>
-              </HStack>
+      <Modal
+        isOpen={!!forwardingMessage}
+        onClose={() => {
+          setForwardingMessage(null);
+          setNewMessage({ applicationId: "", content: "", receiverId: "" });
+        }}
+        title="Forward Message"
+        size="large"
+        closeOnBackdropClick={true}
+        closeOnEsc={true}
+      >
+        <ModalHeader>
+          <Typography fontSize="lg" fontWeight="semibold" color="gray.800">
+            Forward Message
+          </Typography>
+        </ModalHeader>
+        <ModalBody>
+          <VStack gap="4" align="stretch">
+            <Box p="3" bg="gray.50" borderRadius="md" borderLeft="3px" borderColor="blue.400">
+              <Typography fontSize="sm" fontWeight="medium" color="gray.700" mb="2">
+                Original Message:
+              </Typography>
+              <Typography fontSize="sm" color="gray.600" mb="1">
+                From: {forwardingMessage?.sender}
+              </Typography>
+              <Typography fontSize="sm" color="gray.600" whiteSpace="pre-wrap">
+                {forwardingMessage?.content}
+              </Typography>
+            </Box>
 
-              <Box p="3" bg="gray.50" borderRadius="md" borderLeft="3px" borderColor="blue.400">
-                <Text fontSize="sm" fontWeight="medium" color="gray.700" mb="2">
-                  Original Message:
-                </Text>
-                <Text fontSize="sm" color="gray.600" mb="1">
-                  From: {forwardingMessage.sender}
-                </Text>
-                <Text fontSize="sm" color="gray.600" whiteSpace="pre-wrap">
-                  {forwardingMessage.content}
-                </Text>
+            <VStack gap="3" align="stretch">
+              <Box>
+                <Typography fontSize="sm" fontWeight="medium" color="gray.700" mb="2">
+                  To Application ID:
+                </Typography>
+                <Input
+                  placeholder="Enter application ID (GUID)"
+                  value={newMessage.receiverId || ""}
+                  onChange={(e) => setNewMessage(prev => ({ ...prev, receiverId: e.target.value }))}
+                />
               </Box>
 
-              <VStack gap="3" align="stretch">
-                <Box>
-                  <Text fontSize="sm" fontWeight="medium" color="gray.700" mb="2">
-                    To Application ID:
-                  </Text>
-                  <Input
-                    placeholder="Enter application ID (GUID)"
-                    value={newMessage.receiverId || ""}
-                    onChange={(e) => setNewMessage(prev => ({ ...prev, receiverId: e.target.value }))}
-                  />
-                </Box>
+              <Box>
+                <Typography fontSize="sm" fontWeight="medium" color="gray.700" mb="2">
+                  Additional Message (Optional):
+                </Typography>
+                <Textarea
+                  placeholder="Add any additional context..."
+                  value={newMessage.content}
+                  onChange={(e) => setNewMessage(prev => ({ ...prev, content: e.target.value }))}
+                  rows={4}
+                />
+              </Box>
+            </VStack>
+          </VStack>
+        </ModalBody>
+        <ModalFooter>
+          <HStack justify="flex-end" gap="3" w="full">
+            <Button
+              variant="secondary"
+              onClick={() => {
+                setForwardingMessage(null);
+                setNewMessage({ applicationId: "", content: "", receiverId: "" });
+              }}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="primary"
+              onClick={async () => {
+                if (!newMessage.receiverId?.trim()) {
+                  await SweetAlert.warning("Application ID Required", "Please enter an application ID to forward to");
+                  return;
+                }
 
-                <Box>
-                  <Text fontSize="sm" fontWeight="medium" color="gray.700" mb="2">
-                    Additional Message (Optional):
-                  </Text>
-                  <Textarea
-                    placeholder="Add any additional context..."
-                    value={newMessage.content}
-                    onChange={(e) => setNewMessage(prev => ({ ...prev, content: e.target.value }))}
-                    rows={4}
-                    color="black"
-                    _focus={{ color: "black" }}
-                    _placeholder={{ color: "gray.400" }}
-                  />
-                </Box>
-              </VStack>
+                try {
+                  setSending(true);
+                  const result = await messagingApi.forwardMessage(
+                    forwardingMessage!.id,
+                    newMessage.receiverId.trim(),
+                    undefined,
+                    newMessage.content.trim() || undefined
+                  );
 
-              <HStack justify="flex-end" gap="3" pt="2">
-                <Button
-                  variant="outline"
-                  onClick={() => {
+                  if (result.success) {
+                    await SweetAlert.success("Message Forwarded", "The message has been forwarded successfully.");
                     setForwardingMessage(null);
                     setNewMessage({ applicationId: "", content: "", receiverId: "" });
-                  }}
-                >
-                  Cancel
-                </Button>
-                <Button
-                  colorScheme="orange"
-                  onClick={async () => {
-                    if (!newMessage.receiverId?.trim()) {
-                      await SweetAlert.warning("Application ID Required", "Please enter an application ID to forward to");
-                      return;
-                    }
-
-                    try {
-                      setSending(true);
-                      const result = await messagingApi.forwardMessage(
-                        forwardingMessage.id,
-                        newMessage.receiverId.trim(),
-                        undefined,
-                        newMessage.content.trim() || undefined
-                      );
-
-                      if (result.success) {
-                        await SweetAlert.success("Message Forwarded", "The message has been forwarded successfully.");
-                        setForwardingMessage(null);
-                        setNewMessage({ applicationId: "", content: "", receiverId: "" });
-                        await loadThreads();
-                      } else {
-                        throw new Error(result.errorMessage || "Failed to forward message");
-                      }
-                    } catch (error) {
-                      console.error("Failed to forward message:", error);
-                      await SweetAlert.error("Forward Failed", error instanceof Error ? error.message : "Failed to forward message");
-                    } finally {
-                      setSending(false);
-                    }
-                  }}
-                  disabled={sending}
-                >
-                  {sending ? <Spinner size="sm" /> : <Icon as={FiShare2} />}
-                  <Text ml="2">{sending ? "Forwarding..." : "Forward"}</Text>
-                </Button>
-              </HStack>
-            </VStack>
-          </Box>
-        </Box>
-      )}
+                    await loadThreads();
+                  } else {
+                    throw new Error(result.errorMessage || "Failed to forward message");
+                  }
+                } catch (error) {
+                  logger.error(error, "Failed to forward message", {
+                    tags: { error_type: 'forward_message_error' }
+                  });
+                  await SweetAlert.error("Forward Failed", error instanceof Error ? error.message : "Failed to forward message");
+                } finally {
+                  setSending(false);
+                }
+              }}
+              disabled={sending}
+            >
+              {sending ? <Spinner size="sm" /> : <IconWrapper><FiShare2 size={16} /></IconWrapper>}
+              <Typography ml="2">{sending ? "Forwarding..." : "Forward"}</Typography>
+            </Button>
+          </HStack>
+        </ModalFooter>
+      </Modal>
     </Box>
   );
 }

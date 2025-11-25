@@ -5,37 +5,39 @@ import {
   Container, 
   VStack, 
   HStack,
-  Text,
-  Button,
-  Input,
-  SimpleGrid,
-  Badge,
-  Icon,
   Flex,
   Spinner,
-  Table,
-  Menu,
-  createToaster,
-  Dialog,
   Image
 } from "@chakra-ui/react";
 import { 
-  FiSearch, 
-  FiFilter, 
+  Pagination, 
+  Typography, 
+  Link as MukuruLink, 
+  Search, 
+  DataTable, 
+  Button, 
+  Modal, 
+  ModalHeader, 
+  ModalBody, 
+  ModalFooter, 
+  AlertBar, 
+  Tag, 
+  IconWrapper,
+  Tooltip
+} from "@/lib/mukuruImports";
+import type { ColumnConfig } from "@mukuru/mukuru-react-components";
+import { 
   FiDownload, 
   FiEye,
   FiFileText,
   FiCalendar,
-  FiUser,
   FiRefreshCw,
-  FiMoreVertical,
   FiX
 } from "react-icons/fi";
 import { useState, useEffect, useCallback } from "react";
-import Link from "next/link";
 import AdminSidebar from "../../components/AdminSidebar";
-
-const DOCUMENT_API_BASE_URL = process.env.NEXT_PUBLIC_DOCUMENT_API_BASE_URL || 'http://localhost:8008';
+import PortalHeader from "../../components/PortalHeader";
+import { useSidebar } from "../../contexts/SidebarContext";
 
 interface Document {
   id: string;
@@ -78,56 +80,67 @@ const formatFileSize = (bytes: number): string => {
 };
 
 export default function DocumentsPage() {
+  const { condensed } = useSidebar();
   const [documents, setDocuments] = useState<Document[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
   const pageSize = 50;
-  const toaster = createToaster({ placement: "top" });
+  const [toast, setToast] = useState<{ title: string; description: string; type: 'success' | 'error' | 'warning' | 'info' } | null>(null);
   const [viewerOpen, setViewerOpen] = useState(false);
   const [viewingDocument, setViewingDocument] = useState<Document | null>(null);
   const [viewerUrl, setViewerUrl] = useState<string | null>(null);
+  const [refreshKey, setRefreshKey] = useState(0);
+
+  const showToast = (title: string, description: string, type: 'success' | 'error' | 'warning' | 'info' = 'info', duration: number = 5000) => {
+    setToast({ title, description, type });
+    setTimeout(() => setToast(null), duration);
+  };
 
   const loadDocuments = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
       
+      console.log('[Documents Page] Loading documents...', { page, pageSize });
+      
       const skip = (page - 1) * pageSize;
-      const url = `/api/proxy/api/v1/documents?skip=${skip}&take=${pageSize}`;
+      const url = `/api/documents?skip=${skip}&take=${pageSize}`;
       
       const response = await fetch(url);
       if (!response.ok) {
-        throw new Error(`Failed to load documents: ${response.statusText}`);
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || `Failed to load documents: ${response.statusText}`);
       }
       
       const data = await response.json();
-      setDocuments(data.items || []);
-      setTotal(data.total || 0);
+      setDocuments(data.items || data || []);
+      setTotal(data.total || data.totalCount || (data.items || data || []).length);
+      
+      console.log('[Documents Page] Documents loaded:', (data.items || data || []).length);
     } catch (err) {
-      console.error('Error loading documents:', err);
-      setError(err instanceof Error ? err.message : 'Failed to load documents');
+      console.error('[Documents Page] Error loading documents:', err);
+      const errorMessage = err instanceof Error ? err.message : 'Failed to load documents';
+      setError(errorMessage);
       setDocuments([]);
-      toaster.create({
-        title: 'Error loading documents',
-        description: err instanceof Error ? err.message : 'Failed to load documents',
-        type: 'error',
-        duration: 5000,
-      });
+      showToast('Error loading documents', errorMessage, 'error', 5000);
     } finally {
       setLoading(false);
     }
-  }, [page, toaster]);
+  }, [page]);
 
   useEffect(() => {
     loadDocuments();
-  }, [loadDocuments]);
+  }, [loadDocuments, refreshKey]);
+
+  const handleSearchChange = useCallback((query: string) => {
+    setSearchTerm(query);
+  }, []);
 
   const getDocumentUrl = async (document: Document): Promise<string | null> => {
     try {
-      // Use proxy endpoint to avoid CORS and signature issues
       return `/api/proxy-document?storageKey=${encodeURIComponent(document.storageKey)}`;
     } catch (err) {
       console.error('Error getting document URL:', err);
@@ -143,23 +156,13 @@ export default function DocumentsPage() {
       if (url) {
         setViewerUrl(url);
       } else {
-        toaster.create({
-          title: 'View failed',
-          description: 'Could not load document. Please try downloading instead.',
-          type: 'error',
-          duration: 5000,
-        });
+        showToast('View failed', 'Could not load document. Please try downloading instead.', 'error', 5000);
         setViewerOpen(false);
         setViewingDocument(null);
       }
     } catch (err) {
       console.error('Error viewing document:', err);
-      toaster.create({
-        title: 'View failed',
-        description: err instanceof Error ? err.message : 'Failed to view document',
-        type: 'error',
-        duration: 5000,
-      });
+      showToast('View failed', err instanceof Error ? err.message : 'Failed to view document', 'error', 5000);
     }
   };
 
@@ -173,12 +176,7 @@ export default function DocumentsPage() {
       }
     } catch (err) {
       console.error('Error downloading document:', err);
-      toaster.create({
-        title: 'Download failed',
-        description: err instanceof Error ? err.message : 'Failed to download document',
-        type: 'error',
-        duration: 5000,
-      });
+      showToast('Download failed', err instanceof Error ? err.message : 'Failed to download document', 'error', 5000);
     }
   };
 
@@ -202,316 +200,324 @@ export default function DocumentsPage() {
 
   const totalPages = Math.ceil(total / pageSize);
 
-  if (loading && documents.length === 0) {
-    return (
-      <Box>
-        <AdminSidebar />
-        <Box ml="240px" p="8" bg="gray.50" minH="100vh">
-          <Container maxW="7xl">
-            <Flex justify="center" align="center" minH="400px">
-              <VStack gap="4">
-                <Spinner size="xl" color="orange.500" />
-                <Text color="gray.600">Loading documents...</Text>
-              </VStack>
-            </Flex>
-          </Container>
-        </Box>
-      </Box>
-    );
-  }
+  const columns: ColumnConfig<Document>[] = [
+    {
+      field: 'fileName',
+      header: 'File Name',
+      sortable: true,
+      minWidth: '250px',
+      render: (value, row) => (
+        <HStack gap="2">
+          <IconWrapper><FiFileText size={16} color="#DD6B20" /></IconWrapper>
+          <Typography 
+            fontSize="sm" 
+            fontWeight="medium" 
+            color="orange.600"
+            cursor="pointer"
+            onClick={() => handleView(row)}
+            style={{ textDecoration: 'none' }}
+            _hover={{ textDecoration: "underline" }}
+          >
+            {row.fileName}
+          </Typography>
+        </HStack>
+      )
+    },
+    {
+      field: 'type',
+      header: 'Type',
+      sortable: true,
+      minWidth: '120px',
+      render: (value) => (
+        <Tag variant="info">
+          {getDocumentTypeName(value as number)}
+        </Tag>
+      )
+    },
+    {
+      field: 'caseId',
+      header: 'Case ID',
+      sortable: true,
+      minWidth: '150px',
+      render: (value, row) => (
+        <MukuruLink href={`/applications/${row.caseId}`}>
+          <Typography fontSize="sm" color="orange.600" _hover={{ textDecoration: "underline" }}>
+            {(row.caseId as string).substring(0, 8)}...
+          </Typography>
+        </MukuruLink>
+      )
+    },
+    {
+      field: 'sizeBytes',
+      header: 'Size',
+      sortable: true,
+      minWidth: '100px',
+      render: (value) => (
+        <Typography fontSize="sm" color="gray.600">
+          {formatFileSize(value as number)}
+        </Typography>
+      )
+    },
+    {
+      field: 'uploadedBy',
+      header: 'Uploaded By',
+      sortable: true,
+      minWidth: '150px',
+      render: (value) => (
+        <Typography fontSize="sm" color="gray.600">
+          {value as string}
+        </Typography>
+      )
+    },
+    {
+      field: 'uploadedAt',
+      header: 'Uploaded At',
+      sortable: true,
+      minWidth: '150px',
+      render: (value) => (
+        <HStack gap="2">
+          <IconWrapper><FiCalendar size={16} color="#9CA3AF" /></IconWrapper>
+          <Typography fontSize="sm" color="gray.600">
+            {new Date(value as string).toLocaleDateString()}
+          </Typography>
+        </HStack>
+      )
+    }
+  ];
+
+  const actionColumn = {
+    header: 'Actions',
+    width: '150px',
+    render: (row: Document) => (
+      <HStack gap="2">
+        <Tooltip content="View document">
+          <button
+            onClick={() => handleView(row)}
+            style={{
+              padding: '6px 12px',
+              borderRadius: '6px',
+              border: '1px solid #E5E7EB',
+              backgroundColor: 'white',
+              color: '#111827',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+            }}
+          >
+            <IconWrapper><FiEye size={14} /></IconWrapper>
+          </button>
+        </Tooltip>
+        <Tooltip content="Download document">
+          <button
+            onClick={() => handleDownload(row)}
+            style={{
+              padding: '6px 12px',
+              borderRadius: '6px',
+              border: '1px solid #E5E7EB',
+              backgroundColor: 'white',
+              color: '#111827',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+            }}
+          >
+            <IconWrapper><FiDownload size={14} /></IconWrapper>
+          </button>
+        </Tooltip>
+        <Tooltip content="View application">
+          <button
+            onClick={() => window.open(`/applications/${row.caseId}`, '_blank')}
+            style={{
+              padding: '6px 12px',
+              borderRadius: '6px',
+              border: '1px solid #E5E7EB',
+              backgroundColor: 'white',
+              color: '#111827',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+            }}
+          >
+            <IconWrapper><FiFileText size={14} /></IconWrapper>
+          </button>
+        </Tooltip>
+      </HStack>
+    ),
+  };
 
   return (
-    <Box>
+    <Flex minH="100vh" bg="gray.50">
       <AdminSidebar />
-      <Box ml="240px" p="8" bg="gray.50" minH="100vh">
-        <Container maxW="7xl">
-          <VStack gap="6" align="stretch">
+      <Box 
+        ml={condensed ? "72px" : "280px"} 
+        mt="90px" 
+        minH="calc(100vh - 90px)" 
+        width={condensed ? "calc(100% - 72px)" : "calc(100% - 280px)"} 
+        bg="gray.50" 
+        overflowX="hidden" 
+        transition="margin-left 0.3s ease, width 0.3s ease"
+      >
+        <PortalHeader />
+        <Container maxW="100%" px="8" py="6" width="full">
+          <VStack gap="4" align="stretch">
             {/* Header */}
-            <Flex justify="space-between" align="center">
+            <Flex justify="space-between" align="center" mb="4">
               <VStack align="start" gap="1">
-                <Text fontSize="3xl" fontWeight="bold" color="gray.800">
+                <Typography fontSize="3xl" fontWeight="bold" color="gray.800">
                   Documents
-                </Text>
-                <Text color="gray.600">
+                </Typography>
+                <Typography color="gray.600">
                   View and manage all uploaded documents
-                </Text>
+                </Typography>
               </VStack>
               
-              <HStack gap="3">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => loadDocuments()}
-                >
-                  <Icon as={FiRefreshCw} style={{ marginRight: '8px' }} />
-                  Refresh
-                </Button>
-              </HStack>
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={() => setRefreshKey(prev => prev + 1)}
+                className="mukuru-primary-button"
+              >
+                <IconWrapper><FiRefreshCw size={16} /></IconWrapper>
+                Refresh
+              </Button>
             </Flex>
 
-            {/* Search and Filters */}
-            <HStack gap="4">
-              <Box position="relative" flex="1">
-                <Icon 
-                  as={FiSearch} 
-                  color="gray.400" 
-                  position="absolute"
-                  left="12px"
-                  top="50%"
-                  transform="translateY(-50%)"
-                  zIndex="1"
-                  pointerEvents="none"
-                />
-                <Input
-                  placeholder="Search documents by name, case ID, type, or uploader..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  bg="white"
-                  pl="10"
-                />
-              </Box>
-            </HStack>
+            {/* Toast Notification */}
+            {toast && (
+              <AlertBar
+                status={toast.type}
+                title={toast.title}
+                description={toast.description}
+                onClose={() => setToast(null)}
+              />
+            )}
 
             {/* Error Alert */}
             {error && (
-              <Box 
-                bg="red.50" 
-                border="1px" 
-                borderColor="red.200" 
-                borderRadius="lg" 
-                p="4"
-              >
-                <HStack gap="2">
-                  <Icon as={FiFileText} boxSize="5" color="red.600" />
-                  <VStack align="start" gap="1" flex="1">
-                    <Text fontWeight="semibold" color="red.700">Error loading documents</Text>
-                    <Text fontSize="sm" color="red.600">{error}</Text>
-                  </VStack>
-                </HStack>
-              </Box>
+              <AlertBar status="error" title="Error loading documents">
+                {error}
+              </AlertBar>
             )}
 
+            {/* Search Bar */}
+            <Box width="100%" maxW="800px">
+              <Search
+                placeholder="Search documents by name, case ID, type, or uploader..."
+                onSearchChange={handleSearchChange}
+              />
+            </Box>
+
             {/* Documents Table */}
-            <Box bg="white" borderRadius="lg" boxShadow="sm" overflow="hidden">
-              <Table.Root>
-                <Table.Header>
-                  <Table.Row>
-                    <Table.ColumnHeader>File Name</Table.ColumnHeader>
-                    <Table.ColumnHeader>Type</Table.ColumnHeader>
-                    <Table.ColumnHeader>Case ID</Table.ColumnHeader>
-                    <Table.ColumnHeader>Size</Table.ColumnHeader>
-                    <Table.ColumnHeader>Uploaded By</Table.ColumnHeader>
-                    <Table.ColumnHeader>Uploaded At</Table.ColumnHeader>
-                    <Table.ColumnHeader>Actions</Table.ColumnHeader>
-                  </Table.Row>
-                </Table.Header>
-                <Table.Body>
-                  {filteredDocuments.length === 0 ? (
-                    <Table.Row>
-                      <Table.Cell colSpan={7} textAlign="center" py="8">
-                        <VStack gap="2">
-                          <Icon as={FiFileText} boxSize="8" color="gray.400" />
-                          <Text color="gray.500">No documents found</Text>
-                        </VStack>
-                      </Table.Cell>
-                    </Table.Row>
-                  ) : (
-                    filteredDocuments.map((doc) => (
-                      <Table.Row key={doc.id} _hover={{ bg: "gray.50" }}>
-                        <Table.Cell>
-                          <HStack gap="2">
-                            <Icon as={FiFileText} color="orange.500" />
-                            <Text 
-                              fontSize="sm" 
-                              fontWeight="medium" 
-                              color="orange.600"
-                              cursor="pointer"
-                              _hover={{ textDecoration: "underline" }}
-                              onClick={() => handleView(doc)}
-                            >
-                              {doc.fileName}
-                            </Text>
-                          </HStack>
-                        </Table.Cell>
-                        <Table.Cell>
-                          <Badge colorScheme="blue">
-                            {getDocumentTypeName(doc.type)}
-                          </Badge>
-                        </Table.Cell>
-                        <Table.Cell>
-                          <Link href={`/applications/${doc.caseId}`}>
-                            <Text fontSize="sm" color="orange.600" _hover={{ textDecoration: "underline" }}>
-                              {doc.caseId.substring(0, 8)}...
-                            </Text>
-                          </Link>
-                        </Table.Cell>
-                        <Table.Cell>
-                          <Text fontSize="sm" color="gray.600">
-                            {formatFileSize(doc.sizeBytes)}
-                          </Text>
-                        </Table.Cell>
-                        <Table.Cell>
-                          <Text fontSize="sm" color="gray.600">
-                            {doc.uploadedBy}
-                          </Text>
-                        </Table.Cell>
-                        <Table.Cell>
-                          <HStack gap="2">
-                            <Icon as={FiCalendar} boxSize="4" color="gray.400" />
-                            <Text fontSize="sm" color="gray.600">
-                              {new Date(doc.uploadedAt).toLocaleDateString()}
-                            </Text>
-                          </HStack>
-                        </Table.Cell>
-                        <Table.Cell>
-                          <HStack gap="2">
-                            <Button 
-                              variant="ghost" 
-                              size="sm"
-                              onClick={() => handleView(doc)}
-                              title="View document"
-                            >
-                              <Icon as={FiEye} />
-                            </Button>
-                            <Button 
-                              variant="ghost" 
-                              size="sm"
-                              onClick={() => handleDownload(doc)}
-                              title="Download document"
-                            >
-                              <Icon as={FiDownload} />
-                            </Button>
-                            <Button 
-                              variant="ghost" 
-                              size="sm"
-                              onClick={() => window.open(`/applications/${doc.caseId}`, '_blank')}
-                              title="View application"
-                            >
-                              <Icon as={FiFileText} />
-                            </Button>
-                          </HStack>
-                        </Table.Cell>
-                      </Table.Row>
-                    ))
-                  )}
-                </Table.Body>
-              </Table.Root>
+            <Box className="work-queue-table-wrapper" width="100%">
+              <DataTable
+                data={filteredDocuments as unknown as Record<string, unknown>[]}
+                columns={columns as unknown as ColumnConfig<Record<string, unknown>>[]}
+                actionColumn={actionColumn as unknown as { header?: string; width?: string; render: (row: Record<string, unknown>, index: number) => React.ReactNode }}
+                loading={loading}
+              />
             </Box>
 
             {/* Pagination */}
             {totalPages > 1 && (
-              <HStack justify="center" gap="2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setPage(p => Math.max(1, p - 1))}
-                  disabled={page === 1}
-                >
-                  Previous
-                </Button>
-                <Text fontSize="sm" color="gray.600">
-                  Page {page} of {totalPages} ({total} total documents)
-                </Text>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setPage(p => Math.min(totalPages, p + 1))}
-                  disabled={page === totalPages}
-                >
-                  Next
-                </Button>
-              </HStack>
+              <Pagination
+                currentPage={page}
+                totalPages={totalPages}
+                onPageChange={setPage}
+                totalItems={total}
+                pageSize={pageSize}
+              />
             )}
           </VStack>
         </Container>
       </Box>
 
       {/* Document Viewer Modal */}
-      <Dialog.Root open={viewerOpen} onOpenChange={(e) => {
-        setViewerOpen(e.open);
-        if (!e.open) {
+      <Modal
+        isOpen={viewerOpen}
+        onClose={() => {
+          setViewerOpen(false);
           setViewingDocument(null);
           setViewerUrl(null);
-        }
-      }}>
-        <Dialog.Backdrop bg="blackAlpha.800" backdropFilter="blur(4px)" />
-        <Dialog.Positioner>
-          <Dialog.Content maxW="90vw" maxH="90vh" borderRadius="xl" boxShadow="2xl">
-            <Dialog.Header pb="4" borderBottom="1px" borderColor="gray.200">
-              <HStack justify="space-between" align="center">
-                <VStack align="start" gap="0">
-                  <Dialog.Title fontSize="lg" fontWeight="700">
-                    {viewingDocument?.fileName}
-                  </Dialog.Title>
-                  <Dialog.Description fontSize="sm" color="gray.600">
-                    {viewingDocument && getDocumentTypeName(viewingDocument.type)} • {viewingDocument && formatFileSize(viewingDocument.sizeBytes)}
-                  </Dialog.Description>
-                </VStack>
-                <HStack gap="2">
-                  {viewingDocument && (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleDownload(viewingDocument)}
-                    >
-                      <Icon as={FiDownload} style={{ marginRight: '8px' }} />
-                      Download
-                    </Button>
-                  )}
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => {
-                      setViewerOpen(false);
-                      setViewingDocument(null);
-                      setViewerUrl(null);
-                    }}
-                  >
-                    <Icon as={FiX} />
-                  </Button>
-                </HStack>
-              </HStack>
-            </Dialog.Header>
-            <Dialog.Body p="0" overflow="auto">
-              {viewerUrl && viewingDocument ? (
-                isImageFile(viewingDocument.fileName, viewingDocument.contentType) ? (
-                  <Box p="4" bg="gray.50" display="flex" justifyContent="center" alignItems="center" minH="400px">
-                    <Image
-                      src={viewerUrl}
-                      alt={viewingDocument.fileName}
-                      maxW="100%"
-                      maxH="70vh"
-                      objectFit="contain"
-                      borderRadius="md"
-                    />
-                  </Box>
-                ) : (
-                  <Box p="4" bg="gray.50" minH="400px">
-                    <iframe
-                      src={viewerUrl}
-                      style={{
-                        width: '100%',
-                        height: '70vh',
-                        border: 'none',
-                        borderRadius: '8px'
-                      }}
-                      title={viewingDocument.fileName}
-                    />
-                  </Box>
-                )
-              ) : (
-                <Flex justify="center" align="center" minH="400px">
-                  <VStack gap="4">
-                    <Spinner size="xl" color="orange.500" />
-                    <Text color="gray.600">Loading document...</Text>
-                  </VStack>
-                </Flex>
+        }}
+        size="large"
+        closeOnBackdropClick={true}
+        closeOnEsc={true}
+      >
+        <ModalHeader>
+          <HStack justify="space-between" align="center" width="full">
+            <VStack align="start" gap="0">
+              <Typography fontSize="lg" fontWeight="700">
+                {viewingDocument?.fileName}
+              </Typography>
+              <Typography fontSize="sm" color="gray.600">
+                {viewingDocument && getDocumentTypeName(viewingDocument.type)} • {viewingDocument && formatFileSize(viewingDocument.sizeBytes)}
+              </Typography>
+            </VStack>
+            <HStack gap="2">
+              {viewingDocument && (
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => handleDownload(viewingDocument)}
+                >
+                  <IconWrapper><FiDownload size={16} /></IconWrapper>
+                  Download
+                </Button>
               )}
-            </Dialog.Body>
-          </Dialog.Content>
-        </Dialog.Positioner>
-      </Dialog.Root>
-    </Box>
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={() => {
+                  setViewerOpen(false);
+                  setViewingDocument(null);
+                  setViewerUrl(null);
+                }}
+              >
+                <IconWrapper><FiX size={16} /></IconWrapper>
+              </Button>
+            </HStack>
+          </HStack>
+        </ModalHeader>
+        <ModalBody>
+          {viewerUrl && viewingDocument ? (
+            isImageFile(viewingDocument.fileName, viewingDocument.contentType) ? (
+              <Box p="4" bg="gray.50" display="flex" justifyContent="center" alignItems="center" minH="400px">
+                <Image
+                  src={viewerUrl}
+                  alt={viewingDocument.fileName}
+                  maxW="100%"
+                  maxH="70vh"
+                  objectFit="contain"
+                  borderRadius="md"
+                />
+              </Box>
+            ) : (
+              <Box p="4" bg="gray.50" minH="400px">
+                <iframe
+                  src={viewerUrl}
+                  style={{
+                    width: '100%',
+                    height: '70vh',
+                    border: 'none',
+                    borderRadius: '8px'
+                  }}
+                  title={viewingDocument.fileName}
+                />
+              </Box>
+            )
+          ) : (
+            <Flex justify="center" align="center" minH="400px">
+              <VStack gap="4">
+                <Spinner size="xl" color="orange.500" />
+                <Typography color="gray.600">Loading document...</Typography>
+              </VStack>
+            </Flex>
+          )}
+        </ModalBody>
+      </Modal>
+    </Flex>
   );
 }
-

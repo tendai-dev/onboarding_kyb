@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getToken } from 'next-auth/jwt';
 import { deleteTokenSession } from '@/lib/redis-session';
 import { reportError } from '@/lib/sentry';
+import { logger } from '@/lib/logger';
 
 /**
  * Logout API route
@@ -21,7 +22,7 @@ export async function POST(request: NextRequest) {
         await deleteTokenSession(token.sessionId as string);
         // Only log in development
         if (process.env.NODE_ENV === 'development') {
-          console.log(`[Logout] Cleared Redis session: ${token.sessionId}`);
+          logger.debug('[Logout] Cleared Redis session', { sessionId: token.sessionId });
         }
       } catch (error) {
         reportError(error, {

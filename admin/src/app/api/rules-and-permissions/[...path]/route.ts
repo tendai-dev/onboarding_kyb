@@ -1,6 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth';
+import { auth } from '@/lib/auth';
+import { logger } from '@/lib/logger';
+
+// Route segment config
+export const dynamic = 'force-dynamic';
+export const runtime = 'nodejs';
 
 /**
  * Rules and Permissions API route - routes through centralized proxy for BFF pattern
@@ -8,15 +12,45 @@ import { authOptions } from '@/lib/auth';
  */
 async function forwardRequest(request: NextRequest, method: string) {
   try {
-    const session = await getServerSession(authOptions);
+    const session = await auth();
     const pathname = request.nextUrl.pathname;
-    const pathAfterBase = pathname.replace('/api/rules-and-permissions', '') || '';
+    
+    // Extract the path after /api/rules-and-permissions
+    // For /api/rules-and-permissions/requirements -> /requirements
+    // For /api/rules-and-permissions/entity-types -> /entity-types
+    let pathAfterBase = pathname.replace('/api/rules-and-permissions', '');
+    // Ensure path starts with / if not empty
+    if (pathAfterBase && !pathAfterBase.startsWith('/')) {
+      pathAfterBase = '/' + pathAfterBase;
+    }
+    // If empty, keep it empty (don't add /)
+    if (!pathAfterBase) {
+      pathAfterBase = '';
+    }
+    
     const searchParams = request.nextUrl.searchParams;
     const queryString = searchParams.toString();
     
     // Build proxy URL - proxy will handle token injection and refresh
-    const proxyPath = `/api/proxy/api/v1${pathAfterBase}${queryString ? `?${queryString}` : ''}`;
+    // For roles and users, route to /api/proxy/api/v1/roles or /api/proxy/api/v1/users (unified API)
+    // For other endpoints, use /api/v1 prefix (entity config service)
+    let proxyPath: string;
+    if (pathAfterBase.startsWith('/roles') || pathAfterBase.startsWith('/users')) {
+      // Roles and users go to unified API at /api/v1/roles and /api/v1/users
+      proxyPath = `/api/proxy/api/v1${pathAfterBase}${queryString ? `?${queryString}` : ''}`;
+    } else {
+      // Other endpoints use /api/v1 prefix
+      proxyPath = `/api/proxy/api/v1${pathAfterBase}${queryString ? `?${queryString}` : ''}`;
+    }
     const proxyUrl = new URL(proxyPath, request.url);
+    
+    logger.debug('[Rules-and-Permissions Route] Forwarding', {
+      originalPath: pathname,
+      pathAfterBase,
+      proxyPath,
+      proxyUrl: proxyUrl.toString(),
+      method
+    });
     
     // Prepare headers
     const headers: HeadersInit = {
@@ -91,6 +125,7 @@ async function forwardRequest(request: NextRequest, method: string) {
 }
 
 export async function GET(request: NextRequest) {
+  logger.debug('[Rules-and-Permissions Route] GET handler called', { pathname: request.nextUrl.pathname });
   return forwardRequest(request, 'GET');
 }
 

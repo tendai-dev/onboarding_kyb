@@ -5,23 +5,17 @@ import {
   Container,
   VStack,
   HStack,
-  Text,
-  Input,
-  Button,
+  Input as ChakraInput,
   Flex,
-  Icon,
   Field,
   Spinner,
-  Alert,
-  AlertTitle,
-  AlertDescription,
-  Badge,
   SimpleGrid,
   Checkbox
 } from "@chakra-ui/react";
+import { Typography, Button, IconWrapper, AlertBar, Tag, Input } from "@/lib/mukuruImports";
 import { FiSettings, FiX, FiPlus, FiTrash2, FiArrowUp, FiArrowDown } from "react-icons/fi";
 import AdminSidebar from "../../../../components/AdminSidebar";
-import { useState, useEffect } from "react";
+import { useState, useEffect, use } from "react";
 import { useRouter } from "next/navigation";
 import { entityConfigApiService, WizardConfiguration, EntityType, RequirementsMetadata, Requirement } from "../../../../services/entityConfigApi";
 
@@ -35,8 +29,9 @@ interface WizardStepForm {
   isActive: boolean;
 }
 
-export default function EditWizardConfigurationPage({ params }: { params: { id: string } }) {
+export default function EditWizardConfigurationPage({ params }: { params: Promise<{ id: string }> }) {
   const router = useRouter();
+  const { id } = use(params);
   const [formData, setFormData] = useState({
     entityTypeId: '',
     isActive: true,
@@ -53,7 +48,7 @@ export default function EditWizardConfigurationPage({ params }: { params: { id: 
 
   useEffect(() => {
     loadData();
-  }, [params.id]);
+  }, [id]);
 
   useEffect(() => {
     if (formData.entityTypeId) {
@@ -69,7 +64,7 @@ export default function EditWizardConfigurationPage({ params }: { params: { id: 
       setLoading(true);
       setError(null);
       const [wizardConfigData, entityTypesData, metadataData] = await Promise.all([
-        entityConfigApiService.getWizardConfiguration(params.id),
+        entityConfigApiService.getWizardConfiguration(id),
         entityConfigApiService.getEntityTypes(false, false),
         entityConfigApiService.getRequirementsMetadata(),
       ]);
@@ -279,7 +274,7 @@ export default function EditWizardConfigurationPage({ params }: { params: { id: 
       setSaving(true);
       setError(null);
 
-      await entityConfigApiService.updateWizardConfiguration(params.id, {
+      await entityConfigApiService.updateWizardConfiguration(id, {
         isActive: formData.isActive,
         steps: steps.map(step => ({
           title: step.title.trim(),
@@ -324,7 +319,7 @@ export default function EditWizardConfigurationPage({ params }: { params: { id: 
         <Box flex="1" ml="280px" display="flex" alignItems="center" justifyContent="center">
           <VStack gap="4">
             <Spinner size="xl" color="orange.500" />
-            <Text color="gray.600">Loading wizard configuration...</Text>
+            <Typography color="gray.700" fontWeight="500">Loading wizard configuration...</Typography>
           </VStack>
         </Box>
       </Flex>
@@ -337,7 +332,7 @@ export default function EditWizardConfigurationPage({ params }: { params: { id: 
         <AdminSidebar />
         <Box flex="1" ml="280px" display="flex" alignItems="center" justifyContent="center">
           <VStack gap="4">
-            <Text color="red.600" fontSize="lg">Wizard configuration not found</Text>
+            <Typography color="red.600" fontSize="lg">Wizard configuration not found</Typography>
             <Button onClick={() => router.push("/wizard-configurations")}>Back to Wizard Configurations</Button>
           </VStack>
         </Box>
@@ -362,22 +357,23 @@ export default function EditWizardConfigurationPage({ params }: { params: { id: 
         <Box bg="white" borderBottom="1px" borderColor="gray.200" py="6">
           <Container maxW="6xl">
             <VStack align="start" gap="2">
-              <Text as="h1" fontSize="2xl" fontWeight="bold" color="gray.800">
+              <Typography as="h1" fontSize="2xl" fontWeight="bold" color="gray.900">
                 Edit Wizard Configuration
-              </Text>
-              <Text color="gray.600" fontSize="sm">
+              </Typography>
+              <Typography color="gray.700" fontSize="sm" fontWeight="500">
                 Update wizard configuration for {wizardConfig.entityTypeDisplayName || 'Entity Type'}
-              </Text>
+              </Typography>
             </VStack>
           </Container>
         </Box>
 
         {error && (
           <Container maxW="6xl" py="4">
-            <Alert.Root status="error" borderRadius="md">
-              <AlertTitle>Error!</AlertTitle>
-              <AlertDescription>{error}</AlertDescription>
-            </Alert.Root>
+            <AlertBar
+              status="error"
+              title="Error!"
+              description={error}
+            />
           </Container>
         )}
 
@@ -386,38 +382,53 @@ export default function EditWizardConfigurationPage({ params }: { params: { id: 
             {/* Basic Information */}
             <Box bg="white" borderRadius="lg" border="1px" borderColor="gray.200" p="5">
               <VStack align="stretch" gap="3">
-                <Text fontSize="lg" fontWeight="bold" color="gray.800">
+                <Typography fontSize="lg" fontWeight="bold" color="gray.900">
                   Basic Information
-                </Text>
+                </Typography>
 
                 <Field.Root>
-                  <Field.Label fontSize="sm" fontWeight="medium" color="gray.700">
+                  <Field.Label fontSize="sm" fontWeight="bold" color="gray.800">
                     Entity Type
                   </Field.Label>
-                  <Input
-                    value={entityTypes.find(et => et.id === formData.entityTypeId)?.displayName || ''}
+                  <input
+                    type="text"
+                    value={entityTypes.find(et => et.id === formData.entityTypeId)?.displayName || wizardConfig?.entityTypeDisplayName || wizardConfig?.entity_type_display_name || 'Loading...'}
                     readOnly
-                    bg="gray.100"
-                    borderColor="gray.300"
-                    cursor="not-allowed"
+                    style={{
+                      width: '100%',
+                      backgroundColor: '#F3F4F6',
+                      border: '1px solid #D1D5DB',
+                      borderRadius: '6px',
+                      padding: '12px',
+                      fontSize: '14px',
+                      color: '#111827',
+                      fontWeight: '600',
+                      cursor: 'not-allowed',
+                      outline: 'none'
+                    }}
                   />
-                  <Text fontSize="xs" color="gray.500">
+                  <Typography fontSize="xs" color="gray.600" fontWeight="500">
                     Entity type cannot be changed after creation
-                  </Text>
+                  </Typography>
                 </Field.Root>
 
                 <HStack justify="space-between" align="center">
-                  <Text fontSize="sm" fontWeight="medium" color="gray.700">
+                  <Typography fontSize="sm" fontWeight="bold" color="gray.800">
                     Active (available for use)
-                  </Text>
+                  </Typography>
                   <Button
                     onClick={() => setFormData(prev => ({ ...prev, isActive: !prev.isActive }))}
-                    colorScheme={formData.isActive ? "orange" : "gray"}
-                    variant={formData.isActive ? "solid" : "outline"}
+                    variant={formData.isActive ? "primary" : "secondary"}
                     size="md"
-                    px="4"
+                    bg={formData.isActive ? "#22C55E" : "white"}
+                    border={formData.isActive ? "none" : "1px solid"}
+                    borderColor={formData.isActive ? "transparent" : "gray.300"}
+                    fontWeight="600"
+                    _hover={formData.isActive ? { bg: "#16A34A" } : { bg: "gray.50" }}
                   >
+                    <Typography as="span" color={formData.isActive ? "white" : "gray.700"} fontWeight="600">
                     {formData.isActive ? "Active" : "Inactive"}
+                    </Typography>
                   </Button>
                 </HStack>
               </VStack>
@@ -427,17 +438,19 @@ export default function EditWizardConfigurationPage({ params }: { params: { id: 
             <Box bg="white" borderRadius="lg" border="1px" borderColor="gray.200" p="5">
               <VStack align="stretch" gap="3">
                 <HStack justify="space-between" align="center">
-                  <Text fontSize="lg" fontWeight="bold" color="gray.800">
+                  <Typography fontSize="lg" fontWeight="bold" color="gray.900">
                     Wizard Steps
-                  </Text>
+                  </Typography>
                   <Button
                     onClick={addStep}
                     size="sm"
-                    variant="outline"
-                    colorScheme="blue"
+                    variant="secondary"
+                    bg="#FF6B35"
+                    fontWeight="600"
+                    _hover={{ bg: "#E55A2B" }}
                   >
-                    <Icon as={FiPlus} mr="2" />
-                    Add Step
+                    <IconWrapper><FiPlus size={16} /></IconWrapper>
+                    <Typography as="span" color="white" fontWeight="600">Add Step</Typography>
                   </Button>
                 </HStack>
 
@@ -452,9 +465,18 @@ export default function EditWizardConfigurationPage({ params }: { params: { id: 
                   >
                     <VStack align="stretch" gap="3">
                       <HStack justify="space-between" align="center">
-                        <Badge colorScheme="blue" size="lg" px="3" py="1">
+                        <Tag 
+                          variant="info"
+                          style={{
+                            backgroundColor: '#3B82F6',
+                            color: '#FFFFFF',
+                            fontWeight: '600',
+                            padding: '4px 12px',
+                            fontSize: '12px',
+                          }}
+                        >
                           Step {step.stepNumber}
-                        </Badge>
+                        </Tag>
                         <HStack gap="2">
                           <Button
                             size="sm"
@@ -462,7 +484,7 @@ export default function EditWizardConfigurationPage({ params }: { params: { id: 
                             onClick={() => moveStep(index, 'up')}
                             disabled={index === 0}
                           >
-                            <Icon as={FiArrowUp} />
+                            <IconWrapper><FiArrowUp size={16} /></IconWrapper>
                           </Button>
                           <Button
                             size="sm"
@@ -470,16 +492,15 @@ export default function EditWizardConfigurationPage({ params }: { params: { id: 
                             onClick={() => moveStep(index, 'down')}
                             disabled={index === steps.length - 1}
                           >
-                            <Icon as={FiArrowDown} />
+                            <IconWrapper><FiArrowDown size={16} /></IconWrapper>
                           </Button>
                           {steps.length > 1 && (
                             <Button
                               size="sm"
                               variant="ghost"
-                              colorScheme="red"
                               onClick={() => removeStep(index)}
                             >
-                              <Icon as={FiTrash2} />
+                              <IconWrapper><FiTrash2 size={16} /></IconWrapper>
                             </Button>
                           )}
                         </HStack>
@@ -487,38 +508,54 @@ export default function EditWizardConfigurationPage({ params }: { params: { id: 
 
                       <SimpleGrid columns={2} gap="3">
                         <Field.Root>
-                          <Field.Label fontSize="sm" fontWeight="medium" color="gray.700">
+                          <Field.Label fontSize="sm" fontWeight="bold" color="gray.800">
                             Title *
                           </Field.Label>
-                          <Input
+                          <ChakraInput
                             value={step.title}
                             onChange={(e) => updateStep(index, 'title', e.target.value)}
                             placeholder="e.g., Business Information"
                             bg="white"
                             borderColor="gray.300"
+                            borderWidth="1px"
+                            borderRadius="md"
+                            py="3"
+                            px="3"
+                            fontSize="sm"
+                            color="gray.900"
+                            fontWeight="500"
                             _focus={{ borderColor: "orange.500", boxShadow: "0 0 0 1px #FF6B35" }}
+                            _placeholder={{ color: "gray.400" }}
                             required
                           />
                         </Field.Root>
 
                         <Field.Root>
-                          <Field.Label fontSize="sm" fontWeight="medium" color="gray.700">
+                          <Field.Label fontSize="sm" fontWeight="bold" color="gray.800">
                             Subtitle *
                           </Field.Label>
-                          <Input
+                          <ChakraInput
                             value={step.subtitle}
                             onChange={(e) => updateStep(index, 'subtitle', e.target.value)}
                             placeholder="e.g., Enter your business details"
                             bg="white"
                             borderColor="gray.300"
+                            borderWidth="1px"
+                            borderRadius="md"
+                            py="3"
+                            px="3"
+                            fontSize="sm"
+                            color="gray.900"
+                            fontWeight="500"
                             _focus={{ borderColor: "orange.500", boxShadow: "0 0 0 1px #FF6B35" }}
+                            _placeholder={{ color: "gray.400" }}
                             required
                           />
                         </Field.Root>
                       </SimpleGrid>
 
                       <Field.Root>
-                        <Field.Label fontSize="sm" fontWeight="medium" color="gray.700">
+                        <Field.Label fontSize="sm" fontWeight="bold" color="gray.800">
                           Checklist Category
                         </Field.Label>
                         <select
@@ -531,7 +568,8 @@ export default function EditWizardConfigurationPage({ params }: { params: { id: 
                             padding: '10px 12px',
                             fontSize: '14px',
                             width: '100%',
-                            color: '#374151'
+                            color: '#111827',
+                            fontWeight: '500'
                           }}
                         >
                           <option value="">Select category (optional)</option>
@@ -544,7 +582,7 @@ export default function EditWizardConfigurationPage({ params }: { params: { id: 
                       </Field.Root>
 
                       <Field.Root>
-                        <Field.Label fontSize="sm" fontWeight="medium" color="gray.700">
+                        <Field.Label fontSize="sm" fontWeight="bold" color="gray.800">
                           Requirements * (Select individual requirements)
                         </Field.Label>
                         {!selectedEntityType ? (
@@ -555,9 +593,9 @@ export default function EditWizardConfigurationPage({ params }: { params: { id: 
                             borderRadius="lg"
                             p="4"
                           >
-                            <Text fontSize="sm" color="gray.500" textAlign="center">
+                            <Typography fontSize="sm" color="gray.700" fontWeight="500" textAlign="center">
                               Loading entity requirements...
-                            </Text>
+                            </Typography>
                           </Box>
                         ) : entityRequirements.length === 0 ? (
                           <Box
@@ -567,9 +605,9 @@ export default function EditWizardConfigurationPage({ params }: { params: { id: 
                             borderRadius="lg"
                             p="4"
                           >
-                            <Text fontSize="sm" color="gray.500" textAlign="center">
+                            <Typography fontSize="sm" color="gray.700" fontWeight="500" textAlign="center">
                               No requirements configured for this entity type yet
-                            </Text>
+                            </Typography>
                           </Box>
                         ) : (
                           <Box
@@ -596,29 +634,28 @@ export default function EditWizardConfigurationPage({ params }: { params: { id: 
                                 <VStack align="stretch" gap="4">
                                   {Object.entries(groupedByType).map(([type, reqs]) => (
                                     <Box key={type} border="1px" borderColor="gray.200" borderRadius="md" p="3" bg="gray.50">
-                                      <Text fontSize="sm" fontWeight="bold" color="gray.700" mb="2">
+                                      <Typography fontSize="sm" fontWeight="bold" color="gray.900" mb="2">
                                         {type}
-                                      </Text>
+                                      </Typography>
                                       <VStack align="stretch" gap="2">
                                         {reqs.map((req) => (
                                           <HStack key={req.id} gap="2" align="start">
                                             <Checkbox.Root
                                               checked={step.requirementIds.includes(req.id)}
                                               onCheckedChange={() => toggleRequirement(index, req.id)}
-                                              colorScheme="orange"
                                             >
                                               <Checkbox.Control>
                                                 <Checkbox.Indicator />
                                               </Checkbox.Control>
                                             </Checkbox.Root>
                                             <VStack align="start" gap="0" flex="1">
-                                              <Text fontSize="sm" fontWeight="medium" color="gray.800">
+                                              <Typography fontSize="sm" fontWeight="600" color="gray.900">
                                                 {req.displayName}
-                                              </Text>
+                                              </Typography>
                                               {req.description && (
-                                                <Text fontSize="xs" color="gray.600" style={{ display: '-webkit-box', WebkitLineClamp: 1, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
+                                                <Typography fontSize="xs" color="gray.700" fontWeight="500" style={{ display: '-webkit-box', WebkitLineClamp: 1, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
                                                   {req.description}
-                                                </Text>
+                                                </Typography>
                                               )}
                                             </VStack>
                                           </HStack>
@@ -632,14 +669,14 @@ export default function EditWizardConfigurationPage({ params }: { params: { id: 
                           </Box>
                         )}
                         {step.requirementIds.length > 0 && (
-                          <Text fontSize="xs" color="gray.600" mt="2">
+                          <Typography fontSize="xs" color="gray.700" fontWeight="600" mt="2">
                             {step.requirementIds.length} requirement{step.requirementIds.length !== 1 ? 's' : ''} selected
-                          </Text>
+                          </Typography>
                         )}
                       </Field.Root>
 
                       <Field.Root>
-                        <Field.Label fontSize="sm" fontWeight="medium" color="gray.700">
+                        <Field.Label fontSize="sm" fontWeight="bold" color="gray.800">
                           Requirement Types (Auto-selected based on requirements above)
                         </Field.Label>
                         <Box
@@ -652,31 +689,46 @@ export default function EditWizardConfigurationPage({ params }: { params: { id: 
                           {step.requirementTypes.length > 0 ? (
                             <HStack gap="2" flexWrap="wrap">
                               {step.requirementTypes.map((type) => (
-                                <Badge key={type} colorScheme="orange" fontSize="xs" px="2" py="1">
+                                <Tag 
+                                  key={type} 
+                                  variant="warning"
+                                  style={{
+                                    backgroundColor: '#F59E0B',
+                                    color: '#FFFFFF',
+                                    fontWeight: '600',
+                                    padding: '4px 12px',
+                                    fontSize: '12px',
+                                  }}
+                                >
                                   {type}
-                                </Badge>
+                                </Tag>
                               ))}
                             </HStack>
                           ) : (
-                            <Text fontSize="sm" color="gray.500">
+                            <Typography fontSize="sm" color="gray.600" fontWeight="500">
                               Select requirements above to see requirement types
-                            </Text>
+                            </Typography>
                           )}
                         </Box>
                       </Field.Root>
 
                       <HStack justify="space-between" align="center">
-                        <Text fontSize="sm" fontWeight="medium" color="gray.700">
+                        <Typography fontSize="sm" fontWeight="bold" color="gray.800">
                           Step Active
-                        </Text>
+                        </Typography>
                         <Button
                           onClick={() => updateStep(index, 'isActive', !step.isActive)}
-                          colorScheme={step.isActive ? "orange" : "gray"}
-                          variant={step.isActive ? "solid" : "outline"}
+                          variant={step.isActive ? "primary" : "secondary"}
                           size="sm"
-                          px="4"
+                          bg={step.isActive ? "#22C55E" : "white"}
+                          border={step.isActive ? "none" : "1px solid"}
+                          borderColor={step.isActive ? "transparent" : "gray.300"}
+                          fontWeight="600"
+                          _hover={step.isActive ? { bg: "#16A34A" } : { bg: "gray.50" }}
                         >
+                          <Typography as="span" color={step.isActive ? "white" : "gray.700"} fontWeight="600">
                           {step.isActive ? "Active" : "Inactive"}
+                          </Typography>
                         </Button>
                       </HStack>
                     </VStack>
@@ -689,29 +741,32 @@ export default function EditWizardConfigurationPage({ params }: { params: { id: 
             <Flex gap="3" justify="start" pt="3">
               <Button
                 onClick={handleUpdate}
-                colorScheme="orange"
+                variant="primary"
+                size="md"
+                disabled={loading || saving}
                 bg="#FF6B35"
+                fontWeight="600"
                 _hover={{ bg: "#E55A2B" }}
                 _active={{ bg: "#CC4A1F" }}
-                size="lg"
-                px="8"
-                loading={saving}
-                loadingText="Updating..."
-                disabled={loading}
               >
-                <Icon as={FiSettings} mr="2" />
-                Update
+                <IconWrapper><FiSettings size={16} /></IconWrapper>
+                <Typography as="span" color="white" fontWeight="600">
+                {saving ? "Updating..." : "Update"}
+                </Typography>
               </Button>
               <Button
                 onClick={handleCancel}
-                variant="outline"
-                colorScheme="gray"
-                size="lg"
-                px="8"
+                variant="secondary"
+                size="md"
                 disabled={saving || loading}
+                bg="white"
+                border="1px solid"
+                borderColor="gray.300"
+                fontWeight="600"
+                _hover={{ bg: "gray.50", borderColor: "gray.400" }}
               >
-                <Icon as={FiX} mr="2" />
-                Cancel
+                <IconWrapper><FiX size={16} /></IconWrapper>
+                <Typography as="span" color="gray.700" fontWeight="600">Cancel</Typography>
               </Button>
             </Flex>
           </VStack>

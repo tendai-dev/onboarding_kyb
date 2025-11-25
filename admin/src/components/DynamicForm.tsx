@@ -4,19 +4,14 @@ import {
   Box,
   VStack,
   HStack,
-  Text,
-  Input,
   Textarea,
-  Button,
-  Checkbox,
-  Switch,
   SimpleGrid,
   Icon,
-  Badge,
-  Tooltip,
   Spinner,
   Flex
 } from "@chakra-ui/react";
+import { Button, Checkbox, Radio, RadioGroup, Tag, Tooltip, Typography, PhoneInput } from "@/lib/mukuruImports";
+import { Input, Switch } from "@chakra-ui/react";
 import { useState, useEffect } from "react";
 import { FiInfo, FiAlertCircle, FiCheckCircle, FiExternalLink } from "react-icons/fi";
 
@@ -261,10 +256,10 @@ export function DynamicForm({
 
     return (
       <Box key={field.id}>
-        <Text fontSize="sm" fontWeight="medium" color="gray.700" mb="2">
+        <Typography fontSize="sm" fontWeight="medium" color="gray.700" mb="2">
           {field.label}
-          {field.required && <Text as="span" color="red.500" ml="1">*</Text>}
-        </Text>
+          {field.required && <Typography as="span" color="red.500" ml="1">*</Typography>}
+        </Typography>
 
         <Box position="relative">
           {field.type === 'text' && (
@@ -276,7 +271,12 @@ export function DynamicForm({
           )}
 
           {field.type === 'tel' && (
-            <Input {...baseProps} type="tel" />
+            <PhoneInput
+              value={value || ""}
+              onChange={(val) => updateField(field.id, val)}
+              disabled={disabled}
+              placeholder={field.placeholder || "Enter phone number"}
+            />
           )}
 
           {field.type === 'url' && (
@@ -317,75 +317,29 @@ export function DynamicForm({
           )}
 
           {field.type === 'radio' && (
+            <RadioGroup value={value || ""} onChange={(val: string) => updateField(field.id, val)}>
             <VStack align="start" gap="2">
               {field.options?.map(option => (
-                <HStack key={option.value} gap="2">
-                  <input
-                    type="radio"
-                    id={`${field.id}-${option.value}`}
-                    name={field.id}
-                    value={option.value}
-                    checked={value === option.value}
-                    onChange={(e) => updateField(field.id, e.target.value)}
-                    disabled={option.disabled}
-                    style={{ cursor: option.disabled ? 'not-allowed' : 'pointer' }}
-                  />
-                  <label
-                    htmlFor={`${field.id}-${option.value}`}
-                    style={{
-                      cursor: option.disabled ? 'not-allowed' : 'pointer',
-                      opacity: option.disabled ? 0.5 : 1
-                    }}
-                  >
+                  <Radio key={option.value} value={option.value} disabled={option.disabled}>
                     {option.label}
-                  </label>
-                </HStack>
+                  </Radio>
               ))}
             </VStack>
+            </RadioGroup>
           )}
 
           {field.type === 'checkbox' && (
-            <HStack gap="2">
-              <input
-                type="checkbox"
-                id={field.id}
-                checked={!!value}
-                onChange={(e) => updateField(field.id, e.target.checked)}
-                disabled={disabled}
-                style={{ cursor: disabled ? 'not-allowed' : 'pointer' }}
-              />
-              <label
-                htmlFor={field.id}
-                style={{
-                  cursor: disabled ? 'not-allowed' : 'pointer',
-                  marginLeft: '8px'
-                }}
-              >
+            <Checkbox checked={!!value} onCheckedChange={(details) => updateField(field.id, details.checked === true)} disabled={disabled}>
                 {field.label}
-              </label>
-            </HStack>
+            </Checkbox>
           )}
 
           {field.type === 'switch' && (
-            <HStack gap="2">
-              <input
-                type="checkbox"
-                id={`${field.id}-switch`}
-                checked={!!value}
-                onChange={(e) => updateField(field.id, e.target.checked)}
-                disabled={disabled}
-                style={{
-                  width: '44px',
-                  height: '24px',
-                  cursor: disabled ? 'not-allowed' : 'pointer',
-                  appearance: 'none',
-                  backgroundColor: value ? '#3182CE' : '#CBD5E0',
-                  borderRadius: '12px',
-                  position: 'relative',
-                  transition: 'background-color 0.2s'
-                }}
-              />
-            </HStack>
+            <Switch.Root checked={!!value} onCheckedChange={(details) => updateField(field.id, details.checked)} disabled={disabled}>
+              <Switch.Control>
+                <Switch.Thumb />
+              </Switch.Control>
+            </Switch.Root>
           )}
 
           {/* External validation indicator */}
@@ -410,9 +364,9 @@ export function DynamicForm({
 
         {/* Field description */}
         {field.description && (
-          <Text id={`${field.id}-description`} fontSize="xs" color="gray.600" mt="1">
+          <Typography id={`${field.id}-description`} fontSize="xs" color="gray.600" mt="1">
             {field.description}
-          </Text>
+          </Typography>
         )}
 
         {/* External validation message */}
@@ -431,18 +385,18 @@ export function DynamicForm({
                 color={validationResult.status === 'valid' ? 'green.600' : 'red.600'}
                 boxSize="4"
               />
-              <Text fontSize="xs" color={validationResult.status === 'valid' ? 'green.700' : 'red.700'}>
+              <Typography fontSize="xs" color={validationResult.status === 'valid' ? 'green.700' : 'red.700'}>
                 {validationResult.message}
-              </Text>
+              </Typography>
             </HStack>
           </Box>
         )}
 
         {/* Error message */}
         {error && (
-          <Text fontSize="xs" color="red.500" mt="1">
+          <Typography fontSize="xs" color="red.500" mt="1">
             {error}
-          </Text>
+          </Typography>
         )}
       </Box>
     );
@@ -463,12 +417,12 @@ export function DynamicForm({
         <Box mb="6" p="4" bg="gray.50" borderRadius="lg">
           <VStack gap="2" align="stretch">
             <HStack justify="space-between">
-              <Text fontSize="sm" fontWeight="medium" color="gray.700">
+              <Typography fontSize="sm" fontWeight="medium" color="gray.700">
                 Form Progress
-              </Text>
-              <Text fontSize="sm" color="gray.600">
+              </Typography>
+              <Typography fontSize="sm" color="gray.600">
                 {completedFields} of {totalRequiredFields} required fields completed
-              </Text>
+              </Typography>
             </HStack>
             <Box width="100%" height="2" bg="gray.200" borderRadius="full" overflow="hidden">
               <Box
@@ -479,9 +433,9 @@ export function DynamicForm({
                 transition="width 0.3s ease"
               />
             </Box>
-            <Text fontSize="xs" color="gray.500" textAlign="center">
+            <Typography fontSize="xs" color="gray.500" textAlign="center">
               {Math.round(progressPercentage)}% Complete
-            </Text>
+            </Typography>
           </VStack>
         </Box>
       )}
@@ -491,9 +445,9 @@ export function DynamicForm({
           {Object.entries(groupedFields).map(([groupName, groupFields]) => (
             <Box key={groupName}>
               {groupName !== 'default' && (
-                <Text fontSize="lg" fontWeight="semibold" color="gray.800" mb="4">
+                <Typography fontSize="lg" fontWeight="semibold" color="gray.800" mb="4">
                   {groupName}
-                </Text>
+                </Typography>
               )}
               
               <SimpleGrid columns={{ base: 1, md: 2 }} gap="4">
@@ -505,8 +459,8 @@ export function DynamicForm({
           <Flex justify="flex-end" pt="4">
             <Button
               type="submit"
-              colorScheme="orange"
-              size="lg"
+              variant="primary"
+              size="md"
               loading={loading}
               loadingText="Submitting..."
               disabled={disabled || Object.keys(errors).length > 0}

@@ -20,7 +20,7 @@ import Link from "next/link";
 import { useState } from "react";
 import { getCustomerApplication } from "../../../lib/mockData";
 
-const MotionBox = motion(Box);
+const MotionBox = motion.create(Box);
 
 export default function CustomerDocumentsPage() {
   const [selectedCategory, setSelectedCategory] = useState("all");

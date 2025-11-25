@@ -1,19 +1,19 @@
 "use client";
 
-import { ChakraProvider, createSystem, defaultConfig } from "@chakra-ui/react";
+import { Suspense } from "react";
+import { ChakraProvider } from "@chakra-ui/react";
 import { SessionProvider } from "next-auth/react";
+import { MukuruComponentProvider } from "@mukuru/mukuru-react-components";
 import { AuthProvider } from "@/contexts/AuthContext";
-
-const system = createSystem(defaultConfig);
 
 export function Providers({ children }: { children: React.ReactNode }) {
   return (
-    <ChakraProvider value={system}>
-      <SessionProvider>
+    <SessionProvider>
+      <MukuruComponentProvider>
         <AuthProvider>
           {children}
         </AuthProvider>
-      </SessionProvider>
-    </ChakraProvider>
+      </MukuruComponentProvider>
+    </SessionProvider>
   );
 }

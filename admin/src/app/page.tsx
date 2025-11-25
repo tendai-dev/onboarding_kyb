@@ -5,19 +5,21 @@ import {
   Container, 
   VStack, 
   HStack,
-  Text, 
-  Image, 
   Flex,
-  Button,
   Spinner,
+  Button as ChakraButton,
   Icon
 } from "@chakra-ui/react";
+import { Typography, MukuruLogo, IconWrapper } from "@mukuru/mukuru-react-components";
 import { motion } from "framer-motion";
-import { signIn, useSession } from "next-auth/react";
+import { signIn, useSession, getSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { FiShield } from "react-icons/fi";
+import { FiShield, FiLock, FiBarChart2, FiZap } from "react-icons/fi";
 
+// Note: motion() is deprecated but still works. The warning is informational.
+// To suppress: use @ts-expect-error or wait for framer-motion update
+// @ts-expect-error - motion() deprecation warning - will be fixed when framer-motion updates
 const MotionBox = motion(Box);
 
 export default function AdminLoginPage() {
@@ -27,28 +29,91 @@ export default function AdminLoginPage() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (status === "authenticated" && session) {
-      // Check for callbackUrl in query params, otherwise default to dashboard
+    // Check for callbackUrl in query params first (handles post-auth redirects)
       const urlParams = new URLSearchParams(window.location.search);
       const callbackUrl = urlParams.get('callbackUrl');
       
+    // Determine redirect path
+    let redirectPath = '/dashboard';
       if (callbackUrl) {
         try {
           const decodedUrl = decodeURIComponent(callbackUrl);
           // If it's a full URL, extract the path
           if (decodedUrl.startsWith('http://') || decodedUrl.startsWith('https://')) {
             const url = new URL(decodedUrl);
-            router.push(url.pathname + url.search);
+          redirectPath = url.pathname + url.search;
+        } else if (decodedUrl.startsWith('/')) {
+          redirectPath = decodedUrl;
           } else {
-            // It's already a path
-            router.push(decodedUrl);
+          redirectPath = decodedUrl;
           }
         } catch (e) {
-          // If URL parsing fails, just use the decoded string as path
-          router.push(decodeURIComponent(callbackUrl));
+        console.error('Error parsing callbackUrl:', e);
+        redirectPath = '/dashboard';
+      }
+    }
+    
+    // If we have a callbackUrl, this means we just came back from Azure AD
+    // The session should be established, but might not be detected yet
+    // Try multiple approaches to redirect
+    if (callbackUrl) {
+      console.log('CallbackUrl detected after Azure AD auth, redirecting...', { callbackUrl, redirectPath, status });
+      
+      // Approach 1: If session is authenticated, redirect immediately
+      if (status === "authenticated" && session) {
+        console.log('Session authenticated, redirecting to:', redirectPath);
+        window.location.replace(redirectPath);
+        return;
+      }
+      
+      // Approach 2: Force session check and redirect if found
+      getSession().then((sessionData) => {
+        console.log('Session check result:', { hasSession: !!sessionData, status });
+        if (sessionData) {
+          console.log('Session found via getSession, redirecting to:', redirectPath);
+          window.location.replace(redirectPath);
         }
+      }).catch((err) => {
+        console.error('Error checking session:', err);
+      });
+      
+      // Approach 3: If status is loading, wait a bit then redirect anyway
+      // (NextAuth should have authenticated by now)
+      if (status === "loading") {
+        console.log('Status is loading, waiting for session...');
+        const timeout = setTimeout(() => {
+          getSession().then((sessionData) => {
+            if (sessionData) {
+              console.log('Session found after wait, redirecting to:', redirectPath);
+              window.location.replace(redirectPath);
       } else {
-        router.push('/dashboard');
+              // Even if no session, try redirecting - NextAuth might have set cookies
+              console.log('No session found but callbackUrl present, attempting redirect anyway');
+              window.location.replace(redirectPath);
+            }
+          });
+        }, 500);
+        return () => clearTimeout(timeout);
+      }
+      
+      // Approach 4: If unauthenticated but we have callbackUrl, redirect anyway
+      // This handles edge cases where session isn't detected but auth succeeded
+      if (status === "unauthenticated") {
+        console.log('Status unauthenticated but callbackUrl present, redirecting anyway');
+        // Small delay to let cookies settle
+        setTimeout(() => {
+          window.location.replace(redirectPath);
+        }, 100);
+      }
+      
+      return;
+    }
+    
+    // Normal flow: if authenticated, redirect to dashboard
+    if (status === "authenticated" && session) {
+      console.log('Authenticated, redirecting to:', redirectPath);
+      if (window.location.pathname !== redirectPath.split('?')[0]) {
+        window.location.replace(redirectPath);
       }
       return;
     }
@@ -59,10 +124,19 @@ export default function AdminLoginPage() {
       const errorParam = urlParams.get('error');
       if (errorParam) {
         const errorMessages: Record<string, string> = {
-          'Configuration': 'There is a problem with the server configuration.',
+          'Configuration': 'There is a problem with the server configuration. Please contact support.',
           'AccessDenied': 'You do not have permission to sign in.',
           'Verification': 'The verification token has expired or has already been used.',
-          'Default': 'An error occurred during authentication.',
+          'OAuthCallbackError': 'An error occurred during the authentication callback. This may be due to a configuration issue. Please try signing in again.',
+          'OAuthSignin': 'An error occurred while signing in. Please try again.',
+          'OAuthCreateAccount': 'Could not create an account. Please contact support.',
+          'EmailCreateAccount': 'Could not create an account with this email.',
+          'Callback': 'An error occurred in the authentication callback.',
+          'OAuthAccountNotLinked': 'An account with this email already exists. Please sign in with your original provider.',
+          'EmailSignin': 'An error occurred sending the email. Please try again.',
+          'CredentialsSignin': 'Invalid credentials provided.',
+          'SessionRequired': 'Please sign in to access this page.',
+          'Default': 'An error occurred during authentication. Please try again or contact support if the problem persists.',
         };
         setError(errorMessages[errorParam] || errorMessages['Default']);
       }
@@ -104,7 +178,7 @@ export default function AdminLoginPage() {
         right="0"
         width="50%"
         height="100%"
-        bg="linear-gradient(135deg, #FF6B35 0%, #F7931E 100%)"
+        bg="linear-gradient(135deg, #F05423 0%, #DD4A1F 100%)"
         clipPath="polygon(30% 0%, 100% 0%, 100% 100%, 0% 100%)"
         initial={{ opacity: 0, x: 100 }}
         animate={{ opacity: 1, x: 0 }}
@@ -123,12 +197,7 @@ export default function AdminLoginPage() {
           >
             {/* Logo */}
             <Box mb="8">
-              <Image
-                src="/mukuru-logo.png"
-                alt="Mukuru Logo"
-                height="60px"
-                width="auto"
-              />
+              <MukuruLogo height="60px" />
             </Box>
 
             <MotionBox
@@ -143,12 +212,12 @@ export default function AdminLoginPage() {
               <Box p="10">
                 <VStack gap="6" align="stretch">
                   <VStack gap="2" align="start">
-                    <Text as="h1" fontSize="3xl" fontWeight="bold" color="gray.800">
+                    <Typography as="h1" fontSize="3xl" fontWeight="bold" color="gray.800">
                       Admin Access
-                    </Text>
-                    <Text color="gray.600" mt="2">
+                    </Typography>
+                    <Typography color="gray.600" mt="2">
                       Secure administrative portal with Azure AD authentication
-                    </Text>
+                    </Typography>
                   </VStack>
 
                   {error && (
@@ -160,38 +229,42 @@ export default function AdminLoginPage() {
                       borderRadius="md"
                       color="red.700"
                     >
-                      <Text fontSize="sm">{error}</Text>
+                      <Typography fontSize="sm">{error}</Typography>
                     </Box>
                   )}
 
                   <VStack gap="4" align="stretch">
-                    <Button
+                    <ChakraButton
                       onClick={handleAzureADSignIn}
-                      variant="solid"
-                      colorScheme="blue"
-                      size="lg"
                       width="100%"
+                      disabled={isLoading}
+                      bg="#F05423"
+                      color="white"
+                      size="md"
+                      fontWeight="semibold"
+                      fontSize="md"
+                      _hover={{ bg: "#DD4A1F" }}
+                      _active={{ bg: "#CA401B" }}
                       loading={isLoading}
                       loadingText="Signing in..."
-                      height="56px"
-                      fontSize="lg"
-                      fontWeight="semibold"
                     >
                       <HStack gap="2">
-                        <Icon as={FiShield} boxSize="5" />
-                        <Text>Sign in with Microsoft</Text>
+                        <Icon as={FiShield} boxSize="20px" color="white" />
+                        <Typography color="white" fontWeight="semibold">
+                          Sign in with Microsoft
+                        </Typography>
                       </HStack>
-                    </Button>
+                    </ChakraButton>
 
-                    <Text color="gray.500" fontSize="sm" textAlign="center" mt="2">
+                    <Typography color="gray.500" fontSize="sm" textAlign="center" mt="2">
                       Use your Microsoft account to access the admin portal
-                    </Text>
+                    </Typography>
                   </VStack>
 
                   <VStack gap="4" mt="4">
-                    <Text color="gray.500" fontSize="sm" textAlign="center">
+                    <Typography color="gray.500" fontSize="sm" textAlign="center">
                       Authorized personnel only
-                    </Text>
+                    </Typography>
                   </VStack>
                 </VStack>
               </Box>
@@ -211,59 +284,59 @@ export default function AdminLoginPage() {
             animate={{ opacity: 1, x: 0 }}
             transition={{ duration: 0.6, delay: 0.6 }}
           >
-            <VStack gap="8" align="start" maxW="400px" pr="16">
-              <Text as="h2" fontSize="4xl" fontWeight="bold" lineHeight="1.2">
+            <VStack gap="8" align="start" maxW="400px" pr="8" ml="8">
+              <Typography as="h2" fontSize="4xl" fontWeight="bold" lineHeight="1.2" color="white">
                 Administrative Portal
-              </Text>
+              </Typography>
               
-              <Text as="p" fontSize="xl" opacity="0.9" lineHeight="1.6">
+              <Typography as="p" fontSize="xl" opacity="0.9" lineHeight="1.6" color="white">
                 Secure access to manage applications, monitor compliance, and oversee the digital onboarding process.
-              </Text>
+              </Typography>
 
               <VStack gap="4" align="start">
-                <HStack>
+                <HStack gap="3">
                   <Box
-                    width="24px"
-                    height="24px"
+                    width="32px"
+                    height="32px"
                     borderRadius="50%"
                     bg="rgba(255, 255, 255, 0.2)"
                     display="flex"
                     alignItems="center"
                     justifyContent="center"
                   >
-                    <Text fontSize="sm" fontWeight="bold">🔒</Text>
+                    <Icon as={FiLock} boxSize="18px" color="white" />
                   </Box>
-                  <Text fontSize="lg">Azure AD authentication</Text>
+                  <Typography fontSize="lg" color="white">Azure AD authentication</Typography>
                 </HStack>
                 
-                <HStack>
+                <HStack gap="3">
                   <Box
-                    width="24px"
-                    height="24px"
+                    width="32px"
+                    height="32px"
                     borderRadius="50%"
                     bg="rgba(255, 255, 255, 0.2)"
                     display="flex"
                     alignItems="center"
                     justifyContent="center"
                   >
-                    <Text fontSize="sm" fontWeight="bold">📊</Text>
+                    <Icon as={FiBarChart2} boxSize="18px" color="white" />
                   </Box>
-                  <Text fontSize="lg">Application management</Text>
+                  <Typography fontSize="lg" color="white">Application management</Typography>
                 </HStack>
                 
-                <HStack>
+                <HStack gap="3">
                   <Box
-                    width="24px"
-                    height="24px"
+                    width="32px"
+                    height="32px"
                     borderRadius="50%"
                     bg="rgba(255, 255, 255, 0.2)"
                     display="flex"
                     alignItems="center"
                     justifyContent="center"
                   >
-                    <Text fontSize="sm" fontWeight="bold">⚡</Text>
+                    <Icon as={FiZap} boxSize="18px" color="white" />
                   </Box>
-                  <Text fontSize="lg">Real-time monitoring</Text>
+                  <Typography fontSize="lg" color="white">Real-time monitoring</Typography>
                 </HStack>
               </VStack>
             </VStack>

@@ -22,14 +22,24 @@ using Serilog;
 using Serilog.Events;
 using Serilog.Sinks.Elasticsearch;
 using StackExchange.Redis;
-using Shared.Sentry;
+// using Shared.Sentry; // Shared project not referenced - Sentry configured directly below
 
 var builder = WebApplication.CreateBuilder(args);
 
 // ========================================
 // Sentry Error Monitoring
 // ========================================
-builder.AddSentry();
+// Sentry configuration
+var sentryDsn = builder.Configuration["Sentry:Dsn"] ?? Environment.GetEnvironmentVariable("SENTRY_DSN");
+if (!string.IsNullOrEmpty(sentryDsn))
+{
+    builder.WebHost.UseSentry(options =>
+    {
+        options.Dsn = sentryDsn;
+        options.Environment = builder.Environment.EnvironmentName;
+        options.TracesSampleRate = builder.Configuration.GetValue<double>("Sentry:TracesSampleRate", 0.1);
+    });
+}
 
 // ========================================
 // Logging with Serilog
@@ -126,6 +136,114 @@ builder.Services.AddDbContext<OnboardingApi.Infrastructure.Persistence.Notificat
 });
 
 // ========================================
+// Messaging Module Database Context
+// ========================================
+builder.Services.AddDbContext<OnboardingApi.Infrastructure.Persistence.Messaging.MessagingDbContext>(options =>
+{
+    options.UseNpgsql(
+        builder.Configuration.GetConnectionString("PostgreSQL") ?? builder.Configuration.GetConnectionString("Messaging:PostgreSQL"),
+        npgsqlOptions =>
+        {
+            npgsqlOptions.EnableRetryOnFailure(
+                maxRetryCount: 5,
+                maxRetryDelay: TimeSpan.FromSeconds(10),
+                errorCodesToAdd: null);
+            // Use messaging schema
+            npgsqlOptions.MigrationsHistoryTable("__EFMigrationsHistory", "messaging");
+        });
+});
+
+// ========================================
+// Entity Configuration Module Database Context
+// ========================================
+builder.Services.AddDbContext<OnboardingApi.Infrastructure.Persistence.EntityConfiguration.EntityConfigurationDbContext>(options =>
+{
+    options.UseNpgsql(
+        builder.Configuration.GetConnectionString("PostgreSQL") ?? builder.Configuration.GetConnectionString("EntityConfiguration:PostgreSQL"),
+        npgsqlOptions =>
+        {
+            npgsqlOptions.EnableRetryOnFailure(
+                maxRetryCount: 5,
+                maxRetryDelay: TimeSpan.FromSeconds(10),
+                errorCodesToAdd: null);
+            // Use entity_configuration schema
+            npgsqlOptions.MigrationsHistoryTable("__EFMigrationsHistory", "entity_configuration");
+        });
+});
+
+// ========================================
+// Work Queue Module Database Context
+// ========================================
+builder.Services.AddDbContext<OnboardingApi.Infrastructure.Persistence.WorkQueue.WorkQueueDbContext>(options =>
+{
+    options.UseNpgsql(
+        builder.Configuration.GetConnectionString("PostgreSQL") ?? builder.Configuration.GetConnectionString("WorkQueue:PostgreSQL"),
+        npgsqlOptions =>
+        {
+            npgsqlOptions.EnableRetryOnFailure(
+                maxRetryCount: 5,
+                maxRetryDelay: TimeSpan.FromSeconds(10),
+                errorCodesToAdd: null);
+            // Use work_queue schema
+            npgsqlOptions.MigrationsHistoryTable("__EFMigrationsHistory", "work_queue");
+        });
+});
+
+// ========================================
+// Risk Module Database Context
+// ========================================
+builder.Services.AddDbContext<OnboardingApi.Infrastructure.Persistence.Risk.RiskDbContext>(options =>
+{
+    options.UseNpgsql(
+        builder.Configuration.GetConnectionString("PostgreSQL") ?? builder.Configuration.GetConnectionString("Risk:PostgreSQL"),
+        npgsqlOptions =>
+        {
+            npgsqlOptions.EnableRetryOnFailure(
+                maxRetryCount: 5,
+                maxRetryDelay: TimeSpan.FromSeconds(10),
+                errorCodesToAdd: null);
+            // Use risk schema
+            npgsqlOptions.MigrationsHistoryTable("__EFMigrationsHistory", "risk");
+        });
+});
+
+// ========================================
+// Projections Module Database Context
+// ========================================
+builder.Services.AddDbContext<OnboardingApi.Infrastructure.Persistence.Projections.ProjectionsDbContext>(options =>
+{
+    options.UseNpgsql(
+        builder.Configuration.GetConnectionString("PostgreSQL") ?? builder.Configuration.GetConnectionString("Projections:PostgreSQL"),
+        npgsqlOptions =>
+        {
+            npgsqlOptions.EnableRetryOnFailure(
+                maxRetryCount: 5,
+                maxRetryDelay: TimeSpan.FromSeconds(10),
+                errorCodesToAdd: null);
+            // Use projections schema
+            npgsqlOptions.MigrationsHistoryTable("__EFMigrationsHistory", "projections");
+        });
+});
+
+// ========================================
+// Document Module Database Context
+// ========================================
+builder.Services.AddDbContext<OnboardingApi.Infrastructure.Persistence.Document.DocumentDbContext>(options =>
+{
+    options.UseNpgsql(
+        builder.Configuration.GetConnectionString("PostgreSQL") ?? builder.Configuration.GetConnectionString("Document:PostgreSQL"),
+        npgsqlOptions =>
+        {
+            npgsqlOptions.EnableRetryOnFailure(
+                maxRetryCount: 5,
+                maxRetryDelay: TimeSpan.FromSeconds(10),
+                errorCodesToAdd: null);
+            // Use document schema
+            npgsqlOptions.MigrationsHistoryTable("__EFMigrationsHistory", "document");
+        });
+});
+
+// ========================================
 // Redis (Cache + Idempotency)
 // ========================================
 builder.Services.AddSingleton<IConnectionMultiplexer>(sp =>
@@ -171,6 +289,52 @@ builder.Services.AddScoped<OnboardingApi.Application.Notification.Interfaces.ISm
 builder.Services.AddScoped<OnboardingApi.Application.Notification.Interfaces.INotificationService, OnboardingApi.Infrastructure.Services.NotificationServiceImpl>();
 
 // ========================================
+// Messaging Module Repositories
+// ========================================
+builder.Services.AddScoped<OnboardingApi.Application.Messaging.Interfaces.IMessageRepository, OnboardingApi.Infrastructure.Persistence.Messaging.MessageRepository>();
+
+// ========================================
+// Webhook Module Services
+// ========================================
+builder.Services.AddHttpClient<OnboardingApi.Application.Webhook.Interfaces.IWebhookDeliveryService, OnboardingApi.Infrastructure.Services.WebhookDeliveryService>();
+
+// ========================================
+// Entity Configuration Module Repositories
+// ========================================
+builder.Services.AddScoped<OnboardingApi.Application.EntityConfiguration.Interfaces.IEntityTypeRepository, OnboardingApi.Infrastructure.Persistence.EntityConfiguration.EntityTypeRepository>();
+builder.Services.AddScoped<OnboardingApi.Application.EntityConfiguration.Interfaces.IRequirementRepository, OnboardingApi.Infrastructure.Persistence.EntityConfiguration.RequirementRepository>();
+builder.Services.AddScoped<OnboardingApi.Application.EntityConfiguration.Interfaces.IWizardConfigurationRepository, OnboardingApi.Infrastructure.Persistence.EntityConfiguration.WizardConfigurationRepository>();
+builder.Services.AddScoped<OnboardingApi.Application.EntityConfiguration.Interfaces.IRoleRepository, OnboardingApi.Infrastructure.Persistence.EntityConfiguration.RoleRepository>();
+builder.Services.AddScoped<OnboardingApi.Application.EntityConfiguration.Interfaces.IUserRepository, OnboardingApi.Infrastructure.Persistence.EntityConfiguration.UserRepository>();
+
+// ========================================
+// Work Queue Module Repositories
+// ========================================
+builder.Services.AddScoped<OnboardingApi.Application.WorkQueue.Interfaces.IWorkItemRepository, OnboardingApi.Infrastructure.Persistence.WorkQueue.WorkItemRepository>();
+
+// ========================================
+// Risk Module Repositories
+// ========================================
+builder.Services.AddScoped<OnboardingApi.Application.Risk.Interfaces.IRiskAssessmentRepository, OnboardingApi.Infrastructure.Persistence.Risk.RiskAssessmentRepository>();
+
+// ========================================
+// Projections Module Repositories
+// ========================================
+builder.Services.AddScoped<OnboardingApi.Application.Projections.Interfaces.IProjectionRepository, OnboardingApi.Infrastructure.Persistence.Projections.ProjectionRepository>();
+
+// ========================================
+// Document Module Repositories
+// ========================================
+builder.Services.AddScoped<OnboardingApi.Application.Document.Interfaces.IDocumentRepository, OnboardingApi.Infrastructure.Persistence.Document.DocumentRepository>();
+
+// ========================================
+// MinIO Object Storage for Documents
+// ========================================
+builder.Services.Configure<OnboardingApi.Infrastructure.Storage.MinIOOptions>(builder.Configuration.GetSection("Storage"));
+// MinIOObjectStorage now creates and configures the client itself
+builder.Services.AddScoped<OnboardingApi.Application.Document.Interfaces.IObjectStorage, OnboardingApi.Infrastructure.Storage.MinIOObjectStorage>();
+
+// ========================================
 // HTTP Client Factory
 // ========================================
 builder.Services.AddHttpClient();
@@ -206,6 +370,18 @@ builder.Services.AddMediatR(cfg =>
     cfg.RegisterServicesFromAssembly(typeof(OnboardingApi.Application.Checklist.Commands.CreateChecklistCommand).Assembly);
     // Register Notification module handlers
     cfg.RegisterServicesFromAssembly(typeof(OnboardingApi.Application.Notification.Commands.SendNotificationCommand).Assembly);
+    // Register Messaging module handlers
+    cfg.RegisterServicesFromAssembly(typeof(OnboardingApi.Application.Messaging.Commands.SendMessageCommand).Assembly);
+    // Register Entity Configuration module handlers
+    cfg.RegisterServicesFromAssembly(typeof(OnboardingApi.Application.EntityConfiguration.Commands.CreateEntityTypeCommand).Assembly);
+    // Register Work Queue module handlers
+    cfg.RegisterServicesFromAssembly(typeof(OnboardingApi.Application.WorkQueue.Commands.CreateWorkItemCommand).Assembly);
+    // Register Risk module handlers
+    cfg.RegisterServicesFromAssembly(typeof(OnboardingApi.Application.Risk.Commands.CreateRiskAssessmentCommand).Assembly);
+    // Register Projections module handlers
+    cfg.RegisterServicesFromAssembly(typeof(OnboardingApi.Application.Projections.Queries.GetDashboardQuery).Assembly);
+    // Register Document module handlers
+    cfg.RegisterServicesFromAssembly(typeof(OnboardingApi.Application.Document.Commands.UploadDocumentCommand).Assembly);
 });
 
 // Pipeline behaviors
@@ -241,6 +417,11 @@ builder.Services.AddOpenTelemetry()
                 options.Protocol = OtlpExportProtocol.Grpc;
             });
     });
+
+// ========================================
+// SignalR for Real-Time Updates
+// ========================================
+builder.Services.AddSignalR();
 
 // ========================================
 // Controllers + API
@@ -304,9 +485,11 @@ builder.Services.AddCors(options =>
 {
     options.AddDefaultPolicy(policy =>
     {
-        policy.AllowAnyOrigin()
+        // Allow specific origins for local development with credentials
+        policy.WithOrigins("http://localhost:3000", "http://localhost:3001") 
               .AllowAnyMethod()
               .AllowAnyHeader()
+              .AllowCredentials() // Crucial for SignalR with credentials
               .WithExposedHeaders("X-Request-Id", "ETag", "Last-Modified");
     });
 });
@@ -322,7 +505,11 @@ var app = builder.Build();
 // ========================================
 // Sentry Middleware
 // ========================================
-app.UseSentry();
+// Sentry tracing middleware
+if (!string.IsNullOrEmpty(builder.Configuration["Sentry:Dsn"] ?? Environment.GetEnvironmentVariable("SENTRY_DSN")))
+{
+    app.UseSentryTracing();
+}
 
 // ========================================
 // Middleware Pipeline
@@ -368,9 +555,14 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseCors();
+
+// SignalR Hub - Map early to allow WebSocket negotiation (before auth middleware)
+app.MapHub<OnboardingApi.Presentation.Hubs.MessagingHub>("/api/v1/messages/hub");
+
 app.UseDevelopmentAuth(); // Enable development authentication for service-to-service calls
 app.UseAuthenticationMiddleware();
 app.UseMiddleware<OnboardingApi.Presentation.Middleware.PermissionsMiddleware>();
+
 app.MapControllers();
 app.MapHealthChecks("/health");
 app.MapHealthChecks("/health/live", new Microsoft.AspNetCore.Diagnostics.HealthChecks.HealthCheckOptions
@@ -381,57 +573,14 @@ app.MapHealthChecks("/health/live", new Microsoft.AspNetCore.Diagnostics.HealthC
 // ========================================
 // Database Migration
 // ========================================
-using var scope = app.Services.CreateScope();
-var onboardingContext = scope.ServiceProvider.GetRequiredService<OnboardingDbContext>();
-try
-{
-    await onboardingContext.Database.EnsureCreatedAsync();
-    Log.Information("Onboarding database migration completed successfully");
-}
-catch (Exception ex)
-{
-    Log.Error(ex, "Onboarding database migration failed: {Error}", ex.Message);
-    throw;
-}
-
-// Audit module database migration
-var auditContext = scope.ServiceProvider.GetRequiredService<OnboardingApi.Infrastructure.Persistence.Audit.AuditLogDbContext>();
-try
-{
-    await auditContext.Database.EnsureCreatedAsync();
-    Log.Information("Audit log database migration completed successfully");
-}
-catch (Exception ex)
-{
-    Log.Error(ex, "Audit log database migration failed: {Error}", ex.Message);
-    throw;
-}
-
-// Checklist module database migration
-var checklistContext = scope.ServiceProvider.GetRequiredService<OnboardingApi.Infrastructure.Persistence.Checklist.ChecklistDbContext>();
-try
-{
-    await checklistContext.Database.EnsureCreatedAsync();
-    Log.Information("Checklist database migration completed successfully");
-}
-catch (Exception ex)
-{
-    Log.Error(ex, "Checklist database migration failed: {Error}", ex.Message);
-    throw;
-}
-
-// Notification module database migration
-var notificationContext = scope.ServiceProvider.GetRequiredService<OnboardingApi.Infrastructure.Persistence.Notification.NotificationDbContext>();
-try
-{
-    await notificationContext.Database.EnsureCreatedAsync();
-    Log.Information("Notification database migration completed successfully");
-}
-catch (Exception ex)
-{
-    Log.Error(ex, "Notification database migration failed: {Error}", ex.Message);
-    throw;
-}
+// NOTE: Migrations are now handled by the independent OnboardingApi.Migrations project
+// Run migrations separately before starting the application:
+//   dotnet run --project src/Migrations/OnboardingApi.Migrations.csproj
+// 
+// DO NOT use EnsureCreatedAsync() as it will drop and recreate tables, causing data loss!
+// Migrations should be applied using: Database.MigrateAsync() in the migration project
+//
+// For production deployments, run migrations as a separate step before deploying the application.
 
 // ========================================
 // Run Application

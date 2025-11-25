@@ -1,3 +1,0 @@
-"use client";
-import{jsx as r}from"react/jsx-runtime";import{useRecipe as e,chakra as t}from"@chakra-ui/react";import{linkRecipe as i}from"../../../configs/themes/link.recipe.js";import{forwardRef as o}from"react";const a=o((o,a)=>{const{children:n,disabled:c,external:l,href:s,target:p,rel:m,onClick:d,...f}=o,h=e({recipe:i}),[k,u]=h.splitVariantProps(f),b=h(k),g=l?"_blank":p,v=l?"noopener noreferrer":m;return r(t.a,{ref:a,href:c?void 0:s,target:g,rel:v,css:b,"data-disabled":c?"":void 0,onClick:r=>{c?r.preventDefault():d?.(r)},...u,children:n})});a.displayName="Link";export{a as Link};
-//# sourceMappingURL=Link.js.map

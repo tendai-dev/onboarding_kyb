@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth';
+import { auth } from '@/lib/auth';
 
 /**
  * Checklist API route - routes through centralized proxy for BFF pattern
@@ -8,15 +7,24 @@ import { authOptions } from '@/lib/auth';
  */
 async function forwardRequest(request: NextRequest, method: string) {
   try {
-    const session = await getServerSession(authOptions);
+    const session = await auth();
     const pathname = request.nextUrl.pathname;
     const pathAfterChecklist = pathname.replace('/api/checklist', '') || '';
     const searchParams = request.nextUrl.searchParams;
     const queryString = searchParams.toString();
-    const servicePath = pathAfterChecklist.startsWith('/') ? pathAfterChecklist : `/${pathAfterChecklist}`;
+    
+    // Remove leading slash and handle empty path
+    let servicePath = pathAfterChecklist.startsWith('/') ? pathAfterChecklist.substring(1) : pathAfterChecklist;
+    
+    // If the path is already 'checklists', don't add it again
+    // Otherwise, build the full path
+    let backendPath = '/api/v1/checklists';
+    if (servicePath && servicePath !== 'checklists') {
+      backendPath = `/api/v1/checklists/${servicePath}`;
+    }
     
     // Build proxy URL - proxy will handle token injection and refresh
-    const proxyPath = `/api/proxy/api/v1/checklists${servicePath}${queryString ? `?${queryString}` : ''}`;
+    const proxyPath = `/api/proxy${backendPath}${queryString ? `?${queryString}` : ''}`;
     const proxyUrl = new URL(proxyPath, request.url);
     
     // Prepare headers

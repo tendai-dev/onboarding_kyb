@@ -5,16 +5,10 @@ import {
   Container, 
   VStack, 
   HStack,
-  Text,
   SimpleGrid,
   Flex,
-  Badge,
-  Button,
-  Image,
   Circle,
-  Input,
   Switch as ChakraSwitch,
-  Checkbox,
   Separator,
   Spinner,
   Alert,
@@ -29,6 +23,8 @@ import {
   DialogTitle,
   DialogCloseTrigger
 } from "@chakra-ui/react";
+import { Button, Typography, Card, Checkbox, MukuruLogo } from "@/lib/mukuruImports";
+import { Input as ChakraInput } from "@chakra-ui/react";
 import { motion } from "framer-motion";
 import Link from "next/link";
 import { useState, useEffect } from "react";
@@ -36,6 +32,7 @@ import { Formik, Form, Field } from "formik";
 import * as Yup from "yup";
 import { FiAlertCircle, FiCheckCircle, FiXCircle, FiInfo, FiX } from "react-icons/fi";
 import { getAuthUser, getInitials, logout } from "@/lib/auth/session";
+import { useSession } from "next-auth/react";
 import { 
   getUserProfile, 
   updateUserProfile, 
@@ -52,7 +49,7 @@ import {
 } from "@/lib/api";
 import { useRequireAuth } from "@/hooks/useRequireAuth";
 
-const MotionBox = motion(Box);
+const MotionBox = motion.create(Box);
 
 const profileSchema = Yup.object().shape({
   firstName: Yup.string().required("First name is required"),
@@ -263,14 +260,46 @@ export default function PartnerProfilePage() {
     }
   };
 
-  const user = getAuthUser();
+  // Get user from NextAuth session (like admin does)
+  const { data: session } = useSession();
+  const sessionUser = session?.user;
+  
+  // Fallback to getAuthUser if session not available
+  const fallbackUser = getAuthUser();
+  
+  // Extract name parts from session or fallback
+  const userName = sessionUser?.name || fallbackUser.name || "User";
+  const userEmail = sessionUser?.email || fallbackUser.email || "";
+  
+  // Try to get givenName/familyName from session user first (Keycloak might provide these)
+  // Then try fallback user, then extract from name
+  let givenName = (sessionUser as any)?.givenName || fallbackUser.givenName || "";
+  let familyName = (sessionUser as any)?.familyName || fallbackUser.familyName || "";
+  
+  // If still not available, extract from full name
+  if (!givenName || !familyName) {
+    const nameParts = userName.split(' ').filter(p => p.length > 0 && p !== "User");
+    if (nameParts.length > 0 && !givenName) {
+      givenName = nameParts[0];
+    }
+    if (nameParts.length > 1 && !familyName) {
+      familyName = nameParts.slice(1).join(' ');
+    }
+  }
+  
+  const user = {
+    name: userName,
+    email: userEmail,
+    givenName,
+    familyName,
+  };
   
   if (loading) {
     return (
       <Box minH="100vh" bg="gray.50" display="flex" alignItems="center" justifyContent="center">
         <VStack gap="4">
           <Spinner size="xl" color="orange.500" />
-          <Text color="gray.600">Loading profile...</Text>
+          <Typography color="gray.600">Loading profile...</Typography>
         </VStack>
       </Box>
     );
@@ -304,17 +333,17 @@ export default function PartnerProfilePage() {
               mt="0.5"
             />
             <VStack align="start" gap="1" flex="1">
-              <Text fontWeight="semibold" fontSize="sm" color="gray.900">
+              <Typography fontWeight="semibold" fontSize="sm" color="gray.900">
                 {toastState.title}
-              </Text>
+              </Typography>
               {toastState.description && (
-                <Text fontSize="sm" color="gray.700">
+                <Typography fontSize="sm" color="gray.700">
                   {toastState.description}
-                </Text>
+                </Typography>
               )}
             </VStack>
             <Button
-              size="xs"
+              size="sm"
               variant="ghost"
               onClick={() => setToastState(null)}
               minW="auto"
@@ -333,62 +362,59 @@ export default function PartnerProfilePage() {
               <Link href="/partner/dashboard">
                 <Button variant="ghost" size="sm">← Back</Button>
               </Link>
-              <Image src="/mukuru-logo.png" alt="Mukuru" height="32px" />
-              <Text color="gray.700" fontSize="sm" fontWeight="medium">Profile</Text>
+              <MukuruLogo height="32px" />
+              <Typography color="gray.700" fontSize="sm" fontWeight="medium">Profile</Typography>
             </HStack>
             <HStack gap="4">
-              <Button variant="outline" size="sm" onClick={() => logout('http://localhost:3000/')}>Logout</Button>
+              <Button variant="secondary" size="sm" onClick={() => logout('http://localhost:3000/')}>Logout</Button>
               <Circle size="32px" bg="orange.500" color="white">
-                <Text fontSize="sm" fontWeight="bold">{getInitials(user.name)}</Text>
+                <Typography fontSize="sm" fontWeight="bold">{getInitials(userName)}</Typography>
               </Circle>
             </HStack>
           </Flex>
         </Container>
       </Box>
 
-      <Container maxW="4xl" py="8">
-        <VStack gap="8" align="stretch">
+      <Container maxW="5xl" py="8" px={{ base: 4, md: 6 }}>
+        <VStack gap="8" align="stretch" width="100%">
           {/* Page Header */}
-          <MotionBox
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6 }}
-          >
-            <VStack align="start" gap="4">
-              <Text fontSize="3xl" fontWeight="bold" color="gray.900">Profile Settings</Text>
-              <Text color="gray.700" fontSize="md">
-                Manage your account information and preferences
-              </Text>
-            </VStack>
-          </MotionBox>
+          <Box>
+            <Typography fontSize="2xl" fontWeight="bold" color="gray.900" mb="2">Profile Settings</Typography>
+            <Typography color="gray.600" fontSize="sm">
+              Manage your account information and preferences
+            </Typography>
+          </Box>
 
           {/* Profile Information */}
-          <MotionBox
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, delay: 0.1 }}
-          >
-            <Box bg="white" borderRadius="xl" boxShadow="sm" overflow="hidden">
-              <Box p="6" borderBottom="1px" borderColor="gray.100">
-                <HStack justify="space-between">
-                  <Text fontSize="xl" fontWeight="semibold" color="gray.900">Personal Information</Text>
+          <Card bg="white" width="100%">
+            <Box p="5" borderBottom="1px" borderColor="gray.200" bg="gray.50">
+              <Flex justify="space-between" align="center">
+                <Box>
+                  <Typography fontSize="lg" fontWeight="bold" color="gray.900" mb="1">Personal Information</Typography>
+                  <Typography fontSize="xs" color="gray.600">
+                    Your account details from Keycloak
+                  </Typography>
+                </Box>
+                {!isEditing && (
                   <Button 
                     size="sm" 
-                    variant={isEditing ? "solid" : "outline"}
-                    colorScheme={isEditing ? "green" : "orange"}
-                    onClick={() => setIsEditing(!isEditing)}
+                    variant="primary"
+                    className="mukuru-primary-button"
+                    onClick={() => setIsEditing(true)}
                   >
-                    {isEditing ? "Cancel" : "Edit Profile"}
+                    Edit Profile
                   </Button>
-                </HStack>
-              </Box>
+                )}
+              </Flex>
+            </Box>
 
-              <Box p="6">
+            <Box p="8" width="100%">
                 <Formik
+                  key={`form-${givenName}-${familyName}-${userEmail}`}
                   initialValues={{
-                    firstName: profile?.firstName || user.givenName || "",
-                    lastName: profile?.lastName || user.familyName || "",
-                    email: profile?.email || user.email || "",
+                    firstName: profile?.firstName || givenName || "",
+                    lastName: profile?.lastName || familyName || "",
+                    email: profile?.email || userEmail || "",
                     phone: profile?.phone || "",
                     companyName: profile?.companyName || caseSummary?.applicationData?.legalName || "",
                     country: profile?.country || caseSummary?.applicationData?.country || "South Africa",
@@ -396,227 +422,317 @@ export default function PartnerProfilePage() {
                   }}
                   validationSchema={profileSchema}
                   onSubmit={handleSaveProfile}
-                  enableReinitialize
+                  enableReinitialize={true}
                 >
-                  {({ errors, touched, isSubmitting }) => (
-                    <Form>
-                      <VStack gap="6">
+                  {({ errors, touched, isSubmitting, values }) => {
+                    // Debug: Log values to ensure they're populated
+                    if (process.env.NODE_ENV === 'development') {
+                      console.log('[Profile] Form values:', values);
+                      console.log('[Profile] User data:', { givenName, familyName, userEmail });
+                    }
+                    return (
+                    <Form style={{ width: '100%' }}>
+                      <VStack gap="8" align="stretch" width="100%">
+                        {/* Name Fields */}
                         <SimpleGrid columns={{ base: 1, md: 2 }} gap="6" width="100%">
-                          <VStack align="start" gap="2">
-                            <Text fontSize="sm" fontWeight="medium" color="gray.800">
+                          <Box width="100%">
+                            <Typography fontSize="sm" fontWeight="semibold" color="gray.900" mb="3">
                               First Name
-                            </Text>
+                            </Typography>
                             <Field name="firstName">
-                              {({ field }: any) => (
-                                <Input
+                              {({ field }: any) => {
+                                const displayValue = field.value || givenName || "";
+                                return (
+                                <ChakraInput
                                   {...field}
+                                  value={displayValue}
                                   readOnly={!isEditing}
                                   bg={isEditing ? "white" : "gray.50"}
-                                  color="gray.800"
-                                  _placeholder={{ color: "gray.500" }}
+                                  color="gray.900"
+                                  width="100%"
+                                  borderColor="gray.300"
+                                  borderWidth="1px"
+                                  px="4"
+                                  py="3"
+                                  fontSize="md"
+                                  fontWeight={!isEditing ? "medium" : "normal"}
+                                  height="44px"
+                                  _placeholder={{ color: "gray.400" }}
+                                  _focus={{ borderColor: "orange.500", boxShadow: "0 0 0 1px orange.500" }}
+                                  placeholder="Enter first name"
                                 />
-                              )}
+                              );
+                              }}
                             </Field>
                             {errors.firstName && touched.firstName && (
-                              <Text color="red.500" fontSize="sm">{String(errors.firstName)}</Text>
+                              <Typography color="red.500" fontSize="xs" mt="1">{String(errors.firstName)}</Typography>
                             )}
-                          </VStack>
+                          </Box>
 
-                          <VStack align="start" gap="2">
-                            <Text fontSize="sm" fontWeight="medium" color="gray.800">
-                              Last Name
-                            </Text>
+                              <Box width="100%">
+                                <Typography fontSize="sm" fontWeight="semibold" color="gray.900" mb="3">
+                                  Last Name
+                                </Typography>
                             <Field name="lastName">
-                              {({ field }: any) => (
-                                <Input
+                              {({ field }: any) => {
+                                // Use field.value if set, otherwise use familyName, with fallback
+                                const displayValue = field.value || familyName || (userName && userName !== "User" ? userName.split(' ').slice(1).join(' ') : "") || "";
+                                return (
+                                <ChakraInput
                                   {...field}
+                                  value={displayValue}
                                   readOnly={!isEditing}
                                   bg={isEditing ? "white" : "gray.50"}
-                                  color="gray.800"
-                                  _placeholder={{ color: "gray.500" }}
+                                  color="gray.900"
+                                  width="100%"
+                                  borderColor="gray.300"
+                                  borderWidth="1px"
+                                  px="4"
+                                  py="3"
+                                  fontSize="md"
+                                  fontWeight={!isEditing ? "medium" : "normal"}
+                                  height="44px"
+                                  _placeholder={{ color: "gray.400" }}
+                                  _focus={{ borderColor: "orange.500", boxShadow: "0 0 0 1px orange.500" }}
+                                  placeholder="Enter last name"
                                 />
-                              )}
+                              );
+                              }}
                             </Field>
                             {errors.lastName && touched.lastName && (
-                              <Text color="red.500" fontSize="sm">{String(errors.lastName)}</Text>
+                              <Typography color="red.500" fontSize="xs" mt="1">{String(errors.lastName)}</Typography>
                             )}
-                          </VStack>
+                          </Box>
                         </SimpleGrid>
 
+                        {/* Contact Fields */}
                         <SimpleGrid columns={{ base: 1, md: 2 }} gap="6" width="100%">
-                          <VStack align="start" gap="2">
-                            <Text fontSize="sm" fontWeight="medium" color="gray.800">
+                          <Box width="100%">
+                            <Typography fontSize="sm" fontWeight="semibold" color="gray.900" mb="3">
                               Email Address
-                            </Text>
+                            </Typography>
                             <Field name="email">
                               {({ field }: any) => (
-                                <Input
+                                <ChakraInput
                                   {...field}
                                   type="email"
+                                  value={field.value || userEmail || ""}
                                   readOnly={true}
-                                  bg="gray.50"
-                                  color="gray.800"
-                                  _placeholder={{ color: "gray.500" }}
+                                  bg="gray.100"
+                                  color="gray.900"
+                                  width="100%"
+                                  borderColor="gray.300"
+                                  borderWidth="1px"
+                                  px="4"
+                                  py="3"
+                                  fontSize="md"
+                                  fontWeight="medium"
+                                  height="44px"
+                                  _placeholder={{ color: "gray.400" }}
                                 />
                               )}
                             </Field>
-                            <Text fontSize="xs" color="gray.600" fontWeight="medium">
-                              Email cannot be changed. Contact support if you need to update your email address.
-                            </Text>
                             {errors.email && touched.email && (
-                              <Text color="red.500" fontSize="sm">{String(errors.email)}</Text>
+                              <Typography color="red.500" fontSize="xs" mt="1">{String(errors.email)}</Typography>
                             )}
-                          </VStack>
+                          </Box>
 
-                          <VStack align="start" gap="2">
-                            <Text fontSize="sm" fontWeight="medium" color="gray.800">
+                          <Box width="100%">
+                            <Typography fontSize="sm" fontWeight="semibold" color="gray.900" mb="3">
                               Phone Number
-                            </Text>
+                            </Typography>
                             <Field name="phone">
                               {({ field }: any) => (
-                                <Input
+                                <ChakraInput
                                   {...field}
+                                  type="tel"
+                                  value={field.value || ""}
                                   readOnly={!isEditing}
                                   bg={isEditing ? "white" : "gray.50"}
-                                  color="gray.800"
-                                  _placeholder={{ color: "gray.500" }}
+                                  color="gray.900"
+                                  width="100%"
+                                  borderColor="gray.300"
+                                  borderWidth="1px"
+                                  px="4"
+                                  py="3"
+                                  fontSize="md"
+                                  fontWeight={!isEditing ? "medium" : "normal"}
+                                  height="44px"
+                                  _placeholder={{ color: "gray.400" }}
+                                  _focus={{ borderColor: "orange.500", boxShadow: "0 0 0 1px orange.500" }}
+                                  placeholder="+27 12 345 6789"
                                 />
                               )}
                             </Field>
                             {errors.phone && touched.phone && (
-                              <Text color="red.500" fontSize="sm">{String(errors.phone)}</Text>
+                              <Typography color="red.500" fontSize="xs" mt="1">{String(errors.phone)}</Typography>
                             )}
-                          </VStack>
+                          </Box>
                         </SimpleGrid>
 
-                        <Separator />
+                        <Separator borderColor="gray.200" my="4" />
 
+                        {/* Company & Location Fields */}
                         <SimpleGrid columns={{ base: 1, md: 2 }} gap="6" width="100%">
-                          <VStack align="start" gap="2">
-                            <Text fontSize="sm" fontWeight="medium" color="gray.800">
+                          <Box width="100%">
+                            <Typography fontSize="sm" fontWeight="semibold" color="gray.900" mb="3">
                               Company Name
-                            </Text>
+                            </Typography>
                             <Field name="companyName">
                               {({ field }: any) => (
-                                <Input
+                                <ChakraInput
                                   {...field}
+                                  value={field.value || ""}
                                   readOnly={!isEditing}
                                   bg={isEditing ? "white" : "gray.50"}
-                                  color="gray.800"
-                                  _placeholder={{ color: "gray.500" }}
+                                  color="gray.900"
+                                  width="100%"
+                                  borderColor="gray.300"
+                                  borderWidth="1px"
+                                  px="4"
+                                  py="3"
+                                  fontSize="md"
+                                  fontWeight={!isEditing ? "medium" : "normal"}
+                                  height="44px"
+                                  _placeholder={{ color: "gray.400" }}
+                                  _focus={{ borderColor: "orange.500", boxShadow: "0 0 0 1px orange.500" }}
+                                  placeholder="Enter company name"
                                 />
                               )}
                             </Field>
                             {errors.companyName && touched.companyName && (
-                              <Text color="red.500" fontSize="sm">{String(errors.companyName)}</Text>
+                              <Typography color="red.500" fontSize="xs" mt="1">{String(errors.companyName)}</Typography>
                             )}
-                          </VStack>
+                          </Box>
 
-                          <VStack align="start" gap="2">
-                            <Text fontSize="sm" fontWeight="medium" color="gray.800">
-                              Entity Type
-                            </Text>
-                            <Field name="entityType">
+                          <Box width="100%">
+                            <Typography fontSize="sm" fontWeight="semibold" color="gray.900" mb="3">
+                              Country
+                            </Typography>
+                            <Field name="country">
                               {({ field }: any) => (
-                                <Input
-                                  {...field}
-                                  readOnly={true}
-                                  bg="gray.50"
-                                  color="gray.800"
-                                  _placeholder={{ color: "gray.500" }}
-                                />
+                                isEditing ? (
+                                  <select
+                                    {...field}
+                                    value={field.value || "South Africa"}
+                                    style={{
+                                      width: '100%',
+                                      padding: '12px 16px',
+                                      borderRadius: '6px',
+                                      border: '1px solid #D1D5DB',
+                                      background: 'white',
+                                      color: '#111827',
+                                      fontSize: '16px',
+                                      height: '44px',
+                                    }}
+                                  >
+                                    <option value="South Africa">South Africa</option>
+                                    <option value="Zimbabwe">Zimbabwe</option>
+                                    <option value="Botswana">Botswana</option>
+                                    <option value="Mozambique">Mozambique</option>
+                                  </select>
+                                ) : (
+                                  <ChakraInput 
+                                    {...field} 
+                                    value={field.value || "South Africa"}
+                                    readOnly 
+                                    bg="gray.50" 
+                                    color="gray.900" 
+                                    width="100%" 
+                                    borderColor="gray.300"
+                                    borderWidth="1px"
+                                    px="4"
+                                    py="3"
+                                    fontSize="md"
+                                    fontWeight="medium"
+                                    height="44px"
+                                    _placeholder={{ color: "gray.400" }} 
+                                  />
+                                )
                               )}
                             </Field>
-                            <Text fontSize="xs" color="gray.600" fontWeight="medium">
-                              Contact support to change entity type
-                            </Text>
-                          </VStack>
+                            {errors.country && touched.country && (
+                              <Typography color="red.500" fontSize="xs" mt="1">{String(errors.country)}</Typography>
+                            )}
+                          </Box>
                         </SimpleGrid>
 
-                        <VStack align="start" gap="2" width="100%">
-                          <Text fontSize="sm" fontWeight="medium" color="gray.800">
-                            Country
-                          </Text>
-                          <Field name="country">
+                        {/* Entity Type Field */}
+                        <Box width="100%">
+                          <Typography fontSize="sm" fontWeight="semibold" color="gray.900" mb="3">
+                            Entity Type
+                          </Typography>
+                          <Field name="entityType">
                             {({ field }: any) => (
-                              isEditing ? (
-                                <select
-                                  {...field}
-                                  style={{
-                                    width: '100%',
-                                    padding: '8px 12px',
-                                    borderRadius: '6px',
-                                    border: '1px solid',
-                                    borderColor: 'var(--chakra-colors-gray-200)',
-                                    background: 'white',
-                                    color: 'var(--chakra-colors-gray-800)',
-                                    fontSize: '14px',
-                                  }}
-                                >
-                                  <option value="South Africa">South Africa</option>
-                                  <option value="Zimbabwe">Zimbabwe</option>
-                                  <option value="Botswana">Botswana</option>
-                                  <option value="Mozambique">Mozambique</option>
-                                </select>
-                              ) : (
-                                <Input {...field} readOnly bg="gray.50" color="gray.800" _placeholder={{ color: "gray.500" }} />
-                              )
+                              <ChakraInput
+                                {...field}
+                                value={field.value || "Company"}
+                                readOnly={true}
+                                bg="gray.100"
+                                color="gray.900"
+                                width="100%"
+                                borderColor="gray.300"
+                                borderWidth="1px"
+                                px="4"
+                                py="3"
+                                fontSize="md"
+                                fontWeight="medium"
+                                height="44px"
+                                _placeholder={{ color: "gray.400" }}
+                              />
                             )}
                           </Field>
-                          {errors.country && touched.country && (
-                            <Text color="red.500" fontSize="sm">{String(errors.country)}</Text>
-                          )}
-                        </VStack>
+                        </Box>
 
                         {isEditing && (
-                          <HStack gap="4" pt="4">
+                          <HStack gap="3" pt="4" justify="flex-end" width="100%">
                             <Button 
-                              type="submit" 
-                              colorScheme="orange" 
-                              loading={saving}
-                              loadingText="Saving..."
-                            >
-                              Save Changes
-                            </Button>
-                            <Button 
-                              variant="outline" 
+                              variant="secondary" 
                               onClick={() => setIsEditing(false)}
+                              size="sm"
                             >
                               Cancel
+                            </Button>
+                            <Button 
+                              type="submit" 
+                              className="mukuru-primary-button"
+                              loading={saving}
+                              loadingText="Saving..."
+                              size="sm"
+                            >
+                              Save Changes
                             </Button>
                           </HStack>
                         )}
                       </VStack>
                     </Form>
-                  )}
+                    );
+                  }}
                 </Formik>
               </Box>
-            </Box>
-          </MotionBox>
+            </Card>
 
           {/* Notification Preferences */}
-          <MotionBox
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, delay: 0.2 }}
-          >
-            <Box bg="white" borderRadius="xl" boxShadow="sm" overflow="hidden">
-              <Box p="6" borderBottom="1px" borderColor="gray.100">
-                <Text fontSize="xl" fontWeight="semibold" color="gray.900">Notification Preferences</Text>
-                <Text fontSize="sm" color="gray.700" mt="1">
+          <Card bg="white" width="100%">
+            <Box p="5" borderBottom="1px" borderColor="gray.200" bg="gray.50">
+              <Box>
+                <Typography fontSize="lg" fontWeight="bold" color="gray.900" mb="1">Notification Preferences</Typography>
+                <Typography fontSize="xs" color="gray.600">
                   Choose how you want to receive updates about your application
-                </Text>
+                </Typography>
               </Box>
+            </Box>
 
-              <Box p="6">
-                <VStack gap="4" align="stretch">
-                  <HStack justify="space-between">
-                    <VStack align="start" gap="1">
-                      <Text fontWeight="medium" color="gray.800">Email Notifications</Text>
-                      <Text fontSize="sm" color="gray.700">
-                        Receive updates via email
-                      </Text>
-                    </VStack>
+            <Box p="8" width="100%">
+              <VStack gap="6" align="stretch" width="100%">
+                <HStack justify="space-between" align="center" width="100%" py="2">
+                  <Box flex="1" minW="0">
+                    <Typography fontWeight="semibold" color="gray.900" fontSize="md" mb="1">Email Notifications</Typography>
+                    <Typography fontSize="sm" color="gray.600">
+                      Receive updates via email
+                    </Typography>
+                  </Box>
+                  <Box flexShrink={0} ml="4">
                     <ChakraSwitch.Root
                       checked={notifications.emailNotifications}
                       onCheckedChange={(details) => handleNotificationChange('emailNotifications', details.checked)}
@@ -628,15 +744,17 @@ export default function PartnerProfilePage() {
                         <ChakraSwitch.Thumb />
                       </ChakraSwitch.Control>
                     </ChakraSwitch.Root>
-                  </HStack>
+                  </Box>
+                </HStack>
 
-                  <HStack justify="space-between">
-                    <VStack align="start" gap="1">
-                      <Text fontWeight="medium" color="gray.800">SMS Notifications</Text>
-                      <Text fontSize="sm" color="gray.700">
-                        Receive updates via SMS
-                      </Text>
-                    </VStack>
+                <HStack justify="space-between" align="center" width="100%" py="2">
+                  <Box flex="1" minW="0">
+                    <Typography fontWeight="semibold" color="gray.900" fontSize="md" mb="1">SMS Notifications</Typography>
+                    <Typography fontSize="sm" color="gray.600">
+                      Receive updates via SMS
+                    </Typography>
+                  </Box>
+                  <Box flexShrink={0} ml="4">
                     <ChakraSwitch.Root
                       checked={notifications.smsNotifications}
                       onCheckedChange={(details) => handleNotificationChange('smsNotifications', details.checked)}
@@ -648,15 +766,17 @@ export default function PartnerProfilePage() {
                         <ChakraSwitch.Thumb />
                       </ChakraSwitch.Control>
                     </ChakraSwitch.Root>
-                  </HStack>
+                  </Box>
+                </HStack>
 
-                  <HStack justify="space-between">
-                    <VStack align="start" gap="1">
-                      <Text fontWeight="medium" color="gray.800">Status Updates</Text>
-                      <Text fontSize="sm" color="gray.700">
-                        Get notified when your application status changes
-                      </Text>
-                    </VStack>
+                <HStack justify="space-between" align="center" width="100%" py="2">
+                  <Box flex="1" minW="0">
+                    <Typography fontWeight="semibold" color="gray.900" fontSize="md" mb="1">Status Updates</Typography>
+                    <Typography fontSize="sm" color="gray.600">
+                      Get notified when your application status changes
+                    </Typography>
+                  </Box>
+                  <Box flexShrink={0} ml="4">
                     <ChakraSwitch.Root
                       checked={notifications.statusUpdates}
                       onCheckedChange={(details) => handleNotificationChange('statusUpdates', details.checked)}
@@ -668,15 +788,17 @@ export default function PartnerProfilePage() {
                         <ChakraSwitch.Thumb />
                       </ChakraSwitch.Control>
                     </ChakraSwitch.Root>
-                  </HStack>
+                  </Box>
+                </HStack>
 
-                  <HStack justify="space-between">
-                    <VStack align="start" gap="1">
-                      <Text fontWeight="medium" color="gray.800">Marketing Communications</Text>
-                      <Text fontSize="sm" color="gray.700">
-                        Receive news and updates about Mukuru services
-                      </Text>
-                    </VStack>
+                <HStack justify="space-between" align="center" width="100%" py="2">
+                  <Box flex="1" minW="0">
+                    <Typography fontWeight="semibold" color="gray.900" fontSize="md" mb="1">Marketing Communications</Typography>
+                    <Typography fontSize="sm" color="gray.600">
+                      Receive news and updates about Mukuru services
+                    </Typography>
+                  </Box>
+                  <Box flexShrink={0} ml="4">
                     <ChakraSwitch.Root
                       checked={notifications.marketingCommunications}
                       onCheckedChange={(details) => handleNotificationChange('marketingCommunications', details.checked)}
@@ -688,66 +810,96 @@ export default function PartnerProfilePage() {
                         <ChakraSwitch.Thumb />
                       </ChakraSwitch.Control>
                     </ChakraSwitch.Root>
-                  </HStack>
-                </VStack>
-              </Box>
+                  </Box>
+                </HStack>
+              </VStack>
             </Box>
-          </MotionBox>
+          </Card>
 
           {/* Account Actions */}
-          <MotionBox
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, delay: 0.3 }}
-          >
-            <Box bg="white" borderRadius="xl" boxShadow="sm" overflow="hidden">
-              <Box p="6" borderBottom="1px" borderColor="gray.100">
-                <Text fontSize="xl" fontWeight="semibold" color="gray.900">Account Actions</Text>
-              </Box>
+          <Card bg="white" width="100%">
+            <Box p="5" borderBottom="1px" borderColor="gray.200" bg="gray.50">
+              <Typography fontSize="lg" fontWeight="bold" color="gray.900">Account Actions</Typography>
+            </Box>
 
-              <Box p="6">
-                <VStack gap="4" align="stretch">
-                  <HStack justify="space-between">
-                    <VStack align="start" gap="1">
-                      <Text fontWeight="medium" color="gray.800">Change Password</Text>
-                      <Text fontSize="sm" color="gray.700">
-                        Update your account password
-                      </Text>
-                    </VStack>
-                    <Button variant="outline" size="sm" onClick={onPasswordDialogOpen}>
+            <Box p="8" width="100%">
+              <VStack gap="6" align="stretch" width="100%">
+                {/* Change Password Row */}
+                <Box 
+                  display="flex" 
+                  alignItems="center" 
+                  justifyContent="space-between" 
+                  width="100%" 
+                  minH="48px"
+                  py="2"
+                >
+                  <Box flex="1" minW="0" mr="4">
+                    <Typography fontWeight="semibold" color="gray.900" fontSize="md" mb="1">
                       Change Password
+                    </Typography>
+                    <Typography fontSize="sm" color="gray.600">
+                      Update your account password
+                    </Typography>
+                  </Box>
+                  <Box flexShrink={0}>
+                    <Button variant="secondary" size="sm" onClick={onPasswordDialogOpen}>
+                      Change
                     </Button>
-                  </HStack>
+                  </Box>
+                </Box>
 
-                  <HStack justify="space-between">
-                    <VStack align="start" gap="1">
-                      <Text fontWeight="medium" color="gray.800">Download Data</Text>
-                      <Text fontSize="sm" color="gray.700">
-                        Download a copy of your application data
-                      </Text>
-                    </VStack>
-                    <Button variant="outline" size="sm" onClick={handleDownloadData}>
+                {/* Download Data Row */}
+                <Box 
+                  display="flex" 
+                  alignItems="center" 
+                  justifyContent="space-between" 
+                  width="100%" 
+                  minH="48px"
+                  py="2"
+                >
+                  <Box flex="1" minW="0" mr="4">
+                    <Typography fontWeight="semibold" color="gray.900" fontSize="md" mb="1">
+                      Download Data
+                    </Typography>
+                    <Typography fontSize="sm" color="gray.600">
+                      Download a copy of your application data
+                    </Typography>
+                  </Box>
+                  <Box flexShrink={0}>
+                    <Button variant="secondary" size="sm" onClick={handleDownloadData}>
                       Download
                     </Button>
-                  </HStack>
+                  </Box>
+                </Box>
 
-                  <Separator />
+                <Separator borderColor="gray.200" my="2" />
 
-                  <HStack justify="space-between">
-                    <VStack align="start" gap="1">
-                      <Text fontWeight="medium" color="red.600">Delete Account</Text>
-                      <Text fontSize="sm" color="gray.600">
-                        Permanently delete your account and all data
-                      </Text>
-                    </VStack>
-                    <Button variant="outline" colorScheme="red" size="sm" onClick={onDeleteDialogOpen}>
+                {/* Delete Account Row */}
+                <Box 
+                  display="flex" 
+                  alignItems="center" 
+                  justifyContent="space-between" 
+                  width="100%" 
+                  minH="48px"
+                  py="2"
+                >
+                  <Box flex="1" minW="0" mr="4">
+                    <Typography fontWeight="semibold" color="red.600" fontSize="md" mb="1">
                       Delete Account
+                    </Typography>
+                    <Typography fontSize="sm" color="gray.600">
+                      Permanently delete your account and all data
+                    </Typography>
+                  </Box>
+                  <Box flexShrink={0}>
+                    <Button variant="secondary" size="sm" onClick={onDeleteDialogOpen} style={{ color: '#dc2626' }}>
+                      Delete
                     </Button>
-                  </HStack>
-                </VStack>
-              </Box>
+                  </Box>
+                </Box>
+              </VStack>
             </Box>
-          </MotionBox>
+          </Card>
 
           {/* Change Password Dialog */}
           <DialogRoot open={isPasswordDialogOpen} onOpenChange={(e) => (e.open ? onPasswordDialogOpen() : onPasswordDialogClose())} modal={true}>
@@ -771,8 +923,8 @@ export default function PartnerProfilePage() {
               <DialogBody pt="6">
                 <VStack gap="4" align="stretch">
                   <VStack align="start" gap="2">
-                    <Text fontSize="sm" fontWeight="medium" color="gray.800">Current Password</Text>
-                    <Input
+                    <Typography fontSize="sm" fontWeight="medium" color="gray.800">Current Password</Typography>
+                    <ChakraInput
                       type="password"
                       value={passwordForm.currentPassword}
                       onChange={(e) => setPasswordForm({ ...passwordForm, currentPassword: e.target.value })}
@@ -785,8 +937,8 @@ export default function PartnerProfilePage() {
                     />
                   </VStack>
                   <VStack align="start" gap="2">
-                    <Text fontSize="sm" fontWeight="medium" color="gray.800">New Password</Text>
-                    <Input
+                    <Typography fontSize="sm" fontWeight="medium" color="gray.800">New Password</Typography>
+                    <ChakraInput
                       type="password"
                       value={passwordForm.newPassword}
                       onChange={(e) => setPasswordForm({ ...passwordForm, newPassword: e.target.value })}
@@ -799,8 +951,8 @@ export default function PartnerProfilePage() {
                     />
                   </VStack>
                   <VStack align="start" gap="2">
-                    <Text fontSize="sm" fontWeight="medium" color="gray.800">Confirm New Password</Text>
-                    <Input
+                    <Typography fontSize="sm" fontWeight="medium" color="gray.800">Confirm New Password</Typography>
+                    <ChakraInput
                       type="password"
                       value={passwordForm.confirmPassword}
                       onChange={(e) => setPasswordForm({ ...passwordForm, confirmPassword: e.target.value })}
@@ -815,10 +967,10 @@ export default function PartnerProfilePage() {
                 </VStack>
               </DialogBody>
               <DialogFooter borderTop="1px" borderColor="gray.200" pt="4">
-                <Button variant="outline" onClick={onPasswordDialogClose} mr="2" color="gray.700" borderColor="gray.300" _hover={{ bg: "gray.50" }}>
+                <Button variant="secondary" onClick={onPasswordDialogClose} mr="2">
                   Cancel
                 </Button>
-                <Button colorScheme="orange" onClick={handleChangePassword} fontWeight="medium">
+                <Button className="mukuru-primary-button" onClick={handleChangePassword} fontWeight="medium">
                   Change Password
                 </Button>
               </DialogFooter>
@@ -857,8 +1009,8 @@ export default function PartnerProfilePage() {
                     </Alert.Content>
                   </Alert.Root>
                   <VStack align="start" gap="2">
-                    <Text fontSize="sm" fontWeight="medium" color="gray.800">Reason (optional)</Text>
-                    <Input
+                    <Typography fontSize="sm" fontWeight="medium" color="gray.800">Reason (optional)</Typography>
+                    <ChakraInput
                       value={deleteReason}
                       onChange={(e) => setDeleteReason(e.target.value)}
                       placeholder="Why are you deleting your account?"
@@ -872,10 +1024,10 @@ export default function PartnerProfilePage() {
                 </VStack>
               </DialogBody>
               <DialogFooter borderTop="1px" borderColor="gray.200" pt="4">
-                <Button variant="outline" onClick={onDeleteDialogClose} mr="2" color="gray.700" borderColor="gray.300" _hover={{ bg: "gray.50" }}>
+                <Button variant="secondary" onClick={onDeleteDialogClose} mr="2">
                   Cancel
                 </Button>
-                <Button colorScheme="red" onClick={handleDeleteAccount} fontWeight="medium">
+                <Button onClick={handleDeleteAccount} fontWeight="medium" style={{ backgroundColor: '#dc2626', color: 'white' }}>
                   Delete Account
                 </Button>
               </DialogFooter>

@@ -1,1 +1,0 @@
-{"version":3,"file":"ChevronLeftIcon.js","sources":["../../../../src/components/ui/Icons/ChevronLeftIcon.tsx"],"sourcesContent":[null],"names":["ChevronLeftIcon","props","_jsx","width","height","viewBox","fill","xmlns","children","d"],"mappings":"8CAEaA,EAA6BC,GACxCC,SACEC,MAAM,IACNC,OAAO,KACPC,QAAQ,WACRC,KAAK,OACLC,MAAM,gCACFN,EAAKO,SAETN,EAAA,OAAA,CACEO,EAAE,qqBACFH,KAAK"}

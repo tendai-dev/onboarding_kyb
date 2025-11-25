@@ -47,6 +47,33 @@ export interface RequirementOption {
   displayOrder: number;
 }
 
+// Helper function to convert snake_case to camelCase
+function snakeToCamel(str: string): string {
+  return str.replace(/_([a-z])/g, (_, letter) => letter.toUpperCase());
+}
+
+// Recursively transform object keys from snake_case to camelCase
+function transformKeys(obj: any): any {
+  if (obj === null || obj === undefined) {
+    return obj;
+  }
+  
+  if (Array.isArray(obj)) {
+    return obj.map(transformKeys);
+  }
+  
+  if (typeof obj === 'object' && obj.constructor === Object) {
+    const transformed: any = {};
+    for (const [key, value] of Object.entries(obj)) {
+      const camelKey = snakeToCamel(key);
+      transformed[camelKey] = transformKeys(value);
+    }
+    return transformed;
+  }
+  
+  return obj;
+}
+
 class EntityConfigApiService {
   private async request<T>(endpoint: string, options?: RequestInit): Promise<T> {
     // Use direct /api/v1 path - gateway routing can be configured separately if needed
@@ -89,7 +116,9 @@ class EntityConfigApiService {
         return null as T;
       }
 
-      return response.json();
+      const json = await response.json();
+      // Transform snake_case keys to camelCase
+      return transformKeys(json) as T;
     } catch (error) {
       if (error instanceof TypeError || (error instanceof Error && error.message.includes('timeout'))) {
         throw new Error('Unable to connect to Entity Configuration service');
@@ -105,11 +134,11 @@ class EntityConfigApiService {
     if (includeRequirements) params.append('includeRequirements', 'true');
     
     const queryString = params.toString();
-    return this.request<EntityType[]>(`/entitytypes${queryString ? `?${queryString}` : ''}`);
+    return this.request<EntityType[]>(`/entity-types${queryString ? `?${queryString}` : ''}`);
   }
 
   async getEntityType(id: string): Promise<EntityType> {
-    return this.request<EntityType>(`/entitytypes/${id}`);
+    return this.request<EntityType>(`/entity-types/${id}`);
   }
 
   async getEntityTypeByCode(code: string, includeRequirements = true): Promise<EntityType | null> {

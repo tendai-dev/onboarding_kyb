@@ -125,37 +125,95 @@ public class ComplianceRefreshWorker : BackgroundService
         await using var connection = new NpgsqlConnection(_postgresConnection);
         await connection.OpenAsync(cancellationToken);
 
+        // Check if risk.risk_assessments table exists
+        var riskTableExistsSql = @"
+            SELECT EXISTS (
+                SELECT FROM information_schema.tables 
+                WHERE table_schema = 'risk' 
+                AND table_name = 'risk_assessments'
+            )";
+        
+        await using var checkRiskCmd = new NpgsqlCommand(riskTableExistsSql, connection);
+        var riskTableExists = await checkRiskCmd.ExecuteScalarAsync(cancellationToken) as bool? ?? false;
+
         // Find cases requiring refresh based on risk tier
-        var sql = @"
-            SELECT 
-                id, 
-                case_number, 
-                risk_tier, 
-                last_kyb_refresh_at,
-                CASE 
-                    WHEN risk_tier = 'high' THEN 90
-                    WHEN risk_tier = 'medium' THEN 180
-                    ELSE 365
-                END as refresh_interval_days
-            FROM onboarding.onboarding_cases
-            WHERE status = 'Approved'
-                AND (
-                    last_kyb_refresh_at IS NULL
-                    OR last_kyb_refresh_at < CURRENT_DATE - INTERVAL '1 day' * 
-                        CASE 
-                            WHEN risk_tier = 'high' THEN 90
-                            WHEN risk_tier = 'medium' THEN 180
-                            ELSE 365
-                        END
-                )
-            ORDER BY 
-                CASE risk_tier
-                    WHEN 'high' THEN 1
-                    WHEN 'medium' THEN 2
-                    ELSE 3
-                END,
-                last_kyb_refresh_at NULLS FIRST
-            LIMIT @BatchSize";
+        // Use risk assessments if available, otherwise default to 'Low' risk
+        string sql;
+        if (riskTableExists)
+        {
+            sql = @"
+                SELECT 
+                    oc.id, 
+                    oc.case_number, 
+                    COALESCE(ra.overall_risk_level::text, 'Low') as risk_tier, 
+                    oc.last_kyb_refresh_at,
+                    CASE 
+                        WHEN COALESCE(ra.overall_risk_level::text, 'Low') IN ('High', 'MediumHigh') THEN 90
+                        WHEN COALESCE(ra.overall_risk_level::text, 'Low') = 'Medium' THEN 180
+                        ELSE 365
+                    END as refresh_interval_days
+                FROM onboarding.onboarding_cases oc
+                LEFT JOIN risk.risk_assessments ra ON ra.case_id = oc.case_number
+                WHERE oc.status = 'Approved'
+                    AND (
+                        oc.last_kyb_refresh_at IS NULL
+                        OR oc.last_kyb_refresh_at < CURRENT_DATE - INTERVAL '1 day' * 
+                            CASE 
+                                WHEN COALESCE(ra.overall_risk_level::text, 'Low') IN ('High', 'MediumHigh') THEN 90
+                                WHEN COALESCE(ra.overall_risk_level::text, 'Low') = 'Medium' THEN 180
+                                ELSE 365
+                            END
+                    )
+                ORDER BY 
+                    CASE COALESCE(ra.overall_risk_level::text, 'Low')
+                        WHEN 'High' THEN 1
+                        WHEN 'MediumHigh' THEN 1
+                        WHEN 'Medium' THEN 2
+                        ELSE 3
+                    END,
+                    oc.last_kyb_refresh_at NULLS FIRST
+                LIMIT @BatchSize";
+        }
+        else
+        {
+            // Check if last_kyb_refresh_at column exists
+            var columnExistsSql = @"
+                SELECT EXISTS (
+                    SELECT FROM information_schema.columns 
+                    WHERE table_schema = 'onboarding' 
+                    AND table_name = 'onboarding_cases'
+                    AND column_name = 'last_kyb_refresh_at'
+                )";
+            
+            await using var checkColumnCmd = new NpgsqlCommand(columnExistsSql, connection);
+            var columnExists = await checkColumnCmd.ExecuteScalarAsync(cancellationToken) as bool? ?? false;
+
+            if (columnExists)
+            {
+                // Fallback: no risk table, use default refresh interval for all cases
+                sql = @"
+                    SELECT 
+                        id, 
+                        case_number, 
+                        'Low' as risk_tier, 
+                        last_kyb_refresh_at,
+                        365 as refresh_interval_days
+                    FROM onboarding.onboarding_cases
+                    WHERE status = 'Approved'
+                        AND (
+                            last_kyb_refresh_at IS NULL
+                            OR last_kyb_refresh_at < CURRENT_DATE - INTERVAL '365 days'
+                        )
+                    ORDER BY last_kyb_refresh_at NULLS FIRST
+                    LIMIT @BatchSize";
+            }
+            else
+            {
+                // No refresh column either - return empty result set
+                _logger.LogWarning("last_kyb_refresh_at column does not exist in onboarding_cases table. Compliance refresh feature requires this column.");
+                return 0;
+            }
+        }
 
         await using var command = new NpgsqlCommand(sql, connection);
         command.Parameters.AddWithValue("@BatchSize", _batchSize);

@@ -1,9 +1,0 @@
-{
-  "/auth/login/page": "app/auth/login/page.js",
-  "/api/auth/[...nextauth]/route": "app/api/auth/[...nextauth]/route.js",
-  "/page": "app/page.js",
-  "/api/proxy/[...path]/route": "app/api/proxy/[...path]/route.js",
-  "/partner/profile/page": "app/partner/profile/page.js",
-  "/partner/dashboard/page": "app/partner/dashboard/page.js",
-  "/favicon.ico/route": "app/favicon.ico/route.js"
-}

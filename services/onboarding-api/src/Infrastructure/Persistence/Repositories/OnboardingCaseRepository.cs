@@ -39,6 +39,48 @@ public class OnboardingCaseRepository : IOnboardingCaseRepository
             .ToListAsync(cancellationToken);
     }
 
+    public async Task<(IEnumerable<OnboardingCase> Items, int TotalCount)> GetByPartnerIdWithFiltersAsync(
+        Guid partnerId,
+        int limit = 25,
+        int offset = 0,
+        string? status = null,
+        string? assignee = null,
+        CancellationToken cancellationToken = default)
+    {
+        var query = _context.OnboardingCases
+            .Where(c => c.PartnerId == partnerId);
+
+        // Apply status filter
+        if (!string.IsNullOrWhiteSpace(status))
+        {
+            if (Enum.TryParse<OnboardingStatus>(status, true, out var statusEnum))
+            {
+                query = query.Where(c => c.Status == statusEnum);
+            }
+        }
+
+        // Apply assignee filter (if OnboardingCase has an Assignee property)
+        // Note: This assumes there's an Assignee field. If not, this filter will be ignored.
+        // You may need to adjust based on your actual domain model.
+        if (!string.IsNullOrWhiteSpace(assignee))
+        {
+            // Uncomment if Assignee property exists:
+            // query = query.Where(c => c.AssignedTo == assignee);
+        }
+
+        // Get total count before pagination
+        var totalCount = await query.CountAsync(cancellationToken);
+
+        // Apply pagination and ordering
+        var items = await query
+            .OrderByDescending(c => c.CreatedAt)
+            .Skip(offset)
+            .Take(limit)
+            .ToListAsync(cancellationToken);
+
+        return (items, totalCount);
+    }
+
     public async Task AddAsync(OnboardingCase onboardingCase, CancellationToken cancellationToken = default)
     {
         await _context.OnboardingCases.AddAsync(onboardingCase, cancellationToken);

@@ -1,0 +1,7 @@
+{
+  "version": 3,
+  "sources": [],
+  "debugId": "2c91fa5c-e1d4-78d6-1fb6-a26c40bcddde",
+  "sections": [
+    {"offset": {"line": 8, "column": 0}, "map": {"version":3,"sources":["file:///Users/mukurusystemsadministrator/Desktop/onboarding_kyc%20copy/admin/src/app/favicon.ico.mjs%20%28structured%20image%20object%29"],"sourcesContent":["import src from \"IMAGE\";\nexport default { src, width: 256, height: 256 }\n"],"names":[],"mappings":";;;;AAAA;;uCACe;IAAE,KAAA,0IAAG;IAAE,OAAO;IAAK,QAAQ;AAAI"}}]
+}
