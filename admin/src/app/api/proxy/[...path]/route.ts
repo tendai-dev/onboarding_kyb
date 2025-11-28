@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getToken } from 'next-auth/jwt';
-import { getTokenSession, updateAccessToken, storeTokenSession } from '@/lib/redis-session';
+import { auth } from '@/lib/auth';
+import { getAccountTokensFromNextAuth, updateNextAuthAccountTokens } from '@/lib/redis-session';
 import { reportApiError } from '@/lib/sentry';
 
 // All services are now consolidated into the unified onboarding-api
@@ -69,20 +69,20 @@ async function forward(req: NextRequest) {
 
   const headers: Record<string, string> = {};
   
-  // Get NextAuth session token from httpOnly cookie (BFF pattern)
-  // sessionId is stored in JWT cookie, never exposed to client-side JS
+  // Get NextAuth session from opaque session token in httpOnly cookie (BFF pattern)
+  // NextAuth manages sessions via adapter - no custom sessionId needed
   let accessToken: string | null = null;
   try {
-    const token = await getToken({ req, secret: process.env.NEXTAUTH_SECRET });
-    if (token?.sessionId) {
-      // Fetch tokens from Redis using sessionId from httpOnly JWT cookie
-      const tokenSession = await getTokenSession(token.sessionId as string);
-      if (tokenSession) {
+    const session = await auth();
+    if (session?.user?.id) {
+      // Fetch tokens from NextAuth Account storage via adapter
+      const accountTokens = await getAccountTokensFromNextAuth(session.user.id, 'azure-ad');
+      if (accountTokens) {
         // Check if token needs refresh (within 60 seconds of expiry)
-        const needsRefresh = !tokenSession.accessTokenExpiryTime || 
-                            Date.now() >= tokenSession.accessTokenExpiryTime - 60 * 1000;
+        const needsRefresh = !accountTokens.accessTokenExpiryTime || 
+                            Date.now() >= accountTokens.accessTokenExpiryTime - 60 * 1000;
         
-        if (needsRefresh && tokenSession.refreshToken) {
+        if (needsRefresh && accountTokens.refreshToken) {
           // Token expired or expiring soon - refresh it automatically
           try {
             const issuer = process.env.NEXT_PUBLIC_AZURE_AD_ISSUER || 
@@ -96,7 +96,7 @@ async function forward(req: NextRequest) {
               body: new URLSearchParams({
                 client_id: process.env.AZURE_AD_CLIENT_ID!,
                 grant_type: 'refresh_token',
-                refresh_token: tokenSession.refreshToken,
+                refresh_token: accountTokens.refreshToken,
                 client_secret: process.env.AZURE_AD_CLIENT_SECRET!,
               }),
             });
@@ -104,21 +104,22 @@ async function forward(req: NextRequest) {
             if (refreshResponse.ok) {
               const refreshedTokens = await refreshResponse.json();
               const newAccessToken = refreshedTokens.access_token;
-              const newRefreshToken = refreshedTokens.refresh_token ?? tokenSession.refreshToken;
+              const newRefreshToken = refreshedTokens.refresh_token ?? accountTokens.refreshToken;
               const newExpiryTime = Date.now() + (refreshedTokens.expires_in * 1000);
 
-              // Update Redis with new tokens
-              await storeTokenSession(token.sessionId, {
-                ...tokenSession,
-                accessToken: newAccessToken,
-                refreshToken: newRefreshToken,
-                accessTokenExpiryTime: newExpiryTime,
-              });
+              // Update NextAuth Account in Redis via adapter
+              await updateNextAuthAccountTokens(
+                session.user.id,
+                'azure-ad',
+                newAccessToken,
+                newRefreshToken,
+                newExpiryTime
+              );
 
               accessToken = newAccessToken;
             } else {
               // Refresh failed - use existing token and let backend handle 401
-              accessToken = tokenSession.accessToken;
+              accessToken = accountTokens.accessToken;
             }
           } catch (refreshError) {
             // Refresh failed - use existing token
@@ -128,11 +129,11 @@ async function forward(req: NextRequest) {
             }, {
               tags: { error_type: 'proxy_token_refresh' },
             });
-            accessToken = tokenSession.accessToken;
+            accessToken = accountTokens.accessToken;
           }
         } else {
           // Token still valid
-          accessToken = tokenSession.accessToken;
+          accessToken = accountTokens.accessToken;
         }
       }
     }

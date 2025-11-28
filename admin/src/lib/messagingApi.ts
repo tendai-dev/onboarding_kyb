@@ -5,7 +5,7 @@ const MESSAGING_PREFIX = '/api/proxy/messaging';
 
 // Generate a deterministic GUID from email (matching backend's approach)
 // Uses a simple hash-based approach that produces consistent GUIDs
-function generateGuidFromEmailSync(email: string, namespaceGuid: string): string {
+export function generateGuidFromEmailSync(email: string, namespaceGuid: string): string {
   const emailLower = email.toLowerCase();
   // Simple hash-based approach for immediate use
   let hash = 0;
@@ -19,7 +19,7 @@ function generateGuidFromEmailSync(email: string, namespaceGuid: string): string
   return `${hashStr.substring(0, 8)}-${hashStr.substring(0, 4)}-5000-8000-${hashStr.padEnd(12, '0')}`;
 }
 
-function parseGuidToBytes(guid: string): Uint8Array {
+export function parseGuidToBytes(guid: string): Uint8Array {
   const cleaned = guid.replace(/-/g, '');
   const bytes = new Uint8Array(16);
   for (let i = 0; i < 16; i++) {
@@ -28,7 +28,7 @@ function parseGuidToBytes(guid: string): Uint8Array {
   return bytes;
 }
 
-function bytesToGuid(bytes: Uint8Array): string {
+export function bytesToGuid(bytes: Uint8Array): string {
   const hex = Array.from(bytes)
     .map(b => b.toString(16).padStart(2, '0'))
     .join('');
@@ -361,8 +361,8 @@ export const messagingApi = {
       if (!guidRegex.test(applicationId)) {
         try {
           // Use the applications API to fetch case data
-          const { applicationsApi } = await import('./applicationsApi');
-          const caseData = await applicationsApi.getApplicationById(applicationId);
+          const { fetchApplicationById } = await import('@/services');
+          const caseData = await fetchApplicationById(applicationId);
           
           if (caseData?.id) {
             applicationGuid = caseData.id;

@@ -16,7 +16,7 @@ R.c("server/chunks/node_modules_@sentry_nextjs_build_cjs_2ebb27b4._.js")
 R.c("server/chunks/node_modules_@opentelemetry_6a42c72d._.js")
 R.c("server/chunks/node_modules_@sentry_078c505d._.js")
 R.c("server/chunks/node_modules_326ebc09._.js")
-R.c("server/chunks/[root-of-the-server]__d2a4252c._.js")
+R.c("server/chunks/[root-of-the-server]__2a3da9b5._.js")
 R.c("server/chunks/_next-internal_server_app_api_auth_[___nextauth]_route_actions_1c865db8.js")
 R.m("[project]/node_modules/next/dist/esm/build/templates/app-route.js { INNER_APP_ROUTE => \"[project]/src/app/api/auth/[...nextauth]/route.ts [app-route] (ecmascript)\" } [app-route] (ecmascript)")
 module.exports=R.m("[project]/node_modules/next/dist/esm/build/templates/app-route.js { INNER_APP_ROUTE => \"[project]/src/app/api/auth/[...nextauth]/route.ts [app-route] (ecmascript)\" } [app-route] (ecmascript)").exports

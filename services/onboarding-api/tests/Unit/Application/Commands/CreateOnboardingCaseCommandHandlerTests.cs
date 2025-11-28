@@ -1,11 +1,10 @@
-using FluentAssertions;
 using Mapster;
-using Moq;
 using OnboardingApi.Application.Commands;
 using OnboardingApi.Application.Interfaces;
 using OnboardingApi.Application.Mapping;
 using OnboardingApi.Domain.Aggregates;
 using OnboardingApi.Domain.ValueObjects;
+using OnboardingApi.Tests.Unit.TestHelpers;
 using Xunit;
 
 namespace OnboardingApi.Tests.Unit.Application.Commands;
@@ -16,9 +15,9 @@ namespace OnboardingApi.Tests.Unit.Application.Commands;
 /// </summary>
 public class CreateOnboardingCaseCommandHandlerTests
 {
-    private readonly Mock<IOnboardingCaseRepository> _repositoryMock;
-    private readonly Mock<IEventBus> _eventBusMock;
-    private readonly Mock<Microsoft.Extensions.Logging.ILogger<CreateOnboardingCaseCommandHandler>> _loggerMock;
+    private readonly MockOnboardingCaseRepository _repositoryMock;
+    private readonly MockEventBus _eventBusMock;
+    private readonly MockLogger<CreateOnboardingCaseCommandHandler> _loggerMock;
     private readonly CreateOnboardingCaseCommandHandler _handler;
 
     public CreateOnboardingCaseCommandHandlerTests()
@@ -26,18 +25,14 @@ public class CreateOnboardingCaseCommandHandlerTests
         // Configure Mapster for tests
         MapsterConfig.Configure();
 
-        _repositoryMock = new Mock<IOnboardingCaseRepository>();
-        _eventBusMock = new Mock<IEventBus>();
-        _loggerMock = new Mock<Microsoft.Extensions.Logging.ILogger<CreateOnboardingCaseCommandHandler>>();
-
-        // Setup repository unit of work mock
-        var unitOfWorkMock = new Mock<IUnitOfWork>();
-        _repositoryMock.Setup(r => r.UnitOfWork).Returns(unitOfWorkMock.Object);
+        _repositoryMock = new MockOnboardingCaseRepository();
+        _eventBusMock = new MockEventBus();
+        _loggerMock = new MockLogger<CreateOnboardingCaseCommandHandler>();
 
         _handler = new CreateOnboardingCaseCommandHandler(
-            _repositoryMock.Object,
-            _eventBusMock.Object,
-            _loggerMock.Object);
+            _repositoryMock,
+            _eventBusMock,
+            _loggerMock);
     }
 
     [Fact]
@@ -73,13 +68,14 @@ public class CreateOnboardingCaseCommandHandlerTests
         var result = await _handler.Handle(command, CancellationToken.None);
 
         // Assert
-        result.Should().NotBeNull();
-        result.CaseId.Should().NotBeEmpty();
-        result.CaseNumber.Should().StartWith("OBC-");
+        Assert.NotNull(result);
+        Assert.NotEqual(Guid.Empty, result.CaseId);
+        Assert.StartsWith("OBC-", result.CaseNumber);
 
-        _repositoryMock.Verify(r => r.AddAsync(It.IsAny<OnboardingCase>(), It.IsAny<CancellationToken>()), Times.Once);
-        _repositoryMock.Verify(r => r.UnitOfWork.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
-        _eventBusMock.Verify(e => e.PublishAsync(It.IsAny<object>(), It.IsAny<CancellationToken>()), Times.AtLeastOnce);
+        var addedCases = _repositoryMock.GetAddedCases();
+        Assert.Single(addedCases);
+        Assert.True(((MockUnitOfWork)_repositoryMock.UnitOfWork).SaveChangesAsyncCalled);
+        Assert.NotEmpty(_eventBusMock.PublishedEvents);
     }
 
     [Fact]
@@ -115,22 +111,20 @@ public class CreateOnboardingCaseCommandHandlerTests
             }
         };
 
-        OnboardingCase? capturedCase = null;
-        _repositoryMock.Setup(r => r.AddAsync(It.IsAny<OnboardingCase>(), It.IsAny<CancellationToken>()))
-            .Callback<OnboardingCase, CancellationToken>((c, ct) => capturedCase = c);
-
         // Act
         await _handler.Handle(command, CancellationToken.None);
 
         // Assert - Verify Mapster correctly mapped the DTO to domain model
-        capturedCase.Should().NotBeNull();
-        capturedCase!.Applicant.FirstName.Should().Be("Jane");
-        capturedCase.Applicant.LastName.Should().Be("Smith");
-        capturedCase.Applicant.MiddleName.Should().Be("Marie");
-        capturedCase.Applicant.ResidentialAddress.Street.Should().Be("456 Oak Ave");
-        capturedCase.Applicant.ResidentialAddress.Street2.Should().Be("Apt 2B");
-        capturedCase.Applicant.TaxId.Should().Be("123-45-6789");
-        capturedCase.Applicant.PassportNumber.Should().Be("P123456");
+        var addedCases = _repositoryMock.GetAddedCases();
+        Assert.Single(addedCases);
+        var capturedCase = addedCases[0];
+        Assert.Equal("Jane", capturedCase.Applicant.FirstName);
+        Assert.Equal("Smith", capturedCase.Applicant.LastName);
+        Assert.Equal("Marie", capturedCase.Applicant.MiddleName);
+        Assert.Equal("456 Oak Ave", capturedCase.Applicant.ResidentialAddress.Street);
+        Assert.Equal("Apt 2B", capturedCase.Applicant.ResidentialAddress.Street2);
+        Assert.Equal("123-45-6789", capturedCase.Applicant.TaxId);
+        Assert.Equal("P123456", capturedCase.Applicant.PassportNumber);
     }
 
     [Fact]
@@ -180,20 +174,17 @@ public class CreateOnboardingCaseCommandHandlerTests
             }
         };
 
-        OnboardingCase? capturedCase = null;
-        _repositoryMock.Setup(r => r.AddAsync(It.IsAny<OnboardingCase>(), It.IsAny<CancellationToken>()))
-            .Callback<OnboardingCase, CancellationToken>((c, ct) => capturedCase = c);
-
         // Act
         await _handler.Handle(command, CancellationToken.None);
 
         // Assert
-        capturedCase.Should().NotBeNull();
-        capturedCase!.Type.Should().Be(OnboardingType.Business);
-        capturedCase.Business.Should().NotBeNull();
-        capturedCase.Business!.LegalName.Should().Be("Test Company Inc");
-        capturedCase.Business.RegistrationNumber.Should().Be("REG-12345");
-        capturedCase.Business.NumberOfEmployees.Should().Be(50);
+        var addedCases = _repositoryMock.GetAddedCases();
+        Assert.Single(addedCases);
+        var capturedCase = addedCases[0];
+        Assert.Equal(OnboardingType.Business, capturedCase.Type);
+        Assert.NotNull(capturedCase.Business);
+        Assert.Equal("Test Company Inc", capturedCase.Business!.LegalName);
+        Assert.Equal("REG-12345", capturedCase.Business.RegistrationNumber);
+        Assert.Equal(50, capturedCase.Business.NumberOfEmployees);
     }
 }
-

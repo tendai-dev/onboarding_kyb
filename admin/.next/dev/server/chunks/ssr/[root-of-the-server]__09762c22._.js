@@ -1,4 +1,4 @@
-;!function(){try { var e="undefined"!=typeof globalThis?globalThis:"undefined"!=typeof global?global:"undefined"!=typeof window?window:"undefined"!=typeof self?self:{},n=(new e.Error).stack;n&&((e._debugIds|| (e._debugIds={}))[n]="5f6d8030-4fb9-3f85-c1f4-57a6f5140ab1")}catch(e){}}();
+;!function(){try { var e="undefined"!=typeof globalThis?globalThis:"undefined"!=typeof global?global:"undefined"!=typeof window?window:"undefined"!=typeof self?self:{},n=(new e.Error).stack;n&&((e._debugIds|| (e._debugIds={}))[n]="c5386c12-70b9-89f4-d2f6-e77031364ba1")}catch(e){}}();
 module.exports = [
 "[externals]/next/dist/server/app-render/action-async-storage.external.js [external] (next/dist/server/app-render/action-async-storage.external.js, cjs)", ((__turbopack_context__, module, exports) => {
 
@@ -914,21 +914,9 @@ async function getItemsDueForRefresh(page = 1, pageSize = 100, asOfDate) {
     return await request(`/due-for-refresh?${params.toString()}`);
 }
 async function assignWorkItem(id, assignedToUserId, assignedToUserName) {
-    // Generate GUID if needed (for backwards compatibility)
-    let userIdGuid;
-    if (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(assignedToUserId)) {
-        userIdGuid = assignedToUserId;
-    } else {
-        // Simple hash to generate consistent GUID
-        let hash = 0;
-        for(let i = 0; i < assignedToUserId.length; i++){
-            const char = assignedToUserId.charCodeAt(i);
-            hash = (hash << 5) - hash + char;
-            hash = hash & hash;
-        }
-        const hex = Math.abs(hash).toString(16).padStart(32, '0');
-        userIdGuid = `${hex.substring(0, 8)}-${hex.substring(8, 12)}-${hex.substring(12, 16)}-${hex.substring(16, 20)}-${hex.substring(20, 32)}`;
-    }
+    // Import utility function for GUID normalization
+    const { normalizeUserIdToGuid } = await __turbopack_context__.A("[project]/src/lib/statusMapping.ts [app-ssr] (ecmascript, async loader)");
+    const userIdGuid = normalizeUserIdToGuid(assignedToUserId);
     await request(`/${id}/assign`, {
         method: 'POST',
         body: JSON.stringify({
@@ -7251,5 +7239,5 @@ function WorkQueuePage() {
 }),
 ];
 
-//# debugId=5f6d8030-4fb9-3f85-c1f4-57a6f5140ab1
+//# debugId=c5386c12-70b9-89f4-d2f6-e77031364ba1
 //# sourceMappingURL=%5Broot-of-the-server%5D__09762c22._.js.map

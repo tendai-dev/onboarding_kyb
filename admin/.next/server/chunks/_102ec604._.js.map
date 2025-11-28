@@ -1,0 +1,7 @@
+{
+  "version": 3,
+  "sources": [],
+  "debugId": "0acb6e06-8fe4-3b6f-ec1b-e01f1a04b3f1",
+  "sections": [
+    {"offset": {"line": 1, "column": 0}, "map": {"version":3,"sources":["../../../instrumentation.ts"],"sourcesContent":["// This file configures the initialization of Sentry for edge features (middleware, edge routes, etc).\n// The config you add here will be used whenever one of the edge features is loaded.\n// https://docs.sentry.io/platforms/javascript/guides/nextjs/\n\n;globalThis[\"_sentryNextJsVersion\"] = \"16.0.3\";export async function register() {\n  if (process.env.NEXT_RUNTIME === \"nodejs\") {\n    await import(\"./sentry.server.config\");\n  }\n\n  if (process.env.NEXT_RUNTIME === \"edge\") {\n    await import(\"./sentry.edge.config\");\n  }\n}\n\n"],"names":[],"mappings":"wCAIsD,eAAe,IAEjE,MAAA,EAAA,CAAA,CAAA,OAMJ,CARC,UAAU,CAAC,oBAAuB,CAAG"}}]
+}

@@ -1,4 +1,4 @@
-;!function(){try { var e="undefined"!=typeof globalThis?globalThis:"undefined"!=typeof global?global:"undefined"!=typeof window?window:"undefined"!=typeof self?self:{},n=(new e.Error).stack;n&&((e._debugIds|| (e._debugIds={}))[n]="d9a7b710-4c47-af1e-6e85-e812f5943dcf")}catch(e){}}();
+;!function(){try { var e="undefined"!=typeof globalThis?globalThis:"undefined"!=typeof global?global:"undefined"!=typeof window?window:"undefined"!=typeof self?self:{},n=(new e.Error).stack;n&&((e._debugIds|| (e._debugIds={}))[n]="a662c8a5-6295-0cda-4382-684984ba1a9e")}catch(e){}}();
 module.exports = [
 "[externals]/next/dist/compiled/next-server/app-route-turbo.runtime.dev.js [external] (next/dist/compiled/next-server/app-route-turbo.runtime.dev.js, cjs)", ((__turbopack_context__, module, exports) => {
 
@@ -365,6 +365,8 @@ function withErrorReportingSync(fn, context) {
 __turbopack_context__.s([
     "deleteTokenSession",
     ()=>deleteTokenSession,
+    "getAccountTokensFromNextAuth",
+    ()=>getAccountTokensFromNextAuth,
     "getRedisClient",
     ()=>getRedisClient,
     "getTokenSession",
@@ -372,7 +374,9 @@ __turbopack_context__.s([
     "storeTokenSession",
     ()=>storeTokenSession,
     "updateAccessToken",
-    ()=>updateAccessToken
+    ()=>updateAccessToken,
+    "updateNextAuthAccountTokens",
+    ()=>updateNextAuthAccountTokens
 ]);
 var __TURBOPACK__imported__module__$5b$externals$5d2f$redis__$5b$external$5d$__$28$redis$2c$__cjs$29$__ = __turbopack_context__.i("[externals]/redis [external] (redis, cjs)");
 var __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$lib$2f$sentry$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__ = __turbopack_context__.i("[project]/src/lib/sentry.ts [app-route] (ecmascript)");
@@ -436,6 +440,47 @@ async function updateAccessToken(sessionId, accessToken, accessTokenExpiryTime) 
         ...session,
         accessToken,
         accessTokenExpiryTime
+    });
+}
+async function getAccountTokensFromNextAuth(userId, provider = 'azure-ad') {
+    const client = await getRedisClient();
+    const accountKey = `nextauth:account:user:${userId}:${provider}`;
+    const accountRefKey = await client.get(accountKey);
+    if (!accountRefKey) return null;
+    const accountData = await client.get(accountRefKey);
+    if (!accountData) return null;
+    const account = JSON.parse(accountData);
+    if (!account.access_token) return null;
+    return {
+        accessToken: account.access_token,
+        refreshToken: account.refresh_token || '',
+        accessTokenExpiryTime: account.expires_at ? account.expires_at * 1000 : Date.now() + 3600 * 1000,
+        provider: account.provider,
+        userId
+    };
+}
+async function updateNextAuthAccountTokens(userId, provider, accessToken, refreshToken, expiresAt) {
+    const client = await getRedisClient();
+    const accountKey = `nextauth:account:user:${userId}:${provider}`;
+    const accountRefKey = await client.get(accountKey);
+    if (!accountRefKey) {
+        throw new Error(`Account not found for user ${userId} and provider ${provider}`);
+    }
+    const accountData = await client.get(accountRefKey);
+    if (!accountData) {
+        throw new Error(`Account data not found for user ${userId} and provider ${provider}`);
+    }
+    const account = JSON.parse(accountData);
+    const updatedAccount = {
+        ...account,
+        access_token: accessToken,
+        refresh_token: refreshToken,
+        expires_at: Math.floor(expiresAt / 1000)
+    };
+    await client.setEx(accountRefKey, 30 * 24 * 60 * 60, JSON.stringify(updatedAccount));
+    logger.debug('[RedisSession] Updated NextAuth account tokens', {
+        userId,
+        provider
     });
 }
 }),
@@ -545,18 +590,12 @@ var __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$lib$2f$logger$2e$ts__
 ;
 ;
 ;
-// Helper function to refresh tokens
-const refreshAccessToken = async (token, sessionId)=>{
+// Helper function to refresh tokens for NextAuth Account
+const refreshAccessTokenForAccount = async (userId, provider = 'azure-ad')=>{
     try {
-        // Get refresh token from Redis if sessionId provided
-        let refreshToken = token.refreshToken;
-        if (sessionId) {
-            const session = await (0, __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$lib$2f$redis$2d$session$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["getTokenSession"])(sessionId);
-            if (session) {
-                refreshToken = session.refreshToken;
-            }
-        }
-        if (!refreshToken) {
+        // Get account tokens from NextAuth Account storage
+        const accountTokens = await (0, __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$lib$2f$redis$2d$session$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["getAccountTokensFromNextAuth"])(userId, provider);
+        if (!accountTokens || !accountTokens.refreshToken) {
             throw new Error('No refresh token available');
         }
         const issuer = ("TURBOPACK compile-time value", "https://login.microsoftonline.com/dd5a90ad-b0ae-463b-bef5-5bae77f1adf2/v2.0") || `https://login.microsoftonline.com/${process.env.AZURE_AD_TENANT_ID}/v2.0`;
@@ -568,7 +607,7 @@ const refreshAccessToken = async (token, sessionId)=>{
             body: new URLSearchParams({
                 client_id: process.env.AZURE_AD_CLIENT_ID,
                 grant_type: 'refresh_token',
-                refresh_token: refreshToken,
+                refresh_token: accountTokens.refreshToken,
                 client_secret: process.env.AZURE_AD_CLIENT_SECRET
             })
         });
@@ -577,28 +616,14 @@ const refreshAccessToken = async (token, sessionId)=>{
             throw refreshedTokens;
         }
         const newAccessToken = refreshedTokens.access_token;
-        const newRefreshToken = refreshedTokens.refresh_token ?? refreshToken;
+        const newRefreshToken = refreshedTokens.refresh_token ?? accountTokens.refreshToken;
         const newExpiryTime = Date.now() + refreshedTokens.expires_in * 1000;
-        // Update Redis if sessionId provided
-        if (sessionId) {
-            await (0, __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$lib$2f$redis$2d$session$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["updateAccessToken"])(sessionId, newAccessToken, newExpiryTime);
-            if (newRefreshToken !== refreshToken) {
-                const session = await (0, __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$lib$2f$redis$2d$session$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["getTokenSession"])(sessionId);
-                if (session) {
-                    await (0, __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$lib$2f$redis$2d$session$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["storeTokenSession"])(sessionId, {
-                        ...session,
-                        refreshToken: newRefreshToken,
-                        accessToken: newAccessToken,
-                        accessTokenExpiryTime: newExpiryTime
-                    });
-                }
-            }
-        }
+        // Update NextAuth Account in Redis
+        await (0, __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$lib$2f$redis$2d$session$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["updateNextAuthAccountTokens"])(userId, provider, newAccessToken, newRefreshToken, newExpiryTime);
         return {
-            ...token,
             accessToken: newAccessToken,
-            accessTokenExpiryTime: newExpiryTime,
-            refreshToken: newRefreshToken
+            refreshToken: newRefreshToken,
+            expiresAt: Math.floor(newExpiryTime / 1000)
         };
     } catch (error) {
         (0, __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$lib$2f$sentry$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["reportError"])(error, {
@@ -607,15 +632,12 @@ const refreshAccessToken = async (token, sessionId)=>{
                 operation: 'refresh_access_token'
             },
             extra: {
-                sessionId,
-                hasRefreshToken: !!token.refreshToken
+                userId,
+                provider
             },
             level: 'error'
         });
-        return {
-            ...token,
-            error: 'RefreshAccessTokenError'
-        };
+        throw error;
     }
 };
 // Validate required environment variables
@@ -712,7 +734,7 @@ const authOptions = {
                     else if (token.email) token.email = token.email;
                     // Store tokens in Redis (not in JWT)
                     try {
-                        await (0, __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$lib$2f$redis$2d$session$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["storeTokenSession"])(sessionId, {
+                        await storeTokenSession(sessionId, {
                             accessToken: account.access_token || '',
                             refreshToken: account.refresh_token || '',
                             accessTokenExpiryTime: token.accessTokenExpiryTime || Date.now() + 3600 * 1000,
@@ -782,7 +804,7 @@ const authOptions = {
                 // Check if we need to refresh token
                 const sessionId = token.sessionId;
                 if (sessionId) {
-                    const redisSession = await (0, __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$lib$2f$redis$2d$session$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["getTokenSession"])(sessionId);
+                    const redisSession = await getTokenSession(sessionId);
                     if (redisSession) {
                         // Check if token needs refresh
                         if (redisSession.accessTokenExpiryTime && Date.now() < redisSession.accessTokenExpiryTime - 60 * 1000) {
@@ -998,7 +1020,8 @@ const authOptions = {
         }
     },
     session: {
-        strategy: 'jwt'
+        strategy: 'database',
+        maxAge: 30 * 24 * 60 * 60
     },
     // Ensure proper base URL for callbacks
     trustHost: true
@@ -1244,5 +1267,5 @@ async function PATCH(request) {
 }),
 ];
 
-//# debugId=d9a7b710-4c47-af1e-6e85-e812f5943dcf
+//# debugId=a662c8a5-6295-0cda-4382-684984ba1a9e
 //# sourceMappingURL=%5Broot-of-the-server%5D__63625058._.js.map

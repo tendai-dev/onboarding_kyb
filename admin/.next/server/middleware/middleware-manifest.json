@@ -1,0 +1,83 @@
+{
+  "sorted_middleware": [],
+  "middleware": {
+    "/": {
+      "files": [
+        "server/edge/chunks/[root-of-the-server]__fbd2c536._.js",
+        "server/edge/chunks/[root-of-the-server]__8b5f2aee._.js",
+        "server/edge/chunks/turbopack-edge-wrapper_7414f8ce.js"
+      ],
+      "name": "middleware",
+      "page": "/",
+      "matchers": [
+        {
+          "regexp": "/:nextData(_next/data/[^/]{1,})?/dashboard/:path*{(\\\\.json)}?",
+          "originalSource": "/dashboard/:path*"
+        },
+        {
+          "regexp": "/:nextData(_next/data/[^/]{1,})?/applications/:path*{(\\\\.json)}?",
+          "originalSource": "/applications/:path*"
+        },
+        {
+          "regexp": "/:nextData(_next/data/[^/]{1,})?/requirements/:path*{(\\\\.json)}?",
+          "originalSource": "/requirements/:path*"
+        },
+        {
+          "regexp": "/:nextData(_next/data/[^/]{1,})?/entity-types/:path*{(\\\\.json)}?",
+          "originalSource": "/entity-types/:path*"
+        },
+        {
+          "regexp": "/:nextData(_next/data/[^/]{1,})?/audit-log/:path*{(\\\\.json)}?",
+          "originalSource": "/audit-log/:path*"
+        },
+        {
+          "regexp": "/:nextData(_next/data/[^/]{1,})?/approvals/:path*{(\\\\.json)}?",
+          "originalSource": "/approvals/:path*"
+        },
+        {
+          "regexp": "/:nextData(_next/data/[^/]{1,})?/checklists/:path*{(\\\\.json)}?",
+          "originalSource": "/checklists/:path*"
+        },
+        {
+          "regexp": "/:nextData(_next/data/[^/]{1,})?/messages/:path*{(\\\\.json)}?",
+          "originalSource": "/messages/:path*"
+        },
+        {
+          "regexp": "/:nextData(_next/data/[^/]{1,})?/notifications/:path*{(\\\\.json)}?",
+          "originalSource": "/notifications/:path*"
+        },
+        {
+          "regexp": "/:nextData(_next/data/[^/]{1,})?/reports/:path*{(\\\\.json)}?",
+          "originalSource": "/reports/:path*"
+        },
+        {
+          "regexp": "/:nextData(_next/data/[^/]{1,})?/risk-review/:path*{(\\\\.json)}?",
+          "originalSource": "/risk-review/:path*"
+        },
+        {
+          "regexp": "/:nextData(_next/data/[^/]{1,})?/work-queue/:path*{(\\\\.json)}?",
+          "originalSource": "/work-queue/:path*"
+        },
+        {
+          "regexp": "/:nextData(_next/data/[^/]{1,})?/data-migration/:path*{(\\\\.json)}?",
+          "originalSource": "/data-migration/:path*"
+        },
+        {
+          "regexp": "/:nextData(_next/data/[^/]{1,})?/refreshes/:path*{(\\\\.json)}?",
+          "originalSource": "/refreshes/:path*"
+        }
+      ],
+      "wasm": [],
+      "assets": [],
+      "env": {
+        "__NEXT_BUILD_ID": "CfwHji1pp4-pD-uEr3JQu",
+        "NEXT_SERVER_ACTIONS_ENCRYPTION_KEY": "UsinxHQiX5YizE9oeb7v7/wvPkQX36eeDI3LSj003TM=",
+        "__NEXT_PREVIEW_MODE_ID": "e80bcd3976082283b19b728c516c54c3",
+        "__NEXT_PREVIEW_MODE_ENCRYPTION_KEY": "4925c9a897a3f04c579be642598fd5776dfe9ea3f8c1dce9b41016031739bd43",
+        "__NEXT_PREVIEW_MODE_SIGNING_KEY": "d271745d2f7750ea32c64a65b55dff1ed3be9ad187a568c5d9912ce9c0c4e407"
+      }
+    }
+  },
+  "instrumentation": null,
+  "functions": {}
+}

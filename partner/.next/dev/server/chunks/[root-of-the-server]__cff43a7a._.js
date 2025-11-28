@@ -585,7 +585,7 @@ const authOptions = {
             name: ("TURBOPACK compile-time falsy", 0) ? "TURBOPACK unreachable" : `next-auth.session-token`,
             options: {
                 httpOnly: true,
-                sameSite: 'lax',
+                sameSite: 'strict',
                 path: '/',
                 secure: ("TURBOPACK compile-time value", "development") === 'production'
             }

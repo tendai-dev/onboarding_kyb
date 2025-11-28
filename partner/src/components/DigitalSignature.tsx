@@ -21,7 +21,15 @@ import {
   SimpleGrid,
   Image,
   Spinner,
-  Tooltip
+  Tooltip,
+  Divider,
+  Modal,
+  ModalOverlay,
+  ModalContent,
+  ModalHeader,
+  ModalBody,
+  ModalFooter,
+  ModalCloseButton
 } from "@chakra-ui/react";
 import { useState, useRef, useEffect } from "react";
 import {

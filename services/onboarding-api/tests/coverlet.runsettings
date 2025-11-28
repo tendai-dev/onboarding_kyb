@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<RunSettings>
+  <DataCollectionRunSettings>
+    <DataCollectors>
+      <DataCollector friendlyName="XPlat code coverage">
+        <Configuration>
+          <Format>cobertura,json,lcov,opencover</Format>
+          <Exclude>[*.Tests]*,[*.Test]*</Exclude>
+          <IncludeDirectory>../../../src</IncludeDirectory>
+          <Threshold>80</Threshold>
+          <ThresholdType>line,branch,method</ThresholdType>
+          <ThresholdStat>total</ThresholdStat>
+          <!-- Fail build if coverage is below threshold -->
+          <ExcludeByAttribute>Obsolete,GeneratedCodeAttribute,CompilerGeneratedAttribute</ExcludeByAttribute>
+          <ExcludeByFile>**/Migrations/**</ExcludeByFile>
+        </Configuration>
+      </DataCollector>
+    </DataCollectors>
+  </DataCollectionRunSettings>
+</RunSettings>
+

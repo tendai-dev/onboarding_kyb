@@ -164,6 +164,7 @@ export default function Home() {
             cursor="pointer" 
             _hover={{ opacity: 0.8 }} 
             fontSize="lg"
+            style={{ color: 'white' }}
             onClick={() => document.getElementById('benefits')?.scrollIntoView({ behavior: 'smooth' })}
           >
             Benefits
@@ -174,6 +175,7 @@ export default function Home() {
             cursor="pointer" 
             _hover={{ opacity: 0.8 }} 
             fontSize="lg"
+            style={{ color: 'white' }}
             onClick={() => document.getElementById('contact')?.scrollIntoView({ behavior: 'smooth' })}
           >
             Contact
@@ -245,10 +247,11 @@ export default function Home() {
                     px="12"
                     py="6"
                     bg="gray.800"
+                    className="mukuru-primary-button get-started-button"
                     _hover={{ bg: "gray.700" }}
                     _active={{ bg: "gray.900" }}
                   >
-                    Get Started Now
+                    <span style={{ color: 'white' }}>Get Started Now</span>
                   </Button>
               </motion.div>
             </MotionVStack>

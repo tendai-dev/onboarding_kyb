@@ -149,17 +149,95 @@ test-unit:
   stage: test
   image: mcr.microsoft.com/dotnet/sdk:8.0
   script:
-    - echo "🧪 Running unit tests..."
+    - echo "🧪 Running unit tests with coverage..."
     - |
-      for test_proj in $(find services -name "*Tests.csproj"); do
+      for test_proj in $(find services -name "*Tests.csproj" -o -name "*Tests.Unit.csproj"); do
         echo "Testing $test_proj..."
-        dotnet test "$test_proj" --configuration Release --no-build --logger "trx;LogFileName=test_results.xml"
+        # Run tests with coverage - will fail if threshold not met
+        dotnet test "$test_proj" \
+          --configuration Release \
+          --logger "trx;LogFileName=test_results.xml" \
+          --collect:"XPlat Code Coverage" \
+          --settings coverlet.runsettings || TEST_FAILED=$?
       done
-    - echo "✅ Unit tests passed"
+      
+      # Extract coverage from coverage.cobertura.xml files and enforce 80% threshold
+      COV_FILES=$(find services -name "coverage.cobertura.xml" 2>/dev/null || true)
+      if [ -n "$COV_FILES" ]; then
+        # Use Python to calculate average coverage
+        COVERAGE=$(python3 -c "
+import xml.etree.ElementTree as ET
+import sys
+import glob
+
+files = glob.glob('services/**/coverage.cobertura.xml', recursive=True)
+if not files:
+    print('0.00')
+    sys.exit(1)
+
+total = 0
+count = 0
+for f in files:
+    try:
+        tree = ET.parse(f)
+        root = tree.getroot()
+        line_rate = float(root.get('line-rate', 0))
+        total += line_rate
+        count += 1
+    except Exception as e:
+        print(f'Error parsing {f}: {e}', file=sys.stderr)
+        pass
+
+if count > 0:
+    avg = (total / count) * 100
+    print(f'{avg:.2f}')
+    # Exit with error if below 80%
+    if avg < 80.0:
+        sys.exit(1)
+else:
+    print('0.00')
+    sys.exit(1)
+" 2>&1)
+        COVERAGE_EXIT=$?
+        echo "Coverage percentage: ${COVERAGE}%"
+        
+        # Check if coverage is below 80%
+        # Use awk for comparison (works in all environments)
+        COVERAGE_CHECK=$(echo "$COVERAGE" | awk '{if ($1 < 80) exit 1; exit 0}' 2>/dev/null)
+        if [ $COVERAGE_EXIT -ne 0 ] || [ $? -ne 0 ]; then
+          echo "❌ Coverage ${COVERAGE}% is below required 80% threshold"
+          echo "MR BLOCKED: Backend coverage threshold not met. Please add unit tests to reach 80% coverage."
+          echo "View coverage report: Download coverage artifacts"
+          exit 1
+        else
+          echo "✅ Coverage ${COVERAGE}% meets 80% threshold requirement"
+        fi
+      else
+        echo "❌ No coverage files found"
+        echo "MR BLOCKED: Coverage collection failed. Please ensure tests are running with coverage collection."
+        exit 1
+      fi
+    # Check if any tests failed
+    - |
+      if [ -n "$TEST_FAILED" ]; then
+        echo "❌ Unit tests failed or coverage threshold not met"
+        exit 1
+      fi
+    - echo "✅ Unit tests passed with coverage threshold met"
+  coverage: '/Coverage percentage:\s*(\d+\.\d+)%/'
   artifacts:
     when: always
     reports:
       junit: "**/test_results.xml"
+      coverage_report:
+        coverage_format: cobertura
+        path: "**/coverage.cobertura.xml"
+    paths:
+      - "**/coverage/"
+      - "**/coverage.cobertura.xml"
+      - "**/coverage.json"
+      - "**/coverage.lcov"
+    expire_in: 1 week
 
 test-integration:
   stage: test

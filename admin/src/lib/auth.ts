@@ -2,23 +2,17 @@
 import type { NextAuthOptions } from 'next-auth';
 import NextAuth from 'next-auth';
 import AzureADProvider from 'next-auth/providers/azure-ad';
-import { storeTokenSession, getTokenSession, updateAccessToken } from './redis-session';
+import { RedisAdapter } from './redis-adapter';
+import { updateNextAuthAccountTokens, getAccountTokensFromNextAuth } from './redis-session';
 import { reportError } from './sentry';
 import { logger } from './logger';
 
-// Helper function to refresh tokens
-const refreshAccessToken = async (token: any, sessionId?: string) => {
+// Helper function to refresh tokens for NextAuth Account
+const refreshAccessTokenForAccount = async (userId: string, provider: string = 'azure-ad') => {
   try {
-    // Get refresh token from Redis if sessionId provided
-    let refreshToken = token.refreshToken;
-    if (sessionId) {
-      const session = await getTokenSession(sessionId);
-      if (session) {
-        refreshToken = session.refreshToken;
-      }
-    }
-
-    if (!refreshToken) {
+    // Get account tokens from NextAuth Account storage
+    const accountTokens = await getAccountTokensFromNextAuth(userId, provider);
+    if (!accountTokens || !accountTokens.refreshToken) {
       throw new Error('No refresh token available');
     }
 
@@ -32,7 +26,7 @@ const refreshAccessToken = async (token: any, sessionId?: string) => {
       body: new URLSearchParams({
         client_id: process.env.AZURE_AD_CLIENT_ID!,
         grant_type: 'refresh_token',
-        refresh_token: refreshToken,
+        refresh_token: accountTokens.refreshToken,
         client_secret: process.env.AZURE_AD_CLIENT_SECRET!,
       }),
     });
@@ -44,41 +38,30 @@ const refreshAccessToken = async (token: any, sessionId?: string) => {
     }
 
     const newAccessToken = refreshedTokens.access_token;
-    const newRefreshToken = refreshedTokens.refresh_token ?? refreshToken;
+    const newRefreshToken = refreshedTokens.refresh_token ?? accountTokens.refreshToken;
     const newExpiryTime = Date.now() + refreshedTokens.expires_in * 1000;
 
-    // Update Redis if sessionId provided
-    if (sessionId) {
-      await updateAccessToken(sessionId, newAccessToken, newExpiryTime);
-      if (newRefreshToken !== refreshToken) {
-        const session = await getTokenSession(sessionId);
-        if (session) {
-          await storeTokenSession(sessionId, {
-            ...session,
-            refreshToken: newRefreshToken,
-            accessToken: newAccessToken,
-            accessTokenExpiryTime: newExpiryTime,
-          });
-        }
-      }
-    }
+    // Update NextAuth Account in Redis
+    await updateNextAuthAccountTokens(
+      userId,
+      provider,
+      newAccessToken,
+      newRefreshToken,
+      newExpiryTime
+    );
 
     return {
-      ...token,
       accessToken: newAccessToken,
-      accessTokenExpiryTime: newExpiryTime,
       refreshToken: newRefreshToken,
+      expiresAt: Math.floor(newExpiryTime / 1000), // Convert to seconds
     };
   } catch (error) {
     reportError(error, {
       tags: { error_type: 'token_refresh', operation: 'refresh_access_token' },
-      extra: { sessionId, hasRefreshToken: !!token.refreshToken },
+      extra: { userId, provider },
       level: 'error',
     });
-    return {
-      ...token,
-      error: 'RefreshAccessTokenError',
-    };
+    throw error;
   }
 };
 
@@ -116,6 +99,7 @@ if (process.env.NODE_ENV === 'development') {
 
 export const authOptions: NextAuthOptions = {
   debug: process.env.NODE_ENV === 'development', // Enable debug logging in development
+  adapter: RedisAdapter(), // Use Redis adapter for database strategy
   providers: [
     AzureADProvider({
       clientId: process.env.AZURE_AD_CLIENT_ID!,
@@ -145,215 +129,96 @@ export const authOptions: NextAuthOptions = {
     }),
   ],
   callbacks: {
-    async jwt({ token, account, user, trigger, session: sessionData }: any) {
+    // With database strategy, NextAuth handles account linking automatically via adapter
+    // We only need to handle user registration and session data
+    async signIn({ user, account, profile }: any) {
       try {
-        // Initial sign in - store tokens in Redis
-        if (account && user) {
-        const sessionId = (token.sub as string) || (token.jti as string) || `session-${Date.now()}-${Math.random()}`;
-        token.sessionId = sessionId;
-        token.accessTokenExpiryTime = account.expires_at ? account.expires_at * 1000 : Date.now() + 3600 * 1000;
-        
-        // Log user data from Azure AD for debugging
+        // Log sign-in for debugging
         if (process.env.NODE_ENV === 'development') {
-          logger.debug('[NextAuth] JWT callback - User data', {
-            userId: user.id,
-            userName: user.name,
-            userEmail: user.email,
-            tokenSub: token.sub,
-            tokenName: token.name,
-            tokenEmail: token.email,
+          logger.debug('[NextAuth] Sign in event', {
+            userId: user?.id,
+            userEmail: user?.email,
+            provider: account?.provider,
+            hasAccessToken: !!account?.access_token,
           });
         }
-        
-        // Preserve user data from Azure AD - ensure name is included
-        // Use user object first, then fall back to token claims
-        token.user = {
-          id: user.id || token.sub || undefined,
-          name: user.name || token.name || (token as any).given_name + ' ' + (token as any).family_name || undefined,
-          email: user.email || token.email || undefined,
-          image: user.image || token.picture || undefined,
-        };
-        
-        // Also store name and email directly on token for fallback
-        if (user.name) token.name = user.name;
-        else if (token.name) token.name = token.name as string;
-        else if ((token as any).given_name && (token as any).family_name) {
-          token.name = `${(token as any).given_name} ${(token as any).family_name}`;
-          token.user.name = token.name;
-        }
-        
-        if (user.email) token.email = user.email;
-        else if (token.email) token.email = token.email as string;
-        
-        // Store tokens in Redis (not in JWT)
-        try {
-          await storeTokenSession(sessionId, {
-            accessToken: account.access_token || '',
-            refreshToken: account.refresh_token || '',
-            accessTokenExpiryTime: token.accessTokenExpiryTime || Date.now() + 3600 * 1000,
-            provider: 'azure-ad',
-            userEmail: user.email || undefined,
-            userId: user.id || user.email || undefined,
-          });
-        } catch (error) {
-          reportError(error, {
-            tags: { error_type: 'redis_token_storage', operation: 'store_token_session' },
-            extra: { sessionId, userEmail: user.email },
-            level: 'error',
-          });
-          // Continue anyway - tokens will be in JWT as fallback (but shouldn't be exposed)
-        }
-        
-        // Automatically save user email to backend (fire and forget)
-        if (user?.email && account.access_token) {
-          try {
-            const entityConfigApiBaseUrl = process.env.NEXT_PUBLIC_ENTITY_CONFIG_API_BASE_URL || 'http://localhost:8003';
-            await fetch(`${entityConfigApiBaseUrl}/api/v1/users`, {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${account.access_token}`,
-                'X-User-Email': user.email,
-              },
-              body: JSON.stringify({
-                email: user.email,
-                name: user.name || null,
-              }),
-            }).catch(err => {
-              // Silently fail - don't block login if user creation fails
-              reportError(err, {
-                tags: { error_type: 'user_registration', operation: 'register_user_on_login' },
-                extra: { userEmail: user.email },
-                level: 'warning',
-              });
-            });
-          } catch (err) {
-            // Silently fail - don't block login if user creation fails
-            reportError(err, {
-              tags: { error_type: 'user_registration', operation: 'register_user_on_login' },
-              extra: { userEmail: user.email },
-              level: 'warning',
-            });
-          }
-        }
-        
-        // DO NOT store accessToken/refreshToken in JWT - only in Redis
-        return token;
-      }
 
-      // Check if we need to refresh token
-      const sessionId = token.sessionId as string | undefined;
-      if (sessionId) {
-        const redisSession = await getTokenSession(sessionId);
-        if (redisSession) {
-          // Check if token needs refresh
-          if (redisSession.accessTokenExpiryTime && Date.now() < redisSession.accessTokenExpiryTime - 60 * 1000) {
-            // Token still valid
-            return token;
-          }
-          // Token expired, refresh it
-          return refreshAccessToken(token, sessionId);
-        }
-      }
+        // SECURITY: BFF pattern - tokens are stored in Redis via adapter
+        // User registration will be handled in session callback via proxy pattern
+        // This ensures all API calls go through the proxy which injects tokens from Redis
+        // No direct token usage here - tokens are server-side only
 
-      // Fallback: if no Redis session, check JWT expiry (legacy support)
-      if (token.accessTokenExpiryTime && Date.now() < token.accessTokenExpiryTime - 60 * 1000) {
-        return token;
-      }
-
-      // Access token has expired, try to update it
-      return refreshAccessToken(token, sessionId);
+        return true;
       } catch (error: any) {
-        logger.error(error, '[NextAuth] JWT callback error', {
-          tags: { error_type: 'jwt_callback' },
+        logger.error(error, '[NextAuth] Sign in callback error', {
+          tags: { error_type: 'signin_callback' },
           extra: { stack: error?.stack }
         });
-        reportError(error, {
-          tags: { error_type: 'jwt_callback', operation: 'jwt_callback' },
-          extra: { 
-            hasAccount: !!account,
-            hasUser: !!user,
-            tokenSub: token?.sub,
-            trigger,
-          },
-          level: 'error',
-        });
-        // Return token anyway to prevent complete failure
-        return token;
+        // Allow sign-in to proceed even if callbacks fail
+        return true;
       }
     },
-    async session({ session, token }: any) {
+    async session({ session, user }: any) {
       try {
-        // DO NOT expose accessToken or sessionId to frontend - BFF pattern
-        // sessionId is stored in httpOnly JWT cookie only, never exposed to client-side JS
-        
-        // Set user data from token - prioritize token.user, then token fields
-        if (token.user) {
+        // SECURITY: BFF (Backend-For-Frontend) pattern - DO NOT expose tokens or sessionId to frontend
+        // sessionId is stored in httpOnly cookie only, never exposed to client-side JS
+        // Tokens are stored in Redis and retrieved server-side by API proxy
+        // With database strategy, user is provided directly from adapter
+        // No need to extract from token - NextAuth handles this
+        if (user) {
           session.user = {
-            id: token.user.id || token.sub || undefined,
-            name: token.user.name || token.name ? (token.name as string) : undefined,
-            email: token.user.email || token.email ? (token.email as string) : undefined,
-            image: token.user.image || token.picture ? (token.picture as string) : undefined,
-          };
-        } else if (token.name || token.email) {
-          // Use token fields directly if user object not available
-          session.user = {
-            id: token.sub || undefined,
-            name: token.name ? (token.name as string) : undefined,
-            email: token.email ? (token.email as string) : undefined,
-            image: token.picture ? (token.picture as string) : undefined,
+            id: user.id || undefined,
+            name: user.name || undefined,
+            email: user.email || undefined,
+            image: user.image || undefined,
           };
         }
-        
+
         // Log session for debugging
         if (process.env.NODE_ENV === 'development') {
           logger.debug('[NextAuth] Session callback', {
             hasUser: !!session.user,
             userName: session.user?.name,
             userEmail: session.user?.email,
-            tokenHasUser: !!token.user,
-            tokenName: token.name,
-            tokenEmail: token.email,
           });
         }
-        
-        session.error = token.error as string | undefined;
-      
-      // Update user last login (fire and forget) - use proxy endpoint instead
-      if (session.user?.email) {
-        try {
-          // This will go through proxy which will inject token from Redis
-          const entityConfigApiBaseUrl = process.env.NEXT_PUBLIC_ENTITY_CONFIG_API_BASE_URL || 'http://localhost:8003';
-          // Use relative path to go through proxy
-          fetch('/api/proxy/api/v1/users', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'X-User-Email': session.user.email,
-            },
-            body: JSON.stringify({
-              email: session.user.email,
-              name: session.user.name || null,
-            }),
-          }).catch(err => {
-            // Silently fail - don't block session if update fails
+
+        // Register/update user in backend (fire and forget) - use proxy endpoint
+        // SECURITY: BFF pattern - proxy will inject token from Redis, no direct token usage
+        // This handles both initial registration and subsequent login updates
+        if (session.user?.email) {
+          try {
+            // This will go through proxy which will inject token from NextAuth Account stored in Redis
+            // Proxy reads httpOnly session cookie, resolves session from Redis, retrieves tokens, injects Authorization header
+            fetch('/api/proxy/api/v1/users', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'X-User-Email': session.user.email,
+              },
+              body: JSON.stringify({
+                email: session.user.email,
+                name: session.user.name || null,
+              }),
+            }).catch(err => {
+              // Silently fail - don't block session if registration/update fails
+              reportError(err, {
+                tags: { error_type: 'user_registration', operation: 'register_or_update_user' },
+                extra: { userEmail: session.user?.email },
+                level: 'warning',
+              });
+            });
+          } catch (err) {
+            // Silently fail - don't block session if registration/update fails
             reportError(err, {
-              tags: { error_type: 'user_update', operation: 'update_user_last_login' },
+              tags: { error_type: 'user_registration', operation: 'register_or_update_user' },
               extra: { userEmail: session.user?.email },
               level: 'warning',
             });
-          });
-        } catch (err) {
-          // Silently fail - don't block session if update fails
-          reportError(err, {
-            tags: { error_type: 'user_update', operation: 'update_user_last_login' },
-            extra: { userEmail: session.user?.email },
-            level: 'warning',
-          });
+          }
         }
-      }
-      
-      return session;
+
+        return session;
       } catch (error: any) {
         logger.error(error, '[NextAuth] Session callback error', {
           tags: { error_type: 'session_callback' },
@@ -362,8 +227,8 @@ export const authOptions: NextAuthOptions = {
         reportError(error, {
           tags: { error_type: 'session_callback', operation: 'session_callback' },
           extra: { 
-            hasToken: !!token,
-            tokenSub: token?.sub,
+            hasUser: !!user,
+            userId: user?.id,
           },
           level: 'error',
         });
@@ -436,7 +301,21 @@ export const authOptions: NextAuthOptions = {
     },
   },
   session: {
-    strategy: 'jwt',
+    strategy: 'database', // Use database strategy with Redis adapter
+    maxAge: 30 * 24 * 60 * 60, // 30 days
+  },
+  cookies: {
+    sessionToken: {
+      name: process.env.NODE_ENV === 'production' 
+        ? `__Secure-next-auth.session-token`
+        : `next-auth.session-token`,
+      options: {
+        httpOnly: true, // Enterprise security: prevent JavaScript access to session cookie
+        sameSite: 'strict', // Enterprise security: prevent cross-site token leakage
+        path: '/',
+        secure: process.env.NODE_ENV === 'production',
+      },
+    },
   },
   // Ensure proper base URL for callbacks
   trustHost: true, // Trust the host header (useful for development)

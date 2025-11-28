@@ -206,21 +206,9 @@ export async function getItemsDueForRefresh(page: number = 1, pageSize: number =
  * Assign work item to a user
  */
 export async function assignWorkItem(id: string, assignedToUserId: string, assignedToUserName: string): Promise<void> {
-  // Generate GUID if needed (for backwards compatibility)
-  let userIdGuid: string;
-  if (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(assignedToUserId)) {
-    userIdGuid = assignedToUserId;
-  } else {
-    // Simple hash to generate consistent GUID
-    let hash = 0;
-    for (let i = 0; i < assignedToUserId.length; i++) {
-      const char = assignedToUserId.charCodeAt(i);
-      hash = ((hash << 5) - hash) + char;
-      hash = hash & hash;
-    }
-    const hex = Math.abs(hash).toString(16).padStart(32, '0');
-    userIdGuid = `${hex.substring(0, 8)}-${hex.substring(8, 12)}-${hex.substring(12, 16)}-${hex.substring(16, 20)}-${hex.substring(20, 32)}`;
-  }
+  // Import utility function for GUID normalization
+  const { normalizeUserIdToGuid } = await import('@/lib/statusMapping');
+  const userIdGuid = normalizeUserIdToGuid(assignedToUserId);
   
   await request(`/${id}/assign`, {
     method: 'POST',

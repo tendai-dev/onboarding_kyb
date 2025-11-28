@@ -360,7 +360,7 @@ export const authOptions: NextAuthOptions = {
         : `next-auth.session-token`,
       options: {
         httpOnly: true,
-        sameSite: 'lax',
+        sameSite: 'strict', // Enterprise security: prevent cross-site token leakage
         path: '/',
         secure: process.env.NODE_ENV === 'production',
       },

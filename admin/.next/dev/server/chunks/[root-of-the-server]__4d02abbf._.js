@@ -1,4 +1,4 @@
-;!function(){try { var e="undefined"!=typeof globalThis?globalThis:"undefined"!=typeof global?global:"undefined"!=typeof window?window:"undefined"!=typeof self?self:{},n=(new e.Error).stack;n&&((e._debugIds|| (e._debugIds={}))[n]="9bb5302c-e164-ad7b-9342-60bc34eb710f")}catch(e){}}();
+;!function(){try { var e="undefined"!=typeof globalThis?globalThis:"undefined"!=typeof global?global:"undefined"!=typeof window?window:"undefined"!=typeof self?self:{},n=(new e.Error).stack;n&&((e._debugIds|| (e._debugIds={}))[n]="ed784b8c-6b18-1154-eccb-5dc8beb51f23")}catch(e){}}();
 module.exports = [
 "[externals]/next/dist/compiled/next-server/app-route-turbo.runtime.dev.js [external] (next/dist/compiled/next-server/app-route-turbo.runtime.dev.js, cjs)", ((__turbopack_context__, module, exports) => {
 
@@ -359,6 +359,8 @@ function withErrorReportingSync(fn, context) {
 __turbopack_context__.s([
     "deleteTokenSession",
     ()=>deleteTokenSession,
+    "getAccountTokensFromNextAuth",
+    ()=>getAccountTokensFromNextAuth,
     "getRedisClient",
     ()=>getRedisClient,
     "getTokenSession",
@@ -366,7 +368,9 @@ __turbopack_context__.s([
     "storeTokenSession",
     ()=>storeTokenSession,
     "updateAccessToken",
-    ()=>updateAccessToken
+    ()=>updateAccessToken,
+    "updateNextAuthAccountTokens",
+    ()=>updateNextAuthAccountTokens
 ]);
 var __TURBOPACK__imported__module__$5b$externals$5d2f$redis__$5b$external$5d$__$28$redis$2c$__cjs$29$__ = __turbopack_context__.i("[externals]/redis [external] (redis, cjs)");
 var __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$lib$2f$sentry$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__ = __turbopack_context__.i("[project]/src/lib/sentry.ts [app-route] (ecmascript)");
@@ -430,6 +434,47 @@ async function updateAccessToken(sessionId, accessToken, accessTokenExpiryTime) 
         ...session,
         accessToken,
         accessTokenExpiryTime
+    });
+}
+async function getAccountTokensFromNextAuth(userId, provider = 'azure-ad') {
+    const client = await getRedisClient();
+    const accountKey = `nextauth:account:user:${userId}:${provider}`;
+    const accountRefKey = await client.get(accountKey);
+    if (!accountRefKey) return null;
+    const accountData = await client.get(accountRefKey);
+    if (!accountData) return null;
+    const account = JSON.parse(accountData);
+    if (!account.access_token) return null;
+    return {
+        accessToken: account.access_token,
+        refreshToken: account.refresh_token || '',
+        accessTokenExpiryTime: account.expires_at ? account.expires_at * 1000 : Date.now() + 3600 * 1000,
+        provider: account.provider,
+        userId
+    };
+}
+async function updateNextAuthAccountTokens(userId, provider, accessToken, refreshToken, expiresAt) {
+    const client = await getRedisClient();
+    const accountKey = `nextauth:account:user:${userId}:${provider}`;
+    const accountRefKey = await client.get(accountKey);
+    if (!accountRefKey) {
+        throw new Error(`Account not found for user ${userId} and provider ${provider}`);
+    }
+    const accountData = await client.get(accountRefKey);
+    if (!accountData) {
+        throw new Error(`Account data not found for user ${userId} and provider ${provider}`);
+    }
+    const account = JSON.parse(accountData);
+    const updatedAccount = {
+        ...account,
+        access_token: accessToken,
+        refresh_token: refreshToken,
+        expires_at: Math.floor(expiresAt / 1000)
+    };
+    await client.setEx(accountRefKey, 30 * 24 * 60 * 60, JSON.stringify(updatedAccount));
+    logger.debug('[RedisSession] Updated NextAuth account tokens', {
+        userId,
+        provider
     });
 }
 }),
@@ -752,5 +797,5 @@ const OPTIONS = forward;
 }),
 ];
 
-//# debugId=9bb5302c-e164-ad7b-9342-60bc34eb710f
+//# debugId=ed784b8c-6b18-1154-eccb-5dc8beb51f23
 //# sourceMappingURL=%5Broot-of-the-server%5D__4d02abbf._.js.map

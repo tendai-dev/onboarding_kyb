@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { logger } from '@/lib/logger';
+import { mapFrontendStatusToBackend, getStatusEndpoint, isGuid } from '@/lib/statusMapping';
 
 /**
  * Application Status API route - routes through centralized proxy for BFF pattern
@@ -44,9 +45,8 @@ export async function PUT(
     // First, we need to get the GUID from the caseId if id is a caseId (like OBC-20251106-88902)
     // Try to resolve the caseId to GUID
     let caseGuid = id;
-    const isGuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
     
-    if (!isGuid) {
+    if (!isGuid(id)) {
       // It's a caseId, need to find the GUID
       try {
         // Route through proxy
@@ -80,30 +80,21 @@ export async function PUT(
     }
 
     // Map frontend status to backend status
-    const statusMap: Record<string, string> = {
-      'SUBMITTED': 'Submitted',
-      'IN PROGRESS': 'InProgress',
-      'RISK REVIEW': 'PendingReview',
-      'COMPLETE': 'Approved',
-      'APPROVED': 'Approved',
-      'DECLINED': 'Rejected',
-      'REJECTED': 'Rejected',
-    };
-    
-    const backendStatus = statusMap[status] || status;
+    const backendStatus = mapFrontendStatusToBackend(status);
 
     // Use appropriate endpoint based on status - route through proxy
+    const endpoint = getStatusEndpoint(status);
     let proxyPath: string;
     let requestBody: any;
 
-    if (backendStatus === 'Approved') {
+    if (endpoint === 'approve') {
       // Use approve endpoint
       proxyPath = `/api/proxy/api/v1/cases/${caseGuid}/approve`;
       requestBody = {
         approvedBy: session?.user?.email || session?.user?.name || 'system',
         notes: notes || ''
       };
-    } else if (backendStatus === 'Rejected') {
+    } else if (endpoint === 'reject') {
       // Use reject endpoint
       proxyPath = `/api/proxy/api/v1/cases/${caseGuid}/reject`;
       requestBody = {

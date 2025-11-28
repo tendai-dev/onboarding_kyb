@@ -1,5 +1,4 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { logger } from '../logger';
 import * as sentry from '../sentry';
 
 // Mock Sentry
@@ -9,6 +8,7 @@ vi.mock('../sentry', () => ({
   addBreadcrumb: vi.fn(),
 }));
 
+// Mock logger module - need to import after env is set
 describe('Logger', () => {
   const originalEnv = process.env.NODE_ENV;
   const consoleSpy = {
@@ -30,8 +30,14 @@ describe('Logger', () => {
   });
 
   describe('in development', () => {
-    beforeEach(() => {
+    let logger: any;
+
+    beforeEach(async () => {
       vi.stubEnv('NODE_ENV', 'development');
+      // Reload logger module after env is set
+      vi.resetModules();
+      const loggerModule = await import('../logger');
+      logger = loggerModule.logger;
     });
 
     it('should log debug messages', () => {
@@ -57,8 +63,14 @@ describe('Logger', () => {
   });
 
   describe('in production', () => {
-    beforeEach(() => {
+    let logger: any;
+
+    beforeEach(async () => {
       vi.stubEnv('NODE_ENV', 'production');
+      // Reload logger module after env is set
+      vi.resetModules();
+      const loggerModule = await import('../logger');
+      logger = loggerModule.logger;
     });
 
     it('should not log debug messages', () => {

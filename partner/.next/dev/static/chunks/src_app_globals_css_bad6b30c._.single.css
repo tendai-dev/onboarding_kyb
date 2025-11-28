@@ -2003,6 +2003,11 @@ body {
   -webkit-text-fill-color: #111827 !important;
 }
 
+.mukuru-primary-button span, button.mukuru-primary-button span, [data-scope="button"].mukuru-primary-button span, .mukuru-primary-button *, button.mukuru-primary-button *, [data-scope="button"].mukuru-primary-button *, button[style*="background-color: rgb(31, 41, 55)"] span, button[style*="background-color: #1f2937"] span, button[style*="background-color: gray.800"] span, button[bg="gray.800"] span, button[bg="gray.800"] *, .get-started-button, .get-started-button *, .get-started-button span {
+  color: #fff !important;
+  -webkit-text-fill-color: white !important;
+}
+
 input[type="text"], input[type="email"], input[type="tel"], input[type="password"], input[type="number"], textarea, select {
   color: #111827 !important;
   -webkit-text-fill-color: #111827 !important;

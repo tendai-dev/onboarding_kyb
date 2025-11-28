@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { logger } from '@/lib/logger';
+import { isGuid } from '@/lib/statusMapping';
 
 /**
  * Application Details API route - routes through centralized proxy for BFF pattern
@@ -36,8 +37,6 @@ export async function GET(
     }
 
     // Try to get by GUID first (if id is a GUID format)
-    const isGuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
-    
     // Use the projections API search endpoint which works for both caseId and GUID
     // Route through proxy
     const searchPath = `/api/proxy/projections/v1/cases?searchTerm=${encodeURIComponent(id)}&take=10`;
@@ -87,7 +86,7 @@ export async function GET(
 
     // If not found in projections API, try onboarding API directly (source of truth)
     // This handles cases where the projection hasn't synced yet
-    if (isGuid) {
+    if (isGuid(id)) {
       try {
         logger.debug('[Admin Application Details] Not found in projections, trying onboarding API', { path: `/api/proxy/api/v1/cases/${id}` });
         

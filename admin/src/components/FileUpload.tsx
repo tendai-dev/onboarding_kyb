@@ -53,6 +53,7 @@ export function FileUpload({
   const uploadedFilesRef = useRef<UploadedFile[]>([]);
 
   const validateFile = (file: File): string | null => {
+    if (!file) return 'Invalid file';
     // Check file size
     if (file.size > maxSize * 1024 * 1024) {
       return `File size must be less than ${maxSize}MB`;
@@ -171,7 +172,9 @@ export function FileUpload({
     if (multiple) {
       files.forEach(handleFileUpload);
     } else {
-      handleFileUpload(files[0]);
+      if (files[0]) {
+        handleFileUpload(files[0]);
+      }
     }
   };
 

@@ -1,17 +1,7 @@
 {
-  "/_not-found/page": "app/_not-found/page.js",
-  "/api/applications/route": "app/api/applications/route.js",
   "/api/auth/[...nextauth]/route": "app/api/auth/[...nextauth]/route.js",
-  "/api/dashboard/route": "app/api/dashboard/route.js",
-  "/api/entity-type-distribution/route": "app/api/entity-type-distribution/route.js",
   "/api/proxy/[...path]/route": "app/api/proxy/[...path]/route.js",
-  "/api/requirements/route": "app/api/requirements/route.js",
-  "/api/rules-and-permissions/[...path]/route": "app/api/rules-and-permissions/[...path]/route.js",
-  "/api/trends/route": "app/api/trends/route.js",
   "/api/workqueue/route": "app/api/workqueue/route.js",
-  "/applications/page": "app/applications/page.js",
-  "/dashboard/page": "app/dashboard/page.js",
   "/page": "app/page.js",
-  "/wizard-configurations/create/page": "app/wizard-configurations/create/page.js",
   "/work-queue/page": "app/work-queue/page.js"
 }

@@ -1367,31 +1367,19 @@ function FileUpload({ onFileUpload, acceptedTypes = [
                 return /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f40$chakra$2d$ui$2f$react$2f$dist$2f$esm$2f$components$2f$icon$2f$icon$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["Icon"], {
                     as: __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$react$2d$icons$2f$fi$2f$index$2e$mjs__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["FiUpload"],
                     boxSize: "4"
-                }, void 0, false, {
-                    fileName: "[project]/src/components/FileUpload.tsx",
-                    lineNumber: 233,
-                    columnNumber: 16
-                }, this);
+                });
             case 'completed':
                 return /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f40$chakra$2d$ui$2f$react$2f$dist$2f$esm$2f$components$2f$icon$2f$icon$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["Icon"], {
                     as: __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$react$2d$icons$2f$fi$2f$index$2e$mjs__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["FiCheck"],
                     boxSize: "4",
                     color: "green.500"
-                }, void 0, false, {
-                    fileName: "[project]/src/components/FileUpload.tsx",
-                    lineNumber: 235,
-                    columnNumber: 16
-                }, this);
+                });
             case 'error':
                 return /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f40$chakra$2d$ui$2f$react$2f$dist$2f$esm$2f$components$2f$icon$2f$icon$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["Icon"], {
                     as: __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$react$2d$icons$2f$fi$2f$index$2e$mjs__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["FiX"],
                     boxSize: "4",
                     color: "red.500"
-                }, void 0, false, {
-                    fileName: "[project]/src/components/FileUpload.tsx",
-                    lineNumber: 237,
-                    columnNumber: 16
-                }, this);
+                });
         }
     };
     const getStatusColor = (status)=>{
@@ -1435,16 +1423,8 @@ function FileUpload({ onFileUpload, acceptedTypes = [
                             children: /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f40$chakra$2d$ui$2f$react$2f$dist$2f$esm$2f$components$2f$icon$2f$icon$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["Icon"], {
                                 as: __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$react$2d$icons$2f$fi$2f$index$2e$mjs__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["FiCloud"],
                                 boxSize: "8"
-                            }, void 0, false, {
-                                fileName: "[project]/src/components/FileUpload.tsx",
-                                lineNumber: 275,
-                                columnNumber: 13
-                            }, this)
-                        }, void 0, false, {
-                            fileName: "[project]/src/components/FileUpload.tsx",
-                            lineNumber: 274,
-                            columnNumber: 11
-                        }, this),
+                            })
+                        }),
                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f40$chakra$2d$ui$2f$react$2f$dist$2f$esm$2f$components$2f$stack$2f$v$2d$stack$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["VStack"], {
                             gap: "2",
                             children: [
@@ -1453,20 +1433,12 @@ function FileUpload({ onFileUpload, acceptedTypes = [
                                     fontWeight: "semibold",
                                     color: "gray.700",
                                     children: label
-                                }, void 0, false, {
-                                    fileName: "[project]/src/components/FileUpload.tsx",
-                                    lineNumber: 279,
-                                    columnNumber: 13
-                                }, this),
+                                }),
                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f40$chakra$2d$ui$2f$react$2f$dist$2f$esm$2f$components$2f$text$2f$index$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["Text"], {
                                     fontSize: "sm",
                                     color: "gray.600",
                                     children: description
-                                }, void 0, false, {
-                                    fileName: "[project]/src/components/FileUpload.tsx",
-                                    lineNumber: 282,
-                                    columnNumber: 13
-                                }, this),
+                                }),
                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f40$chakra$2d$ui$2f$react$2f$dist$2f$esm$2f$components$2f$text$2f$index$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["Text"], {
                                     fontSize: "xs",
                                     color: "gray.500",
@@ -1476,17 +1448,9 @@ function FileUpload({ onFileUpload, acceptedTypes = [
                                         "MB • Accepted: ",
                                         acceptedTypes.join(', ')
                                     ]
-                                }, void 0, true, {
-                                    fileName: "[project]/src/components/FileUpload.tsx",
-                                    lineNumber: 285,
-                                    columnNumber: 13
-                                }, this)
+                                })
                             ]
-                        }, void 0, true, {
-                            fileName: "[project]/src/components/FileUpload.tsx",
-                            lineNumber: 278,
-                            columnNumber: 11
-                        }, this),
+                        }),
                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f40$chakra$2d$ui$2f$react$2f$dist$2f$esm$2f$components$2f$button$2f$button$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["Button"], {
                             colorScheme: "blue",
                             variant: "outline",
@@ -1494,29 +1458,13 @@ function FileUpload({ onFileUpload, acceptedTypes = [
                             children: [
                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f40$chakra$2d$ui$2f$react$2f$dist$2f$esm$2f$components$2f$icon$2f$icon$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["Icon"], {
                                     as: __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$react$2d$icons$2f$fi$2f$index$2e$mjs__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["FiUpload"]
-                                }, void 0, false, {
-                                    fileName: "[project]/src/components/FileUpload.tsx",
-                                    lineNumber: 295,
-                                    columnNumber: 13
-                                }, this),
+                                }),
                                 "Choose Files"
                             ]
-                        }, void 0, true, {
-                            fileName: "[project]/src/components/FileUpload.tsx",
-                            lineNumber: 290,
-                            columnNumber: 11
-                        }, this)
+                        })
                     ]
-                }, void 0, true, {
-                    fileName: "[project]/src/components/FileUpload.tsx",
-                    lineNumber: 273,
-                    columnNumber: 9
-                }, this)
-            }, void 0, false, {
-                fileName: "[project]/src/components/FileUpload.tsx",
-                lineNumber: 255,
-                columnNumber: 7
-            }, this),
+                })
+            }),
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("input", {
                 ref: fileInputRef,
                 type: "file",
@@ -1526,11 +1474,7 @@ function FileUpload({ onFileUpload, acceptedTypes = [
                 style: {
                     display: 'none'
                 }
-            }, void 0, false, {
-                fileName: "[project]/src/components/FileUpload.tsx",
-                lineNumber: 302,
-                columnNumber: 7
-            }, this),
+            }),
             uploadedFiles.length > 0 && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f40$chakra$2d$ui$2f$react$2f$dist$2f$esm$2f$components$2f$stack$2f$v$2d$stack$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["VStack"], {
                 gap: "3",
                 align: "stretch",
@@ -1544,11 +1488,7 @@ function FileUpload({ onFileUpload, acceptedTypes = [
                             uploadedFiles.length,
                             ")"
                         ]
-                    }, void 0, true, {
-                        fileName: "[project]/src/components/FileUpload.tsx",
-                        lineNumber: 314,
-                        columnNumber: 11
-                    }, this),
+                    }),
                     uploadedFiles.map((uploadedFile)=>/*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f40$chakra$2d$ui$2f$react$2f$dist$2f$esm$2f$components$2f$box$2f$index$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["Box"], {
                             p: "4",
                             border: "1px",
@@ -1579,23 +1519,11 @@ function FileUpload({ onFileUpload, acceptedTypes = [
                                                         w: "100%",
                                                         h: "100%",
                                                         objectFit: "cover"
-                                                    }, void 0, false, {
-                                                        fileName: "[project]/src/components/FileUpload.tsx",
-                                                        lineNumber: 341,
-                                                        columnNumber: 23
-                                                    }, this)
-                                                }, void 0, false, {
-                                                    fileName: "[project]/src/components/FileUpload.tsx",
-                                                    lineNumber: 331,
-                                                    columnNumber: 21
-                                                }, this) : /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f40$chakra$2d$ui$2f$react$2f$dist$2f$esm$2f$components$2f$text$2f$index$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["Text"], {
+                                                    })
+                                                }) : /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f40$chakra$2d$ui$2f$react$2f$dist$2f$esm$2f$components$2f$text$2f$index$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["Text"], {
                                                     fontSize: "lg",
                                                     children: getFileIcon(uploadedFile.file)
-                                                }, void 0, false, {
-                                                    fileName: "[project]/src/components/FileUpload.tsx",
-                                                    lineNumber: 350,
-                                                    columnNumber: 21
-                                                }, this),
+                                                }),
                                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f40$chakra$2d$ui$2f$react$2f$dist$2f$esm$2f$components$2f$stack$2f$v$2d$stack$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["VStack"], {
                                                     gap: "1",
                                                     align: "start",
@@ -1606,11 +1534,7 @@ function FileUpload({ onFileUpload, acceptedTypes = [
                                                             fontWeight: "medium",
                                                             color: "gray.800",
                                                             children: uploadedFile.file.name
-                                                        }, void 0, false, {
-                                                            fileName: "[project]/src/components/FileUpload.tsx",
-                                                            lineNumber: 354,
-                                                            columnNumber: 21
-                                                        }, this),
+                                                        }),
                                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f40$chakra$2d$ui$2f$react$2f$dist$2f$esm$2f$components$2f$text$2f$index$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["Text"], {
                                                             fontSize: "xs",
                                                             color: "gray.500",
@@ -1618,31 +1542,15 @@ function FileUpload({ onFileUpload, acceptedTypes = [
                                                                 (uploadedFile.file.size / 1024 / 1024).toFixed(2),
                                                                 " MB"
                                                             ]
-                                                        }, void 0, true, {
-                                                            fileName: "[project]/src/components/FileUpload.tsx",
-                                                            lineNumber: 357,
-                                                            columnNumber: 21
-                                                        }, this)
+                                                        })
                                                     ]
-                                                }, void 0, true, {
-                                                    fileName: "[project]/src/components/FileUpload.tsx",
-                                                    lineNumber: 353,
-                                                    columnNumber: 19
-                                                }, this),
+                                                }),
                                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f40$chakra$2d$ui$2f$react$2f$dist$2f$esm$2f$components$2f$badge$2f$badge$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["Badge"], {
                                                     colorScheme: getStatusColor(uploadedFile.status),
                                                     children: uploadedFile.status
-                                                }, void 0, false, {
-                                                    fileName: "[project]/src/components/FileUpload.tsx",
-                                                    lineNumber: 362,
-                                                    columnNumber: 19
-                                                }, this)
+                                                })
                                             ]
-                                        }, void 0, true, {
-                                            fileName: "[project]/src/components/FileUpload.tsx",
-                                            lineNumber: 328,
-                                            columnNumber: 17
-                                        }, this),
+                                        }),
                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f40$chakra$2d$ui$2f$react$2f$dist$2f$esm$2f$components$2f$stack$2f$h$2d$stack$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["HStack"], {
                                             gap: "2",
                                             children: [
@@ -1654,16 +1562,8 @@ function FileUpload({ onFileUpload, acceptedTypes = [
                                                     onClick: ()=>removeFile(uploadedFile.id),
                                                     children: /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f40$chakra$2d$ui$2f$react$2f$dist$2f$esm$2f$components$2f$icon$2f$icon$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["Icon"], {
                                                         as: __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$react$2d$icons$2f$fi$2f$index$2e$mjs__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["FiX"]
-                                                    }, void 0, false, {
-                                                        fileName: "[project]/src/components/FileUpload.tsx",
-                                                        lineNumber: 377,
-                                                        columnNumber: 23
-                                                    }, this)
-                                                }, void 0, false, {
-                                                    fileName: "[project]/src/components/FileUpload.tsx",
-                                                    lineNumber: 371,
-                                                    columnNumber: 21
-                                                }, this),
+                                                    })
+                                                }),
                                                 uploadedFile.status === 'completed' && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f40$chakra$2d$ui$2f$react$2f$dist$2f$esm$2f$components$2f$button$2f$button$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["Button"], {
                                                     size: "xs",
                                                     variant: "ghost",
@@ -1671,28 +1571,12 @@ function FileUpload({ onFileUpload, acceptedTypes = [
                                                     onClick: ()=>removeFile(uploadedFile.id),
                                                     children: /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f40$chakra$2d$ui$2f$react$2f$dist$2f$esm$2f$components$2f$icon$2f$icon$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["Icon"], {
                                                         as: __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$react$2d$icons$2f$fi$2f$index$2e$mjs__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["FiX"]
-                                                    }, void 0, false, {
-                                                        fileName: "[project]/src/components/FileUpload.tsx",
-                                                        lineNumber: 388,
-                                                        columnNumber: 23
-                                                    }, this)
-                                                }, void 0, false, {
-                                                    fileName: "[project]/src/components/FileUpload.tsx",
-                                                    lineNumber: 382,
-                                                    columnNumber: 21
-                                                }, this)
+                                                    })
+                                                })
                                             ]
-                                        }, void 0, true, {
-                                            fileName: "[project]/src/components/FileUpload.tsx",
-                                            lineNumber: 367,
-                                            columnNumber: 17
-                                        }, this)
+                                        })
                                     ]
-                                }, void 0, true, {
-                                    fileName: "[project]/src/components/FileUpload.tsx",
-                                    lineNumber: 327,
-                                    columnNumber: 15
-                                }, this),
+                                }),
                                 uploadedFile.status === 'uploading' && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f40$chakra$2d$ui$2f$react$2f$dist$2f$esm$2f$components$2f$box$2f$index$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["Box"], {
                                     mt: "3",
                                     children: [
@@ -1701,21 +1585,9 @@ function FileUpload({ onFileUpload, acceptedTypes = [
                                             colorScheme: "blue",
                                             size: "sm",
                                             children: /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f40$chakra$2d$ui$2f$react$2f$dist$2f$esm$2f$components$2f$progress$2f$namespace$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__$3c$export__$2a$__as__Progress$3e$__["Progress"].Track, {
-                                                children: /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f40$chakra$2d$ui$2f$react$2f$dist$2f$esm$2f$components$2f$progress$2f$namespace$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__$3c$export__$2a$__as__Progress$3e$__["Progress"].Range, {}, void 0, false, {
-                                                    fileName: "[project]/src/components/FileUpload.tsx",
-                                                    lineNumber: 403,
-                                                    columnNumber: 23
-                                                }, this)
-                                            }, void 0, false, {
-                                                fileName: "[project]/src/components/FileUpload.tsx",
-                                                lineNumber: 402,
-                                                columnNumber: 21
-                                            }, this)
-                                        }, void 0, false, {
-                                            fileName: "[project]/src/components/FileUpload.tsx",
-                                            lineNumber: 397,
-                                            columnNumber: 19
-                                        }, this),
+                                                children: /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f40$chakra$2d$ui$2f$react$2f$dist$2f$esm$2f$components$2f$progress$2f$namespace$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__$3c$export__$2a$__as__Progress$3e$__["Progress"].Range, {})
+                                            })
+                                        }),
                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f40$chakra$2d$ui$2f$react$2f$dist$2f$esm$2f$components$2f$text$2f$index$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["Text"], {
                                             fontSize: "xs",
                                             color: "gray.500",
@@ -1725,17 +1597,9 @@ function FileUpload({ onFileUpload, acceptedTypes = [
                                                 uploadedFile.progress,
                                                 "%"
                                             ]
-                                        }, void 0, true, {
-                                            fileName: "[project]/src/components/FileUpload.tsx",
-                                            lineNumber: 406,
-                                            columnNumber: 19
-                                        }, this)
+                                        })
                                     ]
-                                }, void 0, true, {
-                                    fileName: "[project]/src/components/FileUpload.tsx",
-                                    lineNumber: 396,
-                                    columnNumber: 17
-                                }, this),
+                                }),
                                 uploadedFile.status === 'error' && uploadedFile.error && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f40$chakra$2d$ui$2f$react$2f$dist$2f$esm$2f$components$2f$box$2f$index$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["Box"], {
                                     mt: "3",
                                     p: "2",
@@ -1750,31 +1614,15 @@ function FileUpload({ onFileUpload, acceptedTypes = [
                                                 as: __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$react$2d$icons$2f$fi$2f$index$2e$mjs__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["FiAlertCircle"],
                                                 color: "red.500",
                                                 boxSize: "4"
-                                            }, void 0, false, {
-                                                fileName: "[project]/src/components/FileUpload.tsx",
-                                                lineNumber: 416,
-                                                columnNumber: 21
-                                            }, this),
+                                            }),
                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f40$chakra$2d$ui$2f$react$2f$dist$2f$esm$2f$components$2f$text$2f$index$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["Text"], {
                                                 fontSize: "sm",
                                                 color: "red.700",
                                                 children: uploadedFile.error
-                                            }, void 0, false, {
-                                                fileName: "[project]/src/components/FileUpload.tsx",
-                                                lineNumber: 417,
-                                                columnNumber: 21
-                                            }, this)
+                                            })
                                         ]
-                                    }, void 0, true, {
-                                        fileName: "[project]/src/components/FileUpload.tsx",
-                                        lineNumber: 415,
-                                        columnNumber: 19
-                                    }, this)
-                                }, void 0, false, {
-                                    fileName: "[project]/src/components/FileUpload.tsx",
-                                    lineNumber: 414,
-                                    columnNumber: 17
-                                }, this),
+                                    })
+                                }),
                                 uploadedFile.status === 'completed' && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f40$chakra$2d$ui$2f$react$2f$dist$2f$esm$2f$components$2f$box$2f$index$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["Box"], {
                                     mt: "3",
                                     p: "2",
@@ -1789,49 +1637,21 @@ function FileUpload({ onFileUpload, acceptedTypes = [
                                                 as: __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$react$2d$icons$2f$fi$2f$index$2e$mjs__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["FiCheck"],
                                                 color: "green.500",
                                                 boxSize: "4"
-                                            }, void 0, false, {
-                                                fileName: "[project]/src/components/FileUpload.tsx",
-                                                lineNumber: 428,
-                                                columnNumber: 21
-                                            }, this),
+                                            }),
                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f40$chakra$2d$ui$2f$react$2f$dist$2f$esm$2f$components$2f$text$2f$index$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["Text"], {
                                                 fontSize: "sm",
                                                 color: "green.700",
                                                 children: "Ready to upload after case creation"
-                                            }, void 0, false, {
-                                                fileName: "[project]/src/components/FileUpload.tsx",
-                                                lineNumber: 429,
-                                                columnNumber: 21
-                                            }, this)
+                                            })
                                         ]
-                                    }, void 0, true, {
-                                        fileName: "[project]/src/components/FileUpload.tsx",
-                                        lineNumber: 427,
-                                        columnNumber: 19
-                                    }, this)
-                                }, void 0, false, {
-                                    fileName: "[project]/src/components/FileUpload.tsx",
-                                    lineNumber: 426,
-                                    columnNumber: 17
-                                }, this)
+                                    })
+                                })
                             ]
-                        }, uploadedFile.id, true, {
-                            fileName: "[project]/src/components/FileUpload.tsx",
-                            lineNumber: 319,
-                            columnNumber: 13
-                        }, this))
+                        }, uploadedFile.id))
                 ]
-            }, void 0, true, {
-                fileName: "[project]/src/components/FileUpload.tsx",
-                lineNumber: 313,
-                columnNumber: 9
-            }, this)
+            })
         ]
-    }, void 0, true, {
-        fileName: "[project]/src/components/FileUpload.tsx",
-        lineNumber: 253,
-        columnNumber: 5
-    }, this);
+    });
 }
 }),
 "[project]/src/components/EnhancedDynamicForm.tsx [app-ssr] (ecmascript)", ((__turbopack_context__) => {
@@ -3624,26 +3444,14 @@ function ProgressTracking({ config, formData, currentStep, onStepClick, onSavePr
                                             fontWeight: "semibold",
                                             color: "gray.800",
                                             children: "Application Progress"
-                                        }, void 0, false, {
-                                            fileName: "[project]/src/components/ProgressTracking.tsx",
-                                            lineNumber: 151,
-                                            columnNumber: 15
-                                        }, this),
+                                        }),
                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f40$chakra$2d$ui$2f$react$2f$dist$2f$esm$2f$components$2f$text$2f$index$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["Text"], {
                                             fontSize: "sm",
                                             color: "gray.600",
                                             children: "Complete all steps to submit your application"
-                                        }, void 0, false, {
-                                            fileName: "[project]/src/components/ProgressTracking.tsx",
-                                            lineNumber: 154,
-                                            columnNumber: 15
-                                        }, this)
+                                        })
                                     ]
-                                }, void 0, true, {
-                                    fileName: "[project]/src/components/ProgressTracking.tsx",
-                                    lineNumber: 150,
-                                    columnNumber: 13
-                                }, this),
+                                }),
                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f40$chakra$2d$ui$2f$react$2f$dist$2f$esm$2f$components$2f$stack$2f$h$2d$stack$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["HStack"], {
                                     gap: "3",
                                     children: [
@@ -3655,11 +3463,7 @@ function ProgressTracking({ config, formData, currentStep, onStepClick, onSavePr
                                                 Math.round(getOverallProgress()),
                                                 "% Complete"
                                             ]
-                                        }, void 0, true, {
-                                            fileName: "[project]/src/components/ProgressTracking.tsx",
-                                            lineNumber: 160,
-                                            columnNumber: 15
-                                        }, this),
+                                        }),
                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f40$chakra$2d$ui$2f$react$2f$dist$2f$esm$2f$components$2f$button$2f$button$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["Button"], {
                                             size: "sm",
                                             variant: "outline",
@@ -3670,30 +3474,14 @@ function ProgressTracking({ config, formData, currentStep, onStepClick, onSavePr
                                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f40$chakra$2d$ui$2f$react$2f$dist$2f$esm$2f$components$2f$icon$2f$icon$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["Icon"], {
                                                     as: __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$react$2d$icons$2f$fi$2f$index$2e$mjs__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["FiSave"],
                                                     mr: "2"
-                                                }, void 0, false, {
-                                                    fileName: "[project]/src/components/ProgressTracking.tsx",
-                                                    lineNumber: 171,
-                                                    columnNumber: 17
-                                                }, this),
+                                                }),
                                                 "Save Progress"
                                             ]
-                                        }, void 0, true, {
-                                            fileName: "[project]/src/components/ProgressTracking.tsx",
-                                            lineNumber: 164,
-                                            columnNumber: 15
-                                        }, this)
+                                        })
                                     ]
-                                }, void 0, true, {
-                                    fileName: "[project]/src/components/ProgressTracking.tsx",
-                                    lineNumber: 159,
-                                    columnNumber: 13
-                                }, this)
+                                })
                             ]
-                        }, void 0, true, {
-                            fileName: "[project]/src/components/ProgressTracking.tsx",
-                            lineNumber: 149,
-                            columnNumber: 11
-                        }, this),
+                        }),
                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f40$chakra$2d$ui$2f$react$2f$dist$2f$esm$2f$components$2f$box$2f$index$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["Box"], {
                             children: /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f40$chakra$2d$ui$2f$react$2f$dist$2f$esm$2f$components$2f$box$2f$index$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["Box"], {
                                 h: "3",
@@ -3704,21 +3492,9 @@ function ProgressTracking({ config, formData, currentStep, onStepClick, onSavePr
                                     h: "3",
                                     bg: "blue.500",
                                     width: `${Math.round(getOverallProgress())}%`
-                                }, void 0, false, {
-                                    fileName: "[project]/src/components/ProgressTracking.tsx",
-                                    lineNumber: 179,
-                                    columnNumber: 15
-                                }, this)
-                            }, void 0, false, {
-                                fileName: "[project]/src/components/ProgressTracking.tsx",
-                                lineNumber: 178,
-                                columnNumber: 13
-                            }, this)
-                        }, void 0, false, {
-                            fileName: "[project]/src/components/ProgressTracking.tsx",
-                            lineNumber: 177,
-                            columnNumber: 11
-                        }, this),
+                                })
+                            })
+                        }),
                         lastSaved && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f40$chakra$2d$ui$2f$react$2f$dist$2f$esm$2f$components$2f$text$2f$index$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["Text"], {
                             fontSize: "xs",
                             color: "gray.500",
@@ -3726,22 +3502,10 @@ function ProgressTracking({ config, formData, currentStep, onStepClick, onSavePr
                                 "Last saved: ",
                                 new Date(lastSaved).toLocaleString()
                             ]
-                        }, void 0, true, {
-                            fileName: "[project]/src/components/ProgressTracking.tsx",
-                            lineNumber: 184,
-                            columnNumber: 13
-                        }, this)
+                        })
                     ]
-                }, void 0, true, {
-                    fileName: "[project]/src/components/ProgressTracking.tsx",
-                    lineNumber: 148,
-                    columnNumber: 9
-                }, this)
-            }, void 0, false, {
-                fileName: "[project]/src/components/ProgressTracking.tsx",
-                lineNumber: 147,
-                columnNumber: 7
-            }, this),
+                })
+            }),
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f40$chakra$2d$ui$2f$react$2f$dist$2f$esm$2f$components$2f$box$2f$index$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["Box"], {
                 p: "6",
                 bg: "white",
@@ -3759,11 +3523,7 @@ function ProgressTracking({ config, formData, currentStep, onStepClick, onSavePr
                                     fontWeight: "semibold",
                                     color: "gray.800",
                                     children: "Step-by-Step Progress"
-                                }, void 0, false, {
-                                    fileName: "[project]/src/components/ProgressTracking.tsx",
-                                    lineNumber: 195,
-                                    columnNumber: 13
-                                }, this),
+                                }),
                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f40$chakra$2d$ui$2f$react$2f$dist$2f$esm$2f$components$2f$button$2f$button$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["Button"], {
                                     size: "sm",
                                     variant: "ghost",
@@ -3772,24 +3532,12 @@ function ProgressTracking({ config, formData, currentStep, onStepClick, onSavePr
                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f40$chakra$2d$ui$2f$react$2f$dist$2f$esm$2f$components$2f$icon$2f$icon$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["Icon"], {
                                             as: __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$react$2d$icons$2f$fi$2f$index$2e$mjs__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["FiEye"],
                                             mr: "1"
-                                        }, void 0, false, {
-                                            fileName: "[project]/src/components/ProgressTracking.tsx",
-                                            lineNumber: 204,
-                                            columnNumber: 15
-                                        }, this),
+                                        }),
                                         "View Details"
                                     ]
-                                }, void 0, true, {
-                                    fileName: "[project]/src/components/ProgressTracking.tsx",
-                                    lineNumber: 199,
-                                    columnNumber: 13
-                                }, this)
+                                })
                             ]
-                        }, void 0, true, {
-                            fileName: "[project]/src/components/ProgressTracking.tsx",
-                            lineNumber: 194,
-                            columnNumber: 11
-                        }, this),
+                        }),
                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f40$chakra$2d$ui$2f$react$2f$dist$2f$esm$2f$components$2f$stack$2f$v$2d$stack$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["VStack"], {
                             gap: "3",
                             align: "stretch",
@@ -3818,11 +3566,7 @@ function ProgressTracking({ config, formData, currentStep, onStepClick, onSavePr
                                                         boxSize: "5",
                                                         color: `${getStepColor(status)}.500`,
                                                         mt: "1"
-                                                    }, void 0, false, {
-                                                        fileName: "[project]/src/components/ProgressTracking.tsx",
-                                                        lineNumber: 225,
-                                                        columnNumber: 21
-                                                    }, this),
+                                                    }),
                                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f40$chakra$2d$ui$2f$react$2f$dist$2f$esm$2f$components$2f$stack$2f$v$2d$stack$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["VStack"], {
                                                         align: "start",
                                                         gap: "1",
@@ -3832,20 +3576,12 @@ function ProgressTracking({ config, formData, currentStep, onStepClick, onSavePr
                                                                 fontWeight: "medium",
                                                                 color: "gray.800",
                                                                 children: status.title
-                                                            }, void 0, false, {
-                                                                fileName: "[project]/src/components/ProgressTracking.tsx",
-                                                                lineNumber: 233,
-                                                                columnNumber: 23
-                                                            }, this),
+                                                            }),
                                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f40$chakra$2d$ui$2f$react$2f$dist$2f$esm$2f$components$2f$text$2f$index$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["Text"], {
                                                                 fontSize: "sm",
                                                                 color: "gray.600",
                                                                 children: status.subtitle
-                                                            }, void 0, false, {
-                                                                fileName: "[project]/src/components/ProgressTracking.tsx",
-                                                                lineNumber: 236,
-                                                                columnNumber: 23
-                                                            }, this),
+                                                            }),
                                                             status.inProgress && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f40$chakra$2d$ui$2f$react$2f$dist$2f$esm$2f$components$2f$stack$2f$h$2d$stack$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["HStack"], {
                                                                 gap: "4",
                                                                 mt: "2",
@@ -3861,16 +3597,8 @@ function ProgressTracking({ config, formData, currentStep, onStepClick, onSavePr
                                                                                 "/",
                                                                                 status.requiredFields
                                                                             ]
-                                                                        }, void 0, true, {
-                                                                            fileName: "[project]/src/components/ProgressTracking.tsx",
-                                                                            lineNumber: 243,
-                                                                            columnNumber: 29
-                                                                        }, this)
-                                                                    }, void 0, false, {
-                                                                        fileName: "[project]/src/components/ProgressTracking.tsx",
-                                                                        lineNumber: 242,
-                                                                        columnNumber: 27
-                                                                    }, this),
+                                                                        })
+                                                                    }),
                                                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f40$chakra$2d$ui$2f$react$2f$dist$2f$esm$2f$components$2f$stack$2f$h$2d$stack$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["HStack"], {
                                                                         gap: "1",
                                                                         children: /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f40$chakra$2d$ui$2f$react$2f$dist$2f$esm$2f$components$2f$text$2f$index$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["Text"], {
@@ -3882,34 +3610,14 @@ function ProgressTracking({ config, formData, currentStep, onStepClick, onSavePr
                                                                                 "/",
                                                                                 status.requiredDocuments
                                                                             ]
-                                                                        }, void 0, true, {
-                                                                            fileName: "[project]/src/components/ProgressTracking.tsx",
-                                                                            lineNumber: 248,
-                                                                            columnNumber: 29
-                                                                        }, this)
-                                                                    }, void 0, false, {
-                                                                        fileName: "[project]/src/components/ProgressTracking.tsx",
-                                                                        lineNumber: 247,
-                                                                        columnNumber: 27
-                                                                    }, this)
+                                                                        })
+                                                                    })
                                                                 ]
-                                                            }, void 0, true, {
-                                                                fileName: "[project]/src/components/ProgressTracking.tsx",
-                                                                lineNumber: 241,
-                                                                columnNumber: 25
-                                                            }, this)
+                                                            })
                                                         ]
-                                                    }, void 0, true, {
-                                                        fileName: "[project]/src/components/ProgressTracking.tsx",
-                                                        lineNumber: 232,
-                                                        columnNumber: 21
-                                                    }, this)
+                                                    })
                                                 ]
-                                            }, void 0, true, {
-                                                fileName: "[project]/src/components/ProgressTracking.tsx",
-                                                lineNumber: 224,
-                                                columnNumber: 19
-                                            }, this),
+                                            }),
                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f40$chakra$2d$ui$2f$react$2f$dist$2f$esm$2f$components$2f$stack$2f$v$2d$stack$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["VStack"], {
                                                 align: "end",
                                                 gap: "1",
@@ -3919,11 +3627,7 @@ function ProgressTracking({ config, formData, currentStep, onStepClick, onSavePr
                                                         variant: "subtle",
                                                         fontSize: "xs",
                                                         children: status.completed ? "Completed" : status.inProgress ? "In Progress" : status.blocked ? "Blocked" : "Pending"
-                                                    }, void 0, false, {
-                                                        fileName: "[project]/src/components/ProgressTracking.tsx",
-                                                        lineNumber: 258,
-                                                        columnNumber: 21
-                                                    }, this),
+                                                    }),
                                                     status.inProgress && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f40$chakra$2d$ui$2f$react$2f$dist$2f$esm$2f$components$2f$box$2f$index$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["Box"], {
                                                         width: "100px",
                                                         children: /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f40$chakra$2d$ui$2f$react$2f$dist$2f$esm$2f$components$2f$box$2f$index$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["Box"], {
@@ -3935,54 +3639,18 @@ function ProgressTracking({ config, formData, currentStep, onStepClick, onSavePr
                                                                 h: "2",
                                                                 bg: "blue.500",
                                                                 width: `${Math.round(status.completionPercentage)}%`
-                                                            }, void 0, false, {
-                                                                fileName: "[project]/src/components/ProgressTracking.tsx",
-                                                                lineNumber: 269,
-                                                                columnNumber: 27
-                                                            }, this)
-                                                        }, void 0, false, {
-                                                            fileName: "[project]/src/components/ProgressTracking.tsx",
-                                                            lineNumber: 268,
-                                                            columnNumber: 25
-                                                        }, this)
-                                                    }, void 0, false, {
-                                                        fileName: "[project]/src/components/ProgressTracking.tsx",
-                                                        lineNumber: 267,
-                                                        columnNumber: 23
-                                                    }, this)
+                                                            })
+                                                        })
+                                                    })
                                                 ]
-                                            }, void 0, true, {
-                                                fileName: "[project]/src/components/ProgressTracking.tsx",
-                                                lineNumber: 257,
-                                                columnNumber: 19
-                                            }, this)
+                                            })
                                         ]
-                                    }, void 0, true, {
-                                        fileName: "[project]/src/components/ProgressTracking.tsx",
-                                        lineNumber: 223,
-                                        columnNumber: 17
-                                    }, this)
-                                }, status.id, false, {
-                                    fileName: "[project]/src/components/ProgressTracking.tsx",
-                                    lineNumber: 211,
-                                    columnNumber: 15
-                                }, this))
-                        }, void 0, false, {
-                            fileName: "[project]/src/components/ProgressTracking.tsx",
-                            lineNumber: 209,
-                            columnNumber: 11
-                        }, this)
+                                    })
+                                }, status.id))
+                        })
                     ]
-                }, void 0, true, {
-                    fileName: "[project]/src/components/ProgressTracking.tsx",
-                    lineNumber: 193,
-                    columnNumber: 9
-                }, this)
-            }, void 0, false, {
-                fileName: "[project]/src/components/ProgressTracking.tsx",
-                lineNumber: 192,
-                columnNumber: 7
-            }, this),
+                })
+            }),
             getNextIncompleteStep() && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f40$chakra$2d$ui$2f$react$2f$dist$2f$esm$2f$components$2f$box$2f$index$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["Box"], {
                 p: "4",
                 bg: "blue.50",
@@ -3996,11 +3664,7 @@ function ProgressTracking({ config, formData, currentStep, onStepClick, onSavePr
                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f40$chakra$2d$ui$2f$react$2f$dist$2f$esm$2f$components$2f$icon$2f$icon$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["Icon"], {
                             as: __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$react$2d$icons$2f$fi$2f$index$2e$mjs__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["FiPlay"],
                             color: "blue.500"
-                        }, void 0, false, {
-                            fileName: "[project]/src/components/ProgressTracking.tsx",
-                            lineNumber: 285,
-                            columnNumber: 13
-                        }, this),
+                        }),
                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f40$chakra$2d$ui$2f$react$2f$dist$2f$esm$2f$components$2f$text$2f$index$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["Text"], {
                             fontSize: "sm",
                             color: "blue.700",
@@ -4009,22 +3673,10 @@ function ProgressTracking({ config, formData, currentStep, onStepClick, onSavePr
                                 getNextIncompleteStep()?.title,
                                 '" to continue'
                             ]
-                        }, void 0, true, {
-                            fileName: "[project]/src/components/ProgressTracking.tsx",
-                            lineNumber: 286,
-                            columnNumber: 13
-                        }, this)
+                        })
                     ]
-                }, void 0, true, {
-                    fileName: "[project]/src/components/ProgressTracking.tsx",
-                    lineNumber: 284,
-                    columnNumber: 11
-                }, this)
-            }, void 0, false, {
-                fileName: "[project]/src/components/ProgressTracking.tsx",
-                lineNumber: 283,
-                columnNumber: 9
-            }, this),
+                })
+            }),
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f40$chakra$2d$ui$2f$react$2f$dist$2f$esm$2f$components$2f$dialog$2f$dialog$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["DialogRoot"], {
                 open: isOpen,
                 onOpenChange: (e)=>e.open ? onOpen() : onClose(),
@@ -4034,16 +3686,8 @@ function ProgressTracking({ config, formData, currentStep, onStepClick, onSavePr
                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f40$chakra$2d$ui$2f$react$2f$dist$2f$esm$2f$components$2f$dialog$2f$dialog$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["DialogHeader"], {
                             children: /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f40$chakra$2d$ui$2f$react$2f$dist$2f$esm$2f$components$2f$dialog$2f$dialog$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["DialogTitle"], {
                                 children: "Detailed Progress Report"
-                            }, void 0, false, {
-                                fileName: "[project]/src/components/ProgressTracking.tsx",
-                                lineNumber: 297,
-                                columnNumber: 13
-                            }, this)
-                        }, void 0, false, {
-                            fileName: "[project]/src/components/ProgressTracking.tsx",
-                            lineNumber: 296,
-                            columnNumber: 11
-                        }, this),
+                            })
+                        }),
                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f40$chakra$2d$ui$2f$react$2f$dist$2f$esm$2f$components$2f$dialog$2f$dialog$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["DialogBody"], {
                             children: /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f40$chakra$2d$ui$2f$react$2f$dist$2f$esm$2f$components$2f$stack$2f$v$2d$stack$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["VStack"], {
                                 gap: "4",
@@ -4067,26 +3711,14 @@ function ProgressTracking({ config, formData, currentStep, onStepClick, onSavePr
                                                                     as: getStepIcon(status, index),
                                                                     boxSize: "4",
                                                                     color: `${getStepColor(status)}.500`
-                                                                }, void 0, false, {
-                                                                    fileName: "[project]/src/components/ProgressTracking.tsx",
-                                                                    lineNumber: 306,
-                                                                    columnNumber: 25
-                                                                }, this),
+                                                                }),
                                                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f40$chakra$2d$ui$2f$react$2f$dist$2f$esm$2f$components$2f$text$2f$index$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["Text"], {
                                                                     fontWeight: "medium",
                                                                     color: "gray.800",
                                                                     children: status.title
-                                                                }, void 0, false, {
-                                                                    fileName: "[project]/src/components/ProgressTracking.tsx",
-                                                                    lineNumber: 311,
-                                                                    columnNumber: 25
-                                                                }, this)
+                                                                })
                                                             ]
-                                                        }, void 0, true, {
-                                                            fileName: "[project]/src/components/ProgressTracking.tsx",
-                                                            lineNumber: 305,
-                                                            columnNumber: 23
-                                                        }, this),
+                                                        }),
                                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f40$chakra$2d$ui$2f$react$2f$dist$2f$esm$2f$components$2f$badge$2f$badge$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["Badge"], {
                                                             colorScheme: getStepColor(status),
                                                             variant: "subtle",
@@ -4094,26 +3726,14 @@ function ProgressTracking({ config, formData, currentStep, onStepClick, onSavePr
                                                                 Math.round(status.completionPercentage),
                                                                 "%"
                                                             ]
-                                                        }, void 0, true, {
-                                                            fileName: "[project]/src/components/ProgressTracking.tsx",
-                                                            lineNumber: 315,
-                                                            columnNumber: 23
-                                                        }, this)
+                                                        })
                                                     ]
-                                                }, void 0, true, {
-                                                    fileName: "[project]/src/components/ProgressTracking.tsx",
-                                                    lineNumber: 304,
-                                                    columnNumber: 21
-                                                }, this),
+                                                }),
                                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f40$chakra$2d$ui$2f$react$2f$dist$2f$esm$2f$components$2f$text$2f$index$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["Text"], {
                                                     fontSize: "sm",
                                                     color: "gray.600",
                                                     children: status.subtitle
-                                                }, void 0, false, {
-                                                    fileName: "[project]/src/components/ProgressTracking.tsx",
-                                                    lineNumber: 320,
-                                                    columnNumber: 21
-                                                }, this),
+                                                }),
                                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f40$chakra$2d$ui$2f$react$2f$dist$2f$esm$2f$components$2f$simple$2d$grid$2f$simple$2d$grid$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["SimpleGrid"], {
                                                     columns: 2,
                                                     gap: "4",
@@ -4125,11 +3745,7 @@ function ProgressTracking({ config, formData, currentStep, onStepClick, onSavePr
                                                                     color: "gray.500",
                                                                     mb: "1",
                                                                     children: "Required Fields"
-                                                                }, void 0, false, {
-                                                                    fileName: "[project]/src/components/ProgressTracking.tsx",
-                                                                    lineNumber: 326,
-                                                                    columnNumber: 25
-                                                                }, this),
+                                                                }),
                                                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f40$chakra$2d$ui$2f$react$2f$dist$2f$esm$2f$components$2f$stack$2f$h$2d$stack$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["HStack"], {
                                                                     gap: "2",
                                                                     children: [
@@ -4143,16 +3759,8 @@ function ProgressTracking({ config, formData, currentStep, onStepClick, onSavePr
                                                                                 h: "2",
                                                                                 bg: "blue.500",
                                                                                 width: `${Math.round(status.completedFields / Math.max(status.requiredFields, 1) * 100)}%`
-                                                                            }, void 0, false, {
-                                                                                fileName: "[project]/src/components/ProgressTracking.tsx",
-                                                                                lineNumber: 329,
-                                                                                columnNumber: 29
-                                                                            }, this)
-                                                                        }, void 0, false, {
-                                                                            fileName: "[project]/src/components/ProgressTracking.tsx",
-                                                                            lineNumber: 328,
-                                                                            columnNumber: 27
-                                                                        }, this),
+                                                                            })
+                                                                        }),
                                                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f40$chakra$2d$ui$2f$react$2f$dist$2f$esm$2f$components$2f$text$2f$index$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["Text"], {
                                                                             fontSize: "xs",
                                                                             color: "gray.600",
@@ -4161,23 +3769,11 @@ function ProgressTracking({ config, formData, currentStep, onStepClick, onSavePr
                                                                                 "/",
                                                                                 status.requiredFields
                                                                             ]
-                                                                        }, void 0, true, {
-                                                                            fileName: "[project]/src/components/ProgressTracking.tsx",
-                                                                            lineNumber: 331,
-                                                                            columnNumber: 27
-                                                                        }, this)
+                                                                        })
                                                                     ]
-                                                                }, void 0, true, {
-                                                                    fileName: "[project]/src/components/ProgressTracking.tsx",
-                                                                    lineNumber: 327,
-                                                                    columnNumber: 25
-                                                                }, this)
+                                                                })
                                                             ]
-                                                        }, void 0, true, {
-                                                            fileName: "[project]/src/components/ProgressTracking.tsx",
-                                                            lineNumber: 325,
-                                                            columnNumber: 23
-                                                        }, this),
+                                                        }),
                                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f40$chakra$2d$ui$2f$react$2f$dist$2f$esm$2f$components$2f$box$2f$index$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["Box"], {
                                                             children: [
                                                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f40$chakra$2d$ui$2f$react$2f$dist$2f$esm$2f$components$2f$text$2f$index$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["Text"], {
@@ -4185,11 +3781,7 @@ function ProgressTracking({ config, formData, currentStep, onStepClick, onSavePr
                                                                     color: "gray.500",
                                                                     mb: "1",
                                                                     children: "Required Documents"
-                                                                }, void 0, false, {
-                                                                    fileName: "[project]/src/components/ProgressTracking.tsx",
-                                                                    lineNumber: 338,
-                                                                    columnNumber: 25
-                                                                }, this),
+                                                                }),
                                                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f40$chakra$2d$ui$2f$react$2f$dist$2f$esm$2f$components$2f$stack$2f$h$2d$stack$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["HStack"], {
                                                                     gap: "2",
                                                                     children: [
@@ -4203,16 +3795,8 @@ function ProgressTracking({ config, formData, currentStep, onStepClick, onSavePr
                                                                                 h: "2",
                                                                                 bg: "green.500",
                                                                                 width: `${Math.round(status.uploadedDocuments / Math.max(status.requiredDocuments, 1) * 100)}%`
-                                                                            }, void 0, false, {
-                                                                                fileName: "[project]/src/components/ProgressTracking.tsx",
-                                                                                lineNumber: 341,
-                                                                                columnNumber: 29
-                                                                            }, this)
-                                                                        }, void 0, false, {
-                                                                            fileName: "[project]/src/components/ProgressTracking.tsx",
-                                                                            lineNumber: 340,
-                                                                            columnNumber: 27
-                                                                        }, this),
+                                                                            })
+                                                                        }),
                                                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f40$chakra$2d$ui$2f$react$2f$dist$2f$esm$2f$components$2f$text$2f$index$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["Text"], {
                                                                             fontSize: "xs",
                                                                             color: "gray.600",
@@ -4221,86 +3805,30 @@ function ProgressTracking({ config, formData, currentStep, onStepClick, onSavePr
                                                                                 "/",
                                                                                 status.requiredDocuments
                                                                             ]
-                                                                        }, void 0, true, {
-                                                                            fileName: "[project]/src/components/ProgressTracking.tsx",
-                                                                            lineNumber: 343,
-                                                                            columnNumber: 27
-                                                                        }, this)
+                                                                        })
                                                                     ]
-                                                                }, void 0, true, {
-                                                                    fileName: "[project]/src/components/ProgressTracking.tsx",
-                                                                    lineNumber: 339,
-                                                                    columnNumber: 25
-                                                                }, this)
+                                                                })
                                                             ]
-                                                        }, void 0, true, {
-                                                            fileName: "[project]/src/components/ProgressTracking.tsx",
-                                                            lineNumber: 337,
-                                                            columnNumber: 23
-                                                        }, this)
+                                                        })
                                                     ]
-                                                }, void 0, true, {
-                                                    fileName: "[project]/src/components/ProgressTracking.tsx",
-                                                    lineNumber: 324,
-                                                    columnNumber: 21
-                                                }, this)
+                                                })
                                             ]
-                                        }, void 0, true, {
-                                            fileName: "[project]/src/components/ProgressTracking.tsx",
-                                            lineNumber: 303,
-                                            columnNumber: 19
-                                        }, this)
-                                    }, status.id, false, {
-                                        fileName: "[project]/src/components/ProgressTracking.tsx",
-                                        lineNumber: 302,
-                                        columnNumber: 17
-                                    }, this))
-                            }, void 0, false, {
-                                fileName: "[project]/src/components/ProgressTracking.tsx",
-                                lineNumber: 300,
-                                columnNumber: 13
-                            }, this)
-                        }, void 0, false, {
-                            fileName: "[project]/src/components/ProgressTracking.tsx",
-                            lineNumber: 299,
-                            columnNumber: 11
-                        }, this),
+                                        })
+                                    }, status.id))
+                            })
+                        }),
                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f40$chakra$2d$ui$2f$react$2f$dist$2f$esm$2f$components$2f$dialog$2f$dialog$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["DialogFooter"], {
                             children: /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f40$chakra$2d$ui$2f$react$2f$dist$2f$esm$2f$components$2f$button$2f$button$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["Button"], {
                                 onClick: onClose,
                                 children: "Close"
-                            }, void 0, false, {
-                                fileName: "[project]/src/components/ProgressTracking.tsx",
-                                lineNumber: 355,
-                                columnNumber: 13
-                            }, this)
-                        }, void 0, false, {
-                            fileName: "[project]/src/components/ProgressTracking.tsx",
-                            lineNumber: 354,
-                            columnNumber: 11
-                        }, this),
-                        /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f40$chakra$2d$ui$2f$react$2f$dist$2f$esm$2f$components$2f$dialog$2f$dialog$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["DialogCloseTrigger"], {}, void 0, false, {
-                            fileName: "[project]/src/components/ProgressTracking.tsx",
-                            lineNumber: 357,
-                            columnNumber: 11
-                        }, this)
+                            })
+                        }),
+                        /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f40$chakra$2d$ui$2f$react$2f$dist$2f$esm$2f$components$2f$dialog$2f$dialog$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["DialogCloseTrigger"], {})
                     ]
-                }, void 0, true, {
-                    fileName: "[project]/src/components/ProgressTracking.tsx",
-                    lineNumber: 295,
-                    columnNumber: 9
-                }, this)
-            }, void 0, false, {
-                fileName: "[project]/src/components/ProgressTracking.tsx",
-                lineNumber: 294,
-                columnNumber: 7
-            }, this)
+                })
+            })
         ]
-    }, void 0, true, {
-        fileName: "[project]/src/components/ProgressTracking.tsx",
-        lineNumber: 145,
-        columnNumber: 5
-    }, this);
+    });
 }
 }),
 "[project]/src/components/EnhancedContextualMessaging.tsx [app-ssr] (ecmascript)", ((__turbopack_context__) => {
@@ -9057,16 +8585,8 @@ function EnhancedNewPartnerApplicationPage() {
                                         src: "/mukuru-logo.png",
                                         alt: "Mukuru",
                                         height: "32px"
-                                    }, void 0, false, {
-                                        fileName: "[project]/src/app/partner/application/enhanced/page.tsx",
-                                        lineNumber: 1793,
-                                        columnNumber: 17
-                                    }, this)
-                                }, void 0, false, {
-                                    fileName: "[project]/src/app/partner/application/enhanced/page.tsx",
-                                    lineNumber: 1792,
-                                    columnNumber: 15
-                                }, this),
+                                    })
+                                }),
                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f40$chakra$2d$ui$2f$react$2f$dist$2f$esm$2f$components$2f$stack$2f$h$2d$stack$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["HStack"], {
                                     gap: "4",
                                     children: [
@@ -9076,42 +8596,22 @@ function EnhancedNewPartnerApplicationPage() {
                                                 variant: "ghost",
                                                 size: "sm",
                                                 children: "Profile"
-                                            }, void 0, false, {
-                                                fileName: "[project]/src/app/partner/application/enhanced/page.tsx",
-                                                lineNumber: 1797,
-                                                columnNumber: 19
-                                            }, this)
-                                        }, void 0, false, {
-                                            fileName: "[project]/src/app/partner/application/enhanced/page.tsx",
-                                            lineNumber: 1796,
-                                            columnNumber: 17
-                                        }, this),
+                                            })
+                                        }),
                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$client$2f$app$2d$dir$2f$link$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["default"], {
                                             href: "/partner/messages",
                                             children: /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f40$chakra$2d$ui$2f$react$2f$dist$2f$esm$2f$components$2f$button$2f$button$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["Button"], {
                                                 variant: "ghost",
                                                 size: "sm",
                                                 children: "Messages"
-                                            }, void 0, false, {
-                                                fileName: "[project]/src/app/partner/application/enhanced/page.tsx",
-                                                lineNumber: 1800,
-                                                columnNumber: 19
-                                            }, this)
-                                        }, void 0, false, {
-                                            fileName: "[project]/src/app/partner/application/enhanced/page.tsx",
-                                            lineNumber: 1799,
-                                            columnNumber: 17
-                                        }, this),
+                                            })
+                                        }),
                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f40$chakra$2d$ui$2f$react$2f$dist$2f$esm$2f$components$2f$button$2f$button$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["Button"], {
                                             variant: "outline",
                                             size: "sm",
                                             onClick: ()=>(0, __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$lib$2f$auth$2f$session$2e$ts__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["logout"])('http://localhost:3000/'),
                                             children: "Logout"
-                                        }, void 0, false, {
-                                            fileName: "[project]/src/app/partner/application/enhanced/page.tsx",
-                                            lineNumber: 1802,
-                                            columnNumber: 17
-                                        }, this),
+                                        }),
                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$client$2f$app$2d$dir$2f$link$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["default"], {
                                             href: "/partner/application/enhanced",
                                             children: /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f40$chakra$2d$ui$2f$react$2f$dist$2f$esm$2f$components$2f$button$2f$button$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["Button"], {
@@ -9125,23 +8625,11 @@ function EnhancedNewPartnerApplicationPage() {
                                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f40$chakra$2d$ui$2f$react$2f$dist$2f$esm$2f$components$2f$icon$2f$icon$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["Icon"], {
                                                         as: __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$react$2d$icons$2f$fi$2f$index$2e$mjs__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["FiArrowRight"],
                                                         mr: "2"
-                                                    }, void 0, false, {
-                                                        fileName: "[project]/src/app/partner/application/enhanced/page.tsx",
-                                                        lineNumber: 1805,
-                                                        columnNumber: 21
-                                                    }, this),
+                                                    }),
                                                     "New Application"
                                                 ]
-                                            }, void 0, true, {
-                                                fileName: "[project]/src/app/partner/application/enhanced/page.tsx",
-                                                lineNumber: 1804,
-                                                columnNumber: 19
-                                            }, this)
-                                        }, void 0, false, {
-                                            fileName: "[project]/src/app/partner/application/enhanced/page.tsx",
-                                            lineNumber: 1803,
-                                            columnNumber: 17
-                                        }, this),
+                                            })
+                                        }),
                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f40$chakra$2d$ui$2f$react$2f$dist$2f$esm$2f$components$2f$circle$2f$index$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["Circle"], {
                                             size: "40px",
                                             bg: "linear-gradient(135deg, #FF6B35 0%, #F7931E 100%)",
@@ -9151,38 +8639,14 @@ function EnhancedNewPartnerApplicationPage() {
                                                 fontWeight: "bold",
                                                 color: "white",
                                                 children: (0, __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$lib$2f$auth$2f$session$2e$ts__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["getInitials"])(currentUser.name)
-                                            }, void 0, false, {
-                                                fileName: "[project]/src/app/partner/application/enhanced/page.tsx",
-                                                lineNumber: 1810,
-                                                columnNumber: 19
-                                            }, this)
-                                        }, void 0, false, {
-                                            fileName: "[project]/src/app/partner/application/enhanced/page.tsx",
-                                            lineNumber: 1809,
-                                            columnNumber: 17
-                                        }, this)
+                                            })
+                                        })
                                     ]
-                                }, void 0, true, {
-                                    fileName: "[project]/src/app/partner/application/enhanced/page.tsx",
-                                    lineNumber: 1795,
-                                    columnNumber: 15
-                                }, this)
+                                })
                             ]
-                        }, void 0, true, {
-                            fileName: "[project]/src/app/partner/application/enhanced/page.tsx",
-                            lineNumber: 1791,
-                            columnNumber: 13
-                        }, this)
-                    }, void 0, false, {
-                        fileName: "[project]/src/app/partner/application/enhanced/page.tsx",
-                        lineNumber: 1790,
-                        columnNumber: 11
-                    }, this)
-                }, void 0, false, {
-                    fileName: "[project]/src/app/partner/application/enhanced/page.tsx",
-                    lineNumber: 1789,
-                    columnNumber: 9
-                }, this),
+                        })
+                    })
+                }),
                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f40$chakra$2d$ui$2f$react$2f$dist$2f$esm$2f$components$2f$container$2f$container$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["Container"], {
                     maxW: "7xl",
                     py: "12",
@@ -9200,27 +8664,15 @@ function EnhancedNewPartnerApplicationPage() {
                                         fontWeight: "bold",
                                         color: "gray.800",
                                         children: "Start Your Application"
-                                    }, void 0, false, {
-                                        fileName: "[project]/src/app/partner/application/enhanced/page.tsx",
-                                        lineNumber: 1819,
-                                        columnNumber: 15
-                                    }, this),
+                                    }),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f40$chakra$2d$ui$2f$react$2f$dist$2f$esm$2f$components$2f$text$2f$index$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["Text"], {
                                         fontSize: "lg",
                                         color: "gray.600",
                                         maxW: "2xl",
                                         children: "Choose your entity type to begin the onboarding process. We'll customize the form based on your selection."
-                                    }, void 0, false, {
-                                        fileName: "[project]/src/app/partner/application/enhanced/page.tsx",
-                                        lineNumber: 1822,
-                                        columnNumber: 15
-                                    }, this)
+                                    })
                                 ]
-                            }, void 0, true, {
-                                fileName: "[project]/src/app/partner/application/enhanced/page.tsx",
-                                lineNumber: 1818,
-                                columnNumber: 13
-                            }, this),
+                            }),
                             loadingEntityTypes ? /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f40$chakra$2d$ui$2f$react$2f$dist$2f$esm$2f$components$2f$stack$2f$v$2d$stack$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["VStack"], {
                                 gap: "4",
                                 py: "12",
@@ -9228,25 +8680,13 @@ function EnhancedNewPartnerApplicationPage() {
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f40$chakra$2d$ui$2f$react$2f$dist$2f$esm$2f$components$2f$spinner$2f$spinner$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["Spinner"], {
                                         size: "xl",
                                         color: "orange.500"
-                                    }, void 0, false, {
-                                        fileName: "[project]/src/app/partner/application/enhanced/page.tsx",
-                                        lineNumber: 1829,
-                                        columnNumber: 17
-                                    }, this),
+                                    }),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f40$chakra$2d$ui$2f$react$2f$dist$2f$esm$2f$components$2f$text$2f$index$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["Text"], {
                                         color: "gray.600",
                                         children: "Loading entity types..."
-                                    }, void 0, false, {
-                                        fileName: "[project]/src/app/partner/application/enhanced/page.tsx",
-                                        lineNumber: 1830,
-                                        columnNumber: 17
-                                    }, this)
+                                    })
                                 ]
-                            }, void 0, true, {
-                                fileName: "[project]/src/app/partner/application/enhanced/page.tsx",
-                                lineNumber: 1828,
-                                columnNumber: 15
-                            }, this) : entityTypesError ? /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f40$chakra$2d$ui$2f$react$2f$dist$2f$esm$2f$components$2f$box$2f$index$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["Box"], {
+                            }) : entityTypesError ? /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f40$chakra$2d$ui$2f$react$2f$dist$2f$esm$2f$components$2f$box$2f$index$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["Box"], {
                                 p: "6",
                                 bg: "red.50",
                                 borderRadius: "lg",
@@ -9260,42 +8700,22 @@ function EnhancedNewPartnerApplicationPage() {
                                             fontWeight: "semibold",
                                             color: "red.800",
                                             children: "Error Loading Entity Types"
-                                        }, void 0, false, {
-                                            fileName: "[project]/src/app/partner/application/enhanced/page.tsx",
-                                            lineNumber: 1835,
-                                            columnNumber: 19
-                                        }, this),
+                                        }),
                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f40$chakra$2d$ui$2f$react$2f$dist$2f$esm$2f$components$2f$text$2f$index$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["Text"], {
                                             color: "red.700",
                                             fontSize: "sm",
                                             children: entityTypesError
-                                        }, void 0, false, {
-                                            fileName: "[project]/src/app/partner/application/enhanced/page.tsx",
-                                            lineNumber: 1836,
-                                            columnNumber: 19
-                                        }, this),
+                                        }),
                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f40$chakra$2d$ui$2f$react$2f$dist$2f$esm$2f$components$2f$button$2f$button$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["Button"], {
                                             size: "sm",
                                             colorScheme: "red",
                                             onClick: ()=>window.location.reload(),
                                             mt: "2",
                                             children: "Retry"
-                                        }, void 0, false, {
-                                            fileName: "[project]/src/app/partner/application/enhanced/page.tsx",
-                                            lineNumber: 1837,
-                                            columnNumber: 19
-                                        }, this)
+                                        })
                                     ]
-                                }, void 0, true, {
-                                    fileName: "[project]/src/app/partner/application/enhanced/page.tsx",
-                                    lineNumber: 1834,
-                                    columnNumber: 17
-                                }, this)
-                            }, void 0, false, {
-                                fileName: "[project]/src/app/partner/application/enhanced/page.tsx",
-                                lineNumber: 1833,
-                                columnNumber: 15
-                            }, this) : entityTypes.length === 0 ? /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f40$chakra$2d$ui$2f$react$2f$dist$2f$esm$2f$components$2f$box$2f$index$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["Box"], {
+                                })
+                            }) : entityTypes.length === 0 ? /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f40$chakra$2d$ui$2f$react$2f$dist$2f$esm$2f$components$2f$box$2f$index$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["Box"], {
                                 p: "6",
                                 bg: "yellow.50",
                                 borderRadius: "lg",
@@ -9305,16 +8725,8 @@ function EnhancedNewPartnerApplicationPage() {
                                     textAlign: "center",
                                     color: "yellow.800",
                                     children: "No entity types available. Please contact support."
-                                }, void 0, false, {
-                                    fileName: "[project]/src/app/partner/application/enhanced/page.tsx",
-                                    lineNumber: 1849,
-                                    columnNumber: 17
-                                }, this)
-                            }, void 0, false, {
-                                fileName: "[project]/src/app/partner/application/enhanced/page.tsx",
-                                lineNumber: 1848,
-                                columnNumber: 15
-                            }, this) : /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f40$chakra$2d$ui$2f$react$2f$dist$2f$esm$2f$components$2f$box$2f$index$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["Box"], {
+                                })
+                            }) : /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f40$chakra$2d$ui$2f$react$2f$dist$2f$esm$2f$components$2f$box$2f$index$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["Box"], {
                                 children: /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f40$chakra$2d$ui$2f$react$2f$dist$2f$esm$2f$components$2f$simple$2d$grid$2f$simple$2d$grid$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["SimpleGrid"], {
                                     columns: {
                                         base: 1,
@@ -9363,16 +8775,8 @@ function EnhancedNewPartnerApplicationPage() {
                                                         children: /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f40$chakra$2d$ui$2f$react$2f$dist$2f$esm$2f$components$2f$icon$2f$icon$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["Icon"], {
                                                             as: (0, __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$utils$2f$iconUtils$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["getIconComponent"])(entity.icon),
                                                             boxSize: "8"
-                                                        }, void 0, false, {
-                                                            fileName: "[project]/src/app/partner/application/enhanced/page.tsx",
-                                                            lineNumber: 1885,
-                                                            columnNumber: 25
-                                                        }, this)
-                                                    }, void 0, false, {
-                                                        fileName: "[project]/src/app/partner/application/enhanced/page.tsx",
-                                                        lineNumber: 1884,
-                                                        columnNumber: 23
-                                                    }, this),
+                                                        })
+                                                    }),
                                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f40$chakra$2d$ui$2f$react$2f$dist$2f$esm$2f$components$2f$stack$2f$v$2d$stack$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["VStack"], {
                                                         gap: "2",
                                                         align: "start",
@@ -9391,11 +8795,7 @@ function EnhancedNewPartnerApplicationPage() {
                                                                 overflowWrap: "break-word",
                                                                 width: "100%",
                                                                 children: entity.label
-                                                            }, void 0, false, {
-                                                                fileName: "[project]/src/app/partner/application/enhanced/page.tsx",
-                                                                lineNumber: 1889,
-                                                                columnNumber: 25
-                                                            }, this),
+                                                            }),
                                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f40$chakra$2d$ui$2f$react$2f$dist$2f$esm$2f$components$2f$text$2f$index$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["Text"], {
                                                                 fontSize: "sm",
                                                                 color: "gray.600",
@@ -9404,17 +8804,9 @@ function EnhancedNewPartnerApplicationPage() {
                                                                 overflowWrap: "break-word",
                                                                 width: "100%",
                                                                 children: entity.description
-                                                            }, void 0, false, {
-                                                                fileName: "[project]/src/app/partner/application/enhanced/page.tsx",
-                                                                lineNumber: 1900,
-                                                                columnNumber: 25
-                                                            }, this)
+                                                            })
                                                         ]
-                                                    }, void 0, true, {
-                                                        fileName: "[project]/src/app/partner/application/enhanced/page.tsx",
-                                                        lineNumber: 1888,
-                                                        columnNumber: 23
-                                                    }, this),
+                                                    }),
                                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f40$chakra$2d$ui$2f$react$2f$dist$2f$esm$2f$components$2f$button$2f$button$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["Button"], {
                                                         size: "sm",
                                                         bg: "black",
@@ -9431,54 +8823,18 @@ function EnhancedNewPartnerApplicationPage() {
                                                         },
                                                         children: /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f40$chakra$2d$ui$2f$react$2f$dist$2f$esm$2f$components$2f$icon$2f$icon$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["Icon"], {
                                                             as: __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$react$2d$icons$2f$fi$2f$index$2e$mjs__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["FiArrowRight"]
-                                                        }, void 0, false, {
-                                                            fileName: "[project]/src/app/partner/application/enhanced/page.tsx",
-                                                            lineNumber: 1925,
-                                                            columnNumber: 25
-                                                        }, this)
-                                                    }, void 0, false, {
-                                                        fileName: "[project]/src/app/partner/application/enhanced/page.tsx",
-                                                        lineNumber: 1912,
-                                                        columnNumber: 23
-                                                    }, this)
+                                                        })
+                                                    })
                                                 ]
-                                            }, void 0, true, {
-                                                fileName: "[project]/src/app/partner/application/enhanced/page.tsx",
-                                                lineNumber: 1883,
-                                                columnNumber: 21
-                                            }, this)
-                                        }, entity.originalCode || entity.value || `entity-${index}`, false, {
-                                            fileName: "[project]/src/app/partner/application/enhanced/page.tsx",
-                                            lineNumber: 1860,
-                                            columnNumber: 19
-                                        }, this))
-                                }, void 0, false, {
-                                    fileName: "[project]/src/app/partner/application/enhanced/page.tsx",
-                                    lineNumber: 1855,
-                                    columnNumber: 15
-                                }, this)
-                            }, void 0, false, {
-                                fileName: "[project]/src/app/partner/application/enhanced/page.tsx",
-                                lineNumber: 1854,
-                                columnNumber: 13
-                            }, this)
+                                            })
+                                        }, entity.originalCode || entity.value || `entity-${index}`))
+                                })
+                            })
                         ]
-                    }, void 0, true, {
-                        fileName: "[project]/src/app/partner/application/enhanced/page.tsx",
-                        lineNumber: 1817,
-                        columnNumber: 11
-                    }, this)
-                }, void 0, false, {
-                    fileName: "[project]/src/app/partner/application/enhanced/page.tsx",
-                    lineNumber: 1816,
-                    columnNumber: 9
-                }, this)
+                    })
+                })
             ]
-        }, void 0, true, {
-            fileName: "[project]/src/app/partner/application/enhanced/page.tsx",
-            lineNumber: 1788,
-            columnNumber: 7
-        }, this);
+        });
     }
     // Show loading state while fetching entity type data
     if (loadingEntityTypeData) {
@@ -9494,18 +8850,10 @@ function EnhancedNewPartnerApplicationPage() {
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f40$chakra$2d$ui$2f$react$2f$dist$2f$esm$2f$components$2f$spinner$2f$spinner$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["Spinner"], {
                         size: "xl",
                         color: "orange.500"
-                    }, void 0, false, {
-                        fileName: "[project]/src/app/partner/application/enhanced/page.tsx",
-                        lineNumber: 1944,
-                        columnNumber: 11
-                    }, this),
+                    }),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f40$chakra$2d$ui$2f$react$2f$dist$2f$esm$2f$components$2f$text$2f$index$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["Text"], {
                         children: "Loading form configuration..."
-                    }, void 0, false, {
-                        fileName: "[project]/src/app/partner/application/enhanced/page.tsx",
-                        lineNumber: 1945,
-                        columnNumber: 11
-                    }, this),
+                    }),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f40$chakra$2d$ui$2f$react$2f$dist$2f$esm$2f$components$2f$text$2f$index$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["Text"], {
                         fontSize: "sm",
                         color: "gray.500",
@@ -9514,22 +8862,10 @@ function EnhancedNewPartnerApplicationPage() {
                             selectedEntityType,
                             "..."
                         ]
-                    }, void 0, true, {
-                        fileName: "[project]/src/app/partner/application/enhanced/page.tsx",
-                        lineNumber: 1946,
-                        columnNumber: 11
-                    }, this)
+                    })
                 ]
-            }, void 0, true, {
-                fileName: "[project]/src/app/partner/application/enhanced/page.tsx",
-                lineNumber: 1943,
-                columnNumber: 9
-            }, this)
-        }, void 0, false, {
-            fileName: "[project]/src/app/partner/application/enhanced/page.tsx",
-            lineNumber: 1942,
-            columnNumber: 7
-        }, this);
+            })
+        });
     }
     if (!entityConfig) {
         return /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f40$chakra$2d$ui$2f$react$2f$dist$2f$esm$2f$components$2f$box$2f$index$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["Box"], {
@@ -9544,18 +8880,10 @@ function EnhancedNewPartnerApplicationPage() {
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f40$chakra$2d$ui$2f$react$2f$dist$2f$esm$2f$components$2f$spinner$2f$spinner$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["Spinner"], {
                         size: "xl",
                         color: "blue.500"
-                    }, void 0, false, {
-                        fileName: "[project]/src/app/partner/application/enhanced/page.tsx",
-                        lineNumber: 1958,
-                        columnNumber: 11
-                    }, this),
+                    }),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f40$chakra$2d$ui$2f$react$2f$dist$2f$esm$2f$components$2f$text$2f$index$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["Text"], {
                         children: "Loading application form..."
-                    }, void 0, false, {
-                        fileName: "[project]/src/app/partner/application/enhanced/page.tsx",
-                        lineNumber: 1959,
-                        columnNumber: 11
-                    }, this),
+                    }),
                     selectedEntityType && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f40$chakra$2d$ui$2f$react$2f$dist$2f$esm$2f$components$2f$text$2f$index$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["Text"], {
                         fontSize: "sm",
                         color: "gray.500",
@@ -9564,11 +8892,7 @@ function EnhancedNewPartnerApplicationPage() {
                             "Selected: ",
                             selectedEntityType
                         ]
-                    }, void 0, true, {
-                        fileName: "[project]/src/app/partner/application/enhanced/page.tsx",
-                        lineNumber: 1961,
-                        columnNumber: 13
-                    }, this),
+                    }),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f40$chakra$2d$ui$2f$react$2f$dist$2f$esm$2f$components$2f$box$2f$index$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["Box"], {
                         p: "4",
                         bg: "yellow.50",
@@ -9588,39 +8912,19 @@ function EnhancedNewPartnerApplicationPage() {
                                     '".',
                                     selectedEntityTypeData && (!selectedEntityTypeData.requirements || selectedEntityTypeData.requirements.length === 0) ? " No requirements have been configured for this entity type yet. Please contact support." : " Please contact support or try selecting a different entity type."
                                 ]
-                            }, void 0, true, {
-                                fileName: "[project]/src/app/partner/application/enhanced/page.tsx",
-                                lineNumber: 1966,
-                                columnNumber: 13
-                            }, this),
+                            }),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f40$chakra$2d$ui$2f$react$2f$dist$2f$esm$2f$components$2f$button$2f$button$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["Button"], {
                                 size: "sm",
                                 mt: "3",
                                 onClick: ()=>setSelectedEntityType(""),
                                 colorScheme: "orange",
                                 children: "Go Back to Selection"
-                            }, void 0, false, {
-                                fileName: "[project]/src/app/partner/application/enhanced/page.tsx",
-                                lineNumber: 1972,
-                                columnNumber: 13
-                            }, this)
+                            })
                         ]
-                    }, void 0, true, {
-                        fileName: "[project]/src/app/partner/application/enhanced/page.tsx",
-                        lineNumber: 1965,
-                        columnNumber: 11
-                    }, this)
+                    })
                 ]
-            }, void 0, true, {
-                fileName: "[project]/src/app/partner/application/enhanced/page.tsx",
-                lineNumber: 1957,
-                columnNumber: 9
-            }, this)
-        }, void 0, false, {
-            fileName: "[project]/src/app/partner/application/enhanced/page.tsx",
-            lineNumber: 1956,
-            columnNumber: 7
-        }, this);
+            })
+        });
     }
     return /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f40$chakra$2d$ui$2f$react$2f$dist$2f$esm$2f$components$2f$box$2f$index$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["Box"], {
         minH: "100vh",
@@ -9643,16 +8947,8 @@ function EnhancedNewPartnerApplicationPage() {
                                     src: "/mukuru-logo.png",
                                     alt: "Mukuru",
                                     height: "32px"
-                                }, void 0, false, {
-                                    fileName: "[project]/src/app/partner/application/enhanced/page.tsx",
-                                    lineNumber: 1992,
-                                    columnNumber: 15
-                                }, this)
-                            }, void 0, false, {
-                                fileName: "[project]/src/app/partner/application/enhanced/page.tsx",
-                                lineNumber: 1991,
-                                columnNumber: 13
-                            }, this),
+                                })
+                            }),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f40$chakra$2d$ui$2f$react$2f$dist$2f$esm$2f$components$2f$stack$2f$h$2d$stack$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["HStack"], {
                                 gap: "4",
                                 children: [
@@ -9662,42 +8958,22 @@ function EnhancedNewPartnerApplicationPage() {
                                             variant: "ghost",
                                             size: "sm",
                                             children: "Profile"
-                                        }, void 0, false, {
-                                            fileName: "[project]/src/app/partner/application/enhanced/page.tsx",
-                                            lineNumber: 1996,
-                                            columnNumber: 17
-                                        }, this)
-                                    }, void 0, false, {
-                                        fileName: "[project]/src/app/partner/application/enhanced/page.tsx",
-                                        lineNumber: 1995,
-                                        columnNumber: 15
-                                    }, this),
+                                        })
+                                    }),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$client$2f$app$2d$dir$2f$link$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["default"], {
                                         href: "/partner/messages",
                                         children: /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f40$chakra$2d$ui$2f$react$2f$dist$2f$esm$2f$components$2f$button$2f$button$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["Button"], {
                                             variant: "ghost",
                                             size: "sm",
                                             children: "Messages"
-                                        }, void 0, false, {
-                                            fileName: "[project]/src/app/partner/application/enhanced/page.tsx",
-                                            lineNumber: 1999,
-                                            columnNumber: 17
-                                        }, this)
-                                    }, void 0, false, {
-                                        fileName: "[project]/src/app/partner/application/enhanced/page.tsx",
-                                        lineNumber: 1998,
-                                        columnNumber: 15
-                                    }, this),
+                                        })
+                                    }),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f40$chakra$2d$ui$2f$react$2f$dist$2f$esm$2f$components$2f$button$2f$button$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["Button"], {
                                         variant: "outline",
                                         size: "sm",
                                         onClick: ()=>(0, __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$lib$2f$auth$2f$session$2e$ts__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["logout"])('http://localhost:3000/'),
                                         children: "Logout"
-                                    }, void 0, false, {
-                                        fileName: "[project]/src/app/partner/application/enhanced/page.tsx",
-                                        lineNumber: 2001,
-                                        columnNumber: 15
-                                    }, this),
+                                    }),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$client$2f$app$2d$dir$2f$link$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["default"], {
                                         href: "/partner/application/enhanced",
                                         children: /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f40$chakra$2d$ui$2f$react$2f$dist$2f$esm$2f$components$2f$button$2f$button$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["Button"], {
@@ -9714,23 +8990,11 @@ function EnhancedNewPartnerApplicationPage() {
                                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f40$chakra$2d$ui$2f$react$2f$dist$2f$esm$2f$components$2f$icon$2f$icon$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["Icon"], {
                                                     as: __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$react$2d$icons$2f$fi$2f$index$2e$mjs__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["FiArrowRight"],
                                                     mr: "2"
-                                                }, void 0, false, {
-                                                    fileName: "[project]/src/app/partner/application/enhanced/page.tsx",
-                                                    lineNumber: 2004,
-                                                    columnNumber: 19
-                                                }, this),
+                                                }),
                                                 "New Application"
                                             ]
-                                        }, void 0, true, {
-                                            fileName: "[project]/src/app/partner/application/enhanced/page.tsx",
-                                            lineNumber: 2003,
-                                            columnNumber: 17
-                                        }, this)
-                                    }, void 0, false, {
-                                        fileName: "[project]/src/app/partner/application/enhanced/page.tsx",
-                                        lineNumber: 2002,
-                                        columnNumber: 15
-                                    }, this),
+                                        })
+                                    }),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f40$chakra$2d$ui$2f$react$2f$dist$2f$esm$2f$components$2f$circle$2f$index$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["Circle"], {
                                         size: "40px",
                                         bg: "linear-gradient(135deg, #FF6B35 0%, #F7931E 100%)",
@@ -9740,38 +9004,14 @@ function EnhancedNewPartnerApplicationPage() {
                                             fontWeight: "bold",
                                             color: "white",
                                             children: (0, __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$lib$2f$auth$2f$session$2e$ts__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["getInitials"])(currentUser.name)
-                                        }, void 0, false, {
-                                            fileName: "[project]/src/app/partner/application/enhanced/page.tsx",
-                                            lineNumber: 2009,
-                                            columnNumber: 17
-                                        }, this)
-                                    }, void 0, false, {
-                                        fileName: "[project]/src/app/partner/application/enhanced/page.tsx",
-                                        lineNumber: 2008,
-                                        columnNumber: 15
-                                    }, this)
+                                        })
+                                    })
                                 ]
-                            }, void 0, true, {
-                                fileName: "[project]/src/app/partner/application/enhanced/page.tsx",
-                                lineNumber: 1994,
-                                columnNumber: 13
-                            }, this)
+                            })
                         ]
-                    }, void 0, true, {
-                        fileName: "[project]/src/app/partner/application/enhanced/page.tsx",
-                        lineNumber: 1990,
-                        columnNumber: 11
-                    }, this)
-                }, void 0, false, {
-                    fileName: "[project]/src/app/partner/application/enhanced/page.tsx",
-                    lineNumber: 1989,
-                    columnNumber: 9
-                }, this)
-            }, void 0, false, {
-                fileName: "[project]/src/app/partner/application/enhanced/page.tsx",
-                lineNumber: 1988,
-                columnNumber: 7
-            }, this),
+                    })
+                })
+            }),
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f40$chakra$2d$ui$2f$react$2f$dist$2f$esm$2f$components$2f$container$2f$container$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["Container"], {
                 maxW: "6xl",
                 py: "8",
@@ -9791,30 +9031,14 @@ function EnhancedNewPartnerApplicationPage() {
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f40$chakra$2d$ui$2f$react$2f$dist$2f$esm$2f$components$2f$text$2f$index$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["Text"], {
                                         fontWeight: "semibold",
                                         children: toastState.title
-                                    }, void 0, false, {
-                                        fileName: "[project]/src/app/partner/application/enhanced/page.tsx",
-                                        lineNumber: 2020,
-                                        columnNumber: 17
-                                    }, this),
+                                    }),
                                     toastState.description && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f40$chakra$2d$ui$2f$react$2f$dist$2f$esm$2f$components$2f$text$2f$index$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["Text"], {
                                         color: "gray.700",
                                         children: toastState.description
-                                    }, void 0, false, {
-                                        fileName: "[project]/src/app/partner/application/enhanced/page.tsx",
-                                        lineNumber: 2022,
-                                        columnNumber: 19
-                                    }, this)
+                                    })
                                 ]
-                            }, void 0, true, {
-                                fileName: "[project]/src/app/partner/application/enhanced/page.tsx",
-                                lineNumber: 2019,
-                                columnNumber: 15
-                            }, this)
-                        }, void 0, false, {
-                            fileName: "[project]/src/app/partner/application/enhanced/page.tsx",
-                            lineNumber: 2018,
-                            columnNumber: 13
-                        }, this),
+                            })
+                        }),
                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f40$chakra$2d$ui$2f$react$2f$dist$2f$esm$2f$components$2f$box$2f$index$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["Box"], {
                             p: "6",
                             bg: "white",
@@ -9841,11 +9065,7 @@ function EnhancedNewPartnerApplicationPage() {
                                                             entityConfig.displayName,
                                                             " Application"
                                                         ]
-                                                    }, void 0, true, {
-                                                        fileName: "[project]/src/app/partner/application/enhanced/page.tsx",
-                                                        lineNumber: 2032,
-                                                        columnNumber: 19
-                                                    }, this),
+                                                    }),
                                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f40$chakra$2d$ui$2f$react$2f$dist$2f$esm$2f$components$2f$badge$2f$badge$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["Badge"], {
                                                         colorScheme: "blue",
                                                         variant: "subtle",
@@ -9855,25 +9075,13 @@ function EnhancedNewPartnerApplicationPage() {
                                                             " of ",
                                                             entityConfig.steps.length
                                                         ]
-                                                    }, void 0, true, {
-                                                        fileName: "[project]/src/app/partner/application/enhanced/page.tsx",
-                                                        lineNumber: 2035,
-                                                        columnNumber: 19
-                                                    }, this)
+                                                    })
                                                 ]
-                                            }, void 0, true, {
-                                                fileName: "[project]/src/app/partner/application/enhanced/page.tsx",
-                                                lineNumber: 2031,
-                                                columnNumber: 17
-                                            }, this),
+                                            }),
                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f40$chakra$2d$ui$2f$react$2f$dist$2f$esm$2f$components$2f$text$2f$index$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["Text"], {
                                                 color: "gray.600",
                                                 children: entityConfig.description
-                                            }, void 0, false, {
-                                                fileName: "[project]/src/app/partner/application/enhanced/page.tsx",
-                                                lineNumber: 2039,
-                                                columnNumber: 17
-                                            }, this),
+                                            }),
                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f40$chakra$2d$ui$2f$react$2f$dist$2f$esm$2f$components$2f$stack$2f$h$2d$stack$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["HStack"], {
                                                 gap: "2",
                                                 mt: "2",
@@ -9883,22 +9091,10 @@ function EnhancedNewPartnerApplicationPage() {
                                                         flex: "1",
                                                         borderRadius: "full",
                                                         bg: idx + 1 <= currentStep ? "orange.400" : "gray.200"
-                                                    }, s.id, false, {
-                                                        fileName: "[project]/src/app/partner/application/enhanced/page.tsx",
-                                                        lineNumber: 2045,
-                                                        columnNumber: 21
-                                                    }, this))
-                                            }, void 0, false, {
-                                                fileName: "[project]/src/app/partner/application/enhanced/page.tsx",
-                                                lineNumber: 2043,
-                                                columnNumber: 17
-                                            }, this)
+                                                    }, s.id))
+                                            })
                                         ]
-                                    }, void 0, true, {
-                                        fileName: "[project]/src/app/partner/application/enhanced/page.tsx",
-                                        lineNumber: 2030,
-                                        columnNumber: 15
-                                    }, this),
+                                    }),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f40$chakra$2d$ui$2f$react$2f$dist$2f$esm$2f$components$2f$stack$2f$h$2d$stack$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["HStack"], {
                                         gap: "2",
                                         children: [
@@ -9911,19 +9107,11 @@ function EnhancedNewPartnerApplicationPage() {
                                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f40$chakra$2d$ui$2f$react$2f$dist$2f$esm$2f$components$2f$icon$2f$icon$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["Icon"], {
                                                         as: __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$react$2d$icons$2f$fi$2f$index$2e$mjs__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["FiEye"],
                                                         mr: "2"
-                                                    }, void 0, false, {
-                                                        fileName: "[project]/src/app/partner/application/enhanced/page.tsx",
-                                                        lineNumber: 2052,
-                                                        columnNumber: 19
-                                                    }, this),
+                                                    }),
                                                     showProgress ? "Hide" : "Show",
                                                     " Progress"
                                                 ]
-                                            }, void 0, true, {
-                                                fileName: "[project]/src/app/partner/application/enhanced/page.tsx",
-                                                lineNumber: 2051,
-                                                columnNumber: 17
-                                            }, this),
+                                            }),
                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f40$chakra$2d$ui$2f$react$2f$dist$2f$esm$2f$components$2f$button$2f$button$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["Button"], {
                                                 variant: "outline",
                                                 size: "sm",
@@ -9933,18 +9121,10 @@ function EnhancedNewPartnerApplicationPage() {
                                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f40$chakra$2d$ui$2f$react$2f$dist$2f$esm$2f$components$2f$icon$2f$icon$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["Icon"], {
                                                         as: __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$react$2d$icons$2f$fi$2f$index$2e$mjs__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["FiMessageSquare"],
                                                         mr: "2"
-                                                    }, void 0, false, {
-                                                        fileName: "[project]/src/app/partner/application/enhanced/page.tsx",
-                                                        lineNumber: 2057,
-                                                        columnNumber: 19
-                                                    }, this),
+                                                    }),
                                                     "Messages"
                                                 ]
-                                            }, void 0, true, {
-                                                fileName: "[project]/src/app/partner/application/enhanced/page.tsx",
-                                                lineNumber: 2056,
-                                                columnNumber: 17
-                                            }, this),
+                                            }),
                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f40$chakra$2d$ui$2f$react$2f$dist$2f$esm$2f$components$2f$button$2f$button$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["Button"], {
                                                 variant: "outline",
                                                 size: "sm",
@@ -9954,18 +9134,10 @@ function EnhancedNewPartnerApplicationPage() {
                                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f40$chakra$2d$ui$2f$react$2f$dist$2f$esm$2f$components$2f$icon$2f$icon$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["Icon"], {
                                                         as: __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$react$2d$icons$2f$fi$2f$index$2e$mjs__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["FiZap"],
                                                         mr: "2"
-                                                    }, void 0, false, {
-                                                        fileName: "[project]/src/app/partner/application/enhanced/page.tsx",
-                                                        lineNumber: 2062,
-                                                        columnNumber: 19
-                                                    }, this),
+                                                    }),
                                                     "OCR"
                                                 ]
-                                            }, void 0, true, {
-                                                fileName: "[project]/src/app/partner/application/enhanced/page.tsx",
-                                                lineNumber: 2061,
-                                                columnNumber: 17
-                                            }, this),
+                                            }),
                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f40$chakra$2d$ui$2f$react$2f$dist$2f$esm$2f$components$2f$button$2f$button$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["Button"], {
                                                 variant: "outline",
                                                 size: "sm",
@@ -9975,35 +9147,15 @@ function EnhancedNewPartnerApplicationPage() {
                                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f40$chakra$2d$ui$2f$react$2f$dist$2f$esm$2f$components$2f$icon$2f$icon$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["Icon"], {
                                                         as: __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$react$2d$icons$2f$fi$2f$index$2e$mjs__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["FiSave"],
                                                         mr: "2"
-                                                    }, void 0, false, {
-                                                        fileName: "[project]/src/app/partner/application/enhanced/page.tsx",
-                                                        lineNumber: 2067,
-                                                        columnNumber: 19
-                                                    }, this),
+                                                    }),
                                                     "Save Progress"
                                                 ]
-                                            }, void 0, true, {
-                                                fileName: "[project]/src/app/partner/application/enhanced/page.tsx",
-                                                lineNumber: 2066,
-                                                columnNumber: 17
-                                            }, this)
+                                            })
                                         ]
-                                    }, void 0, true, {
-                                        fileName: "[project]/src/app/partner/application/enhanced/page.tsx",
-                                        lineNumber: 2050,
-                                        columnNumber: 15
-                                    }, this)
+                                    })
                                 ]
-                            }, void 0, true, {
-                                fileName: "[project]/src/app/partner/application/enhanced/page.tsx",
-                                lineNumber: 2029,
-                                columnNumber: 13
-                            }, this)
-                        }, void 0, false, {
-                            fileName: "[project]/src/app/partner/application/enhanced/page.tsx",
-                            lineNumber: 2028,
-                            columnNumber: 11
-                        }, this),
+                            })
+                        }),
                         showProgress && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$components$2f$ProgressTracking$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["ProgressTracking"], {
                             config: entityConfig,
                             formData: formData,
@@ -10014,21 +9166,13 @@ function EnhancedNewPartnerApplicationPage() {
                             lastSaved: lastSaved ? lastSaved.toISOString() : undefined,
                             isDirty: isDirty,
                             isSaving: isSaving
-                        }, void 0, false, {
-                            fileName: "[project]/src/app/partner/application/enhanced/page.tsx",
-                            lineNumber: 2076,
-                            columnNumber: 13
-                        }, this),
+                        }),
                         showOCR && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$components$2f$OCRIntegration$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["OCRIntegration"], {
                             onDataExtracted: handleDataExtracted,
                             onDocumentProcessed: handleDocumentProcessed,
                             entityType: selectedEntityType,
                             documentType: entityConfig.steps[currentStep - 1]?.requiredDocuments[0] || 'certificate_incorporation'
-                        }, void 0, false, {
-                            fileName: "[project]/src/app/partner/application/enhanced/page.tsx",
-                            lineNumber: 2091,
-                            columnNumber: 13
-                        }, this),
+                        }),
                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f40$chakra$2d$ui$2f$react$2f$dist$2f$esm$2f$components$2f$box$2f$index$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["Box"], {
                             p: "6",
                             bg: "white",
@@ -10046,16 +9190,8 @@ function EnhancedNewPartnerApplicationPage() {
                                 isLoading: isSubmitting,
                                 validationErrors: validationErrors,
                                 onFilesChange: (files)=>setFileObjects(files)
-                            }, void 0, false, {
-                                fileName: "[project]/src/app/partner/application/enhanced/page.tsx",
-                                lineNumber: 2101,
-                                columnNumber: 13
-                            }, this)
-                        }, void 0, false, {
-                            fileName: "[project]/src/app/partner/application/enhanced/page.tsx",
-                            lineNumber: 2100,
-                            columnNumber: 11
-                        }, this),
+                            })
+                        }),
                         showMessaging && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f40$chakra$2d$ui$2f$react$2f$dist$2f$esm$2f$components$2f$box$2f$index$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["Box"], {
                             p: "6",
                             bg: "white",
@@ -10088,16 +9224,8 @@ function EnhancedNewPartnerApplicationPage() {
                                             }))
                                     })),
                                 applicationDocuments: []
-                            }, void 0, false, {
-                                fileName: "[project]/src/app/partner/application/enhanced/page.tsx",
-                                lineNumber: 2119,
-                                columnNumber: 15
-                            }, this)
-                        }, void 0, false, {
-                            fileName: "[project]/src/app/partner/application/enhanced/page.tsx",
-                            lineNumber: 2118,
-                            columnNumber: 13
-                        }, this),
+                            })
+                        }),
                         saveError && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f40$chakra$2d$ui$2f$react$2f$dist$2f$esm$2f$components$2f$box$2f$index$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["Box"], {
                             p: "3",
                             borderRadius: "md",
@@ -10110,47 +9238,19 @@ function EnhancedNewPartnerApplicationPage() {
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f40$chakra$2d$ui$2f$react$2f$dist$2f$esm$2f$components$2f$text$2f$index$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["Text"], {
                                         fontWeight: "semibold",
                                         children: "Save Error:"
-                                    }, void 0, false, {
-                                        fileName: "[project]/src/app/partner/application/enhanced/page.tsx",
-                                        lineNumber: 2153,
-                                        columnNumber: 17
-                                    }, this),
+                                    }),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f40$chakra$2d$ui$2f$react$2f$dist$2f$esm$2f$components$2f$text$2f$index$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["Text"], {
                                         color: "gray.700",
                                         children: saveError
-                                    }, void 0, false, {
-                                        fileName: "[project]/src/app/partner/application/enhanced/page.tsx",
-                                        lineNumber: 2154,
-                                        columnNumber: 17
-                                    }, this)
+                                    })
                                 ]
-                            }, void 0, true, {
-                                fileName: "[project]/src/app/partner/application/enhanced/page.tsx",
-                                lineNumber: 2152,
-                                columnNumber: 15
-                            }, this)
-                        }, void 0, false, {
-                            fileName: "[project]/src/app/partner/application/enhanced/page.tsx",
-                            lineNumber: 2151,
-                            columnNumber: 13
-                        }, this)
+                            })
+                        })
                     ]
-                }, void 0, true, {
-                    fileName: "[project]/src/app/partner/application/enhanced/page.tsx",
-                    lineNumber: 2016,
-                    columnNumber: 9
-                }, this)
-            }, void 0, false, {
-                fileName: "[project]/src/app/partner/application/enhanced/page.tsx",
-                lineNumber: 2015,
-                columnNumber: 7
-            }, this)
+                })
+            })
         ]
-    }, void 0, true, {
-        fileName: "[project]/src/app/partner/application/enhanced/page.tsx",
-        lineNumber: 1987,
-        columnNumber: 5
-    }, this);
+    });
 }
 }),
 ];

@@ -1,4 +1,4 @@
-;!function(){try { var e="undefined"!=typeof globalThis?globalThis:"undefined"!=typeof global?global:"undefined"!=typeof window?window:"undefined"!=typeof self?self:{},n=(new e.Error).stack;n&&((e._debugIds|| (e._debugIds={}))[n]="4a32f018-5949-f884-00e5-680aa44ef248")}catch(e){}}();
+;!function(){try { var e="undefined"!=typeof globalThis?globalThis:"undefined"!=typeof global?global:"undefined"!=typeof window?window:"undefined"!=typeof self?self:{},n=(new e.Error).stack;n&&((e._debugIds|| (e._debugIds={}))[n]="37b3cd3b-bc49-ebac-b82d-f583085b2c66")}catch(e){}}();
 (globalThis.TURBOPACK || (globalThis.TURBOPACK = [])).push([typeof document === "object" ? document.currentScript : undefined,
 "[project]/src/components/AdminSidebar.tsx [app-client] (ecmascript)", ((__turbopack_context__) => {
 "use strict";
@@ -993,21 +993,9 @@ async function getItemsDueForRefresh(page = 1, pageSize = 100, asOfDate) {
     return await request(`/due-for-refresh?${params.toString()}`);
 }
 async function assignWorkItem(id, assignedToUserId, assignedToUserName) {
-    // Generate GUID if needed (for backwards compatibility)
-    let userIdGuid;
-    if (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(assignedToUserId)) {
-        userIdGuid = assignedToUserId;
-    } else {
-        // Simple hash to generate consistent GUID
-        let hash = 0;
-        for(let i = 0; i < assignedToUserId.length; i++){
-            const char = assignedToUserId.charCodeAt(i);
-            hash = (hash << 5) - hash + char;
-            hash = hash & hash;
-        }
-        const hex = Math.abs(hash).toString(16).padStart(32, '0');
-        userIdGuid = `${hex.substring(0, 8)}-${hex.substring(8, 12)}-${hex.substring(12, 16)}-${hex.substring(16, 20)}-${hex.substring(20, 32)}`;
-    }
+    // Import utility function for GUID normalization
+    const { normalizeUserIdToGuid } = await __turbopack_context__.A("[project]/src/lib/statusMapping.ts [app-client] (ecmascript, async loader)");
+    const userIdGuid = normalizeUserIdToGuid(assignedToUserId);
     await request(`/${id}/assign`, {
         method: 'POST',
         body: JSON.stringify({
@@ -7403,5 +7391,5 @@ if (typeof globalThis.$RefreshHelpers$ === 'object' && globalThis.$RefreshHelper
 }),
 ]);
 
-//# debugId=4a32f018-5949-f884-00e5-680aa44ef248
+//# debugId=37b3cd3b-bc49-ebac-b82d-f583085b2c66
 //# sourceMappingURL=src_d280b123._.js.map

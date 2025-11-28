@@ -1,4 +1,4 @@
-;!function(){try { var e="undefined"!=typeof globalThis?globalThis:"undefined"!=typeof global?global:"undefined"!=typeof window?window:"undefined"!=typeof self?self:{},n=(new e.Error).stack;n&&((e._debugIds|| (e._debugIds={}))[n]="09842e7e-1539-a5a7-f1d7-52e42f73c2d3")}catch(e){}}();
+;!function(){try { var e="undefined"!=typeof globalThis?globalThis:"undefined"!=typeof global?global:"undefined"!=typeof window?window:"undefined"!=typeof self?self:{},n=(new e.Error).stack;n&&((e._debugIds|| (e._debugIds={}))[n]="11f97eff-7c49-579f-f63e-5fabb4bc7c21")}catch(e){}}();
 (globalThis.TURBOPACK || (globalThis.TURBOPACK = [])).push([typeof document === "object" ? document.currentScript : undefined,
 "[project]/src/app/page.tsx [app-client] (ecmascript)", ((__turbopack_context__) => {
 "use strict";
@@ -35,8 +35,8 @@ var _s = __turbopack_context__.k.signature();
 ;
 ;
 // Note: motion() is deprecated but still works. The warning is informational.
-// To suppress: use @ts-ignore or wait for framer-motion update
-// @ts-ignore - motion() deprecation warning
+// To suppress: use @ts-expect-error or wait for framer-motion update
+// @ts-expect-error - motion() deprecation warning - will be fixed when framer-motion updates
 const MotionBox = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$framer$2d$motion$2f$dist$2f$es$2f$render$2f$components$2f$motion$2f$proxy$2e$mjs__$5b$app$2d$client$5d$__$28$ecmascript$29$__["motion"])(__TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f40$chakra$2d$ui$2f$react$2f$dist$2f$esm$2f$components$2f$box$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["Box"]);
 _c = MotionBox;
 function AdminLoginPage() {
@@ -690,5 +690,5 @@ if (typeof globalThis.$RefreshHelpers$ === 'object' && globalThis.$RefreshHelper
 }),
 ]);
 
-//# debugId=09842e7e-1539-a5a7-f1d7-52e42f73c2d3
+//# debugId=11f97eff-7c49-579f-f63e-5fabb4bc7c21
 //# sourceMappingURL=src_app_page_tsx_b4090435._.js.map

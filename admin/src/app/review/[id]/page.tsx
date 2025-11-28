@@ -405,7 +405,7 @@ export default function ReviewPage() {
           documentNumber: d.documentNumber,
           storageKey: d.storageKey,
           type: d.type 
-        })));
+        })) });
         
         docs = docs.map(doc => {
           // Try to find which requirement this document belongs to

@@ -1,4 +1,4 @@
-;!function(){try { var e="undefined"!=typeof globalThis?globalThis:"undefined"!=typeof global?global:"undefined"!=typeof window?window:"undefined"!=typeof self?self:{},n=(new e.Error).stack;n&&((e._debugIds|| (e._debugIds={}))[n]="879cccf7-0d66-e460-bd4f-1dc58977fbc7")}catch(e){}}();
+;!function(){try { var e="undefined"!=typeof globalThis?globalThis:"undefined"!=typeof global?global:"undefined"!=typeof window?window:"undefined"!=typeof self?self:{},n=(new e.Error).stack;n&&((e._debugIds|| (e._debugIds={}))[n]="3f6f4bd0-f904-eb86-0f5f-df3c9429db72")}catch(e){}}();
 module.exports = [
 "[externals]/next/dist/server/app-render/action-async-storage.external.js [external] (next/dist/server/app-render/action-async-storage.external.js, cjs)", ((__turbopack_context__, module, exports) => {
 
@@ -52,8 +52,8 @@ var __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$react$2d$ico
 ;
 ;
 // Note: motion() is deprecated but still works. The warning is informational.
-// To suppress: use @ts-ignore or wait for framer-motion update
-// @ts-ignore - motion() deprecation warning
+// To suppress: use @ts-expect-error or wait for framer-motion update
+// @ts-expect-error - motion() deprecation warning - will be fixed when framer-motion updates
 const MotionBox = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$framer$2d$motion$2f$dist$2f$es$2f$render$2f$components$2f$motion$2f$proxy$2e$mjs__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["motion"])(__TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f40$chakra$2d$ui$2f$react$2f$dist$2f$esm$2f$components$2f$box$2f$index$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["Box"]);
 function AdminLoginPage() {
     const { data: session, status } = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2d$auth$2f$react$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["useSession"])();
@@ -658,5 +658,5 @@ function AdminLoginPage() {
 }),
 ];
 
-//# debugId=879cccf7-0d66-e460-bd4f-1dc58977fbc7
+//# debugId=3f6f4bd0-f904-eb86-0f5f-df3c9429db72
 //# sourceMappingURL=%5Broot-of-the-server%5D__0dc6c22d._.js.map
