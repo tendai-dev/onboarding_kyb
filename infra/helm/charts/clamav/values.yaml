@@ -1,0 +1,39 @@
+replicaCount: 1
+
+image:
+  repository: clamav/clamav
+  pullPolicy: IfNotPresent
+  tag: "1.3.0"
+
+service:
+  type: ClusterIP
+  port: 3310
+
+resources:
+  requests:
+    memory: "2Gi"
+    cpu: "500m"
+  limits:
+    memory: "3Gi"
+    cpu: "1000m"
+
+persistence:
+  enabled: true
+  storageClass: "local-path"
+  size: 5Gi
+
+livenessProbe:
+  tcpSocket:
+    port: 3310
+  initialDelaySeconds: 60
+  periodSeconds: 30
+
+readinessProbe:
+  exec:
+    command:
+      - /usr/local/bin/clamdscan
+      - --ping
+      - "5"
+  initialDelaySeconds: 90
+  periodSeconds: 30
+

@@ -1,0 +1,195 @@
+// Centralized Mukuru component imports
+// Use this file to import all Mukuru components consistently
+// NOTE: Switch is excluded due to compatibility issues with Chakra UI v3
+// Webpack is configured to ignore switch.recipe.js to prevent runtime errors
+
+export {
+  // Core Components
+  Button,
+  Typography,
+  Card,
+  Modal,
+  ModalHeader,
+  ModalBody,
+  ModalFooter,
+
+  // Form Components
+  Checkbox,
+  Radio,
+  RadioGroup,
+  Dropdown,
+  TypeAhead,
+  PhoneInput,
+  MultiSelectDropdown,
+  Search,
+  SortDropdown,
+  // Switch - excluded, use Chakra UI Switch instead
+
+  // Navigation
+  Navbar,
+  PortalNavigationSidebar,
+  MobileSidebar,
+  ProfileMenu,
+  ServicesMenu,
+  SelectionMenu,
+
+  // Data Display Components
+  DataTable,
+  Pagination,
+  Filters,
+
+  // UI Components
+  Tag,
+  Link,
+  Tooltip,
+  AlertBar,
+  IconWrapper,
+  MukuruLogo,
+
+  // Theme
+  mukuruSystem,
+  GlobalStyles,
+  ColorModeProvider,
+  MukuruComponentProvider,
+} from '@mukuru/mukuru-react-components';
+
+// Export ALL 116 Mukuru Icons (100% coverage)
+export {
+  // Navigation & Actions
+  SearchIcon,
+  SettingsIcon,
+  UserIcon,
+  LogoutIcon,
+  MenuIcon,
+  ArrowDownIcon,
+  ArrowLeftIcon,
+  ArrowRightIcon,
+  ArrowUpIcon,
+  EditIcon,
+  DeleteIcon,
+  AddIcon,
+  CloseIcon,
+  TickIcon as CheckIcon, // TickIcon is the check icon
+  WarningIcon,
+  InfoIcon,
+  ErrorIcon,
+  NotificationIcon,
+  MailIcon,
+  PhoneIcon,
+  FileOpenIcon,
+  DocumentIcon,
+  DownloadIcon,
+  UploadIcon,
+  FilterIcon,
+  MoreIcon,
+  ChevronLeftIcon,
+  ChevronRightIcon,
+  AppIcon,
+  ProductIcon,
+  PartnerIcon,
+  HelpIcon,
+
+  // Additional Icons (Complete Set - All 116 Icons)
+  AddRecipientIcon,
+  AffordableIcon,
+  AirtimeIcon,
+  AppleIcon,
+  AwardIcon,
+  CalendarIcon,
+  CallIcon,
+  CameraIcon,
+  CardIcon,
+  CautionIcon,
+  CheckRateIcon,
+  CoffeeIcon,
+  CollectionIcon,
+  ContactsIcon,
+  CopyIcon,
+  CouchIcon,
+  DeathCoverIcon,
+  DstvIcon,
+  ElectricityIcon,
+  ExchangeIcon,
+  ExpandLessIcon,
+  ExpandMoreIcon,
+  ExternalAltIcon,
+  ExternalIcon,
+  FacebookIcon,
+  FacebookTwoIcon,
+  FootPrintIcon,
+  ForwardToInboxIcon,
+  FreeIcon,
+  FuneralCoverIcon,
+  GameIcon,
+  GroceriesFilledIcon,
+  GroceriesIcon,
+  GroupsIcon,
+  HeadSetIcon,
+  HelloIcon,
+  ImageIcon,
+  IncreaseLimitIcon,
+  InfoFilledIcon,
+  KeyIcon,
+  LightBulbIcon,
+  LinkedinIcon,
+  LocationIcon,
+  MakePaymentIcon,
+  ManageIcon,
+  MinusIcon,
+  MukuruSun,
+  OpenInNewIcon,
+  PendingIcon,
+  PhoneInfoIcon,
+  PhoneLockIcon,
+  PlaceOrderIcon,
+  PlantIcon,
+  ProfileIcon,
+  QuestionIcon,
+  ReceiptIcon,
+  RecheckIcon,
+  RecipientsIcon,
+  ReferAFriendIcon,
+  RegisterIcon,
+  RetryIcon,
+  SalaryIcon,
+  SecureIcon,
+  SendMoneyAltIcon,
+  SendMoneyFilledIcon,
+  SendMoneyIcon,
+  ShareAltIcon,
+  ShareIcon,
+  StarIcon,
+  TickCircleIcon,
+  TickIcon,
+  TransferIcon,
+  TrophyIcon,
+  TwitterIcon,
+  UssdIcon,
+  VisibleIcon,
+  VoucherIcon,
+  WaitingIcon,
+  WalletIcon,
+  WhatsappIcon,
+  WidgetIcon,
+  AggregatorServicesIcon,
+  EnterprisePaymentsIcon,
+  PayInIcon,
+  PayOutIcon,
+} from '@mukuru/mukuru-react-components';
+
+// Import RadioDropdown from local components (not yet in npm package)
+// Using direct import from JS file since index.js doesn't exist
+export { RadioDropdown } from '../../lib/mukuru-components/components/ui/RadioDropdown/RadioDropdown.js';
+
+// Import Tabs and Input components from wrapper file
+// NOTE: These components are not yet exported from the main npm package (@mukuru/mukuru-react-components@1.0.44)
+// We use wrapper components that match Mukuru styling
+// Once Input and Tabs are added to the package exports, we can import them from "@mukuru/mukuru-react-components" above
+export {
+  TabsRoot,
+  TabsList,
+  TabsTrigger,
+  TabsIndicator,
+  TabsContent,
+  Input,
+} from './mukuruComponentWrappers';

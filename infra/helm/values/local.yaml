@@ -1,0 +1,120 @@
+# Local development values for kind cluster
+global:
+  domain: "localhost"
+  imageRegistry: ""
+  imageTag: "latest"
+  imagePullPolicy: "Never"  # Use local images
+
+# Infrastructure services
+kafka:
+  enabled: true
+  replicaCount: 1
+  persistence:
+    enabled: false  # Disable persistence for local dev
+  zookeeper:
+    persistence:
+      enabled: false
+
+postgresql:
+  auth:
+    username: "onboarding_user"
+    password: "postgres-changeme"
+    database: "onboarding"
+    postgresPassword: "postgres-root-changeme"
+  primary:
+    persistence:
+      enabled: false  # Disable persistence for local dev
+
+redis:
+  architecture: standalone
+  auth:
+    password: "redis-changeme"
+  master:
+    persistence:
+      enabled: false  # Disable persistence for local dev
+
+minio:
+  rootUser: "admin"
+  rootPassword: "minio-admin-changeme"
+  persistence:
+    enabled: false  # Disable persistence for local dev
+
+# Keycloak removed - using external authentication services
+
+# Business services - use local images
+kyc-onboarding-api:
+  image:
+    repository: kyc-onboarding-api
+    tag: latest
+    pullPolicy: Never
+  replicaCount: 1
+
+kyc-document-api:
+  image:
+    repository: kyc-document-api
+    tag: latest
+    pullPolicy: Never
+  replicaCount: 1
+
+kyc-checklist-api:
+  image:
+    repository: kyc-checklist-api
+    tag: latest
+    pullPolicy: Never
+  replicaCount: 1
+
+kyc-risk-api:
+  image:
+    repository: kyc-risk-api
+    tag: latest
+    pullPolicy: Never
+  replicaCount: 1
+
+kyc-notification-api:
+  image:
+    repository: kyc-notification-api
+    tag: latest
+    pullPolicy: Never
+  replicaCount: 1
+
+entity-configuration-service:
+  image:
+    repository: entity-configuration-service
+    tag: latest
+    pullPolicy: Never
+  replicaCount: 1
+
+kyc-messaging-api:
+  image:
+    repository: kyc-messaging-api
+    tag: latest
+    pullPolicy: Never
+  replicaCount: 1
+
+kyc-projections-api:
+  image:
+    repository: kyc-projections-api
+    tag: latest
+    pullPolicy: Never
+  replicaCount: 1
+
+kyc-audit-api:
+  image:
+    repository: kyc-audit-api
+    tag: latest
+    pullPolicy: Never
+  replicaCount: 1
+
+kyc-work-queue-worker:
+  image:
+    repository: kyc-work-queue-worker
+    tag: latest
+    pullPolicy: Never
+  replicaCount: 1
+
+kyc-webhook-handler:
+  image:
+    repository: kyc-webhook-handler
+    tag: latest
+    pullPolicy: Never
+  replicaCount: 1

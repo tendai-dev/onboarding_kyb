@@ -1,0 +1,32 @@
+using Microsoft.EntityFrameworkCore.Migrations;
+
+#nullable disable
+
+namespace OnboardingApi.Infrastructure.Migrations.WorkQueue
+{
+    /// <inheritdoc />
+    public partial class AddBusinessNameToWorkItems : Migration
+    {
+        /// <inheritdoc />
+        protected override void Up(MigrationBuilder migrationBuilder)
+        {
+            migrationBuilder.AddColumn<string>(
+                name: "business_name",
+                schema: "work_queue",
+                table: "work_items",
+                type: "character varying(500)",
+                maxLength: 500,
+                nullable: true);
+        }
+
+        /// <inheritdoc />
+        protected override void Down(MigrationBuilder migrationBuilder)
+        {
+            migrationBuilder.DropColumn(
+                name: "business_name",
+                schema: "work_queue",
+                table: "work_items");
+        }
+    }
+}
+

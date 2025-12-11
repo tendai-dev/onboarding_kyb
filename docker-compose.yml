@@ -1,0 +1,196 @@
+name: onboarding-platform
+
+services:
+  # Database
+  postgres:
+    image: postgres:14-alpine
+    container_name: postgres
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: postgres
+      POSTGRES_MULTIPLE_DATABASES: kyb_case
+      POSTGRES_MULTIPLE_USERS: kyb:kyb_password
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Cache
+  redis:
+    image: redis:7-alpine
+    container_name: redis
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Object Storage
+  minio:
+    image: minio/minio:latest
+    container_name: minio
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin
+    command: server /data --console-address ":9001"
+    volumes:
+      - minio_data:/data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 30s
+      timeout: 20s
+      retries: 3
+
+  # MinIO bucket initialization
+  minio-init:
+    image: minio/mc:latest
+    container_name: minio-init
+    depends_on:
+      - minio
+    entrypoint: >
+      /bin/sh -c "
+      sleep 5;
+      mc alias set myminio http://minio:9000 minioadmin minioadmin;
+      mc mb myminio/kyb-docs || true;
+      mc policy set private myminio/kyb-docs;
+      echo 'MinIO buckets created';
+      "
+    restart: "no"
+
+  # Authentication removed - using Azure AD for admin and Mukuru Keycloak for partners
+
+  # Virus Scanning
+  clamav:
+    image: clamav/clamav:unstable
+    container_name: clamav
+    platform: linux/amd64
+    command: ["clamd", "--foreground"]
+    ports:
+      - "3310:3310"
+    healthcheck:
+      test: ["CMD-SHELL", "clamdscan --version || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 120s
+    restart: unless-stopped
+
+  # === CORE SERVICES ===
+  
+  # Database Migrations - Run independently before starting the API
+  # This ensures migrations are applied safely without data loss
+  onboarding-migrations:
+    build:
+      context: ./services/onboarding-api
+      dockerfile: src/Migrations/Dockerfile
+    container_name: onboarding-migrations
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Production
+      - ConnectionStrings__PostgreSQL=Host=postgres;Database=kyb_case;Username=kyb;Password=kyb_password
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: "no"
+    profiles:
+      - migrations  # Only run when explicitly requested: docker-compose --profile migrations up onboarding-migrations
+
+  # Onboarding API - Consolidated API service (all HTTP endpoints)
+  onboarding-api:
+    build: ./services/onboarding-api
+    container_name: onboarding-api
+    ports:
+      - "8001:8001"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ASPNETCORE_URLS=http://0.0.0.0:8001
+      - Authentication__Enabled=false
+      - ConnectionStrings__PostgreSQL=Host=postgres;Database=kyb_case;Username=kyb;Password=kyb_password
+      - ConnectionStrings__Redis=redis:6379
+      - Outbox__PollIntervalMs=300
+      # Keycloak authentication removed - service now uses direct API authentication
+      # Entity Configuration is now part of onboarding-api
+      - SERVICE_NAME=onboarding-api
+      # MinIO Storage configuration (use service name 'minio' in Docker network)
+      - Storage__Endpoint=minio:9000
+      - Storage__AccessKey=minioadmin
+      - Storage__SecretKey=minioadmin
+      - Storage__UseSSL=false
+      - Storage__BucketName=kyb-docs
+    depends_on:
+      - postgres
+      - redis
+      - minio
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8001/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  # Onboarding Workers - Background job processing service
+  onboarding-workers:
+    build: ./services/onboarding-workers
+    container_name: onboarding-workers
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ConnectionStrings__PostgreSQL=Host=postgres;Database=kyb_case;Username=kyb;Password=kyb_password
+      - ConnectionStrings__Redis=redis:6379
+      - OutboxRelay__BatchSize=100
+      - OutboxRelay__PollIntervalMs=1000
+      - ComplianceRefresh__DistributedLockKey=job:compliance-refresh
+      - ComplianceRefresh__BatchSize=100
+      - ComplianceRefresh__DryRun=false
+      - ComplianceRefresh__RunIntervalHours=24
+      - SERVICE_NAME=onboarding-workers
+    depends_on:
+      - postgres
+      - redis
+      - onboarding-api
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "test -f /app/OnboardingWorkers.dll && exit 0 || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+  # API Gateway (all routes point to onboarding-api)
+  onboarding-gateway:
+    build: ./gateway
+    container_name: onboarding-gateway
+    ports:
+      - "8000:80"
+    depends_on:
+      - onboarding-api
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Frontend Applications
+  # NOTE: Admin Portal and Partner Portal run outside Docker
+  # Run them manually in terminal:
+  #   - Admin Portal: cd admin && npm run dev (runs on http://localhost:3001)
+  #   - Partner Portal: cd partner && npm run dev (runs on http://localhost:3000)
+
+volumes:
+  postgres_data:
+  minio_data:
+
+networks:
+  default:
+    name: onboarding_kyb_network
+    driver: bridge

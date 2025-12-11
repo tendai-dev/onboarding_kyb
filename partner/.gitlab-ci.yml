@@ -1,0 +1,103 @@
+stages:
+  - lint
+  - test
+  - build
+
+variables:
+  NODE_VERSION: "20"
+
+# Lint job
+lint:
+  stage: lint
+  image: node:${NODE_VERSION}
+  cache:
+    paths:
+      - partner/node_modules/
+  before_script:
+    - cd partner
+    - npm ci --legacy-peer-deps
+  script:
+    - npm run lint
+  only:
+    - merge_requests
+    - main
+    - develop
+
+# Test job with coverage
+test:
+  stage: test
+  image: node:${NODE_VERSION}
+  cache:
+    paths:
+      - partner/node_modules/
+  before_script:
+    - cd partner
+    - npm ci --legacy-peer-deps
+  script:
+    # Run tests with coverage - this will FAIL if coverage is below 80%
+    - npm run test:coverage || COVERAGE_FAILED=$?
+    # Extract coverage percentage for GitLab badge
+    - |
+      if [ -f coverage/coverage-summary.json ]; then
+        COVERAGE=$(node -e "const cov = require('./coverage/coverage-summary.json'); console.log(cov.total.lines.pct.toFixed(2))")
+        echo "Coverage: ${COVERAGE}%"
+        echo "Coverage percentage: ${COVERAGE}%"
+        
+        # Explicitly check if coverage is below 80% and fail the job
+        # Use awk for comparison (works in all environments)
+        COVERAGE_CHECK=$(echo "$COVERAGE" | awk '{if ($1 < 80) exit 1; exit 0}')
+        if [ $? -ne 0 ]; then
+          echo "❌ Coverage ${COVERAGE}% is below required 80% threshold"
+          echo "MR BLOCKED: Coverage threshold not met. Please add unit tests to reach 80% coverage."
+          echo "View coverage report: Download coverage/index.html artifact"
+          exit 1
+        else
+          echo "✅ Coverage ${COVERAGE}% meets 80% threshold requirement"
+        fi
+      else
+        echo "❌ Coverage report not found"
+        exit 1
+      fi
+    # If test:coverage failed due to threshold, exit with error
+    - |
+      if [ -n "$COVERAGE_FAILED" ]; then
+        echo "❌ Test coverage run failed - thresholds not met"
+        exit 1
+      fi
+  coverage: '/Coverage percentage:\s*(\d+\.\d+)%/'
+  artifacts:
+    reports:
+      # GitLab coverage visualization (using lcov format)
+      coverage_report:
+        coverage_format: cobertura
+        path: partner/coverage/lcov.info
+    paths:
+      - partner/coverage/
+      - partner/coverage/index.html
+    expire_in: 1 week
+  only:
+    - merge_requests
+    - main
+    - develop
+
+# Build job
+build:
+  stage: build
+  image: node:${NODE_VERSION}
+  cache:
+    paths:
+      - partner/node_modules/
+  before_script:
+    - cd partner
+    - npm ci --legacy-peer-deps
+  script:
+    - npm run build
+  artifacts:
+    paths:
+      - partner/.next/
+    expire_in: 1 week
+  only:
+    - merge_requests
+    - main
+    - develop
+

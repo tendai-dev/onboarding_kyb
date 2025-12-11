@@ -1,0 +1,148 @@
+---
+# Document Service
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: kyb-document-api
+  namespace: business-documents
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: kyb-document-api
+  template:
+    metadata:
+      labels:
+        app: kyb-document-api
+    spec:
+      containers:
+      - name: kyb-document-api
+        image: nginx:alpine
+        ports:
+        - containerPort: 80
+        env:
+        - name: SERVICE_NAME
+          value: "kyb-document-api"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: kyb-document-api
+  namespace: business-documents
+spec:
+  selector:
+    app: kyb-document-api
+  ports:
+  - port: 80
+    targetPort: 80
+---
+# Risk Service
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: kyb-risk-api
+  namespace: business-risk
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: kyb-risk-api
+  template:
+    metadata:
+      labels:
+        app: kyb-risk-api
+    spec:
+      containers:
+      - name: kyb-risk-api
+        image: nginx:alpine
+        ports:
+        - containerPort: 80
+        env:
+        - name: SERVICE_NAME
+          value: "kyb-risk-api"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: kyb-risk-api
+  namespace: business-risk
+spec:
+  selector:
+    app: kyb-risk-api
+  ports:
+  - port: 80
+    targetPort: 80
+---
+# Notification Service
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: kyb-notification-api
+  namespace: business-notifications
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: kyb-notification-api
+  template:
+    metadata:
+      labels:
+        app: kyb-notification-api
+    spec:
+      containers:
+      - name: kyb-notification-api
+        image: nginx:alpine
+        ports:
+        - containerPort: 80
+        env:
+        - name: SERVICE_NAME
+          value: "kyb-notification-api"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: kyb-notification-api
+  namespace: business-notifications
+spec:
+  selector:
+    app: kyb-notification-api
+  ports:
+  - port: 80
+    targetPort: 80
+---
+# Checklist Service
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: kyb-checklist-api
+  namespace: business-onboarding
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: kyb-checklist-api
+  template:
+    metadata:
+      labels:
+        app: kyb-checklist-api
+    spec:
+      containers:
+      - name: kyb-checklist-api
+        image: nginx:alpine
+        ports:
+        - containerPort: 80
+        env:
+        - name: SERVICE_NAME
+          value: "kyb-checklist-api"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: kyb-checklist-api
+  namespace: business-onboarding
+spec:
+  selector:
+    app: kyb-checklist-api
+  ports:
+  - port: 80
+    targetPort: 80

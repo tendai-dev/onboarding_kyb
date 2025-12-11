@@ -1,0 +1,113 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: api-gateway
+  namespace: business-onboarding
+  annotations:
+    nginx.ingress.kubernetes.io/use-regex: "true"
+    nginx.ingress.kubernetes.io/priority: "100"
+    # Body size (increased for document uploads)
+    nginx.ingress.kubernetes.io/proxy-body-size: "50m"
+spec:
+  ingressClassName: nginx
+  rules:
+  - host: 158.220.110.88.nip.io
+    http:
+      paths:
+      # All API routes now go to unified onboarding-api
+      - path: /api
+        pathType: Prefix
+        backend:
+          service:
+            name: onboarding-api
+            port:
+              number: 80
+      
+      # Legacy paths for backward compatibility (all route to unified API)
+      - path: /onboarding(/|$)(.*)
+        pathType: ImplementationSpecific
+        backend:
+          service:
+            name: onboarding-api
+            port:
+              number: 80
+      
+      - path: /documents(/|$)(.*)
+        pathType: ImplementationSpecific
+        backend:
+          service:
+            name: onboarding-api
+            port:
+              number: 80
+      
+      - path: /risk(/|$)(.*)
+        pathType: ImplementationSpecific
+        backend:
+          service:
+            name: onboarding-api
+            port:
+              number: 80
+      
+      - path: /notifications(/|$)(.*)
+        pathType: ImplementationSpecific
+        backend:
+          service:
+            name: onboarding-api
+            port:
+              number: 80
+      
+      - path: /checklist(/|$)(.*)
+        pathType: ImplementationSpecific
+        backend:
+          service:
+            name: onboarding-api
+            port:
+              number: 80
+      
+      - path: /messaging(/|$)(.*)
+        pathType: ImplementationSpecific
+        backend:
+          service:
+            name: onboarding-api
+            port:
+              number: 80
+      
+      - path: /webhooks(/|$)(.*)
+        pathType: ImplementationSpecific
+        backend:
+          service:
+            name: onboarding-api
+            port:
+              number: 80
+      
+      - path: /projections(/|$)(.*)
+        pathType: ImplementationSpecific
+        backend:
+          service:
+            name: onboarding-api
+            port:
+              number: 80
+      
+      - path: /audit(/|$)(.*)
+        pathType: ImplementationSpecific
+        backend:
+          service:
+            name: onboarding-api
+            port:
+              number: 80
+      
+      - path: /entity-config(/|$)(.*)
+        pathType: ImplementationSpecific
+        backend:
+          service:
+            name: onboarding-api
+            port:
+              number: 80
+      
+      - path: /workqueue(/|$)(.*)
+        pathType: ImplementationSpecific
+        backend:
+          service:
+            name: onboarding-api
+            port:
+              number: 80

@@ -1,0 +1,3108 @@
+@import "tailwindcss";
+@import "sweetalert2/dist/sweetalert2.min.css";
+
+/* Madera font - loaded from Mukuru components package */
+/* The Mukuru components use Madera as primary font with fallbacks */
+@font-face {
+  font-family: 'Madera';
+  src: url('/fonts/Madera/Monotype-Madera-Regular.otf') format('opentype');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Madera';
+  src: url('/fonts/Madera/Monotype-Madera-Bold.otf') format('opentype');
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Madera';
+  src: url('/fonts/Madera/Monotype-Madera-ExtraBold.otf') format('opentype');
+  font-weight: 800;
+  font-style: normal;
+  font-display: swap;
+}
+
+:root {
+  /* Mukuru Color Tokens - ONLY these should be used */
+  --mukuru-primary: #F05423;
+  --mukuru-charcoal: #373A36;
+  --mukuru-grey-medium-dark: #4A4D4A;
+  --mukuru-grey-medium: #8C8C8C;
+  --mukuru-grey-light: #E9E9EA;
+  --mukuru-teal: #00A5A3;
+  --mukuru-white: #FFFFFF;
+  --mukuru-background-light: #E9E9EA;
+  --mukuru-background-dark: #222222;
+  --mukuru-cards-white: #FFFFFF;
+  --mukuru-cards-dark: #3E3E3E;
+  --mukuru-text-primary: #373A36;
+  --mukuru-text-accent: #F05423;
+  --mukuru-text-inverse: #FFFFFF;
+  --mukuru-text-input: #828282;
+  --mukuru-text-error: #D10007;
+  --mukuru-text-error-dark: #FF6469;
+  --mukuru-text-success: #99DBDA;
+  --mukuru-text-alert: #FF9900;
+  --mukuru-buttons-primary: #F05423;
+  --mukuru-buttons-secondary: #1D1D1B;
+  --mukuru-buttons-inverse: #FFFFFF;
+  --mukuru-buttons-link: #00A5A3;
+  --mukuru-buttons-inactive-orange: #FFC5B5;
+  --mukuru-buttons-inactive-grey: #8C8C8C;
+  --mukuru-buttons-inactive-charcoal: #373A36;
+  --mukuru-buttons-inactive-teal: #99DBDA;
+  --mukuru-buttons-inactive-smoke-grey: #828282;
+  --mukuru-state-hover: #F3F2F2;
+  --mukuru-state-hover-card: #FFC5B5;
+
+  /* Legacy variables - using Mukuru tokens */
+  --background: var(--mukuru-cards-white);
+  --foreground: var(--mukuru-text-primary);
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: 'Madera', 'Helvetica Neue', 'Arial', sans-serif;
+  --font-mono: 'Fira Code', 'Courier New', monospace;
+}
+
+/* DARK MODE DISABLED - Force light mode always (except login page) */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="dark"]) {
+    --background: var(--mukuru-cards-white) !important;
+    --foreground: var(--mukuru-text-primary) !important;
+  }
+}
+
+/* Force light mode colors regardless of system preference - NUCLEAR OPTION */
+/* But allow dark mode when data-theme="dark" is set */
+:root:not([data-theme="dark"]) {
+  color-scheme: light !important;
+}
+
+html:not([data-theme="dark"]), 
+body:not([data-theme="dark"]) {
+  color-scheme: light !important;
+  background: var(--mukuru-cards-white) !important;
+  color: var(--mukuru-text-primary) !important;
+}
+
+/* Force all elements to use light mode colors (except when dark theme is active) */
+:root:not([data-theme="dark"]) *, 
+:root:not([data-theme="dark"]) *::before, 
+:root:not([data-theme="dark"]) *::after {
+  color-scheme: light !important;
+}
+
+/* Override any dark backgrounds (except when dark theme is active) */
+/* Note: nav excluded to allow PortalNavigationSidebar to use its own styling */
+:root:not([data-theme="dark"]) section, 
+:root:not([data-theme="dark"]) main, 
+:root:not([data-theme="dark"]) article, 
+:root:not([data-theme="dark"]) header, 
+:root:not([data-theme="dark"]) footer {
+  background-color: var(--mukuru-cards-white) !important;
+  color: var(--mukuru-text-primary) !important;
+}
+
+/* Force cards to be white */
+[class*="card"], [class*="Card"], [data-part="card"] {
+  background-color: var(--mukuru-cards-white) !important;
+  background: var(--mukuru-cards-white) !important;
+  color: var(--mukuru-text-primary) !important;
+}
+
+/* Apply Mukuru font at root level - let it cascade naturally */
+html,
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: 'Madera', 'Helvetica Neue', 'Arial', sans-serif;
+}
+
+/* Only override where necessary - avoid universal selector for performance */
+/* Chakra UI components - targeted overrides only */
+[data-part="menu-trigger"],
+[data-part="menu-content"],
+[data-part="input"],
+[data-part="field"] {
+  font-family: 'Madera', 'Helvetica Neue', 'Arial', sans-serif;
+}
+
+/* Form inputs - specific targeting */
+input:not([type="hidden"]),
+textarea,
+select {
+  font-family: 'Madera', 'Helvetica Neue', 'Arial', sans-serif;
+}
+
+/* Mukuru components - specific targeting */
+.mukuru-dropdown-wrapper [data-part="menu-trigger"],
+[class*="mukuru"]:not([class*="mono"]):not([class*="code"]) {
+  font-family: 'Madera', 'Helvetica Neue', 'Arial', sans-serif;
+}
+
+/* Keep monospace fonts for code */
+code, pre, kbd, samp,
+[class*="mono"], [class*="code"],
+font[face*="mono"], font[face*="code"] {
+  font-family: 'Fira Code', 'Courier New', monospace;
+}
+
+/* Fix white text visibility in DataTable and other components - Comprehensive overrides */
+/* Table headers - all variations */
+th,
+thead th,
+table th,
+[role="columnheader"],
+[data-part="table"] th,
+[data-part="thead"] th,
+.chakra-table th,
+[class*="table"] th,
+[class*="Table"] th {
+  color: var(--mukuru-text-primary) !important; /* mukuru.text.primary */
+  font-weight: 600 !important;
+}
+
+/* Table cells - all variations */
+td,
+tbody td,
+table td,
+[role="cell"],
+[data-part="table"] td,
+[data-part="tbody"] td,
+.chakra-table td,
+[class*="table"] td,
+[class*="Table"] td {
+  color: var(--mukuru-text-primary) !important; /* mukuru.text.primary */
+}
+
+/* Ensure all text in white backgrounds is visible */
+.bg-white,
+[data-bg="white"],
+[class*="bg-white"],
+[style*="background-color: white"],
+[style*="background-color: #fff"],
+[style*="background-color: #ffffff"],
+[style*="background: white"],
+[style*="background: #fff"],
+[style*="background: #ffffff"] {
+  color: var(--mukuru-text-primary) !important; /* mukuru.text.primary */
+}
+
+/* Override any white text colors - make them dark - comprehensive patterns */
+/* BUT EXCLUDE primary buttons - they need white text on orange background */
+[style*="color: white"]:not(.mukuru-primary-button):not(.mukuru-primary-button *):not([data-variant="primary"]):not([data-variant="primary"] *),
+[style*="color: #fff"]:not(.mukuru-primary-button):not(.mukuru-primary-button *):not([data-variant="primary"]):not([data-variant="primary"] *),
+[style*="color: #ffffff"]:not(.mukuru-primary-button):not(.mukuru-primary-button *):not([data-variant="primary"]):not([data-variant="primary"] *),
+[style*="color:white"]:not(.mukuru-primary-button):not(.mukuru-primary-button *):not([data-variant="primary"]):not([data-variant="primary"] *),
+[style*="color:#fff"]:not(.mukuru-primary-button):not(.mukuru-primary-button *):not([data-variant="primary"]):not([data-variant="primary"] *),
+[style*="color:#ffffff"]:not(.mukuru-primary-button):not(.mukuru-primary-button *):not([data-variant="primary"]):not([data-variant="primary"] *),
+[style*="color: rgb(255, 255, 255)"]:not(.mukuru-primary-button):not(.mukuru-primary-button *):not([data-variant="primary"]):not([data-variant="primary"] *),
+[style*="color:rgb(255,255,255)"]:not(.mukuru-primary-button):not(.mukuru-primary-button *):not([data-variant="primary"]):not([data-variant="primary"] *) {
+  color: var(--mukuru-text-primary) !important; /* mukuru.text.primary */
+}
+
+/* Force white text on primary buttons - override the above rule */
+.mukuru-primary-button,
+.mukuru-primary-button *,
+.mukuru-primary-button span,
+button[data-variant="primary"],
+button[data-variant="primary"] *,
+button[data-variant="primary"] span,
+[data-variant="primary"],
+[data-variant="primary"] *,
+[data-variant="primary"] span {
+  color: white !important;
+  -webkit-text-fill-color: white !important;
+}
+
+/* Fix DataTable component specific styling - multiple selectors */
+[data-part="root"][data-scope="data-table"],
+[data-scope="data-table"],
+[data-part="table"],
+[class*="data-table"],
+[class*="DataTable"] {
+  color: var(--mukuru-text-primary) !important; /* mukuru.text.primary */
+}
+
+[data-part="root"][data-scope="data-table"] *,
+[data-scope="data-table"] *,
+[data-part="table"] *,
+[class*="data-table"] *,
+[class*="DataTable"] * {
+  color: inherit;
+}
+
+/* Ensure table headers are always visible in DataTable */
+[data-part="root"][data-scope="data-table"] th,
+[data-scope="data-table"] th,
+[data-part="table"] th,
+[class*="data-table"] th,
+[class*="DataTable"] th,
+[data-part="root"][data-scope="data-table"] [role="columnheader"],
+[data-scope="data-table"] [role="columnheader"] {
+  color: var(--mukuru-text-primary) !important; /* mukuru.text.primary */
+  font-weight: 600 !important;
+}
+
+/* Ensure table cells are always visible in DataTable */
+[data-part="root"][data-scope="data-table"] td,
+[data-scope="data-table"] td,
+[data-part="table"] td,
+[class*="data-table"] td,
+[class*="DataTable"] td,
+[data-part="root"][data-scope="data-table"] [role="cell"],
+[data-scope="data-table"] [role="cell"] {
+  color: var(--mukuru-text-primary) !important; /* mukuru.text.primary */
+}
+
+/* Ensure DataTable has light/white background */
+[data-part="root"][data-scope="data-table"],
+[data-scope="data-table"],
+[data-part="table"],
+[class*="data-table"],
+[class*="DataTable"],
+[data-part="root"][data-scope="data-table"] table,
+[data-scope="data-table"] table,
+[data-part="table"] table {
+  background-color: var(--mukuru-white) !important; /* mukuru.white */
+  background: var(--mukuru-white) !important; /* mukuru.white */
+}
+
+/* Ensure table body has white background */
+[data-part="root"][data-scope="data-table"] tbody,
+[data-scope="data-table"] tbody,
+[data-part="tbody"],
+[class*="data-table"] tbody,
+[class*="DataTable"] tbody {
+  background-color: var(--mukuru-white) !important; /* mukuru.white */
+  background: var(--mukuru-white) !important; /* mukuru.white */
+}
+
+/* Ensure table rows have white/light background */
+[data-part="root"][data-scope="data-table"] tr,
+[data-scope="data-table"] tr,
+[data-part="table"] tr,
+[class*="data-table"] tr,
+[class*="DataTable"] tr {
+  background-color: var(--mukuru-white) !important; /* mukuru.white */
+  background: var(--mukuru-white) !important; /* mukuru.white */
+}
+
+/* Ensure table header has light background */
+[data-part="root"][data-scope="data-table"] thead,
+[data-scope="data-table"] thead,
+[data-part="thead"],
+[class*="data-table"] thead,
+[class*="DataTable"] thead {
+  background-color: var(--mukuru-background-light) !important; /* mukuru.background.light */
+  background: var(--mukuru-background-light) !important; /* mukuru.background.light */
+}
+
+/* Work Queue Table - Ensure light background */
+.work-queue-table-wrapper {
+  background-color: white !important;
+}
+
+.work-queue-table-wrapper [data-part="root"][data-scope="data-table"],
+.work-queue-table-wrapper [data-scope="data-table"],
+.work-queue-table-wrapper [data-part="table"],
+.work-queue-table-wrapper table,
+.work-queue-table-wrapper tbody,
+.work-queue-table-wrapper thead,
+.work-queue-table-wrapper tr,
+.work-queue-table-wrapper td,
+.work-queue-table-wrapper th {
+  background-color: var(--mukuru-white) !important; /* mukuru.white */
+  background: var(--mukuru-white) !important; /* mukuru.white */
+}
+
+.work-queue-table-wrapper thead {
+  background-color: var(--mukuru-background-light) !important; /* mukuru.background.light */ /* Light gray for header */
+}
+
+.work-queue-table-wrapper tbody tr:hover {
+  background-color: var(--mukuru-background-light) !important; /* mukuru.background.light */ /* Light gray on hover */
+}
+
+/* Work Queue Table - Expand to fit content */
+.work-queue-table-wrapper {
+  width: 100% !important;
+  min-width: 100% !important;
+  overflow-x: auto !important;
+}
+
+.work-queue-table-wrapper table {
+  width: 100% !important;
+  min-width: 100% !important;
+  table-layout: auto !important;
+}
+
+.work-queue-table-wrapper [data-part="table"] {
+  width: 100% !important;
+  min-width: 100% !important;
+}
+
+/* Ensure table doesn't overlap and uses full width */
+.work-queue-table-wrapper [data-scope="data-table"],
+.work-queue-table-wrapper [data-part="root"][data-scope="data-table"] {
+  width: 100% !important;
+  min-width: 100% !important;
+  overflow-x: auto !important;
+}
+
+/* Remove sticky positioning from action column - causes visual issues */
+/* Action column will scroll normally with the table */
+
+.work-queue-table-wrapper tbody tr:hover td:last-child {
+  background-color: var(--mukuru-background-light) !important; /* mukuru.background.light */
+  background: var(--mukuru-background-light) !important; /* mukuru.background.light */
+}
+
+/* Work Queue Buttons - Primary buttons with mukuru.primary and white text - NUCLEAR OPTION */
+.mukuru-primary-button,
+.mukuru-primary-button *,
+button[data-variant="primary"],
+button[data-variant="primary"] *,
+[data-variant="primary"],
+[data-variant="primary"] *,
+button.variant-primary,
+button.variant-primary *,
+[data-scope="button"][data-variant="primary"],
+[data-scope="button"][data-variant="primary"] *,
+button[class*="primary"],
+button[class*="primary"] *,
+Button[variant="primary"],
+Button[variant="primary"] *,
+[data-part*="button"][data-variant="primary"],
+[data-part*="button"][data-variant="primary"] *,
+button.mukuru-primary-button,
+button.mukuru-primary-button * {
+  background-color: var(--mukuru-buttons-primary) !important; /* mukuru.buttons.primary */
+  background: var(--mukuru-buttons-primary) !important; /* mukuru.buttons.primary */
+  border: none !important;
+  border-width: 0 !important;
+  border-style: none !important;
+  border-color: transparent !important;
+  border-top: none !important;
+  border-right: none !important;
+  border-bottom: none !important;
+  border-left: none !important;
+  outline: none !important;
+  outline-width: 0 !important;
+  outline-style: none !important;
+  outline-color: transparent !important;
+  box-shadow: none !important;
+  -webkit-box-shadow: none !important;
+  -moz-box-shadow: none !important;
+  text-shadow: none !important;
+  box-sizing: border-box !important;
+}
+
+/* Remove any pseudo-element borders (::before, ::after) */
+.mukuru-primary-button::before,
+.mukuru-primary-button::after,
+.mukuru-secondary-button::before,
+.mukuru-secondary-button::after,
+button.mukuru-primary-button::before,
+button.mukuru-primary-button::after,
+button.mukuru-secondary-button::before,
+button.mukuru-secondary-button::after {
+  display: none !important;
+  content: none !important;
+  border: none !important;
+  outline: none !important;
+  box-shadow: none !important;
+}
+
+/* NUCLEAR OPTION - Target ALL possible button elements and their children */
+.mukuru-primary-button,
+.mukuru-secondary-button,
+button.mukuru-primary-button,
+button.mukuru-secondary-button,
+[data-scope="button"].mukuru-primary-button,
+[data-scope="button"].mukuru-secondary-button,
+[data-part*="button"].mukuru-primary-button,
+[data-part*="button"].mukuru-secondary-button,
+.mukuru-primary-button *,
+.mukuru-secondary-button *,
+button.mukuru-primary-button *,
+button.mukuru-secondary-button *,
+[data-scope="button"].mukuru-primary-button *,
+[data-scope="button"].mukuru-secondary-button *,
+[data-part*="button"].mukuru-primary-button *,
+[data-part*="button"].mukuru-secondary-button * {
+  border: 0 !important;
+  border-width: 0 !important;
+  border-style: none !important;
+  border-color: transparent !important;
+  border-top: 0 !important;
+  border-right: 0 !important;
+  border-bottom: 0 !important;
+  border-left: 0 !important;
+  outline: 0 !important;
+  outline-width: 0 !important;
+  outline-style: none !important;
+  outline-color: transparent !important;
+  box-shadow: none !important;
+  -webkit-box-shadow: none !important;
+  -moz-box-shadow: none !important;
+  text-shadow: none !important;
+  box-sizing: border-box !important;
+}
+
+/* Target Chakra UI button specific parts */
+[data-scope="button"][data-variant="primary"],
+[data-scope="button"][data-variant="secondary"],
+[data-part="root"][data-scope="button"],
+[data-part="root"][data-scope="button"] *,
+button[data-scope="button"],
+button[data-scope="button"] * {
+  border: 0 !important;
+  border-width: 0 !important;
+  border-style: none !important;
+  border-color: transparent !important;
+  outline: 0 !important;
+  outline-width: 0 !important;
+  outline-style: none !important;
+  outline-color: transparent !important;
+  box-shadow: none !important;
+  -webkit-box-shadow: none !important;
+  -moz-box-shadow: none !important;
+  text-shadow: none !important;
+}
+
+/* ABSOLUTE NUCLEAR OPTION - Target every single button element */
+button,
+button *,
+[role="button"],
+[role="button"] *,
+[data-scope="button"],
+[data-scope="button"] *,
+[data-part*="button"],
+[data-part*="button"] * {
+  border: 0 !important;
+  border-width: 0 !important;
+  border-style: none !important;
+  border-color: transparent !important;
+  outline: 0 !important;
+  outline-width: 0 !important;
+  outline-style: none !important;
+  outline-color: transparent !important;
+}
+
+/* But only apply background removal to status filter buttons */
+.mukuru-primary-button,
+.mukuru-secondary-button,
+.mukuru-primary-button:focus,
+.mukuru-primary-button:focus-visible,
+.mukuru-primary-button:active,
+.mukuru-primary-button:hover,
+.mukuru-secondary-button:focus,
+.mukuru-secondary-button:focus-visible,
+.mukuru-secondary-button:active,
+.mukuru-secondary-button:hover {
+  border: 0 !important;
+  border-width: 0 !important;
+  border-style: none !important;
+  border-color: transparent !important;
+  outline: 0 !important;
+  outline-width: 0 !important;
+  outline-style: none !important;
+  outline-color: transparent !important;
+  box-shadow: none !important;
+  -webkit-box-shadow: none !important;
+  -moz-box-shadow: none !important;
+  text-shadow: none !important;
+  box-sizing: border-box !important;
+  background-clip: padding-box !important;
+  -webkit-appearance: none !important;
+  -moz-appearance: none !important;
+  appearance: none !important;
+}
+
+/* Remove focus rings completely */
+.mukuru-primary-button:focus,
+.mukuru-primary-button:focus-visible,
+.mukuru-secondary-button:focus,
+.mukuru-secondary-button:focus-visible {
+  outline: 0 !important;
+  outline-offset: 0 !important;
+  outline-width: 0 !important;
+  outline-style: none !important;
+  outline-color: transparent !important;
+  box-shadow: none !important;
+  -webkit-box-shadow: none !important;
+  -moz-box-shadow: none !important;
+}
+
+/* Remove any ring or focus indicator */
+.mukuru-primary-button:focus-visible::before,
+.mukuru-primary-button:focus-visible::after,
+.mukuru-secondary-button:focus-visible::before,
+.mukuru-secondary-button:focus-visible::after {
+  display: none !important;
+  content: none !important;
+}
+
+/* ABSOLUTE FINAL NUCLEAR OPTION - Target every single possible element */
+button[class*="mukuru"],
+button[class*="primary"],
+button[class*="secondary"],
+[class*="mukuru"][class*="button"],
+[class*="primary"][class*="button"],
+[class*="secondary"][class*="button"] {
+  border: 0 !important;
+  border-width: 0 !important;
+  border-style: none !important;
+  border-color: transparent !important;
+  border-top: 0 !important;
+  border-right: 0 !important;
+  border-bottom: 0 !important;
+  border-left: 0 !important;
+  outline: 0 !important;
+  outline-width: 0 !important;
+  outline-style: none !important;
+  outline-color: transparent !important;
+  outline-offset: 0 !important;
+  box-shadow: none !important;
+  -webkit-box-shadow: none !important;
+  -moz-box-shadow: none !important;
+  text-shadow: none !important;
+  box-sizing: border-box !important;
+  background-clip: padding-box !important;
+  -webkit-appearance: none !important;
+  -moz-appearance: none !important;
+  appearance: none !important;
+}
+
+/* Status filter buttons - OVERRIDE ALL OTHER RULES - MUST BE LAST */
+.status-filter-buttons button[data-variant="ghost"],
+.status-filter-buttons [data-scope="button"][data-variant="ghost"],
+.status-filter-buttons [data-part*="button"][data-variant="ghost"],
+.status-filter-buttons button:not([data-variant="primary"]):not(.mukuru-primary-button),
+.status-filter-buttons [data-scope="button"]:not([data-variant="primary"]):not(.mukuru-primary-button),
+.status-filter-buttons [data-part*="button"]:not([data-variant="primary"]):not(.mukuru-primary-button) {
+  border-radius: 36px !important;
+  border: 1px solid #E5E7EB !important;
+  border-color: #E5E7EB !important;
+  border-width: 1px !important;
+  border-style: solid !important;
+  background-color: white !important;
+  color: #111827 !important;
+}
+
+.status-filter-buttons button[data-variant="primary"],
+.status-filter-buttons [data-scope="button"][data-variant="primary"],
+.status-filter-buttons [data-part*="button"][data-variant="primary"],
+.status-filter-buttons button.mukuru-primary-button,
+.status-filter-buttons [data-scope="button"].mukuru-primary-button,
+.status-filter-buttons [data-part*="button"].mukuru-primary-button {
+  border-radius: 36px !important;
+  border: none !important;
+  border-width: 0 !important;
+  border-style: none !important;
+  border-color: transparent !important;
+}
+
+/* Remove borderRadius if it's causing visual artifacts */
+.mukuru-primary-button:not(.status-filter-buttons button),
+.mukuru-secondary-button:not(.status-filter-buttons button) {
+  border-radius: 8px !important;
+  overflow: hidden !important;
+}
+
+/* Target any child elements that might have borders */
+.mukuru-primary-button > *,
+.mukuru-secondary-button > *,
+.mukuru-primary-button > * > *,
+.mukuru-secondary-button > * > * {
+  border: 0 !important;
+  outline: 0 !important;
+  box-shadow: none !important;
+}
+
+/* FINAL NUCLEAR OPTION - Target the actual rendered button element with all possible selectors */
+button[class*="mukuru-primary-button"]:not(.status-filter-buttons button),
+button[class*="mukuru-secondary-button"]:not(.status-filter-buttons button),
+[data-scope="button"][class*="mukuru-primary-button"]:not(.status-filter-buttons [data-scope="button"]),
+[data-scope="button"][class*="mukuru-secondary-button"]:not(.status-filter-buttons [data-scope="button"]),
+[data-part*="button"][class*="mukuru-primary-button"]:not(.status-filter-buttons [data-part*="button"]),
+[data-part*="button"][class*="mukuru-secondary-button"]:not(.status-filter-buttons [data-part*="button"]),
+button[data-variant="primary"][class*="mukuru"]:not(.status-filter-buttons button),
+button[data-variant="secondary"][class*="mukuru"]:not(.status-filter-buttons button) {
+  border: 0 !important;
+  border-width: 0 !important;
+  border-style: none !important;
+  border-color: transparent !important;
+  border-top: 0 !important;
+  border-right: 0 !important;
+  border-bottom: 0 !important;
+  border-left: 0 !important;
+  outline: 0 !important;
+  outline-width: 0 !important;
+  outline-style: none !important;
+  outline-color: transparent !important;
+  outline-offset: 0 !important;
+  box-shadow: none !important;
+  -webkit-box-shadow: none !important;
+  -moz-box-shadow: none !important;
+  text-shadow: none !important;
+  box-sizing: border-box !important;
+  background-clip: padding-box !important;
+  -webkit-appearance: none !important;
+  -moz-appearance: none !important;
+  appearance: none !important;
+}
+
+/* Status filter buttons - FINAL OVERRIDE - MUST BE AT THE END */
+.status-filter-buttons button[data-variant="ghost"],
+.status-filter-buttons [data-scope="button"][data-variant="ghost"],
+.status-filter-buttons [data-part*="button"][data-variant="ghost"],
+.status-filter-buttons button:not([data-variant="primary"]):not(.mukuru-primary-button),
+.status-filter-buttons [data-scope="button"]:not([data-variant="primary"]):not(.mukuru-primary-button) {
+  border-radius: 36px !important;
+  border: 1px solid #E5E7EB !important;
+  border-color: #E5E7EB !important;
+  border-width: 1px !important;
+  border-style: solid !important;
+  background-color: white !important;
+  color: #111827 !important;
+}
+
+.status-filter-buttons button[data-variant="primary"],
+.status-filter-buttons [data-scope="button"][data-variant="primary"],
+.status-filter-buttons [data-part*="button"][data-variant="primary"],
+.status-filter-buttons button.mukuru-primary-button,
+.status-filter-buttons [data-scope="button"].mukuru-primary-button {
+  border-radius: 36px !important;
+  border: none !important;
+  border-width: 0 !important;
+  border-style: none !important;
+  border-color: transparent !important;
+}
+
+/* Also target all states */
+button[class*="mukuru-primary-button"]:focus,
+button[class*="mukuru-primary-button"]:focus-visible,
+button[class*="mukuru-primary-button"]:active,
+button[class*="mukuru-primary-button"]:hover,
+button[class*="mukuru-secondary-button"]:focus,
+button[class*="mukuru-secondary-button"]:focus-visible,
+button[class*="mukuru-secondary-button"]:active,
+button[class*="mukuru-secondary-button"]:hover {
+  border: 0 !important;
+  outline: 0 !important;
+  box-shadow: none !important;
+  -webkit-box-shadow: none !important;
+  -moz-box-shadow: none !important;
+}
+
+/* ULTIMATE FIX - Target the actual button element with all possible selectors */
+button,
+button[type="button"],
+button[role="button"],
+[role="button"],
+[data-scope="button"],
+[data-part*="button"],
+button.mukuru-primary-button,
+button.mukuru-secondary-button,
+.mukuru-primary-button,
+.mukuru-secondary-button {
+  border: 0 !important;
+  border-width: 0 !important;
+  border-style: none !important;
+  border-color: transparent !important;
+  border-top: 0 !important;
+  border-right: 0 !important;
+  border-bottom: 0 !important;
+  border-left: 0 !important;
+  outline: 0 !important;
+  outline-width: 0 !important;
+  outline-style: none !important;
+  outline-color: transparent !important;
+  outline-offset: 0 !important;
+  box-shadow: none !important;
+  -webkit-box-shadow: none !important;
+  -moz-box-shadow: none !important;
+  text-shadow: none !important;
+}
+
+/* Target any potential wrapper or container */
+.HStack button,
+[class*="HStack"] button,
+[data-part*="stack"] button {
+  border: 0 !important;
+  outline: 0 !important;
+  box-shadow: none !important;
+}
+
+/* SPECIFIC FIX for status filter buttons - target the exact location */
+[data-scope="work-queue"] button,
+.work-queue-page button,
+main button,
+[role="main"] button {
+  border: 0 !important;
+  border-width: 0 !important;
+  border-style: none !important;
+  border-color: transparent !important;
+  outline: 0 !important;
+  outline-width: 0 !important;
+  outline-style: none !important;
+  outline-color: transparent !important;
+  box-shadow: none !important;
+  -webkit-box-shadow: none !important;
+  -moz-box-shadow: none !important;
+}
+
+/* Target buttons that are children of HStack with gap="2" */
+HStack[gap="2"] button,
+[data-part*="stack"][gap="2"] button {
+  border: 0 !important;
+  border-width: 0 !important;
+  border-style: none !important;
+  border-color: transparent !important;
+  outline: 0 !important;
+  box-shadow: none !important;
+}
+
+/* FINAL FIX - Plain div elements with matching border color to hide white lines */
+.status-filter-buttons,
+.status-filter-buttons *,
+.status-filter-buttons div[role="button"],
+.status-filter-buttons div[role="button"]:focus,
+.status-filter-buttons div[role="button"]:active,
+.status-filter-buttons div[role="button"]:hover,
+.status-filter-buttons div[role="button"]:focus-visible,
+.status-filter-buttons div[role="button"] *,
+.status-filter-buttons div[role="button"] span,
+.status-filter-btn,
+.status-filter-btn:focus,
+.status-filter-btn:active,
+.status-filter-btn:hover,
+.status-filter-btn:focus-visible,
+.status-filter-btn *,
+.status-filter-btn span,
+div.status-filter-btn,
+div.status-filter-btn:focus,
+div.status-filter-btn:active,
+div.status-filter-btn:hover,
+div.status-filter-btn:focus-visible,
+div.status-filter-btn *,
+div.status-filter-btn span {
+  outline: none !important;
+  outline-width: 0 !important;
+  outline-style: none !important;
+  outline-color: transparent !important;
+  outline-offset: 0 !important;
+  box-shadow: none !important;
+  -webkit-box-shadow: none !important;
+  -moz-box-shadow: none !important;
+  text-shadow: none !important;
+  color: white !important;
+  -webkit-text-fill-color: white !important;
+  background-clip: border-box !important;
+  -webkit-tap-highlight-color: transparent !important;
+}
+
+/* Remove any pseudo-elements that might create borders */
+.status-filter-buttons *::before,
+.status-filter-buttons *::after,
+.status-filter-btn::before,
+.status-filter-btn::after {
+  content: none !important;
+  border: none !important;
+  outline: none !important;
+  box-shadow: none !important;
+}
+
+/* Ensure background extends fully to edges */
+.status-filter-buttons div[role="button"],
+div.status-filter-btn {
+  background-size: 100% 100% !important;
+  background-repeat: no-repeat !important;
+  background-position: center !important;
+  background-origin: border-box !important;
+  -webkit-background-size: 100% 100% !important;
+  -moz-background-size: 100% 100% !important;
+}
+
+/* Force solid background with no gaps */
+.status-filter-buttons div[role="button"]:not(:hover):not(:focus):not(:active),
+div.status-filter-btn:not(:hover):not(:focus):not(:active) {
+  background-image: none !important;
+}
+
+/* SPECIFIC TARGET for status filter buttons container - ABSOLUTE NUCLEAR OPTION */
+.status-filter-buttons,
+.status-filter-buttons *,
+.status-filter-buttons *::before,
+.status-filter-buttons *::after,
+.status-filter-buttons button,
+.status-filter-buttons button *,
+.status-filter-buttons button::before,
+.status-filter-buttons button::after,
+.status-filter-buttons [data-scope="button"],
+.status-filter-buttons [data-scope="button"] *,
+.status-filter-buttons [data-part*="button"],
+.status-filter-buttons [data-part*="button"] * {
+  border: 0 !important;
+  border-width: 0 !important;
+  border-style: none !important;
+  border-color: transparent !important;
+  border-top: 0 !important;
+  border-right: 0 !important;
+  border-bottom: 0 !important;
+  border-left: 0 !important;
+  outline: 0 !important;
+  outline-width: 0 !important;
+  outline-style: none !important;
+  outline-color: transparent !important;
+  outline-offset: 0 !important;
+  box-shadow: none !important;
+  -webkit-box-shadow: none !important;
+  -moz-box-shadow: none !important;
+  text-shadow: none !important;
+  /* Remove any potential visual artifacts */
+  clip-path: none !important;
+  filter: none !important;
+  -webkit-filter: none !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
+.status-filter-buttons button:focus,
+.status-filter-buttons button:focus-visible,
+.status-filter-buttons button:active,
+.status-filter-buttons button:hover,
+.status-filter-buttons button:visited,
+.status-filter-buttons [data-scope="button"]:focus,
+.status-filter-buttons [data-scope="button"]:focus-visible,
+.status-filter-buttons [data-scope="button"]:active,
+.status-filter-buttons [data-scope="button"]:hover {
+  border: 0 !important;
+  border-width: 0 !important;
+  border-style: none !important;
+  border-color: transparent !important;
+  outline: 0 !important;
+  outline-width: 0 !important;
+  outline-style: none !important;
+  outline-color: transparent !important;
+  box-shadow: none !important;
+  -webkit-box-shadow: none !important;
+  -moz-box-shadow: none !important;
+  text-shadow: none !important;
+}
+
+/* Target the actual rendered button element - most specific possible */
+.status-filter-buttons > button,
+.status-filter-buttons > * > button,
+.status-filter-buttons button[class*="mukuru"],
+.status-filter-buttons button[data-variant] {
+  all: unset;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  border: 0 !important;
+  border-width: 0 !important;
+  border-style: none !important;
+  border-color: transparent !important;
+  outline: 0 !important;
+  outline-width: 0 !important;
+  outline-style: none !important;
+  outline-color: transparent !important;
+  box-shadow: none !important;
+  -webkit-box-shadow: none !important;
+  -moz-box-shadow: none !important;
+  text-shadow: none !important;
+  box-sizing: border-box !important;
+  background-clip: padding-box !important;
+  -webkit-appearance: none !important;
+  -moz-appearance: none !important;
+  appearance: none !important;
+}
+
+/* Remove borders on hover and focus states - ALL POSSIBLE STATES */
+.mukuru-primary-button:hover,
+.mukuru-primary-button:focus,
+.mukuru-primary-button:active,
+.mukuru-primary-button:focus-visible,
+.mukuru-primary-button:focus-within,
+button[data-variant="primary"]:hover,
+button[data-variant="primary"]:focus,
+button[data-variant="primary"]:active,
+button[data-variant="primary"]:focus-visible,
+button[data-variant="primary"]:focus-within,
+[data-variant="primary"]:hover,
+[data-variant="primary"]:focus,
+[data-variant="primary"]:active,
+[data-variant="primary"]:focus-visible,
+[data-variant="primary"]:focus-within,
+[data-scope="button"][data-variant="primary"]:hover,
+[data-scope="button"][data-variant="primary"]:focus,
+[data-scope="button"][data-variant="primary"]:active,
+[data-scope="button"][data-variant="primary"]:focus-visible,
+[data-scope="button"][data-variant="primary"]:focus-within,
+button[class*="primary"]:hover,
+button[class*="primary"]:focus,
+button[class*="primary"]:active,
+button[class*="primary"]:focus-visible,
+button[class*="primary"]:focus-within {
+  border: none !important;
+  border-width: 0 !important;
+  border-style: none !important;
+  border-color: transparent !important;
+  border-top: none !important;
+  border-right: none !important;
+  border-bottom: none !important;
+  border-left: none !important;
+  outline: none !important;
+  outline-width: 0 !important;
+  outline-style: none !important;
+  outline-color: transparent !important;
+  box-shadow: none !important;
+  -webkit-box-shadow: none !important;
+  -moz-box-shadow: none !important;
+  text-shadow: none !important;
+}
+
+/* Target any wrapper or container around buttons */
+.mukuru-primary-button > *,
+button[data-variant="primary"] > *,
+[data-variant="primary"] > * {
+  border: none !important;
+  border-width: 0 !important;
+  border-style: none !important;
+  outline: none !important;
+  box-shadow: none !important;
+}
+
+.mukuru-primary-button *,
+.mukuru-primary-button span,
+.mukuru-primary-button p,
+.mukuru-primary-button div,
+.mukuru-primary-button svg,
+.mukuru-primary-button path,
+button[data-variant="primary"] *,
+button[data-variant="primary"] span,
+button[data-variant="primary"] p,
+button[data-variant="primary"] div,
+button[data-variant="primary"] svg,
+button[data-variant="primary"] path,
+[data-variant="primary"] *,
+[data-variant="primary"] span,
+[data-variant="primary"] p,
+[data-variant="primary"] div,
+[data-variant="primary"] svg,
+[data-variant="primary"] path {
+  color: white !important;
+  fill: white !important;
+  stroke: white !important;
+  -webkit-text-fill-color: white !important;
+}
+
+/* Ensure all primary variant buttons have white text */
+[data-scope="button"][data-variant="primary"],
+[data-scope="button"][data-variant="primary"] *,
+[data-scope="button"][data-variant="primary"] span,
+[data-scope="button"][data-variant="primary"] p,
+[data-scope="button"][data-variant="primary"] div,
+[data-scope="button"][data-variant="primary"] svg,
+[data-scope="button"][data-variant="primary"] path {
+  color: white !important;
+  fill: white !important;
+  stroke: white !important;
+  -webkit-text-fill-color: white !important;
+}
+
+/* Wizard Configuration Buttons - Ensure proper centering and mukuru.primary color */
+button[data-variant="primary"],
+[data-variant="primary"] {
+  background-color: var(--mukuru-buttons-primary) !important; /* mukuru.buttons.primary */
+  background: var(--mukuru-buttons-primary) !important; /* mukuru.buttons.primary */
+  border-color: var(--mukuru-buttons-primary) !important; /* mukuru.buttons.primary */
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  text-align: center !important;
+}
+
+button[data-variant="primary"] *,
+[data-variant="primary"] *,
+button[data-variant="primary"] span,
+[data-variant="primary"] span,
+button[data-variant="primary"] p,
+[data-variant="primary"] p,
+button[data-variant="primary"] div,
+[data-variant="primary"] div,
+button[data-variant="primary"] typography,
+[data-variant="primary"] typography {
+  color: var(--mukuru-white) !important; /* mukuru.white */
+  -webkit-text-fill-color: #FFFFFF !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  text-align: center !important;
+}
+
+button[data-variant="primary"] svg,
+[data-variant="primary"] svg,
+button[data-variant="primary"] path,
+[data-variant="primary"] path,
+button[data-variant="primary"] IconWrapper,
+[data-variant="primary"] IconWrapper,
+button[data-variant="primary"] IconWrapper *,
+[data-variant="primary"] IconWrapper * {
+  fill: #FFFFFF !important;
+  stroke: #FFFFFF !important;
+  color: var(--mukuru-white) !important; /* mukuru.white */
+}
+
+/* Ensure button content is centered */
+button[data-variant="primary"],
+[data-variant="primary"] {
+  text-align: center !important;
+  justify-content: center !important;
+  align-items: center !important;
+}
+
+/* Force white text on all primary button text elements */
+button[data-variant="primary"] span,
+button[data-variant="primary"] p,
+button[data-variant="primary"] div,
+button[data-variant="primary"] typography,
+[data-variant="primary"] span,
+[data-variant="primary"] p,
+[data-variant="primary"] div,
+[data-variant="primary"] typography,
+.active-button-text {
+  color: var(--mukuru-white) !important; /* mukuru.white */
+  -webkit-text-fill-color: #FFFFFF !important;
+  fill: #FFFFFF !important;
+}
+
+/* Work Queue Secondary Buttons - Black background with white text for unselected status filter buttons */
+.mukuru-secondary-button,
+button.mukuru-secondary-button,
+[data-variant="secondary"].mukuru-secondary-button {
+  background-color: #111827 !important;
+  background: #111827 !important;
+  border: none !important;
+  border-width: 0 !important;
+  border-style: none !important;
+  border-color: transparent !important;
+  border-top: none !important;
+  border-right: none !important;
+  border-bottom: none !important;
+  border-left: none !important;
+  color: white !important;
+  outline: none !important;
+  outline-width: 0 !important;
+  outline-style: none !important;
+  outline-color: transparent !important;
+  box-shadow: none !important;
+  -webkit-box-shadow: none !important;
+  -moz-box-shadow: none !important;
+  text-shadow: none !important;
+  box-sizing: border-box !important;
+}
+
+.mukuru-secondary-button *,
+button.mukuru-secondary-button *,
+[data-variant="secondary"].mukuru-secondary-button *,
+.mukuru-secondary-button span,
+button.mukuru-secondary-button span {
+  color: white !important;
+  fill: white !important;
+  stroke: white !important;
+  -webkit-text-fill-color: white !important;
+}
+
+/* Work Queue Secondary Buttons - Default (for other secondary buttons) */
+button[data-variant="secondary"],
+[data-variant="secondary"],
+button.variant-secondary,
+[data-scope="button"][data-variant="secondary"] {
+  background-color: var(--mukuru-white) !important; /* mukuru.white */
+  background: var(--mukuru-white) !important; /* mukuru.white */
+  border-color: #E5E7EB !important; /* gray.200 */
+  color: #111827 !important; /* gray.900 - black text */
+}
+
+button[data-variant="secondary"] *,
+button[data-variant="secondary"] span,
+button[data-variant="secondary"] p,
+button[data-variant="secondary"] div,
+[data-variant="secondary"] *,
+[data-variant="secondary"] span,
+[data-variant="secondary"] p,
+[data-variant="secondary"] div,
+[data-scope="button"][data-variant="secondary"] *,
+[data-scope="button"][data-variant="secondary"] span,
+[data-scope="button"][data-variant="secondary"] p,
+[data-scope="button"][data-variant="secondary"] div {
+  color: #111827 !important; /* gray.900 - black text */
+  -webkit-text-fill-color: #111827 !important;
+}
+
+button[data-variant="secondary"] svg,
+button[data-variant="secondary"] path,
+[data-variant="secondary"] svg,
+[data-variant="secondary"] path,
+[data-scope="button"][data-variant="secondary"] svg,
+[data-scope="button"][data-variant="secondary"] path {
+  color: #111827 !important; /* gray.900 - black text */
+  fill: #111827 !important;
+  stroke: #111827 !important;
+}
+
+/* Ensure DataTable has light/white background */
+[data-part="root"][data-scope="data-table"],
+[data-scope="data-table"],
+[data-part="table"],
+[class*="data-table"],
+[class*="DataTable"],
+[data-part="root"][data-scope="data-table"] table,
+[data-scope="data-table"] table,
+[data-part="table"] table {
+  background-color: var(--mukuru-white) !important; /* mukuru.white */
+  background: var(--mukuru-white) !important; /* mukuru.white */
+}
+
+/* Ensure table body has white background */
+[data-part="root"][data-scope="data-table"] tbody,
+[data-scope="data-table"] tbody,
+[data-part="tbody"],
+[class*="data-table"] tbody,
+[class*="DataTable"] tbody {
+  background-color: var(--mukuru-white) !important; /* mukuru.white */
+  background: var(--mukuru-white) !important; /* mukuru.white */
+}
+
+/* Ensure table rows have white/light background */
+[data-part="root"][data-scope="data-table"] tr,
+[data-scope="data-table"] tr,
+[data-part="table"] tr,
+[class*="data-table"] tr,
+[class*="DataTable"] tr {
+  background-color: var(--mukuru-white) !important; /* mukuru.white */
+  background: var(--mukuru-white) !important; /* mukuru.white */
+}
+
+/* Ensure table header has light background */
+[data-part="root"][data-scope="data-table"] thead,
+[data-scope="data-table"] thead,
+[data-part="thead"],
+[class*="data-table"] thead,
+[class*="DataTable"] thead {
+  background-color: var(--mukuru-background-light) !important; /* mukuru.background.light */
+  background: var(--mukuru-background-light) !important; /* mukuru.background.light */
+}
+
+/* Global override for any element with white text color */
+* {
+  color: inherit;
+}
+
+/* Force dark text on any element that might have white text */
+div[style*="color"],
+span[style*="color"],
+p[style*="color"],
+td[style*="color"],
+th[style*="color"] {
+  color: #1F2937 !important; /* gray.800 - default to dark */
+}
+
+/* But allow specific overrides for headers */
+th[style*="color"],
+[role="columnheader"][style*="color"] {
+  color: var(--mukuru-text-primary) !important; /* mukuru.text.primary */
+}
+
+/* ============================================
+   SIDEBAR - Let Mukuru component handle styling
+   ============================================ */
+
+/* Header and Navbar - Let Mukuru components handle styling */
+
+/* ProfileMenu positioning fix */
+[data-scope="profile-menu"] [data-part="positioner"] {
+  z-index: 1000 !important;
+}
+
+/* Ensure proper alignment - no gaps between sidebar and header */
+.sidebar-wrapper + .portal-header,
+.sidebar-wrapper ~ .portal-header {
+  margin-left: 0 !important;
+  padding-left: 0 !important;
+}
+
+/* Ensure content area aligns properly */
+main,
+[role="main"],
+.main-content {
+  margin-left: 0 !important;
+  padding-left: 0 !important;
+}
+
+/* Dashboard text colors - ensure all text is visible */
+.dashboard-content,
+.dashboard-content * {
+  color: inherit;
+}
+
+/* Ensure card text is always dark */
+[data-part="card"] *,
+.card * {
+  color: inherit;
+}
+
+/* Force dark text on Typography components in cards */
+.card [data-part="typography"],
+.card .chakra-text {
+  color: #111827 !important;
+}
+
+/* Force white text and icons on mukuru primary buttons and tags */
+.mukuru-primary-button,
+.mukuru-primary-button * {
+  color: white !important;
+}
+
+.mukuru-primary-button svg,
+.mukuru-primary-button path {
+  color: white !important;
+  fill: white !important;
+  stroke: white !important;
+}
+
+.mukuru-primary-tag,
+.mukuru-primary-tag *,
+.mukuru-primary-tag span,
+.mukuru-primary-tag p,
+.mukuru-primary-tag div,
+p.mukuru-primary-tag {
+  color: white !important;
+}
+
+.mukuru-primary-tag svg,
+.mukuru-primary-tag path {
+  color: white !important;
+  fill: white !important;
+  stroke: white !important;
+}
+
+/* Additional selectors for Tag component - Tag renders as <p> */
+[data-variant="warning"].mukuru-primary-tag,
+[data-variant="warning"].mukuru-primary-tag *,
+[data-variant="warning"].mukuru-primary-tag span,
+[data-variant="warning"].mukuru-primary-tag p,
+[data-variant="warning"].mukuru-primary-tag div,
+p[data-variant="warning"].mukuru-primary-tag {
+  color: white !important;
+}
+
+/* Target all possible Tag text elements */
+span.mukuru-primary-tag,
+p.mukuru-primary-tag,
+span[style*="background-color: #F05423"],
+span[style*="background-color:#F05423"],
+p[style*="background-color: #F05423"],
+p[style*="background-color:#F05423"] {
+  color: white !important;
+}
+
+span.mukuru-primary-tag *,
+p.mukuru-primary-tag *,
+span[style*="background-color: #F05423"] *,
+span[style*="background-color:#F05423"] *,
+p[style*="background-color: #F05423"] *,
+p[style*="background-color:#F05423"] * {
+  color: white !important;
+}
+
+/* Most aggressive selector - target any p element with the class or style */
+p.mukuru-primary-tag,
+p[class*="mukuru-primary-tag"] {
+  color: white !important;
+}
+
+p.mukuru-primary-tag *,
+p[class*="mukuru-primary-tag"] * {
+  color: white !important;
+}
+
+/* Ultra-aggressive selectors for Tag component - override everything */
+[data-variant="warning"][style*="#F05423"],
+[data-variant="warning"][style*="#F05423"] *,
+[data-variant="warning"][style*="background-color: #F05423"],
+[data-variant="warning"][style*="background-color: #F05423"] *,
+[data-variant="warning"][style*="background-color:#F05423"],
+[data-variant="warning"][style*="background-color:#F05423"] * {
+  color: white !important;
+}
+
+/* Target any element with mukuru-primary-tag class regardless of element type */
+.mukuru-primary-tag,
+.mukuru-primary-tag *,
+.mukuru-primary-tag::before,
+.mukuru-primary-tag::after {
+  color: white !important;
+}
+
+/* Force white on all text nodes within tags */
+.mukuru-primary-tag {
+  -webkit-text-fill-color: white !important;
+}
+
+/* Target Typography components inside tags */
+.mukuru-primary-tag [data-part="typography"],
+.mukuru-primary-tag .chakra-text,
+.mukuru-primary-tag p,
+.mukuru-primary-tag span,
+.mukuru-primary-tag div {
+  color: white !important;
+  -webkit-text-fill-color: white !important;
+}
+
+/* Ultra-specific selector for any text content */
+.mukuru-primary-tag,
+.mukuru-primary-tag > *,
+.mukuru-primary-tag > * > *,
+.mukuru-primary-tag > * > * > * {
+  color: white !important;
+  -webkit-text-fill-color: white !important;
+}
+
+/* Direct text node targeting - most aggressive */
+.mukuru-primary-tag {
+  color: white !important;
+  -webkit-text-fill-color: white !important;
+}
+
+/* Force white on all possible text elements */
+p.mukuru-primary-tag,
+span.mukuru-primary-tag,
+div.mukuru-primary-tag,
+.mukuru-primary-tag p,
+.mukuru-primary-tag span,
+.mukuru-primary-tag div {
+  color: white !important;
+  -webkit-text-fill-color: white !important;
+}
+
+/* Back button styling */
+.back-button,
+.back-button * {
+  color: #F05423 !important;
+  border: none !important;
+}
+
+.back-button:hover,
+.back-button:hover * {
+  color: #F05423 !important;
+  border: none !important;
+}
+
+.back-button:focus,
+.back-button:focus-visible,
+.back-button:active {
+  border: none !important;
+  box-shadow: none !important;
+  outline: none !important;
+}
+
+/* Stats Cards Hover Effect */
+.stats-card {
+  transition: all 0.2s ease;
+  border-left: 4px solid transparent;
+}
+
+.stats-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05) !important;
+}
+
+.stats-card:nth-child(1) {
+  border-left-color: #9CA3AF;
+}
+
+/* Mukuru Dropdown text visibility fixes */
+.mukuru-dropdown-wrapper [data-part="menu-trigger"],
+.mukuru-dropdown-wrapper [data-part="menu-trigger"] *,
+.mukuru-dropdown-wrapper [data-part="menu-trigger"] button,
+.mukuru-dropdown-wrapper [data-part="menu-trigger"] span,
+.mukuru-dropdown-wrapper [data-part="menu-trigger"] div,
+.mukuru-dropdown-wrapper [data-part="menu-trigger"] p,
+.mukuru-dropdown-wrapper [data-part="menu-trigger"] label,
+.mukuru-dropdown-wrapper [data-part="menu-trigger"] input,
+.mukuru-dropdown-wrapper [data-part="menu-trigger"] textarea {
+  color: #111827 !important;
+  -webkit-text-fill-color: #111827 !important;
+  font-weight: 500 !important;
+}
+
+/* Force black text on dropdown trigger - even more specific */
+.mukuru-dropdown-wrapper button[data-part="menu-trigger"],
+.mukuru-dropdown-wrapper button[data-part="menu-trigger"] *,
+.mukuru-dropdown-wrapper [role="button"][data-part="menu-trigger"],
+.mukuru-dropdown-wrapper [role="button"][data-part="menu-trigger"] * {
+  color: #111827 !important;
+  -webkit-text-fill-color: #111827 !important;
+  font-weight: 500 !important;
+}
+
+.mukuru-dropdown-wrapper [data-part="menu-trigger"]:has([data-part="menu-trigger-text"]) {
+  color: #111827 !important;
+}
+
+.mukuru-dropdown-wrapper [data-part="menu-trigger-text"],
+.mukuru-dropdown-wrapper [data-part="menu-trigger-text"] *,
+.mukuru-dropdown-wrapper [data-part="menu-trigger-text"] span,
+.mukuru-dropdown-wrapper [data-part="menu-trigger-text"] div,
+.mukuru-dropdown-wrapper [data-part="menu-trigger-text"] p,
+.mukuru-dropdown-wrapper [data-part="menu-trigger-text"] label {
+  color: #111827 !important;
+  -webkit-text-fill-color: #111827 !important;
+  font-weight: 500 !important;
+}
+
+/* Selected value text in dropdown trigger */
+.mukuru-dropdown-wrapper [data-part="menu-trigger"] [data-selected="true"],
+.mukuru-dropdown-wrapper [data-part="menu-trigger"] [data-selected="true"] *,
+.mukuru-dropdown-wrapper [data-part="menu-trigger"] [aria-selected="true"],
+.mukuru-dropdown-wrapper [data-part="menu-trigger"] [aria-selected="true"] * {
+  color: #111827 !important;
+  -webkit-text-fill-color: #111827 !important;
+  font-weight: 500 !important;
+}
+
+/* Dropdown placeholder text */
+.mukuru-dropdown-wrapper [data-part="menu-trigger"]:has([data-placeholder="true"]) {
+  color: #6B7280 !important;
+}
+
+.mukuru-dropdown-wrapper [data-part="menu-trigger"]:has([data-placeholder="true"]) * {
+  color: #6B7280 !important;
+  -webkit-text-fill-color: #6B7280 !important;
+}
+
+/* Dropdown menu content container */
+.mukuru-dropdown-wrapper [data-part="menu-content"],
+.mukuru-dropdown-wrapper [data-part="menu-content"] *,
+.mukuru-dropdown-wrapper [data-part="content"],
+.mukuru-dropdown-wrapper [data-part="content"] * {
+  color: #111827 !important;
+  -webkit-text-fill-color: #111827 !important;
+  background-color: white !important;
+  opacity: 1 !important;
+  visibility: visible !important;
+}
+
+/* Dropdown menu items */
+.mukuru-dropdown-wrapper [data-part="menu-item"],
+.mukuru-dropdown-wrapper [data-part="menu-item"] *,
+.mukuru-dropdown-wrapper [data-part="item"],
+.mukuru-dropdown-wrapper [data-part="item"] * {
+  color: #111827 !important;
+  -webkit-text-fill-color: #111827 !important;
+  background-color: white !important;
+  opacity: 1 !important;
+  visibility: visible !important;
+}
+
+/* Dropdown menu item text */
+.mukuru-dropdown-wrapper [data-part="menu-item-text"],
+.mukuru-dropdown-wrapper [data-part="menu-item-text"] *,
+.mukuru-dropdown-wrapper [data-part="item-text"],
+.mukuru-dropdown-wrapper [data-part="item-text"] * {
+  color: #111827 !important;
+  -webkit-text-fill-color: #111827 !important;
+  opacity: 1 !important;
+  visibility: visible !important;
+}
+
+/* Dropdown menu item label */
+.mukuru-dropdown-wrapper [data-part="menu-item-label"],
+.mukuru-dropdown-wrapper [data-part="menu-item-label"] *,
+.mukuru-dropdown-wrapper [data-part="item-label"],
+.mukuru-dropdown-wrapper [data-part="item-label"] * {
+  color: #111827 !important;
+  -webkit-text-fill-color: #111827 !important;
+  opacity: 1 !important;
+  visibility: visible !important;
+}
+
+/* Dropdown label */
+.mukuru-dropdown-wrapper [data-part="field-label"],
+.mukuru-dropdown-wrapper [data-part="field-label"] *,
+.mukuru-dropdown-wrapper [data-part="field-label"] span,
+.mukuru-dropdown-wrapper [data-part="field-label"] div {
+  color: #111827 !important;
+  font-weight: 600 !important;
+}
+
+/* Dropdown help text */
+.mukuru-dropdown-wrapper [data-part="field-description"],
+.mukuru-dropdown-wrapper [data-part="field-description"] *,
+.mukuru-dropdown-wrapper [data-part="field-description"] span,
+.mukuru-dropdown-wrapper [data-part="field-description"] div {
+  color: #6B7280 !important;
+  font-weight: 400 !important;
+}
+
+/* Global dropdown styles (fallback) */
+[data-part="menu-trigger"],
+[data-part="menu-trigger"] *,
+[data-part="menu-trigger"] button,
+[data-part="menu-trigger"] span,
+[data-part="menu-trigger"] div,
+[data-part="menu-trigger"] p {
+  color: #111827 !important;
+  -webkit-text-fill-color: #111827 !important;
+  font-weight: 500 !important;
+}
+
+[data-part="menu-trigger-text"],
+[data-part="menu-trigger-text"] *,
+[data-part="menu-trigger-text"] span,
+[data-part="menu-trigger-text"] div {
+  color: #111827 !important;
+  -webkit-text-fill-color: #111827 !important;
+  font-weight: 500 !important;
+}
+
+[data-part="field-label"],
+[data-part="field-label"] *,
+[data-part="field-label"] span,
+[data-part="field-label"] div {
+  color: #111827 !important;
+  font-weight: 600 !important;
+}
+
+[data-part="field-description"],
+[data-part="field-description"] *,
+[data-part="field-description"] span,
+[data-part="field-description"] div {
+  color: #6B7280 !important;
+  font-weight: 400 !important;
+}
+
+/* Global dropdown menu styles - ensure menu items are visible */
+[data-part="menu-content"],
+[data-part="menu-content"] *,
+[data-part="content"],
+[data-part="content"] * {
+  color: #111827 !important;
+  -webkit-text-fill-color: #111827 !important;
+  background-color: white !important;
+  opacity: 1 !important;
+  visibility: visible !important;
+}
+
+[data-part="menu-item"],
+[data-part="menu-item"] *,
+[data-part="item"],
+[data-part="item"] * {
+  color: #111827 !important;
+  -webkit-text-fill-color: #111827 !important;
+  background-color: white !important;
+  opacity: 1 !important;
+  visibility: visible !important;
+}
+
+[data-part="menu-item-text"],
+[data-part="menu-item-text"] *,
+[data-part="item-text"],
+[data-part="item-text"] * {
+  color: #111827 !important;
+  -webkit-text-fill-color: #111827 !important;
+  opacity: 1 !important;
+  visibility: visible !important;
+}
+
+/* Ensure dropdown menu has proper z-index and positioning */
+[data-part="menu-content"],
+[data-part="content"] {
+  z-index: 1000 !important;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06) !important;
+  border: 1px solid #E5E7EB !important;
+  border-radius: 6px !important;
+  background-color: white !important;
+}
+
+/* Dropdowns inside modals need higher z-index to appear above modal content */
+[data-scope="modal"] [data-part="menu-content"],
+[data-scope="modal"] [data-part="content"],
+[data-scope="dialog"] [data-part="menu-content"],
+[data-scope="dialog"] [data-part="content"],
+[data-scope="modal"] [data-part="positioner"],
+[data-scope="dialog"] [data-part="positioner"],
+[data-scope="modal"] [data-scope*="menu"] [data-part*="content"],
+[data-scope="modal"] [data-scope*="menu"] [data-part*="positioner"],
+[data-scope="dialog"] [data-scope*="menu"] [data-part*="content"],
+[data-scope="dialog"] [data-scope*="menu"] [data-part*="positioner"] {
+  z-index: 99999 !important;
+  position: fixed !important;
+}
+
+/* Force all text inside dropdown menus to be visible */
+[data-part*="menu"] *,
+[data-part*="item"] * {
+  color: #111827 !important;
+  -webkit-text-fill-color: #111827 !important;
+  opacity: 1 !important;
+  visibility: visible !important;
+}
+
+/* Aggressive selectors for dropdown menu - catch all possible structures */
+[data-scope*="menu"] [data-part*="item"],
+[data-scope*="menu"] [data-part*="item"] *,
+[data-scope*="menu"] [data-part*="content"] *,
+[data-scope*="menu"] button,
+[data-scope*="menu"] span,
+[data-scope*="menu"] div,
+[data-scope*="menu"] p {
+  color: #111827 !important;
+  -webkit-text-fill-color: #111827 !important;
+  opacity: 1 !important;
+  visibility: visible !important;
+}
+
+/* Dropdown menu container - ensure it's visible */
+[data-scope*="menu"] [data-part*="content"],
+[data-scope*="menu"] [data-part*="positioner"],
+[data-scope*="menu"] [role="menu"],
+[data-scope*="menu"] [role="menuitem"] {
+  background-color: white !important;
+  color: #111827 !important;
+  opacity: 1 !important;
+  visibility: visible !important;
+  z-index: 1000 !important;
+}
+
+/* NUCLEAR OPTION - Force all dropdown menus in modals to highest z-index */
+[data-scope="modal"] [data-part*="menu-content"],
+[data-scope="modal"] [data-part*="content"]:not([data-part="body"]):not([data-part="header"]):not([data-part="footer"]),
+[data-scope="modal"] [data-part*="positioner"],
+[data-scope="dialog"] [data-part*="menu-content"],
+[data-scope="dialog"] [data-part*="content"]:not([data-part="body"]):not([data-part="header"]):not([data-part="footer"]),
+[data-scope="dialog"] [data-part*="positioner"],
+.mukuru-dropdown-wrapper [data-part*="menu-content"],
+.mukuru-dropdown-wrapper [data-part*="content"],
+.mukuru-dropdown-wrapper [data-part*="positioner"],
+/* Target any element that might be the dropdown menu container */
+div[data-part*="menu-content"],
+div[data-part*="positioner"],
+[role="menu"],
+[role="listbox"],
+/* Target portal containers that might contain dropdowns */
+[data-portal],
+[data-portal] [data-part*="menu-content"],
+[data-portal] [data-part*="positioner"],
+/* Target popper/floating-ui containers */
+[data-popper-placement],
+[data-floating-ui],
+[data-floating-ui] [data-part*="menu-content"],
+[data-floating-ui] [data-part*="positioner"] {
+  z-index: 99999 !important;
+  position: fixed !important;
+}
+
+/* Dropdowns inside modals - higher z-index - AGGRESSIVE FIX */
+[data-scope="modal"] [data-scope*="menu"] [data-part*="content"],
+[data-scope="modal"] [data-scope*="menu"] [data-part*="positioner"],
+[data-scope="dialog"] [data-scope*="menu"] [data-part*="content"],
+[data-scope="dialog"] [data-scope*="menu"] [data-part*="positioner"],
+[data-scope="modal"] .mukuru-dropdown-wrapper [data-part*="content"],
+[data-scope="modal"] .mukuru-dropdown-wrapper [data-part*="positioner"],
+[data-scope="dialog"] .mukuru-dropdown-wrapper [data-part*="content"],
+[data-scope="dialog"] .mukuru-dropdown-wrapper [data-part*="positioner"],
+.mukuru-dropdown-wrapper [data-part="menu-content"],
+.mukuru-dropdown-wrapper [data-part="content"],
+.mukuru-dropdown-wrapper [data-part="positioner"] {
+  z-index: 99999 !important;
+  position: fixed !important;
+}
+
+/* Ensure modal body doesn't clip dropdowns */
+[data-scope="modal"] [data-part="body"],
+[data-scope="dialog"] [data-part="body"],
+[data-scope="modal"] [data-part="content"],
+[data-scope="dialog"] [data-part="content"] {
+  overflow: visible !important;
+}
+
+/* ABSOLUTE NUCLEAR OPTION - Target ANY element that looks like a dropdown menu */
+body > div:has([data-part*="menu-content"]),
+body > div:has([data-part*="positioner"]),
+body > div:has([role="menu"]),
+body > div:has([role="listbox"]),
+/* Target any absolutely or fixed positioned element that might be the dropdown */
+div[style*="position: fixed"]:has([data-part*="menu"]),
+div[style*="position: absolute"]:has([data-part*="menu"]),
+div[style*="z-index"]:has([data-part*="menu"]) {
+  z-index: 99999 !important;
+}
+
+/* Force any dropdown-like structure to appear above modals */
+div:has(> [data-part*="menu-content"]),
+div:has(> [data-part*="positioner"]),
+div:has(> [role="menu"]) {
+  z-index: 99999 !important;
+  position: fixed !important;
+}
+
+/* Any element inside a menu that might contain text */
+[data-scope*="menu"] * {
+  color: #111827 !important;
+  -webkit-text-fill-color: #111827 !important;
+}
+
+/* Override any white text in menus */
+[data-scope*="menu"] [style*="color: white"],
+[data-scope*="menu"] [style*="color:#fff"],
+[data-scope*="menu"] [style*="color:#ffffff"],
+[data-scope*="menu"] [style*="opacity: 0"],
+[data-scope*="menu"] [style*="visibility: hidden"] {
+  color: #111827 !important;
+  opacity: 1 !important;
+  visibility: visible !important;
+}
+
+/* Nuclear option - target absolutely everything in dropdown menus */
+div[role="menu"],
+div[role="menuitem"],
+ul[role="menu"],
+li[role="menuitem"],
+[role="menu"] *,
+[role="menuitem"] * {
+  color: #111827 !important;
+  -webkit-text-fill-color: #111827 !important;
+  background-color: white !important;
+  opacity: 1 !important;
+  visibility: visible !important;
+}
+
+/* Target any popover or portal that might contain the menu */
+[data-portal],
+[data-portal] *,
+[data-popper],
+[data-popper] * {
+  color: #111827 !important;
+  -webkit-text-fill-color: #111827 !important;
+}
+
+/* Ensure menu backdrop doesn't hide content */
+[data-part*="backdrop"] {
+  opacity: 0.5 !important;
+  background-color: rgba(0, 0, 0, 0.5) !important;
+}
+
+.stats-card:nth-child(2) {
+  border-left-color: #3182CE;
+}
+
+.stats-card:nth-child(3) {
+  border-left-color: #DD6B20;
+}
+
+.stats-card:nth-child(4) {
+  border-left-color: #E53E3E;
+}
+
+.stats-card:nth-child(5) {
+  border-left-color: #38A169;
+}
+
+.stats-card:nth-child(6) {
+  border-left-color: #C53030;
+}
+
+/* Force visibility on ALL possible dropdown menu structures - nuclear option */
+.mukuru-dropdown-wrapper [data-scope*="menu"] [data-part*="item"],
+.mukuru-dropdown-wrapper [data-scope*="menu"] [data-part*="item"] *,
+.mukuru-dropdown-wrapper [data-scope*="menu"] [data-part*="content"] *,
+.mukuru-dropdown-wrapper [data-scope*="menu"] button,
+.mukuru-dropdown-wrapper [data-scope*="menu"] span,
+.mukuru-dropdown-wrapper [data-scope*="menu"] div,
+.mukuru-dropdown-wrapper [data-scope*="menu"] p,
+.mukuru-dropdown-wrapper [data-scope*="menu"] li,
+.mukuru-dropdown-wrapper [data-scope*="menu"] ul {
+  color: #111827 !important;
+  -webkit-text-fill-color: #111827 !important;
+  background-color: white !important;
+  opacity: 1 !important;
+  visibility: visible !important;
+  display: block !important;
+}
+
+/* Ensure all Typography text in Basic Information section is dark */
+.basic-information-section [data-part="typography"],
+.basic-information-section .chakra-text,
+.basic-information-section p,
+.basic-information-section span,
+.basic-information-section div {
+  color: #111827 !important;
+  -webkit-text-fill-color: #111827 !important;
+}
+
+/* Override white text in Basic Information section */
+.basic-information-section [style*="color: white"],
+.basic-information-section [style*="color:#fff"],
+.basic-information-section [style*="color:#ffffff"] {
+  color: #111827 !important;
+  -webkit-text-fill-color: #111827 !important;
+}
+
+/* Ensure checkboxes are clickable */
+[data-part="checkbox-root"],
+[data-part="checkbox-control"],
+[data-scope="checkbox"] {
+  pointer-events: auto !important;
+  cursor: pointer !important;
+  z-index: 10 !important;
+}
+
+/* Ensure checkbox wrapper boxes are clickable */
+[data-part="checkbox-root"] *,
+[data-scope="checkbox"] * {
+  pointer-events: auto !important;
+}
+
+/* Override any pointer-events: none on checkboxes */
+[style*="pointer-events: none"][data-part*="checkbox"],
+[style*="pointer-events:none"][data-part*="checkbox"] {
+  pointer-events: auto !important;
+}
+
+/* Ensure all checkboxes in wizard configuration are clickable and properly positioned */
+.mukuru-dropdown-wrapper ~ [data-scope="checkbox"],
+[data-scope="checkbox"] {
+  position: relative !important;
+  z-index: 1 !important;
+  pointer-events: auto !important;
+}
+
+[data-scope="checkbox"] [data-part="root"],
+[data-scope="checkbox"] [data-part="control"],
+[data-scope="checkbox"] [data-part="label"] {
+  position: relative !important;
+  z-index: 2 !important;
+  pointer-events: auto !important;
+  cursor: pointer !important;
+}
+
+/* Ensure checkbox labels are clickable */
+[data-scope="checkbox"] label,
+[data-scope="checkbox"] [data-part="label"],
+[data-scope="checkbox"] [data-part="label"] * {
+  pointer-events: auto !important;
+  cursor: pointer !important;
+  z-index: 2 !important;
+}
+
+/* Target any element that might contain item text */
+.mukuru-dropdown-wrapper [data-scope*="menu"] * {
+  color: #111827 !important;
+  -webkit-text-fill-color: #111827 !important;
+}
+
+/* Override any inline styles that might hide text */
+.mukuru-dropdown-wrapper [data-scope*="menu"] [style*="color: white"],
+.mukuru-dropdown-wrapper [data-scope*="menu"] [style*="color:#fff"],
+.mukuru-dropdown-wrapper [data-scope*="menu"] [style*="color:#ffffff"],
+.mukuru-dropdown-wrapper [data-scope*="menu"] [style*="opacity: 0"],
+.mukuru-dropdown-wrapper [data-scope*="menu"] [style*="visibility: hidden"],
+.mukuru-dropdown-wrapper [data-scope*="menu"] [style*="display: none"] {
+  color: #111827 !important;
+  opacity: 1 !important;
+  visibility: visible !important;
+  display: block !important;
+}
+
+/* Force black text on dropdown trigger - override ALL white text styles */
+.mukuru-dropdown-wrapper [data-part="menu-trigger"] [style*="color: white"],
+.mukuru-dropdown-wrapper [data-part="menu-trigger"] [style*="color:#fff"],
+.mukuru-dropdown-wrapper [data-part="menu-trigger"] [style*="color:#ffffff"],
+.mukuru-dropdown-wrapper [data-part="menu-trigger"] [style*="color:white"],
+.mukuru-dropdown-wrapper [data-part="menu-trigger-text"] [style*="color: white"],
+.mukuru-dropdown-wrapper [data-part="menu-trigger-text"] [style*="color:#fff"],
+.mukuru-dropdown-wrapper [data-part="menu-trigger-text"] [style*="color:#ffffff"],
+.mukuru-dropdown-wrapper [data-part="menu-trigger-text"] [style*="color:white"] {
+  color: #111827 !important;
+  -webkit-text-fill-color: #111827 !important;
+}
+
+/* Nuclear option for dropdown trigger text - target everything except icons */
+.mukuru-dropdown-wrapper [data-part="menu-trigger"] *:not([data-part="menu-trigger-icon"]):not(svg):not(path):not([class*="icon"]) {
+  color: #111827 !important;
+  -webkit-text-fill-color: #111827 !important;
+}
+
+/* EXTREMELY AGGRESSIVE - Force black text on ALL dropdown trigger content */
+.mukuru-dropdown-wrapper button,
+.mukuru-dropdown-wrapper button *,
+.mukuru-dropdown-wrapper [role="button"],
+.mukuru-dropdown-wrapper [role="button"] *,
+.mukuru-dropdown-wrapper [data-part="menu-trigger"] button,
+.mukuru-dropdown-wrapper [data-part="menu-trigger"] button *,
+.mukuru-dropdown-wrapper [data-part="menu-trigger"] [role="button"],
+.mukuru-dropdown-wrapper [data-part="menu-trigger"] [role="button"] * {
+  color: #111827 !important;
+  -webkit-text-fill-color: #111827 !important;
+}
+
+/* Target the actual text content inside the trigger button */
+.mukuru-dropdown-wrapper [data-part="menu-trigger"] > *,
+.mukuru-dropdown-wrapper [data-part="menu-trigger"] > * > *,
+.mukuru-dropdown-wrapper [data-part="menu-trigger"] span,
+.mukuru-dropdown-wrapper [data-part="menu-trigger"] div,
+.mukuru-dropdown-wrapper [data-part="menu-trigger"] p,
+.mukuru-dropdown-wrapper [data-part="menu-trigger"] label {
+  color: #111827 !important;
+  -webkit-text-fill-color: #111827 !important;
+  font-weight: 500 !important;
+}
+
+/* Override ANY color style attribute on dropdown trigger elements */
+.mukuru-dropdown-wrapper [data-part="menu-trigger"][style*="color"],
+.mukuru-dropdown-wrapper [data-part="menu-trigger"] *[style*="color"],
+.mukuru-dropdown-wrapper [data-part="menu-trigger-text"][style*="color"],
+.mukuru-dropdown-wrapper [data-part="menu-trigger-text"] *[style*="color"] {
+  color: #111827 !important;
+  -webkit-text-fill-color: #111827 !important;
+}
+
+/* ABSOLUTE NUCLEAR OPTION - Target every possible element in dropdown wrapper */
+.mukuru-dropdown-wrapper * {
+  color: #111827 !important;
+  -webkit-text-fill-color: #111827 !important;
+}
+
+/* But allow icons to keep their color */
+.mukuru-dropdown-wrapper svg,
+.mukuru-dropdown-wrapper path,
+.mukuru-dropdown-wrapper [data-part*="icon"],
+.mukuru-dropdown-wrapper [class*="icon"],
+.mukuru-dropdown-wrapper [aria-label*="icon"] {
+  color: inherit !important;
+  -webkit-text-fill-color: inherit !important;
+}
+
+/* Force text color on all text nodes */
+.mukuru-dropdown-wrapper [data-part="menu-trigger"] {
+  color: #111827 !important;
+  -webkit-text-fill-color: #111827 !important;
+}
+
+/* EXTRA SPECIFIC - Force visible text on selected dropdown values */
+.mukuru-dropdown-wrapper [data-part="menu-trigger"] [data-selected],
+.mukuru-dropdown-wrapper [data-part="menu-trigger"] [aria-selected="true"],
+.mukuru-dropdown-wrapper [data-part="menu-trigger-text"],
+.mukuru-dropdown-wrapper [data-part="menu-trigger-text"] *,
+.mukuru-dropdown-wrapper button[data-part="menu-trigger"],
+.mukuru-dropdown-wrapper button[data-part="menu-trigger"] *:not(svg):not(path),
+.mukuru-dropdown-wrapper [role="button"][data-part="menu-trigger"],
+.mukuru-dropdown-wrapper [role="button"][data-part="menu-trigger"] *:not(svg):not(path) {
+  color: #111827 !important;
+  -webkit-text-fill-color: #111827 !important;
+  opacity: 1 !important;
+}
+
+/* Override any white text styles on selected values */
+.mukuru-dropdown-wrapper [style*="color: white"],
+.mukuru-dropdown-wrapper [style*="color:#fff"],
+.mukuru-dropdown-wrapper [style*="color:#ffffff"],
+.mukuru-dropdown-wrapper [style*="color:white"] {
+  color: #111827 !important;
+  -webkit-text-fill-color: #111827 !important;
+  -webkit-text-fill-color: #111827 !important;
+}
+
+.mukuru-dropdown-wrapper [data-part="menu-trigger"] * {
+  color: #111827 !important;
+  -webkit-text-fill-color: #111827 !important;
+}
+
+/* Tabs Styling - Match Exact Design */
+[data-scope="tabs"] [data-part="list"] {
+  border-bottom: 1px solid #E5E7EB !important;
+  display: flex !important;
+  position: relative !important;
+}
+
+[data-scope="tabs"] [data-part="trigger"] {
+  color: #111827 !important; /* black for inactive */
+  background: transparent !important;
+  border: none !important;
+  padding: 20px 24px 22px 24px !important;
+  font-size: 16px !important;
+  line-height: 14px !important;
+  font-weight: 400 !important;
+  position: relative !important;
+  transition: all 0.2s ease !important;
+}
+
+[data-scope="tabs"] [data-part="trigger"]:hover {
+  color: #F05423 !important;
+}
+
+[data-scope="tabs"] [data-part="trigger"][data-selected="true"] {
+  color: #F05423 !important; /* orange for active */
+  background: white !important;
+  font-weight: 500 !important;
+}
+
+[data-scope="tabs"] [data-part="trigger"][data-selected="true"]::after {
+  content: '' !important;
+  position: absolute !important;
+  bottom: -1px !important;
+  left: 0 !important;
+  right: 0 !important;
+  height: 2px !important;
+  background: var(--mukuru-buttons-primary) !important; /* mukuru.buttons.primary */ /* orange underline */
+  z-index: 1 !important;
+}
+
+[data-scope="tabs"] [data-part="indicator"] {
+  display: none !important; /* Hide default indicator, using ::after instead */
+}
+
+/* Rules and Permissions - Current Permissions Section - Force black text visibility */
+.current-permissions-list,
+.current-permissions-list *,
+.current-permissions-list span,
+.current-permissions-list p,
+.current-permissions-list div,
+.current-permissions-list typography,
+[data-permission-item],
+[data-permission-item] *,
+[data-permission-item] span,
+[data-permission-item] p,
+[data-permission-item] div,
+[data-permission-item] typography {
+  color: var(--mukuru-text-primary) !important; /* mukuru.text.primary */
+  -webkit-text-fill-color: #000000 !important;
+  fill: #000000 !important;
+  stroke: #000000 !important;
+}
+
+/* Override any white or transparent text in permission items */
+.current-permissions-list span[style*="color"],
+[data-permission-item] span[style*="color"] {
+  color: var(--mukuru-text-primary) !important; /* mukuru.text.primary */
+  -webkit-text-fill-color: #000000 !important;
+}
+
+/* Ensure checkboxes in rules-and-permissions modal are clickable */
+/* Checklists Page - Primary buttons with mukuru.primary */
+button[data-scope="button"][data-variant="primary"],
+button[class*="primary"],
+.mukuru-primary-button,
+[data-scope="button"][data-variant="primary"],
+Button[variant="primary"] {
+  background-color: var(--mukuru-buttons-primary) !important; /* mukuru.buttons.primary */
+  background: var(--mukuru-buttons-primary) !important; /* mukuru.buttons.primary */
+  border: none !important;
+  border-width: 0 !important;
+  border-style: none !important;
+  border-color: var(--mukuru-buttons-primary) !important; /* mukuru.buttons.primary */
+  outline: none !important;
+  outline-width: 0 !important;
+  outline-style: none !important;
+  box-shadow: none !important;
+  -webkit-box-shadow: none !important;
+  -moz-box-shadow: none !important;
+  color: white !important;
+}
+
+button[data-scope="button"][data-variant="primary"]:hover,
+button[class*="primary"]:hover,
+.mukuru-primary-button:hover,
+[data-scope="button"][data-variant="primary"]:hover,
+Button[variant="primary"]:hover,
+button[data-scope="button"][data-variant="primary"]:focus,
+button[class*="primary"]:focus,
+.mukuru-primary-button:focus,
+[data-scope="button"][data-variant="primary"]:focus,
+Button[variant="primary"]:focus,
+button[data-scope="button"][data-variant="primary"]:active,
+button[class*="primary"]:active,
+.mukuru-primary-button:active,
+[data-scope="button"][data-variant="primary"]:active,
+Button[variant="primary"]:active {
+  background-color: #E04A1A !important;
+  background: #E04A1A !important;
+  border: none !important;
+  border-width: 0 !important;
+  border-style: none !important;
+  border-color: #E04A1A !important;
+  outline: none !important;
+  outline-width: 0 !important;
+  outline-style: none !important;
+  box-shadow: none !important;
+  -webkit-box-shadow: none !important;
+  -moz-box-shadow: none !important;
+}
+
+/* Ensure all text and icons in primary buttons are white */
+button[data-scope="button"][data-variant="primary"] *,
+button[data-scope="button"][data-variant="primary"] span,
+button[data-scope="button"][data-variant="primary"] p,
+button[data-scope="button"][data-variant="primary"] div,
+button[data-scope="button"][data-variant="primary"] svg,
+button[data-scope="button"][data-variant="primary"] path,
+Button[variant="primary"] *,
+Button[variant="primary"] span,
+Button[variant="primary"] svg,
+Button[variant="primary"] path {
+  color: white !important;
+  fill: white !important;
+  stroke: white !important;
+}
+
+/* Checklists Page - Checkbox styling with mukuru.primary */
+/* All possible checked states for checkboxes */
+[data-scope="checkbox"][data-checked="true"] [data-part="control"],
+[data-scope="checkbox"][data-checked="true"] [data-part="indicator"],
+[data-scope="checkbox"][data-checked="true"] [data-part="control"] *,
+[data-scope="checkbox"][data-state="checked"] [data-part="control"],
+[data-scope="checkbox"][data-state="checked"] [data-part="indicator"],
+[data-scope="checkbox"][aria-checked="true"] [data-part="control"],
+[data-scope="checkbox"][aria-checked="true"] [data-part="indicator"],
+[data-scope="checkbox"] [data-part="control"][data-checked="true"],
+[data-scope="checkbox"] [data-part="control"][data-state="checked"],
+[data-scope="checkbox"] [data-part="control"][aria-checked="true"] {
+  background-color: var(--mukuru-buttons-primary) !important; /* mukuru.buttons.primary */
+  background: var(--mukuru-buttons-primary) !important; /* mukuru.buttons.primary */
+  border-color: var(--mukuru-buttons-primary) !important; /* mukuru.buttons.primary */
+  color: white !important;
+  fill: white !important;
+}
+
+/* Work Queue - Ensure all checkboxes use mukuru.primary when checked */
+[data-scope="checkbox"][data-checked="true"] [data-part="control"],
+[data-scope="checkbox"][data-state="checked"] [data-part="control"],
+[data-scope="checkbox"][aria-checked="true"] [data-part="control"],
+[data-scope="checkbox"] [data-part="control"][data-checked="true"],
+[data-scope="checkbox"] [data-part="control"][data-state="checked"],
+[data-scope="checkbox"] [data-part="control"][aria-checked="true"] {
+  background-color: var(--mukuru-buttons-primary) !important; /* mukuru.buttons.primary */
+  background: var(--mukuru-buttons-primary) !important; /* mukuru.buttons.primary */
+  border-color: var(--mukuru-buttons-primary) !important; /* mukuru.buttons.primary */
+  color: white !important;
+}
+
+[data-scope="checkbox"][data-checked="true"] [data-part="indicator"],
+[data-scope="checkbox"][data-state="checked"] [data-part="indicator"],
+[data-scope="checkbox"][aria-checked="true"] [data-part="indicator"],
+[data-scope="checkbox"] [data-part="indicator"][data-checked="true"],
+[data-scope="checkbox"] [data-part="indicator"][data-state="checked"] {
+  color: white !important;
+  fill: white !important;
+}
+
+/* Override any white background on checked checkboxes */
+[data-scope="checkbox"] [data-part="control"][style*="background-color: white"],
+[data-scope="checkbox"] [data-part="control"][style*="background: white"],
+[data-scope="checkbox"][data-checked="true"] [data-part="control"][style*="background"],
+[data-scope="checkbox"][data-state="checked"] [data-part="control"][style*="background"] {
+  background-color: var(--mukuru-buttons-primary) !important; /* mukuru.buttons.primary */
+  background: var(--mukuru-buttons-primary) !important; /* mukuru.buttons.primary */
+}
+
+/* Universal checkbox checked state - catch all patterns */
+[data-scope="checkbox"]:has([data-part="indicator"]:not([style*="display: none"])) [data-part="control"],
+[data-scope="checkbox"]:has(input[checked]) [data-part="control"],
+[data-scope="checkbox"]:has(input[aria-checked="true"]) [data-part="control"] {
+  background-color: var(--mukuru-buttons-primary) !important; /* mukuru.buttons.primary */
+  background: var(--mukuru-buttons-primary) !important; /* mukuru.buttons.primary */
+  border-color: var(--mukuru-buttons-primary) !important; /* mukuru.buttons.primary */
+}
+
+/* Direct style override for any checkbox control that has an indicator visible */
+[data-scope="checkbox"] [data-part="control"]:has([data-part="indicator"]:not([style*="display: none"])) {
+  background-color: var(--mukuru-buttons-primary) !important; /* mukuru.buttons.primary */
+  background: var(--mukuru-buttons-primary) !important; /* mukuru.buttons.primary */
+  border-color: var(--mukuru-buttons-primary) !important; /* mukuru.buttons.primary */
+}
+
+/* Override CSS variables for checked checkboxes */
+[data-scope="checkbox"][data-checked="true"] [data-part="control"],
+[data-scope="checkbox"][data-state="checked"] [data-part="control"],
+[data-scope="checkbox"][aria-checked="true"] [data-part="control"] {
+  --chakra-colors-orange-500: #F05423 !important;
+  --chakra-colors-colorPalette-500: #F05423 !important;
+  --color-palette-500: #F05423 !important;
+  background-color: #F05423 !important;
+  background: var(--mukuru-buttons-primary) !important; /* mukuru.buttons.primary */
+  border-color: var(--mukuru-buttons-primary) !important; /* mukuru.buttons.primary */
+}
+
+/* Checklists Page - Ensure Search and Dropdown text is visible */
+[data-scope="search"] input,
+[data-scope="search"] input::placeholder,
+[data-scope="dropdown"] [data-part="trigger"],
+[data-scope="dropdown"] [data-part="trigger"] span,
+[data-scope="dropdown"] [data-part="trigger"] div,
+[data-scope="dropdown"] [data-part="trigger"] button,
+[data-scope="dropdown"] [data-part="trigger"] *,
+[data-scope="dropdown"] [data-part="content"] [data-part="item"],
+[data-scope="dropdown"] [data-part="content"] [data-part="item"] span,
+[data-scope="dropdown"] [data-part="content"] [data-part="item"] *,
+.mukuru-dropdown-wrapper [data-part="menu-trigger"],
+.mukuru-dropdown-wrapper [data-part="menu-trigger"] *,
+.mukuru-dropdown-wrapper [data-part="menu-trigger"] button,
+.mukuru-dropdown-wrapper [data-part="menu-trigger"] span,
+.mukuru-dropdown-wrapper [data-part="menu-trigger"] div {
+  color: #111827 !important;
+  -webkit-text-fill-color: #111827 !important;
+}
+
+[data-scope="search"] input::placeholder {
+  color: #9CA3AF !important;
+  -webkit-text-fill-color: #9CA3AF !important;
+}
+
+/* Force black text on all dropdown elements */
+[data-scope="dropdown"] *,
+.mukuru-dropdown-wrapper * {
+  color: #111827 !important;
+  -webkit-text-fill-color: #111827 !important;
+}
+
+[data-scope="dropdown"] [data-part="content"] [data-part="item"]:hover,
+.mukuru-dropdown-wrapper [data-part="menu-item"]:hover {
+  background-color: var(--mukuru-background-light) !important; /* mukuru.background.light */
+}
+
+/* Checklists Page - Ensure Tag text is visible */
+[data-scope="tag"],
+Tag,
+.mukuru-tag {
+  color: #111827 !important;
+  -webkit-text-fill-color: #111827 !important;
+}
+
+[data-scope="tag"] *,
+Tag *,
+.mukuru-tag * {
+  color: #111827 !important;
+  -webkit-text-fill-color: #111827 !important;
+}
+
+/* Checklists Page - Custom scrollbar styling */
+.checklist-scrollable {
+  scrollbar-width: thin;
+  scrollbar-color: #D1D5DB #F9FAFB;
+  -webkit-overflow-scrolling: touch;
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+}
+
+.checklist-scrollable::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+.checklist-scrollable::-webkit-scrollbar-track {
+  background: #F9FAFB;
+  border-radius: 4px;
+}
+
+.checklist-scrollable::-webkit-scrollbar-thumb {
+  background: #D1D5DB;
+  border-radius: 4px;
+  border: 2px solid #F9FAFB;
+}
+
+.checklist-scrollable::-webkit-scrollbar-thumb:hover {
+  background: #9CA3AF;
+}
+
+.checklist-scrollable::-webkit-scrollbar-corner {
+  background: #F9FAFB;
+}
+
+/* Checklists Page - Ensure all text is visible */
+.checklists-page * {
+  color: inherit;
+}
+
+.checklists-page [data-scope="typography"],
+.checklists-page Typography {
+  color: inherit !important;
+}
+
+/* Backdrop blur for all modals and popups */
+[data-scope="dialog"],
+[data-scope="modal"],
+[data-part="backdrop"],
+Box[position="fixed"][style*="backdrop"],
+Box[position="fixed"][style*="backdrop"],
+[data-scope="dialog"] [data-part="backdrop"],
+[data-scope="modal"] [data-part="backdrop"] {
+  backdrop-filter: blur(8px) !important;
+  -webkit-backdrop-filter: blur(8px) !important;
+}
+
+/* Ensure modal content has lower z-index than dropdowns */
+[data-scope="modal"] [data-part="content"]:not([data-part="menu-content"]):not([data-part="positioner"]),
+[data-scope="modal"] [data-part="body"],
+[data-scope="modal"] [data-part="header"],
+[data-scope="modal"] [data-part="footer"],
+[data-scope="dialog"] [data-part="content"]:not([data-part="menu-content"]):not([data-part="positioner"]),
+[data-scope="dialog"] [data-part="body"],
+[data-scope="dialog"] [data-part="header"],
+[data-scope="dialog"] [data-part="footer"] {
+  z-index: 1000 !important;
+  position: relative !important;
+}
+
+/* Ensure all checkboxes in rules-and-permissions modal are clickable */
+[data-scope="checkbox"] {
+  pointer-events: auto !important;
+  cursor: pointer !important;
+  position: relative !important;
+  z-index: 10 !important;
+}
+
+[data-scope="checkbox"] [data-part="root"],
+[data-scope="checkbox"] [data-part="control"] {
+  pointer-events: auto !important;
+  cursor: pointer !important;
+  position: relative !important;
+  z-index: 11 !important;
+}
+
+/* Ensure HStack containing checkboxes don't block clicks */
+.HStack[style*="isolation"],
+.HStack[style*="z-index"] {
+  pointer-events: auto !important;
+}
+
+/* Make sure checkbox wrapper boxes are clickable */
+.HStack > Box[style*="flexShrink"],
+.HStack > Box[style*="cursor"] {
+  pointer-events: auto !important;
+  cursor: pointer !important;
+  z-index: 12 !important;
+  position: relative !important;
+}
+
+/* ============================================
+   STATUS FILTER BUTTONS - FINAL OVERRIDE
+   These rules MUST come last to override all other rules
+   ============================================ */
+
+/* Pill shape for all status filter buttons */
+.status-filter-buttons button,
+.status-filter-buttons [data-scope="button"],
+.status-filter-buttons [data-part*="button"] {
+  border-radius: 36px !important;
+  -webkit-border-radius: 36px !important;
+  -moz-border-radius: 36px !important;
+}
+
+/* Ghost buttons - white with gray border */
+.status-filter-buttons button[data-variant="ghost"],
+.status-filter-buttons [data-scope="button"][data-variant="ghost"],
+.status-filter-buttons [data-part*="button"][data-variant="ghost"],
+.status-filter-buttons button:not([data-variant="primary"]):not(.mukuru-primary-button),
+.status-filter-buttons [data-scope="button"]:not([data-variant="primary"]):not(.mukuru-primary-button),
+.status-filter-buttons [data-part*="button"]:not([data-variant="primary"]):not(.mukuru-primary-button) {
+  border: 1px solid #E5E7EB !important;
+  border-color: #E5E7EB !important;
+  border-width: 1px !important;
+  border-style: solid !important;
+  background-color: #FFFFFF !important;
+  background: #FFFFFF !important;
+  color: #111827 !important;
+  -webkit-text-fill-color: #111827 !important;
+}
+
+/* AlertBar text - use mukuru.charcoal for all text (title and description) */
+.mukuru-alert-bar [data-part="title"],
+.mukuru-alert-bar [data-part="description"],
+[data-scope="alert"] [data-part="title"],
+[data-scope="alert"] [data-part="description"],
+[class*="alert-bar"] [data-part="title"],
+[class*="alert-bar"] [data-part="description"],
+[class*="AlertBar"] [data-part="title"],
+[class*="AlertBar"] [data-part="description"],
+.mukuru-alert-bar [data-part="title"] *,
+.mukuru-alert-bar [data-part="description"] *,
+[data-scope="alert"] [data-part="title"] *,
+[data-scope="alert"] [data-part="description"] *,
+[class*="alert-bar"] [data-part="title"] *,
+[class*="alert-bar"] [data-part="description"] *,
+[class*="AlertBar"] [data-part="title"] *,
+[class*="AlertBar"] [data-part="description"] *,
+.mukuru-alert-bar [data-part="textContainer"],
+.mukuru-alert-bar [data-part="textContainer"] *,
+[data-scope="alert"] [data-part="textContainer"],
+[data-scope="alert"] [data-part="textContainer"] *,
+[class*="alert-bar"] [data-part="textContainer"],
+[class*="alert-bar"] [data-part="textContainer"] * {
+  color: var(--mukuru-text-primary) !important; /* mukuru.text.primary */
+  -webkit-text-fill-color: #373A36 !important;
+}
+
+/* Also target any white text specifically in AlertBar */
+.mukuru-alert-bar [style*="color: white"],
+.mukuru-alert-bar [style*="color: #fff"],
+.mukuru-alert-bar [style*="color: #ffffff"],
+.mukuru-alert-bar [style*="color:white"],
+.mukuru-alert-bar [style*="color:#fff"],
+.mukuru-alert-bar [style*="color:#ffffff"],
+[data-scope="alert"] [style*="color: white"],
+[data-scope="alert"] [style*="color: #fff"],
+[data-scope="alert"] [style*="color: #ffffff"],
+[class*="alert-bar"] [style*="color: white"],
+[class*="alert-bar"] [style*="color: #fff"],
+[class*="alert-bar"] [style*="color: #ffffff"] {
+  color: var(--mukuru-text-primary) !important; /* mukuru.text.primary */
+  -webkit-text-fill-color: #373A36 !important;
+}
+
+/* Nuclear option - target ALL text content in AlertBar */
+.mukuru-alert-bar p,
+.mukuru-alert-bar span,
+.mukuru-alert-bar div,
+.mukuru-alert-bar h1,
+.mukuru-alert-bar h2,
+.mukuru-alert-bar h3,
+.mukuru-alert-bar h4,
+.mukuru-alert-bar h5,
+.mukuru-alert-bar h6,
+[data-scope="alert"] p,
+[data-scope="alert"] span,
+[data-scope="alert"] div,
+[data-scope="alert"] h1,
+[data-scope="alert"] h2,
+[data-scope="alert"] h3,
+[data-scope="alert"] h4,
+[data-scope="alert"] h5,
+[data-scope="alert"] h6,
+[class*="alert-bar"] p,
+[class*="alert-bar"] span,
+[class*="alert-bar"] div,
+[class*="alert-bar"] h1,
+[class*="alert-bar"] h2,
+[class*="alert-bar"] h3,
+[class*="alert-bar"] h4,
+[class*="alert-bar"] h5,
+[class*="alert-bar"] h6 {
+  color: var(--mukuru-text-primary) !important; /* mukuru.text.primary */
+  -webkit-text-fill-color: #373A36 !important;
+}
+
+/* Primary buttons - orange with no border */
+.status-filter-buttons button[data-variant="primary"],
+.status-filter-buttons [data-scope="button"][data-variant="primary"],
+.status-filter-buttons [data-part*="button"][data-variant="primary"],
+.status-filter-buttons button.mukuru-primary-button,
+.status-filter-buttons [data-scope="button"].mukuru-primary-button,
+.status-filter-buttons [data-part*="button"].mukuru-primary-button {
+  border: none !important;
+  border-width: 0 !important;
+  border-style: none !important;
+  border-color: transparent !important;
+  background-color: #F05423 !important;
+  background: var(--mukuru-buttons-primary) !important; /* mukuru.buttons.primary */
+  color: var(--mukuru-white) !important; /* mukuru.white */
+  -webkit-text-fill-color: #FFFFFF !important;
+}
+
+/* ABSOLUTE NUCLEAR - Force mukuru.charcoal on ALL text in AlertBar (except icons) */
+[class*="mukuru-alert"],
+[class*="alert-bar"],
+[data-scope="alert"],
+[role="alert"] {
+  color: var(--mukuru-text-primary) !important; /* mukuru.text.primary */
+}
+
+[class*="mukuru-alert"] *:not(svg):not(path):not([class*="icon"]):not([data-part="indicator"]):not([data-part="closeButton"]),
+[class*="alert-bar"] *:not(svg):not(path):not([class*="icon"]):not([data-part="indicator"]):not([data-part="closeButton"]),
+[data-scope="alert"] *:not(svg):not(path):not([class*="icon"]):not([data-part="indicator"]):not([data-part="closeButton"]),
+[role="alert"] *:not(svg):not(path):not([class*="icon"]):not([data-part="indicator"]):not([data-part="closeButton"]) {
+  color: var(--mukuru-text-primary) !important; /* mukuru.text.primary */
+  -webkit-text-fill-color: #373A36 !important;
+}
+
+/* SPECIFIC: Error AlertBar - force title and description to charcoal */
+[class*="mukuru-alert"][data-status="error"] [data-part="title"],
+[class*="mukuru-alert"][data-status="error"] [data-part="description"],
+[class*="alert-bar"][data-status="error"] [data-part="title"],
+[class*="alert-bar"][data-status="error"] [data-part="description"],
+[data-scope="alert"][data-status="error"] [data-part="title"],
+[data-scope="alert"][data-status="error"] [data-part="description"],
+[role="alert"][data-status="error"] [data-part="title"],
+[role="alert"][data-status="error"] [data-part="description"],
+[class*="mukuru-alert"] [data-part="title"],
+[class*="mukuru-alert"] [data-part="description"],
+[class*="alert-bar"] [data-part="title"],
+[class*="alert-bar"] [data-part="description"],
+[data-scope="alert"] [data-part="title"],
+[data-scope="alert"] [data-part="description"],
+[role="alert"] [data-part="title"],
+[role="alert"] [data-part="description"] {
+  color: var(--mukuru-text-primary) !important; /* mukuru.text.primary */
+  -webkit-text-fill-color: #373A36 !important;
+}
+
+/* ============================================
+   SWEETALERT2 - MUKURU DESIGN SYSTEM STYLES
+   ============================================ */
+
+/* SweetAlert popup container */
+.mukuru-swal-popup {
+  background-color: var(--mukuru-cards-white) !important;
+  border-radius: 12px !important;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04) !important;
+  padding: 24px !important;
+  font-family: 'Madera', 'Helvetica Neue', 'Arial', sans-serif !important;
+}
+
+/* SweetAlert title */
+.mukuru-swal-title {
+  color: var(--mukuru-text-primary) !important;
+  font-weight: 700 !important;
+  font-size: 24px !important;
+  margin-bottom: 16px !important;
+}
+
+/* SweetAlert HTML content */
+.mukuru-swal-html {
+  color: var(--mukuru-text-primary) !important;
+  font-size: 16px !important;
+  line-height: 1.5 !important;
+  margin-bottom: 24px !important;
+}
+
+/* SweetAlert confirm button */
+.mukuru-swal-confirm {
+  background-color: var(--mukuru-primary) !important;
+  background: var(--mukuru-primary) !important;
+  color: var(--mukuru-text-inverse) !important;
+  border: none !important;
+  border-radius: 8px !important;
+  padding: 10px 24px !important;
+  font-weight: 600 !important;
+  font-size: 14px !important;
+  box-shadow: 0 2px 4px 0 rgba(240, 84, 35, 0.2) !important;
+  transition: all 0.2s ease !important;
+}
+
+.mukuru-swal-confirm:hover {
+  background-color: #E04A1A !important;
+  background: #E04A1A !important;
+  transform: translateY(-1px) !important;
+  box-shadow: 0 4px 6px 0 rgba(240, 84, 35, 0.3) !important;
+}
+
+.mukuru-swal-confirm:focus {
+  outline: none !important;
+  box-shadow: 0 0 0 3px rgba(240, 84, 35, 0.2) !important;
+}
+
+.mukuru-swal-confirm:active {
+  transform: translateY(0) !important;
+}
+
+/* SweetAlert cancel button */
+.mukuru-swal-cancel {
+  background-color: var(--mukuru-white) !important;
+  background: var(--mukuru-white) !important;
+  color: var(--mukuru-text-primary) !important;
+  border: 1px solid var(--mukuru-grey-light) !important;
+  border-radius: 8px !important;
+  padding: 10px 24px !important;
+  font-weight: 600 !important;
+  font-size: 14px !important;
+  transition: all 0.2s ease !important;
+}
+
+.mukuru-swal-cancel:hover {
+  background-color: var(--mukuru-state-hover) !important;
+  border-color: var(--mukuru-grey-medium) !important;
+}
+
+.mukuru-swal-cancel:focus {
+  outline: none !important;
+  box-shadow: 0 0 0 3px rgba(140, 140, 140, 0.1) !important;
+}
+
+/* SweetAlert icon */
+.mukuru-swal-icon {
+  color: var(--mukuru-primary) !important;
+}
+
+.mukuru-swal-icon.swal2-warning {
+  border-color: var(--mukuru-primary) !important;
+  color: var(--mukuru-primary) !important;
+}
+
+.mukuru-swal-icon.swal2-error {
+  border-color: var(--mukuru-text-error) !important;
+  color: var(--mukuru-text-error) !important;
+}
+
+.mukuru-swal-icon.swal2-success {
+  border-color: var(--mukuru-text-success) !important;
+  color: var(--mukuru-text-success) !important;
+}
+
+.mukuru-swal-icon.swal2-info {
+  border-color: var(--mukuru-primary) !important;
+  color: var(--mukuru-primary) !important;
+}
+
+.mukuru-swal-icon.swal2-question {
+  border-color: var(--mukuru-primary) !important;
+  color: var(--mukuru-primary) !important;
+}
+
+/* SweetAlert actions container */
+.swal2-actions {
+  gap: 12px !important;
+  margin-top: 24px !important;
+}
+
+/* SweetAlert loading spinner */
+.swal2-loader {
+  border-color: var(--mukuru-primary) transparent var(--mukuru-primary) transparent !important;
+}
+
+/* ============================================
+   WORK QUEUE TABLE - CLEAN PROFESSIONAL DESIGN
+   ============================================ */
+
+/* Table header cells */
+[data-scope="data-table"] th,
+[data-part="table"] th,
+[class*="data-table"] th,
+[class*="DataTable"] th,
+table th,
+thead th,
+[role="columnheader"] {
+  padding: 10px 8px !important;
+  line-height: 1.2 !important;
+  background: #FAFAFA !important;
+  border-bottom: 1px solid #E0E0E0 !important;
+  text-align: left !important;
+}
+
+/* Remove ALL button styling from headers - make them plain text */
+[role="columnheader"] button,
+table th button,
+thead th button,
+[data-scope="data-table"] th button,
+[class*="DataTable"] th button {
+  all: unset !important;
+  font-family: 'Madera', 'Helvetica Neue', Arial, sans-serif !important;
+  font-size: 10px !important;
+  font-weight: 400 !important;
+  color: #888888 !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.5px !important;
+  cursor: pointer !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 3px !important;
+  white-space: nowrap !important;
+  background: none !important;
+  border: none !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  padding: 0 !important;
+  margin: 0 !important;
+}
+
+[role="columnheader"] button:hover,
+table th button:hover,
+thead th button:hover {
+  color: #F05423 !important;
+}
+
+/* Sort icons - small and subtle */
+[role="columnheader"] button svg,
+table th button svg,
+thead th button svg,
+[data-scope="data-table"] th button svg {
+  width: 10px !important;
+  height: 10px !important;
+  color: #AAAAAA !important;
+  flex-shrink: 0 !important;
+}
+
+/* All text inside header buttons */
+[role="columnheader"] button *,
+table th button *,
+thead th button * {
+  font-size: 10px !important;
+  font-weight: 400 !important;
+  color: inherit !important;
+  text-transform: uppercase !important;
+  background: none !important;
+  border: none !important;
+  box-shadow: none !important;
+}
+
+/* Table cell styling */
+[data-scope="data-table"] td,
+[data-part="table"] td,
+[class*="data-table"] td,
+[class*="DataTable"] td {
+  padding: 10px 8px !important;
+  line-height: 1.4 !important;
+  font-size: 13px !important;
+  color: #373A36 !important;
+  vertical-align: middle !important;
+}
+
+/* Reduce table row height and spacing between rows */
+[data-scope="data-table"] tr,
+[data-part="table"] tr,
+[class*="data-table"] tr,
+[class*="DataTable"] tr {
+  height: auto !important;
+  min-height: 24px !important;
+  max-height: 26px !important;
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
+/* Table layout - ensure proper column widths */
+[data-scope="data-table"] table,
+[data-part="table"] table,
+[class*="data-table"] table,
+[class*="DataTable"] table {
+  border-collapse: collapse !important;
+  border-spacing: 0 !important;
+  table-layout: auto !important;
+  width: 100% !important;
+}
+
+/* Reduce border width between rows - make it thinner */
+[data-scope="data-table"] tr td,
+[data-part="table"] tr td,
+[class*="data-table"] tr td,
+[class*="DataTable"] tr td {
+  border-bottom: 0.5px solid #e5e7eb !important;
+}
+
+/* Reduce header row height */
+[data-scope="data-table"] thead tr,
+[data-part="table"] thead tr,
+[class*="data-table"] thead tr,
+[class*="DataTable"] thead tr {
+  height: auto !important;
+  min-height: 30px !important;
+  max-height: 32px !important;
+}
+
+/* Ensure table cells don't have excessive vertical padding */
+[data-scope="data-table"] td > *,
+[data-part="table"] td > *,
+[class*="data-table"] td > *,
+[class*="DataTable"] td > * {
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
+/* Remove any gap/margin between table rows */
+[data-scope="data-table"] tbody tr + tr,
+[data-part="table"] tbody tr + tr,
+[class*="data-table"] tbody tr + tr,
+[class*="DataTable"] tbody tr + tr {
+  margin-top: 0 !important;
+  padding-top: 0 !important;
+}
+
+/* Force tight spacing - remove any vertical gaps */
+[data-scope="data-table"] tbody tr,
+[data-part="table"] tbody tr,
+[class*="data-table"] tbody tr,
+[class*="DataTable"] tbody tr {
+  vertical-align: top !important;
+  border-spacing: 0 !important;
+}
+
+/* ============================================
+   Mukuru Filters / MultiSelectDropdown Styling
+   ============================================ */
+
+/* Filter trigger buttons - pill style matching Mukuru design */
+[data-scope="menu"][data-part="trigger"],
+.chakra-multi-select-dropdown [role="button"] {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+  min-width: auto !important;
+  height: 40px !important;
+  padding: 8px 16px !important;
+  background: #FFFFFF !important;
+  border-radius: 24px !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08) !important;
+  font-family: 'Madera', 'Helvetica Neue', 'Arial', sans-serif !important;
+  font-size: 14px !important;
+  color: #373A36 !important;
+  cursor: pointer !important;
+  transition: all 0.2s ease !important;
+  border: none !important;
+  outline: none !important;
+}
+
+[data-scope="menu"][data-part="trigger"]:hover,
+.chakra-multi-select-dropdown [role="button"]:hover {
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12) !important;
+}
+
+/* Filter icon in trigger */
+[data-scope="menu"][data-part="trigger"] svg:first-of-type {
+  color: #666666 !important;
+  width: 16px !important;
+  height: 16px !important;
+  flex-shrink: 0 !important;
+}
+
+/* Label text (bold) */
+[data-scope="menu"][data-part="trigger"] span[style*="font-weight: 700"],
+[data-scope="menu"][data-part="trigger"] p:first-of-type {
+  font-weight: 700 !important;
+  color: #373A36 !important;
+  white-space: nowrap !important;
+}
+
+/* Value text */
+[data-scope="menu"][data-part="trigger"] span:not([style*="font-weight"]) {
+  color: #373A36 !important;
+  white-space: nowrap !important;
+}
+
+/* Chevron icon */
+[data-scope="menu"][data-part="trigger"] svg:last-of-type {
+  color: #373A36 !important;
+  width: 16px !important;
+  height: 16px !important;
+  flex-shrink: 0 !important;
+  transition: transform 0.2s ease !important;
+}
+
+[data-scope="menu"][data-part="trigger"][data-state="open"] svg:last-of-type {
+  transform: rotate(180deg) !important;
+}
+
+/* Filter dropdown card - the popup container */
+[data-scope="menu"][data-part="content"] {
+  background: #FFFFFF !important;
+  border-radius: 12px !important;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.15), 0 4px 12px rgba(0, 0, 0, 0.1) !important;
+  min-width: 220px !important;
+  max-width: 280px !important;
+  max-height: 400px !important;
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+  padding: 0 !important;
+  z-index: 9999 !important;
+  position: absolute !important;
+  font-family: 'Madera', 'Helvetica Neue', 'Arial', sans-serif !important;
+  border: 1px solid #E5E5E5 !important;
+}
+
+/* Filter dropdown header - "Filter By SortBy" with X button */
+[data-scope="menu"][data-part="content"] > div:first-child {
+  display: flex !important;
+  justify-content: space-between !important;
+  align-items: center !important;
+  padding: 16px !important;
+  background: #FFFFFF !important;
+  border-bottom: 1px solid #E9E9EA !important;
+}
+
+/* Header title text */
+[data-scope="menu"][data-part="content"] > div:first-child p,
+[data-scope="menu"][data-part="content"] > div:first-child span {
+  font-size: 14px !important;
+  font-weight: 700 !important;
+  color: #373A36 !important;
+  font-family: 'Madera', 'Helvetica Neue', 'Arial', sans-serif !important;
+}
+
+/* Close button (X) */
+[data-scope="menu"][data-part="content"] > div:first-child [role="button"],
+[data-scope="menu"][data-part="content"] > div:first-child button {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  width: 28px !important;
+  height: 28px !important;
+  border-radius: 6px !important;
+  background: transparent !important;
+  border: none !important;
+  cursor: pointer !important;
+  color: #8C8C8C !important;
+  transition: all 0.2s ease !important;
+  padding: 0 !important;
+}
+
+[data-scope="menu"][data-part="content"] > div:first-child [role="button"]:hover,
+[data-scope="menu"][data-part="content"] > div:first-child button:hover {
+  background: #F5F5F5 !important;
+  color: #373A36 !important;
+}
+
+/* Menu items container */
+[data-scope="menu"][data-part="content"] [data-scope="menu"][data-part="item"] {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: flex-start !important;
+  gap: 12px !important;
+  padding: 10px 16px !important;
+  font-size: 14px !important;
+  font-weight: 400 !important;
+  color: #373A36 !important;
+  cursor: pointer !important;
+  transition: background 0.15s ease !important;
+  background: transparent !important;
+  font-family: 'Madera', 'Helvetica Neue', 'Arial', sans-serif !important;
+  border: none !important;
+  outline: none !important;
+  text-align: left !important;
+  flex-direction: row !important;
+  width: 100% !important;
+  box-sizing: border-box !important;
+}
+
+[data-scope="menu"][data-part="content"] [data-scope="menu"][data-part="item"]:hover {
+  background: #FFF5F2 !important;
+}
+
+/* Checkbox styling within menu items */
+[data-scope="menu"][data-part="item"] [data-scope="checkbox"],
+[data-scope="menu"][data-part="item"] label {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: flex-start !important;
+  gap: 12px !important;
+  cursor: pointer !important;
+  width: 100% !important;
+  flex-direction: row !important;
+  text-align: left !important;
+}
+
+/* Checkbox container - ensure it's on the left */
+[data-scope="menu"][data-part="item"] [data-scope="checkbox"] {
+  flex-shrink: 0 !important;
+  order: -1 !important;
+}
+
+[data-scope="menu"][data-part="item"] [data-scope="checkbox"] [data-part="control"],
+[data-scope="menu"][data-part="item"] [data-part="control"] {
+  width: 20px !important;
+  height: 20px !important;
+  min-width: 20px !important;
+  border: 2px solid #D1D5DB !important;
+  border-radius: 4px !important;
+  background: #FFFFFF !important;
+  transition: all 0.2s ease !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  flex-shrink: 0 !important;
+}
+
+[data-scope="menu"][data-part="item"] [data-state="checked"] [data-part="control"],
+[data-scope="menu"][data-part="item"] [data-part="control"][data-state="checked"] {
+  background: #F05423 !important;
+  border-color: #F05423 !important;
+}
+
+[data-scope="menu"][data-part="item"] [data-state="checked"] [data-part="control"] svg,
+[data-scope="menu"][data-part="item"] [data-part="control"][data-state="checked"] svg {
+  color: #FFFFFF !important;
+  width: 12px !important;
+  height: 12px !important;
+}
+
+/* Menu item text */
+[data-scope="menu"][data-part="item"] [data-part="label"],
+[data-scope="menu"][data-part="item"] p,
+[data-scope="menu"][data-part="item"] span {
+  font-size: 14px !important;
+  color: #373A36 !important;
+  font-weight: 400 !important;
+  font-family: 'Madera', 'Helvetica Neue', 'Arial', sans-serif !important;
+  text-align: left !important;
+  flex: 1 !important;
+  white-space: nowrap !important;
+}
+
+/* Force menu item layout - checkbox on left, text on right */
+[data-scope="menu"][data-part="item"] {
+  flex-direction: row !important;
+}
+
+[data-scope="menu"][data-part="item"] > * {
+  order: 0 !important;
+}
+
+/* Ensure checkbox comes first */
+[data-scope="menu"][data-part="item"] [data-scope="checkbox"] {
+  order: -1 !important;
+  margin-right: 12px !important;
+}
+
+/* Clear Filters item - at the bottom */
+[data-scope="menu"][data-part="item"][data-value="clear-filters"],
+[data-scope="menu"][data-part="content"] [data-scope="menu"][data-part="item"]:last-of-type {
+  border-top: 1px solid #E9E9EA !important;
+  margin-top: 8px !important;
+  padding-top: 12px !important;
+}
+
+[data-scope="menu"][data-part="item"][data-value="clear-filters"] p,
+[data-scope="menu"][data-part="item"][data-value="clear-filters"] span {
+  color: #F05423 !important;
+  font-weight: 500 !important;
+}
+
+[data-scope="menu"][data-part="item"][data-value="clear-filters"] svg {
+  color: #F05423 !important;
+  width: 16px !important;
+  height: 16px !important;
+}
+
+/* Separator line */
+[data-scope="menu"][data-part="separator"] {
+  height: 1px !important;
+  background: #E9E9EA !important;
+  margin: 8px 0 !important;
+}
+
+/* ============================================
+   Table Sort Dropdown - HIDE IT
+   ============================================ */
+
+/* Hide the sort popover on table headers completely */
+table [data-scope="popover"],
+table [data-scope="popover"][data-part="content"],
+table [data-scope="popover"][data-part="positioner"],
+thead [data-scope="popover"],
+thead [data-scope="popover"][data-part="content"],
+[data-scope="data-table"] [data-scope="popover"],
+.work-queue-table-card [data-scope="popover"] {
+  display: none !important;
+  visibility: hidden !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+}

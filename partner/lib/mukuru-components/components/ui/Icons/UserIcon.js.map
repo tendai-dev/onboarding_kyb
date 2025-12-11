@@ -1,0 +1,1 @@
+{"version":3,"file":"UserIcon.js","sources":["../../../../src/components/ui/Icons/UserIcon.tsx"],"sourcesContent":[null],"names":["UserIcon","props","_jsx","width","height","viewBox","fill","xmlns","children","d"],"mappings":"8CAEaA,EAAsBC,GACjCC,SACEC,MAAM,KACNC,OAAO,KACPC,QAAQ,YACRC,KAAK,OACLC,MAAM,gCACFN,EAAKO,SAETN,EAAA,OAAA,CACEO,EAAE,0jEACFH,KAAK"}

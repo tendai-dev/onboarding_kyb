@@ -1,0 +1,6 @@
+apiVersion: v2
+name: projections-api
+description: Read Models & Query API
+type: application
+version: 0.1.0
+appVersion: "1.0.0"

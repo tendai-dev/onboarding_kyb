@@ -1,0 +1,160 @@
+---
+# Compliance Refresh CronJob
+# Periodically refreshes compliance checks for onboarding cases
+# based on risk tier and regulatory requirements
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: compliance-refresh
+  namespace: business-admin
+  labels:
+    app: compliance-refresh
+    tier: admin
+spec:
+  # Run daily at 2 AM UTC
+  schedule: "0 2 * * *"
+  
+  # Keep last 3 successful and 1 failed job
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 1
+  
+  # Don't start new job if previous still running
+  concurrencyPolicy: Forbid
+  
+  # Retry failed jobs once
+  startingDeadlineSeconds: 3600
+  
+  jobTemplate:
+    metadata:
+      labels:
+        app: compliance-refresh
+    spec:
+      # Job timeout: 2 hours
+      activeDeadlineSeconds: 7200
+      
+      # Retry pods up to 3 times
+      backoffLimit: 3
+      
+      template:
+        metadata:
+          labels:
+            app: compliance-refresh
+        spec:
+          restartPolicy: OnFailure
+          
+          serviceAccountName: compliance-refresh-sa
+          
+          containers:
+          - name: refresh-worker
+            image: ghcr.io/your-org/compliance-refresh:latest
+            imagePullPolicy: IfNotPresent
+            
+            env:
+            - name: JOB_TYPE
+              value: "compliance-refresh"
+            
+            - name: BATCH_SIZE
+              value: "100"
+            
+            - name: DRY_RUN
+              value: "false"
+            
+            - name: ConnectionStrings__PostgreSQL
+              valueFrom:
+                secretKeyRef:
+                  name: postgresql-credentials
+                  key: connection-string
+            
+            - name: ConnectionStrings__Redis
+              valueFrom:
+                secretKeyRef:
+                  name: redis-credentials
+                  key: connection-string
+            
+            - name: DISTRIBUTED_LOCK_KEY
+              value: "job:compliance-refresh"
+            
+            resources:
+              requests:
+                memory: "256Mi"
+                cpu: "200m"
+              limits:
+                memory: "512Mi"
+                cpu: "500m"
+            
+            # Structured logging
+            volumeMounts:
+            - name: logs
+              mountPath: /app/logs
+          
+          volumes:
+          - name: logs
+            emptyDir: {}
+
+---
+# Service Account for compliance refresh job
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: compliance-refresh-sa
+  namespace: business-admin
+
+---
+# Role for database access
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: compliance-refresh-role
+  namespace: business-admin
+rules:
+- apiGroups: [""]
+  resources: ["secrets"]
+  resourceNames: ["postgresql-credentials", "redis-credentials"]
+  verbs: ["get"]
+
+---
+# RoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: compliance-refresh-binding
+  namespace: business-admin
+subjects:
+- kind: ServiceAccount
+  name: compliance-refresh-sa
+roleRef:
+  kind: Role
+  name: compliance-refresh-role
+  apiGroup: rbac.authorization.k8s.io
+
+---
+# PrometheusRule for job monitoring
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: compliance-refresh-alerts
+  namespace: business-admin
+spec:
+  groups:
+  - name: compliance-refresh
+    interval: 30s
+    rules:
+    - alert: ComplianceRefreshJobFailed
+      expr: |
+        kube_job_status_failed{job_name=~"compliance-refresh-.*"} > 0
+      for: 5m
+      labels:
+        severity: critical
+      annotations:
+        summary: "Compliance refresh job failed"
+        description: "Job {{ $labels.job_name }} failed"
+    
+    - alert: ComplianceRefreshJobTooLong
+      expr: |
+        time() - kube_job_status_start_time{job_name=~"compliance-refresh-.*"} > 7200
+      labels:
+        severity: warning
+      annotations:
+        summary: "Compliance refresh job running too long"
+        description: "Job {{ $labels.job_name }} running > 2 hours"
+

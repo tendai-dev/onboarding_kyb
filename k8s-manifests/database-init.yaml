@@ -1,0 +1,43 @@
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: database-init
+  namespace: platform-observability
+spec:
+  template:
+    spec:
+      restartPolicy: OnFailure
+      containers:
+      - name: database-init
+        image: postgres:15
+        command:
+        - /bin/bash
+        - -c
+        - |
+          export PGPASSWORD=postgres-changeme
+          
+          # Wait for PostgreSQL to be ready
+          until pg_isready -h postgresql -p 5432 -U onboarding_user; do
+            echo "Waiting for PostgreSQL..."
+            sleep 2
+          done
+          
+          # Create databases for each service
+          psql -h postgresql -U onboarding_user -d onboarding -c "
+            CREATE DATABASE IF NOT EXISTS documents;
+            CREATE DATABASE IF NOT EXISTS risk;
+            CREATE DATABASE IF NOT EXISTS notifications;
+            CREATE DATABASE IF NOT EXISTS checklist;
+            CREATE DATABASE IF NOT EXISTS messaging;
+            CREATE DATABASE IF NOT EXISTS projections;
+            CREATE DATABASE IF NOT EXISTS auditlog;
+            CREATE DATABASE IF NOT EXISTS workqueue;
+            CREATE DATABASE IF NOT EXISTS entityconfig;
+            CREATE DATABASE IF NOT EXISTS webhooks;
+          " || echo "Databases may already exist"
+          
+          echo "Database initialization complete"
+        env:
+        - name: PGPASSWORD
+          value: "postgres-changeme"

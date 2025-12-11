@@ -1,0 +1,12 @@
+{
+  "Version": 1,
+  "Hash": "oi8fMhbBtzAEFb8JJHOvw7lOgEdkpeZf1Eef2GdCZuE=",
+  "Source": "OnboardingApi.Presentation",
+  "BasePath": "_content/OnboardingApi.Presentation",
+  "Mode": "Default",
+  "ManifestType": "Build",
+  "ReferencedProjectsConfiguration": [],
+  "DiscoveryPatterns": [],
+  "Assets": [],
+  "Endpoints": []
+}

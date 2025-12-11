@@ -1,0 +1,4 @@
+@mukuru:registry=https://gitlab.ss-prd.mukuru.io/api/v4/projects/2290/packages/npm/
+always-auth=true
+//gitlab.ss-prd.mukuru.io/api/v4/projects/2290/packages/npm/:_authToken=YOUR_ACCESS_TOKEN
+

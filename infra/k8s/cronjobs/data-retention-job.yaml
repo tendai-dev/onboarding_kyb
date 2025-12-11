@@ -1,0 +1,88 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: data-retention-cleanup
+  namespace: onboarding
+  labels:
+    app: data-retention-job
+    component: compliance
+spec:
+  # Run daily at 2 AM UTC
+  schedule: "0 2 * * *"
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  concurrencyPolicy: Forbid
+  jobTemplate:
+    spec:
+      template:
+        metadata:
+          labels:
+            app: data-retention-job
+        spec:
+          restartPolicy: OnFailure
+          serviceAccountName: data-retention-sa
+          containers:
+          - name: data-retention
+            image: onboarding-kyc/data-retention-job:latest
+            imagePullPolicy: IfNotPresent
+            env:
+            - name: DATABASE_CONNECTION_STRING
+              valueFrom:
+                secretKeyRef:
+                  name: postgres-credentials
+                  key: connection-string
+            - name: DATA_RESIDENCY_CONFIG_PATH
+              value: "/app/config/data-residency.yaml"
+            - name: DRY_RUN
+              value: "false"  # Set to "true" for testing
+            - name: LOG_LEVEL
+              value: "Information"
+            volumeMounts:
+            - name: config
+              mountPath: /app/config
+              readOnly: true
+            resources:
+              requests:
+                memory: "256Mi"
+                cpu: "200m"
+              limits:
+                memory: "512Mi"
+                cpu: "500m"
+          volumes:
+          - name: config
+            configMap:
+              name: data-residency-config
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: data-retention-sa
+  namespace: onboarding
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: data-retention-role
+  namespace: onboarding
+rules:
+- apiGroups: [""]
+  resources: ["configmaps"]
+  verbs: ["get", "list"]
+- apiGroups: [""]
+  resources: ["secrets"]
+  verbs: ["get"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: data-retention-rolebinding
+  namespace: onboarding
+subjects:
+- kind: ServiceAccount
+  name: data-retention-sa
+  namespace: onboarding
+roleRef:
+  kind: Role
+  name: data-retention-role
+  apiGroup: rbac.authorization.k8s.io
+

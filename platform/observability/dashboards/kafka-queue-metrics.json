@@ -1,0 +1,247 @@
+{
+  "dashboard": {
+    "title": "Kafka Queue Metrics & Consumer Lag",
+    "tags": ["kafka", "queues", "messaging"],
+    "timezone": "browser",
+    "panels": [
+      {
+        "id": 1,
+        "title": "Consumer Lag by Topic",
+        "type": "graph",
+        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 0},
+        "targets": [
+          {
+            "expr": "kafka_consumer_lag{namespace=\"platform-observability\"}",
+            "legendFormat": "{{topic}} - {{consumer_group}}"
+          }
+        ],
+        "yaxes": [
+          {"format": "short", "label": "Messages Behind"}
+        ],
+        "thresholds": [
+          {"value": 1000, "colorMode": "critical", "op": "gt", "fill": true}
+        ],
+        "alert": {
+          "name": "High Consumer Lag",
+          "conditions": [
+            {
+              "evaluator": {"params": [1000], "type": "gt"},
+              "query": {"params": ["A", "5m", "now"]},
+              "reducer": {"type": "avg"},
+              "type": "query"
+            }
+          ],
+          "executionErrorState": "alerting",
+          "frequency": "60s",
+          "handler": 1,
+          "message": "Consumer lag exceeds 1000 messages",
+          "noDataState": "no_data",
+          "notifications": []
+        }
+      },
+      {
+        "id": 2,
+        "title": "Messages Produced per Second",
+        "type": "graph",
+        "gridPos": {"h": 8, "w": 12, "x": 12, "y": 0},
+        "targets": [
+          {
+            "expr": "rate(kafka_producer_record_send_total{namespace=\"platform-observability\"}[5m])",
+            "legendFormat": "{{topic}}"
+          }
+        ],
+        "yaxes": [
+          {"format": "ops", "label": "Messages/sec"}
+        ]
+      },
+      {
+        "id": 3,
+        "title": "Messages Consumed per Second",
+        "type": "graph",
+        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 8},
+        "targets": [
+          {
+            "expr": "rate(kafka_consumer_records_consumed_total{namespace=\"platform-observability\"}[5m])",
+            "legendFormat": "{{topic}} - {{consumer_group}}"
+          }
+        ],
+        "yaxes": [
+          {"format": "ops", "label": "Messages/sec"}
+        ]
+      },
+      {
+        "id": 4,
+        "title": "Processing Time P95 (Consumer)",
+        "type": "graph",
+        "gridPos": {"h": 8, "w": 12, "x": 12, "y": 8},
+        "targets": [
+          {
+            "expr": "histogram_quantile(0.95, rate(kafka_consumer_processing_duration_seconds_bucket[5m]))",
+            "legendFormat": "{{consumer_group}} P95"
+          }
+        ],
+        "yaxes": [
+          {"format": "s", "label": "Duration"}
+        ],
+        "thresholds": [
+          {"value": 5, "colorMode": "critical", "op": "gt"}
+        ]
+      },
+      {
+        "id": 5,
+        "title": "Failed Message Processing",
+        "type": "graph",
+        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 16},
+        "targets": [
+          {
+            "expr": "rate(kafka_consumer_processing_errors_total{namespace=\"platform-observability\"}[5m])",
+            "legendFormat": "{{topic}} - {{consumer_group}}"
+          }
+        ],
+        "yaxes": [
+          {"format": "ops", "label": "Errors/sec"}
+        ]
+      },
+      {
+        "id": 6,
+        "title": "DLQ Message Rate",
+        "type": "graph",
+        "gridPos": {"h": 8, "w": 12, "x": 12, "y": 16},
+        "targets": [
+          {
+            "expr": "rate(kafka_producer_record_send_total{topic=~\"dlq\\\\..*\"}[5m])",
+            "legendFormat": "{{topic}}"
+          }
+        ],
+        "yaxes": [
+          {"format": "ops", "label": "DLQ Messages/sec"}
+        ]
+      },
+      {
+        "id": 7,
+        "title": "Kafka Broker Health",
+        "type": "stat",
+        "gridPos": {"h": 4, "w": 6, "x": 0, "y": 24},
+        "targets": [
+          {
+            "expr": "kafka_server_replicamanager_leadercount"
+          }
+        ],
+        "thresholds": {
+          "mode": "absolute",
+          "steps": [
+            {"value": 0, "color": "red"},
+            {"value": 1, "color": "green"}
+          ]
+        }
+      },
+      {
+        "id": 8,
+        "title": "Total Topics",
+        "type": "stat",
+        "gridPos": {"h": 4, "w": 6, "x": 6, "y": 24},
+        "targets": [
+          {
+            "expr": "count(kafka_topic_partitions)"
+          }
+        ]
+      },
+      {
+        "id": 9,
+        "title": "Under-Replicated Partitions",
+        "type": "stat",
+        "gridPos": {"h": 4, "w": 6, "x": 12, "y": 24},
+        "targets": [
+          {
+            "expr": "kafka_server_replicamanager_underreplicatedpartitions"
+          }
+        ],
+        "thresholds": {
+          "mode": "absolute",
+          "steps": [
+            {"value": 0, "color": "green"},
+            {"value": 1, "color": "red"}
+          ]
+        }
+      },
+      {
+        "id": 10,
+        "title": "Offline Partitions",
+        "type": "stat",
+        "gridPos": {"h": 4, "w": 6, "x": 18, "y": 24},
+        "targets": [
+          {
+            "expr": "kafka_controller_kafkacontroller_offlinepartitionscount"
+          }
+        ],
+        "thresholds": {
+          "mode": "absolute",
+          "steps": [
+            {"value": 0, "color": "green"},
+            {"value": 1, "color": "red"}
+          ]
+        }
+      },
+      {
+        "id": 11,
+        "title": "Consumer Group Lag Summary",
+        "type": "table",
+        "gridPos": {"h": 8, "w": 24, "x": 0, "y": 28},
+        "targets": [
+          {
+            "expr": "max(kafka_consumer_lag) by (topic, consumer_group)",
+            "format": "table",
+            "instant": true
+          }
+        ],
+        "transformations": [
+          {
+            "id": "organize",
+            "options": {
+              "excludeByName": {},
+              "indexByName": {},
+              "renameByName": {
+                "topic": "Topic",
+                "consumer_group": "Consumer Group",
+                "Value": "Max Lag"
+              }
+            }
+          }
+        ]
+      },
+      {
+        "id": 12,
+        "title": "Outbox Events Pending",
+        "type": "graph",
+        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 36},
+        "targets": [
+          {
+            "expr": "sum(outbox_events_pending) by (schema)",
+            "legendFormat": "{{schema}}"
+          }
+        ],
+        "yaxes": [
+          {"format": "short", "label": "Pending Events"}
+        ]
+      },
+      {
+        "id": 13,
+        "title": "Outbox Relay Processing Rate",
+        "type": "graph",
+        "gridPos": {"h": 8, "w": 12, "x": 12, "y": 36},
+        "targets": [
+          {
+            "expr": "rate(outbox_events_processed_total[5m])",
+            "legendFormat": "{{schema}}"
+          }
+        ],
+        "yaxes": [
+          {"format": "ops", "label": "Events/sec"}
+        ]
+      }
+    ],
+    "refresh": "10s",
+    "time": {"from": "now-1h", "to": "now"}
+  }
+}
+

@@ -1,0 +1,811 @@
+'use client';
+
+import { Box, VStack, HStack, Flex, Spinner, SimpleGrid, Container } from '@chakra-ui/react';
+// Import components directly from Mukuru package
+import {
+  Button,
+  Search,
+  Typography,
+  DataTable,
+  Tag,
+  IconWrapper,
+  AlertBar,
+  Tooltip,
+  Dropdown,
+} from '@mukuru/mukuru-react-components';
+import type { ColumnConfig } from '@mukuru/mukuru-react-components';
+// Color mode - always light mode
+const useColorModeValue = <T,>(light: T, _dark: T): T => light;
+import {
+  FiDownload,
+  FiSearch,
+  FiEye,
+  FiUser,
+  FiCheckCircle,
+  FiClock,
+  FiAlertTriangle,
+  FiRefreshCw,
+  FiUserPlus,
+} from 'react-icons/fi';
+import Link from 'next/link';
+import { useState, useEffect, useCallback, useMemo } from 'react';
+import AdminSidebar from '../../components/AdminSidebar';
+import PortalHeader from '../../components/PortalHeader';
+import { useSidebar } from '../../contexts/SidebarContext';
+import {
+  fetchWorkItems,
+  exportWorkItems,
+  getWorkItems,
+  WorkItemDto,
+} from '../../services';
+import { logger } from '../../lib/logger';
+
+type StatusFilter = 'ALL' | 'New' | 'Assigned' | 'InProgress' | 'PendingApproval' | 'Approved' | 'Completed' | 'Declined';
+
+export default function WorkQueuePage() {
+  const { condensed } = useSidebar();
+
+  // Color mode values for dark/light mode support
+  const bgColor = useColorModeValue('mukuru.background.light', 'mukuru.background.dark');
+  const cardBg = useColorModeValue('mukuru.cards.white', 'mukuru.cards.dark');
+  const textColor = useColorModeValue('mukuru.text.primary', 'mukuru.text.inverse');
+  const headerBg = useColorModeValue('mukuru.cards.white', 'mukuru.cards.dark');
+  const borderColor = useColorModeValue('mukuru.grey.light', 'mukuru.grey.500');
+
+  const [workItems, setWorkItems] = useState<WorkItemDto[]>([]);
+  const [allWorkItems, setAllWorkItems] = useState<WorkItemDto[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>('ALL');
+  const [exporting, setExporting] = useState(false);
+  const [refreshKey, setRefreshKey] = useState(0);
+
+  const loadWorkItems = useCallback(
+    async (search?: string) => {
+      try {
+        setLoading(true);
+        setError(null);
+
+        logger.debug('[Work Queue Page] Loading work items with filters', {
+          status: statusFilter,
+          search: search || searchTerm,
+        });
+
+        // Use new service structure
+        const result = await fetchWorkItems({
+          status: statusFilter !== 'ALL' ? statusFilter : undefined,
+          searchTerm: search || searchTerm || undefined,
+          page: 1,
+          pageSize: 1000, // Get all items for display
+        });
+
+        logger.debug('[Work Queue Page] Work items loaded', {
+          count: result.items.length,
+        });
+
+        // Map to WorkItemDto format for display
+        const workItemDtos: WorkItemDto[] = result.items.map((item) => ({
+          id: item.workItemId,
+          workItemId: item.workItemId,
+          workItemNumber: item.workItemNumber || item.id,
+          applicationId: item.applicationId || item.id,
+          applicantName: item.applicantName || item.legalName || 'Unknown',
+          businessName: item.businessName,
+          entityType: item.entityType,
+          entityTypeDisplayName: item.entityTypeDisplayName,
+          country: item.country,
+          status: item.backendStatus || item.status,
+          priority: item.priority || 'Medium',
+          riskLevel: item.riskLevel || 'Unknown',
+          assignedTo: item.assignedTo,
+          assignedToName: item.assignedToName,
+          assignedAt: item.assignedAt,
+          requiresApproval: item.requiresApproval || false,
+          approvedBy: item.approvedBy,
+          approvedByName: item.approvedByName,
+          approvedAt: item.approvedAt,
+          approvalNotes: undefined,
+          rejectionReason: item.rejectionReason,
+          rejectedAt: undefined,
+          dueDate: item.dueDate || item.created,
+          isOverdue: item.isOverdue || false,
+          createdAt: item.created,
+          updatedAt: item.updated,
+          nextRefreshDate: item.nextRefreshDate,
+          lastRefreshedAt: item.lastRefreshedAt,
+          refreshCount: item.refreshCount,
+          createdBy: 'System',
+          updatedBy: undefined,
+        }));
+
+        setAllWorkItems(workItemDtos);
+        setWorkItems(workItemDtos);
+      } catch (err) {
+        logger.error(err, '[Work Queue Page] Error loading work items', {
+          tags: { error_type: 'workqueue_load_error' },
+        });
+        setError(
+          err instanceof Error
+            ? err.message
+            : 'Failed to load work items. Please ensure backend services are running.'
+        );
+        setWorkItems([]);
+      } finally {
+        setLoading(false);
+      }
+    },
+    [statusFilter, searchTerm]
+  );
+
+  // Handler for search changes
+  const handleSearchChange = useCallback((query: string) => {
+    setSearchTerm(query);
+  }, []);
+
+  // Load work items on mount and when status filter or search term changes
+  useEffect(() => {
+    loadWorkItems();
+  }, [statusFilter, searchTerm, loadWorkItems, refreshKey]);
+
+  const handleExport = async () => {
+    try {
+      setExporting(true);
+      const blob = await exportWorkItems({
+        status: statusFilter !== 'ALL' ? statusFilter : undefined,
+        search: searchTerm || undefined,
+      });
+
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `work_queue_${new Date().toISOString().split('T')[0]}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+    } catch (err) {
+      logger.error(err, 'Error exporting work items', {
+        tags: { error_type: 'workqueue_export_error' },
+      });
+      setError(err instanceof Error ? err.message : 'Failed to export work items');
+    } finally {
+      setExporting(false);
+    }
+  };
+
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'New':
+        return 'blue';
+      case 'Assigned':
+        return 'orange';
+      case 'InProgress':
+        return 'orange';
+      case 'PendingApproval':
+        return 'red';
+      case 'Approved':
+        return 'green';
+      case 'Completed':
+        return 'green';
+      case 'Declined':
+        return 'red';
+      default:
+        return 'gray';
+    }
+  };
+
+  const getRiskColor = (risk: string) => {
+    switch (risk?.toUpperCase()) {
+      case 'LOW':
+        return 'green';
+      case 'MEDIUM':
+        return 'orange';
+      case 'HIGH':
+        return 'red';
+      case 'CRITICAL':
+        return 'red';
+      default:
+        return 'gray';
+    }
+  };
+
+  const filteredWorkItems = useMemo(() => {
+    return workItems.filter((item) => {
+      const matchesSearch =
+        (item.applicantName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          item.businessName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          item.workItemNumber?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          item.applicationId?.toLowerCase().includes(searchTerm.toLowerCase())) ||
+        !searchTerm;
+      const matchesStatus = statusFilter === 'ALL' || item.status === statusFilter;
+      return matchesSearch && matchesStatus;
+    });
+  }, [workItems, searchTerm, statusFilter]);
+
+  // Stats calculation
+  const stats = useMemo(() => {
+    return {
+      total: allWorkItems.length,
+      new: allWorkItems.filter((item) => item.status === 'New').length,
+      assigned: allWorkItems.filter((item) => item.status === 'Assigned').length,
+      inProgress: allWorkItems.filter((item) => item.status === 'InProgress').length,
+      pendingApproval: allWorkItems.filter((item) => item.status === 'PendingApproval').length,
+      overdue: allWorkItems.filter((item) => item.isOverdue).length,
+    };
+  }, [allWorkItems]);
+
+  // Helper function to format work item ID for display
+  const formatWorkItemId = (id: string): string => {
+    if (!id) return 'N/A';
+    // If it's a GUID, show first 8 characters
+    if (id.length > 20 && id.includes('-')) {
+      return id.substring(0, 8).toUpperCase();
+    }
+    // If it's already a short ID, return as-is
+    return id;
+  };
+
+  // Define columns for DataTable
+  const columns: ColumnConfig<WorkItemDto>[] = [
+    {
+      field: 'workItemNumber',
+      header: 'Work Item #',
+      sortable: true,
+      width: '120px',
+      minWidth: '120px',
+      render: (value, row) => {
+        const displayId = formatWorkItemId(String(value || row.id));
+        const fullId = String(value || row.id);
+        return (
+          <Tooltip content={fullId} showArrow variant="light">
+            <Typography
+              fontWeight="semibold"
+              color="mukuru.buttons.primary"
+              fontSize="sm"
+              fontFamily="mono"
+              style={{ cursor: 'pointer' }}
+            >
+              {displayId}
+            </Typography>
+          </Tooltip>
+        );
+      },
+    },
+    {
+      field: 'applicantName',
+      header: 'Applicant / Business',
+      sortable: true,
+      width: '200px',
+      minWidth: '180px',
+      render: (value, row) => (
+        <VStack align="start" gap="0">
+          <Typography
+            fontWeight="medium"
+            color={textColor}
+            fontSize="sm"
+            style={{
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              whiteSpace: 'nowrap',
+              maxWidth: '180px',
+            }}
+          >
+            {row.businessName || value || 'Unknown'}
+          </Typography>
+          {row.businessName && value && value !== row.businessName && (
+            <Typography
+              fontSize="xs"
+              color="mukuru.grey.medium"
+              style={{
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                whiteSpace: 'nowrap',
+                maxWidth: '180px',
+              }}
+            >
+              {value}
+            </Typography>
+          )}
+        </VStack>
+      ),
+    },
+    {
+      field: 'entityType',
+      header: 'Entity Type',
+      sortable: true,
+      width: '120px',
+      minWidth: '100px',
+      render: (value, row) => (
+        <Tag variant="info">
+          {row.entityTypeDisplayName || value || 'N/A'}
+        </Tag>
+      ),
+    },
+    {
+      field: 'status',
+      header: 'Status',
+      sortable: true,
+      width: '130px',
+      minWidth: '110px',
+      render: (value) => {
+        const status = (value as string) || 'New';
+        const color = getStatusColor(status);
+        const variant =
+          color === 'green'
+            ? 'success'
+            : color === 'red'
+              ? 'danger'
+              : color === 'orange'
+                ? 'warning'
+                : 'info';
+        // Format status for display (add space before capital letters)
+        const displayStatus = status.replace(/([A-Z])/g, ' $1').trim();
+        return <Tag variant={variant}>{displayStatus}</Tag>;
+      },
+    },
+    {
+      field: 'priority',
+      header: 'Priority',
+      sortable: true,
+      width: '100px',
+      minWidth: '90px',
+      render: (value) => {
+        const priority = (value as string) || 'Medium';
+        const variant =
+          priority === 'Critical' || priority === 'High'
+            ? 'danger'
+            : priority === 'Medium'
+              ? 'warning'
+              : 'info';
+        return <Tag variant={variant}>{priority}</Tag>;
+      },
+    },
+    {
+      field: 'riskLevel',
+      header: 'Risk',
+      sortable: true,
+      width: '90px',
+      minWidth: '80px',
+      render: (value) => {
+        const risk = (value as string) || 'Unknown';
+        const color = getRiskColor(risk);
+        const variant =
+          color === 'red'
+            ? 'danger'
+            : color === 'orange'
+              ? 'warning'
+              : color === 'green'
+                ? 'success'
+                : 'info';
+        return <Tag variant={variant}>{risk}</Tag>;
+      },
+    },
+    {
+      field: 'assignedToName',
+      header: 'Assigned To',
+      sortable: true,
+      width: '140px',
+      minWidth: '120px',
+      render: (value, row) => {
+        const assignedTo = (value as string) || row.assignedToName || 'Unassigned';
+        const isAssigned = assignedTo !== 'Unassigned' && assignedTo;
+        return (
+          <HStack gap="2">
+            <Box
+              w="5"
+              h="5"
+              borderRadius="full"
+              bg={isAssigned ? 'orange.100' : 'gray.100'}
+              display="flex"
+              alignItems="center"
+              justifyContent="center"
+              flexShrink={0}
+            >
+              <IconWrapper>
+                <FiUser size={12} color={isAssigned ? '#F05423' : '#9CA3AF'} />
+              </IconWrapper>
+            </Box>
+            <Typography
+              fontSize="sm"
+              color={isAssigned ? textColor : 'mukuru.grey.medium'}
+              fontWeight={isAssigned ? 'medium' : 'normal'}
+              style={{
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                whiteSpace: 'nowrap',
+                maxWidth: '100px',
+              }}
+            >
+              {assignedTo}
+            </Typography>
+          </HStack>
+        );
+      },
+    },
+    {
+      field: 'dueDate',
+      header: 'Due Date',
+      sortable: true,
+      width: '100px',
+      minWidth: '90px',
+      render: (value, row) => {
+        const dueDate = value as string | undefined || row.dueDate;
+        const isOverdue = row.isOverdue || (dueDate && typeof dueDate === 'string' && new Date(dueDate) < new Date() && row.status !== 'Completed' && row.status !== 'Declined');
+        return (
+          <HStack gap="1">
+            <Typography
+              fontSize="xs"
+              fontWeight="medium"
+              color={isOverdue ? 'red.600' : 'mukuru.grey.mediumDark'}
+            >
+              {dueDate && typeof dueDate === 'string' ? new Date(dueDate).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' }) : 'N/A'}
+            </Typography>
+            {isOverdue && (
+              <IconWrapper>
+                <FiAlertTriangle size={12} color="#DC2626" />
+              </IconWrapper>
+            )}
+          </HStack>
+        );
+      },
+    },
+  ];
+
+  const actionColumn = {
+    header: 'Actions',
+    width: '120px',
+    render: (row: WorkItemDto) => (
+      <HStack gap="1">
+        <Tooltip content="Review Application" showArrow variant="light">
+          <Link
+            href={`/review/${row.workItemId || row.id}`}
+            style={{ textDecoration: 'none' }}
+          >
+            <Box
+              as="button"
+              p="1.5"
+              borderRadius="md"
+              bg="transparent"
+              _hover={{ bg: 'orange.50' }}
+              transition="background 0.2s"
+              display="flex"
+              alignItems="center"
+              justifyContent="center"
+              aria-label="Review"
+            >
+              <IconWrapper>
+                <FiEye size={16} color="#F05423" />
+              </IconWrapper>
+            </Box>
+          </Link>
+        </Tooltip>
+        {!row.assignedToName && (
+          <Tooltip content="Assign to Me" showArrow variant="light">
+            <Box
+              as="button"
+              p="1.5"
+              borderRadius="md"
+              bg="transparent"
+              _hover={{ bg: 'blue.50' }}
+              transition="background 0.2s"
+              display="flex"
+              alignItems="center"
+              justifyContent="center"
+              aria-label="Assign"
+              onClick={(e: React.MouseEvent) => {
+                e.preventDefault();
+                // TODO: Implement assign to me functionality
+                logger.info('Assign to me clicked for:', row.id);
+              }}
+            >
+              <IconWrapper>
+                <FiUserPlus size={16} color="#3B82F6" />
+              </IconWrapper>
+            </Box>
+          </Tooltip>
+        )}
+      </HStack>
+    ),
+  };
+
+  if (loading && workItems.length === 0) {
+    return (
+      <Flex minH="100vh" bg={bgColor}>
+        <AdminSidebar />
+        <PortalHeader />
+        <Box
+          flex="1"
+          ml={condensed ? '72px' : '280px'}
+          mt="90px"
+          minH="calc(100vh - 90px)"
+          width={condensed ? 'calc(100% - 72px)' : 'calc(100% - 280px)'}
+          bg={bgColor}
+          overflowX="hidden"
+        >
+          <Flex justify="center" align="center" h="400px">
+            <VStack gap="4">
+              <Spinner size="xl" color="mukuru.buttons.primary" />
+              <Typography color={textColor}>Loading work queue...</Typography>
+            </VStack>
+          </Flex>
+        </Box>
+      </Flex>
+    );
+  }
+
+  return (
+    <Box minH="100vh" bg={bgColor}>
+      <AdminSidebar />
+      <PortalHeader />
+
+      {/* Error Alert */}
+      {error && (
+        <Box position="fixed" top="100px" right="24px" zIndex={10000} maxW="400px">
+          <AlertBar
+            status="error"
+            title="Error"
+            description={error}
+            onClose={() => setError(null)}
+          />
+        </Box>
+      )}
+
+      <Flex
+        minH="100vh"
+        ml={condensed ? '72px' : '280px'}
+        mt="90px"
+        width={condensed ? 'calc(100% - 72px)' : 'calc(100% - 280px)'}
+        bg={bgColor}
+        overflowX="hidden"
+      >
+        <Container maxW="full" px="24px" py="16px">
+          <VStack align="stretch" gap="6">
+            {/* Header */}
+            <Box>
+              <Typography fontSize="2xl" fontWeight="bold" color={textColor} mb="2">
+                Work Queue
+              </Typography>
+              <Typography fontSize="sm" color="gray.600">
+                Manage and review onboarding applications
+              </Typography>
+            </Box>
+
+            {/* Stats Cards */}
+            <SimpleGrid columns={{ base: 2, md: 3, lg: 6 }} gap="4">
+              <Box 
+                bg={cardBg} 
+                p="4" 
+                borderRadius="lg" 
+                boxShadow="sm"
+                border="1px solid"
+                borderColor={borderColor}
+                _hover={{ boxShadow: 'md' }}
+                transition="box-shadow 0.2s"
+                cursor="pointer"
+                onClick={() => setStatusFilter('ALL')}
+              >
+                <Typography fontSize="xs" color="mukuru.grey.medium" mb="2" textTransform="uppercase" letterSpacing="wide">
+                  Total
+                </Typography>
+                <Typography fontSize="2xl" fontWeight="bold" color={textColor}>
+                  {stats.total}
+                </Typography>
+              </Box>
+              <Box 
+                bg={cardBg} 
+                p="4" 
+                borderRadius="lg" 
+                boxShadow="sm"
+                border="1px solid"
+                borderColor={statusFilter === 'New' ? 'blue.400' : borderColor}
+                _hover={{ boxShadow: 'md', borderColor: 'blue.300' }}
+                transition="all 0.2s"
+                cursor="pointer"
+                onClick={() => setStatusFilter('New')}
+              >
+                <Typography fontSize="xs" color="mukuru.grey.medium" mb="2" textTransform="uppercase" letterSpacing="wide">
+                  New
+                </Typography>
+                <Typography fontSize="2xl" fontWeight="bold" color="blue.600">
+                  {stats.new}
+                </Typography>
+              </Box>
+              <Box 
+                bg={cardBg} 
+                p="4" 
+                borderRadius="lg" 
+                boxShadow="sm"
+                border="1px solid"
+                borderColor={statusFilter === 'Assigned' ? 'orange.400' : borderColor}
+                _hover={{ boxShadow: 'md', borderColor: 'orange.300' }}
+                transition="all 0.2s"
+                cursor="pointer"
+                onClick={() => setStatusFilter('Assigned')}
+              >
+                <Typography fontSize="xs" color="mukuru.grey.medium" mb="2" textTransform="uppercase" letterSpacing="wide">
+                  Assigned
+                </Typography>
+                <Typography fontSize="2xl" fontWeight="bold" color="orange.600">
+                  {stats.assigned}
+                </Typography>
+              </Box>
+              <Box 
+                bg={cardBg} 
+                p="4" 
+                borderRadius="lg" 
+                boxShadow="sm"
+                border="1px solid"
+                borderColor={statusFilter === 'InProgress' ? 'orange.400' : borderColor}
+                _hover={{ boxShadow: 'md', borderColor: 'orange.300' }}
+                transition="all 0.2s"
+                cursor="pointer"
+                onClick={() => setStatusFilter('InProgress')}
+              >
+                <Typography fontSize="xs" color="mukuru.grey.medium" mb="2" textTransform="uppercase" letterSpacing="wide">
+                  In Progress
+                </Typography>
+                <Typography fontSize="2xl" fontWeight="bold" color="orange.600">
+                  {stats.inProgress}
+                </Typography>
+              </Box>
+              <Box 
+                bg={cardBg} 
+                p="4" 
+                borderRadius="lg" 
+                boxShadow="sm"
+                border="1px solid"
+                borderColor={statusFilter === 'PendingApproval' ? 'red.400' : borderColor}
+                _hover={{ boxShadow: 'md', borderColor: 'red.300' }}
+                transition="all 0.2s"
+                cursor="pointer"
+                onClick={() => setStatusFilter('PendingApproval')}
+              >
+                <Typography fontSize="xs" color="mukuru.grey.medium" mb="2" textTransform="uppercase" letterSpacing="wide">
+                  Pending Approval
+                </Typography>
+                <Typography fontSize="2xl" fontWeight="bold" color="red.600">
+                  {stats.pendingApproval}
+                </Typography>
+              </Box>
+              <Box 
+                bg={cardBg} 
+                p="4" 
+                borderRadius="lg" 
+                boxShadow="sm"
+                border="1px solid"
+                borderColor={borderColor}
+                _hover={{ boxShadow: 'md', borderColor: 'red.300' }}
+                transition="all 0.2s"
+                cursor="pointer"
+              >
+                <Typography fontSize="xs" color="mukuru.grey.medium" mb="2" textTransform="uppercase" letterSpacing="wide">
+                  Overdue
+                </Typography>
+                <Typography fontSize="2xl" fontWeight="bold" color="red.600">
+                  {stats.overdue}
+                </Typography>
+              </Box>
+            </SimpleGrid>
+
+            {/* Filters and Actions */}
+            <Box 
+              bg={cardBg} 
+              p="4" 
+              borderRadius="lg" 
+              border="1px solid" 
+              borderColor={borderColor}
+            >
+              <HStack justify="space-between" align="center" flexWrap="wrap" gap="3">
+                <HStack gap="3" flex="1" minW="300px">
+                  <Box width="280px">
+                    <Search
+                      placeholder="Search by name, work item #..."
+                      onSearchChange={handleSearchChange}
+                    />
+                  </Box>
+                  <Box width="180px">
+                    <Dropdown
+                      items={[
+                        { label: 'All Statuses', value: 'ALL' },
+                        { label: 'New', value: 'New' },
+                        { label: 'Assigned', value: 'Assigned' },
+                        { label: 'In Progress', value: 'InProgress' },
+                        { label: 'Pending Approval', value: 'PendingApproval' },
+                        { label: 'Approved', value: 'Approved' },
+                        { label: 'Completed', value: 'Completed' },
+                        { label: 'Declined', value: 'Declined' },
+                      ]}
+                      placeholder="All Statuses"
+                      defaultValue={statusFilter}
+                      onSelectionChange={(selectedValue) =>
+                        setStatusFilter(selectedValue as StatusFilter)
+                      }
+                    />
+                  </Box>
+                  {statusFilter !== 'ALL' && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setStatusFilter('ALL')}
+                    >
+                      Clear Filter
+                    </Button>
+                  )}
+                </HStack>
+                <HStack gap="2">
+                  <Tooltip content="Refresh Data" showArrow variant="light">
+                    <Button
+                      variant="ghost"
+                      onClick={() => setRefreshKey((prev) => prev + 1)}
+                      disabled={loading}
+                      aria-label="Refresh"
+                    >
+                      <IconWrapper>
+                        <FiRefreshCw size={16} className={loading ? 'animate-spin' : ''} />
+                      </IconWrapper>
+                    </Button>
+                  </Tooltip>
+                  <Button
+                    variant="secondary"
+                    onClick={handleExport}
+                    disabled={exporting || loading}
+                    leftIcon={<FiDownload size={16} />}
+                  >
+                    {exporting ? 'Exporting...' : 'Export'}
+                  </Button>
+                </HStack>
+              </HStack>
+            </Box>
+
+            {/* Table */}
+            <Box
+              bg={cardBg}
+              borderRadius="lg"
+              boxShadow="sm"
+              border="1px solid"
+              borderColor={borderColor}
+              overflow="auto"
+              className="work-queue-table-wrapper"
+              width="100%"
+              maxW="100%"
+            >
+              <DataTable
+                data={filteredWorkItems as unknown as Record<string, unknown>[]}
+                columns={columns as unknown as ColumnConfig<Record<string, unknown>>[]}
+                showActions={true}
+                actionColumn={
+                  actionColumn as unknown as {
+                    header?: string;
+                    width?: string;
+                    render: (
+                      row: Record<string, unknown>,
+                      index: number
+                    ) => React.ReactNode;
+                  }
+                }
+                loading={loading}
+                emptyState={{
+                  message:
+                    workItems.length === 0
+                      ? 'No work items found'
+                      : 'No work items match your search criteria',
+                  content: (
+                    <VStack gap="4">
+                      <Typography fontSize="sm" color="mukuru.grey.medium">
+                        {workItems.length === 0
+                          ? 'Work items will appear here once applications are submitted'
+                          : 'Try adjusting your search criteria or filters'}
+                      </Typography>
+                    </VStack>
+                  ),
+                }}
+              />
+            </Box>
+          </VStack>
+        </Container>
+      </Flex>
+    </Box>
+  );
+}
+

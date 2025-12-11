@@ -1,0 +1,336 @@
+---
+# Document Service
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: kyb-document-api
+  namespace: business-documents
+  labels:
+    app: kyb-document-api
+    tier: business
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: kyb-document-api
+  template:
+    metadata:
+      labels:
+        app: kyb-document-api
+    spec:
+      containers:
+      - name: kyb-document-api
+        image: kyb-document-api:latest
+        imagePullPolicy: Never
+        ports:
+        - containerPort: 8080
+        env:
+        - name: ASPNETCORE_ENVIRONMENT
+          value: "Development"
+        - name: SERVICE_NAME
+          value: "kyb-document-api"
+        - name: ConnectionStrings__PostgreSQL
+          value: "Host=postgresql.platform-observability.svc.cluster.local;Database=documents;Username=onboarding_user;Password=postgres-changeme"
+        - name: ConnectionStrings__Redis
+          value: "redis.platform-observability.svc.cluster.local:6379"
+        - name: Kafka__BootstrapServers
+          value: "kafka.platform-observability.svc.cluster.local:9092"
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "250m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: kyb-document-api
+  namespace: business-documents
+spec:
+  selector:
+    app: kyb-document-api
+  ports:
+  - port: 80
+    targetPort: 8080
+---
+# Risk Service
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: kyb-risk-api
+  namespace: business-risk
+  labels:
+    app: kyb-risk-api
+    tier: business
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: kyb-risk-api
+  template:
+    metadata:
+      labels:
+        app: kyb-risk-api
+    spec:
+      containers:
+      - name: kyb-risk-api
+        image: kyb-risk-api:latest
+        imagePullPolicy: Never
+        ports:
+        - containerPort: 8080
+        env:
+        - name: ASPNETCORE_ENVIRONMENT
+          value: "Development"
+        - name: SERVICE_NAME
+          value: "kyb-risk-api"
+        - name: ConnectionStrings__PostgreSQL
+          value: "Host=postgresql.platform-observability.svc.cluster.local;Database=risk;Username=onboarding_user;Password=postgres-changeme"
+        - name: ConnectionStrings__Redis
+          value: "redis.platform-observability.svc.cluster.local:6379"
+        - name: Kafka__BootstrapServers
+          value: "kafka.platform-observability.svc.cluster.local:9092"
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "250m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: kyb-risk-api
+  namespace: business-risk
+spec:
+  selector:
+    app: kyb-risk-api
+  ports:
+  - port: 80
+    targetPort: 8080
+---
+# Notification Service
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: kyb-notification-api
+  namespace: business-notifications
+  labels:
+    app: kyb-notification-api
+    tier: business
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: kyb-notification-api
+  template:
+    metadata:
+      labels:
+        app: kyb-notification-api
+    spec:
+      containers:
+      - name: kyb-notification-api
+        image: kyb-notification-api:latest
+        imagePullPolicy: Never
+        ports:
+        - containerPort: 8080
+        env:
+        - name: ASPNETCORE_ENVIRONMENT
+          value: "Development"
+        - name: SERVICE_NAME
+          value: "kyb-notification-api"
+        - name: ConnectionStrings__PostgreSQL
+          value: "Host=postgresql.platform-observability.svc.cluster.local;Database=notifications;Username=onboarding_user;Password=postgres-changeme"
+        - name: ConnectionStrings__Redis
+          value: "redis.platform-observability.svc.cluster.local:6379"
+        - name: Kafka__BootstrapServers
+          value: "kafka.platform-observability.svc.cluster.local:9092"
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "250m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: kyb-notification-api
+  namespace: business-notifications
+spec:
+  selector:
+    app: kyb-notification-api
+  ports:
+  - port: 80
+    targetPort: 8080
+---
+# Checklist Service
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: kyb-checklist-api
+  namespace: business-onboarding
+  labels:
+    app: kyb-checklist-api
+    tier: business
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: kyb-checklist-api
+  template:
+    metadata:
+      labels:
+        app: kyb-checklist-api
+    spec:
+      containers:
+      - name: kyb-checklist-api
+        image: kyb-checklist-api:latest
+        imagePullPolicy: Never
+        ports:
+        - containerPort: 8080
+        env:
+        - name: ASPNETCORE_ENVIRONMENT
+          value: "Development"
+        - name: SERVICE_NAME
+          value: "kyb-checklist-api"
+        - name: ConnectionStrings__PostgreSQL
+          value: "Host=postgresql.platform-observability.svc.cluster.local;Database=checklist;Username=onboarding_user;Password=postgres-changeme"
+        - name: ConnectionStrings__Redis
+          value: "redis.platform-observability.svc.cluster.local:6379"
+        - name: Kafka__BootstrapServers
+          value: "kafka.platform-observability.svc.cluster.local:9092"
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "250m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: kyb-checklist-api
+  namespace: business-onboarding
+spec:
+  selector:
+    app: kyb-checklist-api
+  ports:
+  - port: 80
+    targetPort: 8080
+---
+# Webhook Handler
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: kyb-webhook-handler
+  namespace: business-webhooks
+  labels:
+    app: kyb-webhook-handler
+    tier: business
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: kyb-webhook-handler
+  template:
+    metadata:
+      labels:
+        app: kyb-webhook-handler
+    spec:
+      containers:
+      - name: kyb-webhook-handler
+        image: kyb-webhook-handler:latest
+        imagePullPolicy: Never
+        ports:
+        - containerPort: 8080
+        env:
+        - name: ASPNETCORE_ENVIRONMENT
+          value: "Development"
+        - name: SERVICE_NAME
+          value: "kyb-webhook-handler"
+        - name: ConnectionStrings__PostgreSQL
+          value: "Host=postgresql.platform-observability.svc.cluster.local;Database=webhooks;Username=onboarding_user;Password=postgres-changeme"
+        - name: ConnectionStrings__Redis
+          value: "redis.platform-observability.svc.cluster.local:6379"
+        - name: Kafka__BootstrapServers
+          value: "kafka.platform-observability.svc.cluster.local:9092"
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "250m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: kyb-webhook-handler
+  namespace: business-webhooks
+spec:
+  selector:
+    app: kyb-webhook-handler
+  ports:
+  - port: 80
+    targetPort: 8080
+---
+# Projections API
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: kyb-projections-api
+  namespace: business-readmodel
+  labels:
+    app: kyb-projections-api
+    tier: business
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: kyb-projections-api
+  template:
+    metadata:
+      labels:
+        app: kyb-projections-api
+    spec:
+      containers:
+      - name: kyb-projections-api
+        image: kyb-projections-api:latest
+        imagePullPolicy: Never
+        ports:
+        - containerPort: 8080
+        env:
+        - name: ASPNETCORE_ENVIRONMENT
+          value: "Development"
+        - name: SERVICE_NAME
+          value: "kyb-projections-api"
+        - name: ConnectionStrings__PostgreSQL
+          value: "Host=postgresql.platform-observability.svc.cluster.local;Database=projections;Username=onboarding_user;Password=postgres-changeme"
+        - name: ConnectionStrings__Redis
+          value: "redis.platform-observability.svc.cluster.local:6379"
+        - name: Kafka__BootstrapServers
+          value: "kafka.platform-observability.svc.cluster.local:9092"
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "250m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: kyb-projections-api
+  namespace: business-readmodel
+spec:
+  selector:
+    app: kyb-projections-api
+  ports:
+  - port: 80
+    targetPort: 8080

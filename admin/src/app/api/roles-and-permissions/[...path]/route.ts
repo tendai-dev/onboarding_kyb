@@ -1,0 +1,200 @@
+import { NextRequest, NextResponse } from 'next/server';
+import { auth } from '@/lib/auth';
+import { logger } from '@/lib/logger';
+
+// Route segment config
+export const _dynamic = 'force-dynamic';
+export const _runtime = 'nodejs';
+
+/**
+ * Rules and Permissions API route - routes through centralized proxy for BFF pattern
+ * All token handling is done by the proxy, ensuring sessionId never exposed to client
+ */
+async function forwardRequest(request: NextRequest, method: string) {
+  try {
+    const session = await auth();
+    const pathname = request.nextUrl.pathname;
+
+    // Extract the path after /api/rules-and-permissions
+    // For /api/rules-and-permissions/requirements -> /requirements
+    // For /api/rules-and-permissions/entity-types -> /entity-types
+    let pathAfterBase = pathname.replace('/api/rules-and-permissions', '');
+    // Ensure path starts with / if not empty
+    if (pathAfterBase && !pathAfterBase.startsWith('/')) {
+      pathAfterBase = '/' + pathAfterBase;
+    }
+    // If empty, keep it empty (don't add /)
+    if (!pathAfterBase) {
+      pathAfterBase = '';
+    }
+
+    const searchParams = request.nextUrl.searchParams;
+    const queryString = searchParams.toString();
+
+    // Determine the backend target URL directly (bypassing internal proxy call)
+    // All entity config endpoints go to unified API at port 8001
+    const UNIFIED_API_TARGET =
+      process.env.PROXY_TARGET ||
+      process.env.ONBOARDING_TARGET ||
+      'http://localhost:8001';
+    let backendPath: string;
+    if (pathAfterBase.startsWith('/roles') || pathAfterBase.startsWith('/users')) {
+      // Roles and users go to unified API at /api/v1/roles and /api/v1/users
+      backendPath = `/api/v1${pathAfterBase}${queryString ? `?${queryString}` : ''}`;
+    } else {
+      // Other endpoints use /api/v1 prefix
+      backendPath = `/api/v1${pathAfterBase}${queryString ? `?${queryString}` : ''}`;
+    }
+    const backendUrl = `${UNIFIED_API_TARGET}${backendPath}`;
+
+    logger.debug('[Rules-and-Permissions Route] Forwarding', {
+      originalPath: pathname,
+      pathAfterBase,
+      backendUrl,
+      method,
+    });
+
+    // Prepare headers
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+    };
+
+    // Add user identification headers (proxy will inject token from Redis)
+    if (session?.user) {
+      const user = session.user as Record<string, unknown>;
+      if (user.email) headers['X-User-Email'] = String(user.email);
+      if (user.name) headers['X-User-Name'] = String(user.name);
+      if (user.id) headers['X-User-Id'] = String(user.id);
+      if (user.role) headers['X-User-Role'] = String(user.role);
+    }
+
+    // Get request body if present (but not for DELETE/HEAD which don't have bodies)
+    let body: string | undefined;
+    if (method !== 'GET' && method !== 'DELETE' && method !== 'HEAD') {
+      try {
+        body = await request.text();
+      } catch {
+        // No body
+      }
+    }
+
+    // Forward request directly to backend (bypassing proxy route to avoid internal fetch issues)
+    // Get access token from session for authentication
+    let accessToken: string | null = null;
+    if (session?.user?.id) {
+      try {
+        const { getAccountTokensFromNextAuth } = await import('@/lib/redis-session');
+        const accountTokens = await getAccountTokensFromNextAuth(
+          session.user.id,
+          'azure-ad'
+        );
+        if (accountTokens?.accessToken) {
+          accessToken = accountTokens.accessToken;
+        }
+      } catch (error) {
+        logger.debug('[Rules-and-Permissions Route] Could not get access token', {
+          error,
+        });
+      }
+    }
+
+    // Add authorization header if we have a token
+    if (accessToken) {
+      headers['authorization'] = `Bearer ${accessToken}`;
+      headers['Authorization'] = `Bearer ${accessToken}`;
+    }
+
+    logger.debug('[Rules-and-Permissions Route] Making backend request', {
+      backendUrl,
+      method,
+      hasBody: !!body,
+      hasToken: !!accessToken,
+    });
+
+    const response = await fetch(backendUrl, {
+      method,
+      headers,
+      body: body || undefined,
+      cache: 'no-store',
+      signal: AbortSignal.timeout(30000), // 30 second timeout
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      let errorMessage = `Rules and Permissions API request failed: ${response.status} ${response.statusText}`;
+
+      try {
+        const errorJson = JSON.parse(errorText);
+        if (errorJson.message) {
+          errorMessage = errorJson.message;
+        } else if (errorJson.error) {
+          errorMessage = errorJson.error;
+        }
+      } catch {
+        if (errorText && errorText.trim().length > 0) {
+          errorMessage =
+            errorText.length > 200 ? errorText.substring(0, 200) + '...' : errorText;
+        }
+      }
+
+      return NextResponse.json({ error: errorMessage }, { status: response.status });
+    }
+
+    // Handle 204 No Content responses
+    if (response.status === 204) {
+      return new NextResponse(null, { status: 204 });
+    }
+
+    const data = await response.json();
+    return NextResponse.json(data);
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    // Log the error for debugging
+    if (process.env.NODE_ENV === 'development') {
+      console.error('[Rules-and-Permissions Route] Error:', {
+        error: errorMessage,
+        pathname: request.nextUrl.pathname,
+        method,
+      });
+    }
+    return NextResponse.json(
+      { error: 'Backend request failed', details: errorMessage },
+      { status: 502 }
+    );
+  }
+}
+
+export async function GET(request: NextRequest) {
+  logger.debug('[Rules-and-Permissions Route] GET handler called', {
+    pathname: request.nextUrl.pathname,
+  });
+  return forwardRequest(request, 'GET');
+}
+
+export async function POST(request: NextRequest) {
+  return forwardRequest(request, 'POST');
+}
+
+export async function PUT(request: NextRequest) {
+  return forwardRequest(request, 'PUT');
+}
+
+export async function PATCH(request: NextRequest) {
+  return forwardRequest(request, 'PATCH');
+}
+
+export async function DELETE(request: NextRequest) {
+  return forwardRequest(request, 'DELETE');
+}
+
+export async function OPTIONS(_request: NextRequest) {
+  return new NextResponse(null, {
+    status: 200,
+    headers: {
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, PATCH, OPTIONS',
+      'Access-Control-Allow-Headers':
+        'Content-Type, Authorization, X-User-Id, X-User-Email, X-User-Name, X-User-Role',
+    },
+  });
+}
