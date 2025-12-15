@@ -47,10 +47,11 @@ public class ChecklistController : ControllerBase
 
     /// <summary>
     /// List all checklists
+    /// SECURITY: Requires authentication
     /// </summary>
     [HttpGet]
     [ProducesResponseType(typeof(IEnumerable<ChecklistDto>), StatusCodes.Status200OK)]
-    [AllowAnonymous]
+    [Microsoft.AspNetCore.Authorization.Authorize] // SECURITY FIX: Require authentication
     public async Task<IActionResult> GetAllChecklists()
     {
         var query = new GetAllChecklistsQuery();

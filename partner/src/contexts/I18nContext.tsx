@@ -465,7 +465,7 @@ export function I18nProvider({ children }: { children: ReactNode }) {
   }, []);
 
   // Save language to localStorage
-  const handleSetLanguage = (_lang: Record<string, unknown>) => {
+  const handleSetLanguage = (lang: SupportedLanguage) => {
     setLanguage(lang);
     localStorage.setItem('mukuru-language', lang);
 

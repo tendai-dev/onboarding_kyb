@@ -17,7 +17,7 @@ import { Button, Typography, Tag, MukuruLogo } from '@/lib/mukuruImports';
 import { FiArrowRight, FiSave, FiEye, FiZap, FiMessageSquare } from 'react-icons/fi';
 import { motion } from 'framer-motion';
 import Link from 'next/link';
-import { PartnerNavbar } from '@/components/PartnerNavbar';
+import { PartnerHeader } from '@/components/PartnerHeader';
 import { useState, useEffect, useMemo } from 'react';
 import { useFormPersistence } from '@/hooks/useFormPersistence';
 import {
@@ -30,7 +30,7 @@ import { EnhancedDynamicForm } from '@/components/EnhancedDynamicForm';
 import { ProgressTracking } from '@/components/ProgressTracking';
 import { EnhancedContextualMessaging } from '@/components/EnhancedContextualMessaging';
 import { OCRIntegration } from '@/components/OCRIntegration';
-import { getAuthUser, getInitials, logout } from '@/lib/auth/session';
+import { getAuthUser, getInitials } from '@/lib/auth/session';
 import {
   entityConfigApiService,
   EntityType,
@@ -1715,11 +1715,12 @@ export default function EnhancedNewPartnerApplicationPage() {
 
         // Store all dynamic requirement-based fields
         // IMPORTANT: Use requirement.code as the key (normalized to lowercase) to match entity config
+        // ALSO store mapped fields in metadata for display purposes (they're also in business/applicant objects)
         Object.keys(formData).forEach((key) => {
           const lowerKey = key.toLowerCase();
           const value = formData[key];
 
-          // Skip already mapped fields and empty values
+          // Skip empty values only
           // Note: File upload objects are preserved (they contain fileName, googleDriveUrl, etc.)
           const isEmpty =
             value === undefined ||
@@ -1728,10 +1729,11 @@ export default function EnhancedNewPartnerApplicationPage() {
             (typeof value === 'string' && value.trim() === '') ||
             (Array.isArray(value) && value.length === 0);
 
-          if (!mappedFields.has(lowerKey) && !isEmpty) {
-            // Store with requirement code as key (lowercase version of requirement.code)
+          if (!isEmpty) {
+            // Store ALL non-empty fields with requirement code as key (lowercase version of requirement.code)
             // This ensures consistency: entity config uses UPPERCASE codes, we store lowercase in metadata
             // File uploads are stored as objects with fileName, googleDriveUrl, fileId, etc.
+            // NOTE: We now store ALL fields including mapped ones, so they're available for display
             metadata[lowerKey] = value;
           }
         });
@@ -2191,8 +2193,31 @@ export default function EnhancedNewPartnerApplicationPage() {
           console.info(
             '⏳ Waiting 4 seconds before redirect to allow background operations to complete...'
           );
-          setTimeout(() => {
+          setTimeout(async () => {
             console.info('✅ Redirecting to dashboard now');
+            
+            // Send welcome email notification (non-blocking)
+            try {
+              const { sendWelcomeNotification } = await import('@/lib/notificationService');
+              const applicantName = applicationData.applicant?.first_name && applicationData.applicant?.last_name
+                ? `${applicationData.applicant.first_name} ${applicationData.applicant.last_name}`.trim()
+                : applicationData.applicant?.first_name || applicationData.applicant?.last_name || currentUser?.name || 'Valued Partner';
+              
+              sendWelcomeNotification({
+                to: finalUserEmail || userEmail || currentUser?.email || '',
+                applicantName: applicantName,
+                caseId: caseGuid || createdCaseId,
+                caseNumber: createdCaseId,
+                link: `${window.location.origin}/partner/dashboard`,
+              }).catch((error) => {
+                // Log error but don't block user flow
+                console.warn('Failed to send welcome email:', error);
+              });
+            } catch (error) {
+              // Log error but don't block user flow
+              console.warn('Error importing notification service:', error);
+            }
+            
             window.location.href = `/partner/dashboard?submitted=true&caseId=${createdCaseId}`;
           }, 4000); // Increased from 2s to 4s to see any late errors
           return;
@@ -2552,79 +2577,7 @@ export default function EnhancedNewPartnerApplicationPage() {
   if (!selectedEntityType) {
     return (
       <Box minH="100vh" bg="mukuru.background.light">
-        <Box bg="white" borderBottom="1px" borderColor="mukuru.grey.light" py="4">
-          <Container maxW="7xl">
-            <Flex justify="space-between" align="center">
-              <HStack gap="4">
-                <Link href="/partner/dashboard">
-                  <Button variant="primary" size="sm" className="mukuru-primary-button">
-                    ← Back
-                  </Button>
-                </Link>
-                <MukuruLogo height="32px" />
-              </HStack>
-              <HStack gap="4">
-                <Link href="/partner/profile">
-                  <Button variant="ghost" size="sm">
-                    <Typography
-                      color="mukuru.text.primary"
-                      fontSize="sm"
-                      fontWeight="medium"
-                    >
-                      Profile
-                    </Typography>
-                  </Button>
-                </Link>
-                <Link href="/partner/messages">
-                  <Button variant="ghost" size="sm">
-                    <Typography
-                      color="mukuru.text.primary"
-                      fontSize="sm"
-                      fontWeight="medium"
-                    >
-                      Messages
-                    </Typography>
-                  </Button>
-                </Link>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => logout('http://localhost:3000/')}
-                >
-                  <Typography
-                    color="mukuru.text.primary"
-                    fontSize="sm"
-                    fontWeight="medium"
-                  >
-                    Logout
-                  </Typography>
-                </Button>
-                <Link href="/partner/application/enhanced">
-                  <Button
-                    size="sm"
-                    variant="primary"
-                    leftIcon={<Icon as={FiArrowRight} />}
-                    bg="mukuru.buttons.primary"
-                    _hover={{ bg: 'mukuru.buttons.inactive.orange' }}
-                  >
-                    <Typography
-                      color="mukuru.text.inverse"
-                      fontSize="sm"
-                      fontWeight="medium"
-                    >
-                      New Application
-                    </Typography>
-                  </Button>
-                </Link>
-                <Circle size="40px" bg="mukuru.prim" color="white">
-                  <Typography fontSize="sm" fontWeight="bold" color="white">
-                    {getInitials(currentUser.name)}
-                  </Typography>
-                </Circle>
-              </HStack>
-            </Flex>
-          </Container>
-        </Box>
+        <PartnerHeader />
         <Container maxW="7xl" py="12">
           <VStack gap="8" align="stretch">
             <VStack gap="4" align="center" textAlign="center">
@@ -2853,7 +2806,7 @@ export default function EnhancedNewPartnerApplicationPage() {
 
   return (
     <Box minH="100vh" bg="mukuru.background.light">
-      <PartnerNavbar currentUser={{ name: currentUser.name, email: currentUser.email }} />
+      <PartnerHeader />
       <Container maxW="6xl" py="8">
         <VStack gap="8" align="stretch">
           {toastState && (

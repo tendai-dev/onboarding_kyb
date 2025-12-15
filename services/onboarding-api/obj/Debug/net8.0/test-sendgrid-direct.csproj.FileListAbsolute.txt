@@ -1,0 +1,6 @@
+/Users/mukurusystemsadministrator/Desktop/Archive/services/onboarding-api/obj/Debug/net8.0/test-sendgrid-direct.csproj.AssemblyReference.cache
+/Users/mukurusystemsadministrator/Desktop/Archive/services/onboarding-api/obj/Debug/net8.0/test-sendgrid-direct.GeneratedMSBuildEditorConfig.editorconfig
+/Users/mukurusystemsadministrator/Desktop/Archive/services/onboarding-api/obj/Debug/net8.0/test-sendgrid-direct.AssemblyInfoInputs.cache
+/Users/mukurusystemsadministrator/Desktop/Archive/services/onboarding-api/obj/Debug/net8.0/test-sendgrid-direct.AssemblyInfo.cs
+/Users/mukurusystemsadministrator/Desktop/Archive/services/onboarding-api/obj/Debug/net8.0/test-sendgrid-direct.csproj.CoreCompileInputs.cache
+/Users/mukurusystemsadministrator/Desktop/Archive/services/onboarding-api/obj/Debug/net8.0/test-sendgrid-direct.sourcelink.json

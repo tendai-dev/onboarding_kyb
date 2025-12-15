@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { NextRequest, NextResponse } from 'next/server';
-import { auth } from '@/lib/auth/session';
+import { auth } from '@/lib/auth';
 
 /**
  * Risk API route - routes through centralized proxy for BFF pattern

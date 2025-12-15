@@ -228,7 +228,17 @@ export default function KYBRequirementsPage() {
       minWidth: '200px',
       render: (value, row) => (
         <VStack align="start" gap="2px">
-          <Typography fontSize="13px" fontWeight="500" color={textColor} style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '100%' }}>
+          <Typography
+            fontSize="13px"
+            fontWeight="500"
+            color={textColor}
+            style={{
+              whiteSpace: 'nowrap',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              maxWidth: '100%',
+            }}
+          >
             {row.displayName}
           </Typography>
           <Typography
@@ -253,7 +263,12 @@ export default function KYBRequirementsPage() {
       width: '20%',
       minWidth: '180px',
       render: (value) => (
-        <Typography fontSize="12px" fontFamily="mono" color={textColor} style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+        <Typography
+          fontSize="12px"
+          fontFamily="mono"
+          color={textColor}
+          style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}
+        >
           {String(value || '')}
         </Typography>
       ),
@@ -265,7 +280,10 @@ export default function KYBRequirementsPage() {
       width: '15%',
       minWidth: '130px',
       render: (value) => (
-        <Tag variant="info" style={{ fontSize: '11px', padding: '2px 8px', whiteSpace: 'nowrap' }}>
+        <Tag
+          variant="info"
+          style={{ fontSize: '11px', padding: '2px 8px', whiteSpace: 'nowrap' }}
+        >
           {String(value || '')}
         </Tag>
       ),
@@ -284,7 +302,9 @@ export default function KYBRequirementsPage() {
             {String(fieldType)}
           </Tag>
         ) : (
-          <Typography fontSize="12px" color="#6B7280">-</Typography>
+          <Typography fontSize="12px" color="#6B7280">
+            -
+          </Typography>
         );
       },
     },
@@ -295,7 +315,10 @@ export default function KYBRequirementsPage() {
       width: '10%',
       minWidth: '80px',
       render: (value) => (
-        <Tag variant={value ? 'success' : 'inactive'} style={{ fontSize: '11px', padding: '2px 8px' }}>
+        <Tag
+          variant={value ? 'success' : 'inactive'}
+          style={{ fontSize: '11px', padding: '2px 8px' }}
+        >
           {value ? 'Active' : 'Inactive'}
         </Tag>
       ),
@@ -422,7 +445,9 @@ export default function KYBRequirementsPage() {
             </VStack>
             <Link href="/requirements/create">
               <Button variant="primary" size="md">
-                <IconWrapper><FiPlus size={16} /></IconWrapper>
+                <IconWrapper>
+                  <FiPlus size={16} />
+                </IconWrapper>
                 New Requirement
               </Button>
             </Link>
@@ -436,15 +461,14 @@ export default function KYBRequirementsPage() {
               <AlertBar status="error" title="Error" description={error} />
             </Box>
           )}
-          <TabsRoot 
-            value={statusFilter} 
+          <TabsRoot
+            value={statusFilter}
             onValueChange={(details) => setStatusFilter(details.value)}
           >
             <TabsList>
               {(['all', 'active', 'inactive'] as const).map((filter) => {
-                const label = filter === 'all' ? 'All' 
-                  : filter === 'active' ? 'Active' 
-                  : 'Inactive';
+                const label =
+                  filter === 'all' ? 'All' : filter === 'active' ? 'Active' : 'Inactive';
                 return (
                   <TabsTrigger key={filter} value={filter}>
                     {label}
@@ -457,11 +481,11 @@ export default function KYBRequirementsPage() {
         </Box>
 
         {/* Table Section - Full Width */}
-        <Box 
-          flex="1" 
-          minH="0" 
-          px="24px" 
-          py="16px" 
+        <Box
+          flex="1"
+          minH="0"
+          px="24px"
+          py="16px"
           bg={bgColor}
           display="flex"
           flexDirection="column"
@@ -476,7 +500,7 @@ export default function KYBRequirementsPage() {
             </Box>
           </Flex>
 
-          <Box 
+          <Box
             flex="1"
             minH="0"
             bg={cardBg}
@@ -488,7 +512,7 @@ export default function KYBRequirementsPage() {
             flexDirection="column"
             className="requirements-table-card"
           >
-              <style>{`
+            <style>{`
                 /* Make DataTable fill container */
                 .requirements-table-card > div {
                   height: 100% !important;
@@ -634,17 +658,17 @@ export default function KYBRequirementsPage() {
                   text-overflow: ellipsis !important;
                 }
               `}</style>
-              <DataTable
-                key={`requirements-${statusFilter}-${searchQuery}-${refreshKey}`}
-                data={filteredRequirements as unknown as Record<string, unknown>[]}
-                columns={columns as unknown as ColumnConfig[]}
-                emptyState={{
-                  message:
-                    searchQuery || statusFilter !== 'all'
-                      ? 'No matching requirements found. Try adjusting your search criteria or filters.'
-                      : 'No requirements yet. Get started by creating your first requirement.',
-                }}
-              />
+            <DataTable
+              key={`requirements-${statusFilter}-${searchQuery}-${refreshKey}`}
+              data={filteredRequirements as unknown as Record<string, unknown>[]}
+              columns={columns as unknown as ColumnConfig[]}
+              emptyState={{
+                message:
+                  searchQuery || statusFilter !== 'all'
+                    ? 'No matching requirements found. Try adjusting your search criteria or filters.'
+                    : 'No requirements yet. Get started by creating your first requirement.',
+              }}
+            />
           </Box>
         </Box>
       </Box>

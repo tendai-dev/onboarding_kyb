@@ -5,30 +5,39 @@ using OnboardingApi.Application.Document.Commands;
 using OnboardingApi.Application.Document.Interfaces;
 using OnboardingApi.Application.Document.Queries;
 using OnboardingApi.Domain.Document.ValueObjects;
+using OnboardingApi.Application.Interfaces;
+using System.Linq;
+using DomainDocument = OnboardingApi.Domain.Document.Aggregates.Document;
 
 namespace OnboardingApi.Presentation.Controllers.Document;
 
 [ApiController]
 [Route("api/v1/documents")]
 [Produces("application/json")]
-[AllowAnonymous]
+[Microsoft.AspNetCore.Authorization.Authorize] // SECURITY FIX: Require authentication for document operations
 public class DocumentsController : ControllerBase
 {
     private readonly IMediator _mediator;
     private readonly IDocumentRepository _repository;
     private readonly IObjectStorage _objectStorage;
     private readonly ILogger<DocumentsController> _logger;
+    private readonly ICurrentUser _currentUser;
+    private readonly IOnboardingCaseRepository _caseRepository;
 
     public DocumentsController(
         IMediator mediator, 
         IDocumentRepository repository, 
         IObjectStorage objectStorage, 
-        ILogger<DocumentsController> logger)
+        ILogger<DocumentsController> logger,
+        ICurrentUser currentUser,
+        IOnboardingCaseRepository caseRepository)
     {
         _mediator = mediator;
         _repository = repository;
         _objectStorage = objectStorage;
         _logger = logger;
+        _currentUser = currentUser;
+        _caseRepository = caseRepository;
     }
 
     /// <summary>
@@ -88,15 +97,71 @@ public class DocumentsController : ControllerBase
                 return BadRequest(new { error = "Invalid PartnerId", message = "PartnerId is required and must be a valid GUID." });
             }
 
+            // SECURITY FIX: Validate file size (10MB limit)
+            const long maxFileSize = 10 * 1024 * 1024; // 10MB
+            if (request.File.Length > maxFileSize)
+            {
+                _logger.LogWarning("Document upload failed: File size {Size} exceeds maximum {MaxSize}", request.File.Length, maxFileSize);
+                return BadRequest(new { error = "File size exceeds maximum allowed size", message = $"File size must be less than {maxFileSize / (1024 * 1024)}MB." });
+            }
+
+            // SECURITY FIX: Validate file name
+            if (string.IsNullOrWhiteSpace(request.File.FileName) || request.File.FileName.Length > 255)
+            {
+                _logger.LogWarning("Document upload failed: Invalid file name");
+                return BadRequest(new { error = "Invalid file name", message = "File name is required and must be less than 255 characters." });
+            }
+
+            // SECURITY FIX: Sanitize file name to prevent path traversal
+            var sanitizedFileName = System.IO.Path.GetFileName(request.File.FileName);
+            if (sanitizedFileName != request.File.FileName || sanitizedFileName.Contains(".."))
+            {
+                _logger.LogWarning("Document upload failed: Potentially malicious file name {FileName}", request.File.FileName);
+                return BadRequest(new { error = "Invalid file name", message = "File name contains invalid characters." });
+            }
+
+            // SECURITY FIX: Validate file content type
+            var allowedContentTypes = new[] { "application/pdf", "image/jpeg", "image/png", "image/jpg", "application/msword", "application/vnd.openxmlformats-officedocument.wordprocessingml.document" };
+            if (!allowedContentTypes.Contains(request.File.ContentType?.ToLowerInvariant()))
+            {
+                _logger.LogWarning("Document upload failed: Invalid content type {ContentType}", request.File.ContentType);
+                return BadRequest(new { error = "Invalid file type", message = $"File type {request.File.ContentType} is not allowed. Allowed types: PDF, JPEG, PNG, DOC, DOCX." });
+            }
+
+            // SECURITY FIX: Validate file extension matches content type
+            var fileExtension = System.IO.Path.GetExtension(request.File.FileName)?.ToLowerInvariant();
+            var extensionContentTypeMap = new Dictionary<string, string[]>
+            {
+                { ".pdf", new[] { "application/pdf" } },
+                { ".jpg", new[] { "image/jpeg", "image/jpg" } },
+                { ".jpeg", new[] { "image/jpeg", "image/jpg" } },
+                { ".png", new[] { "image/png" } },
+                { ".doc", new[] { "application/msword" } },
+                { ".docx", new[] { "application/vnd.openxmlformats-officedocument.wordprocessingml.document" } }
+            };
+            if (!string.IsNullOrEmpty(fileExtension) && extensionContentTypeMap.ContainsKey(fileExtension))
+            {
+                if (!extensionContentTypeMap[fileExtension].Contains(request.File.ContentType?.ToLowerInvariant()))
+                {
+                    _logger.LogWarning("Document upload failed: Content type {ContentType} does not match extension {Extension}", request.File.ContentType, fileExtension);
+                    return BadRequest(new { error = "File type mismatch", message = "File extension does not match the file content type." });
+                }
+            }
+
+            // SECURITY FIX: Mask PII in logs
             _logger.LogInformation("Processing document upload: FileName={FileName}, CaseId={CaseId}, PartnerId={PartnerId}, Type={Type}, Size={Size}",
-                request.File.FileName, request.CaseId, request.PartnerId, request.Type, request.File.Length);
+                sanitizedFileName, 
+                Infrastructure.Utilities.LoggingExtensions.MaskGuid(request.CaseId), 
+                Infrastructure.Utilities.LoggingExtensions.MaskGuid(request.PartnerId), 
+                request.Type, 
+                request.File.Length);
 
             var command = new UploadDocumentCommand
             {
                 CaseId = request.CaseId,
                 PartnerId = request.PartnerId,
                 Type = request.Type,
-                FileName = request.File.FileName,
+                FileName = sanitizedFileName, // SECURITY FIX: Use sanitized file name
                 ContentType = request.File.ContentType,
                 FileStream = request.File.OpenReadStream(),
                 FileSizeBytes = request.File.Length,
@@ -115,7 +180,7 @@ public class DocumentsController : ControllerBase
 
             var result = await _mediator.Send(command);
             _logger.LogInformation("Document uploaded successfully: DocumentId={DocumentId}, FileName={FileName}",
-                result.DocumentId, request.File.FileName);
+                result.DocumentId, sanitizedFileName);
             return Ok(result);
         }
         catch (Exception ex)
@@ -129,14 +194,17 @@ public class DocumentsController : ControllerBase
                 _logger.LogError(ex.InnerException, "Inner exception: {Message}", ex.InnerException.Message);
             }
             
-            // Return detailed error in development, generic in production
+            // SECURITY FIX: Never expose stack traces or detailed errors to clients
             var isDevelopment = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") == "Development" ||
                                Environment.GetEnvironmentVariable("DOTNET_ENVIRONMENT") == "Development";
             
-            // Return error in format expected by frontend
+            // Log full error details server-side only
+            _logger.LogError(ex, "Error uploading document: {Message}", ex.Message);
+            
+            // Return error in format expected by frontend - generic message only
             var errorResponse = new { 
-                error = isDevelopment ? ex.Message : "Internal server error",
-                message = isDevelopment ? ex.Message : "An error occurred while processing the document upload.",
+                error = "Internal server error", // SECURITY: Always generic, never expose details
+                message = "An error occurred while processing the document upload. Please try again or contact support.",
                 details = isDevelopment ? new {
                     exceptionType = ex.GetType().Name,
                     message = ex.Message,
@@ -151,6 +219,7 @@ public class DocumentsController : ControllerBase
 
     /// <summary>
     /// List all documents (with pagination)
+    /// SECURITY: Users can only see their own documents unless admin/reviewer
     /// </summary>
     [HttpGet]
     [ProducesResponseType(typeof(PagedDocumentsResult), StatusCodes.Status200OK)]
@@ -158,9 +227,52 @@ public class DocumentsController : ControllerBase
     {
         try
         {
+            // SECURITY FIX: Filter by user's cases unless admin/reviewer
+            var userEmail = _currentUser.Email;
+            if (!string.IsNullOrWhiteSpace(userEmail) && !User.IsInRole("admin") && !User.IsInRole("reviewer"))
+            {
+                var userPartnerId = OnboardingApi.Infrastructure.Utilities.PartnerIdGenerator.GenerateFromEmail(userEmail);
+                // Get all case IDs for this user
+                var userCases = await _caseRepository.GetByPartnerIdAsync(userPartnerId);
+                var userCaseIdSet = userCases.Select(c => c.Id).ToHashSet();
+                
+                if (userCaseIdSet.Count == 0)
+                {
+                    // User has no cases, return empty result
+                    return Ok(new PagedDocumentsResult
+                    {
+                        Items = new List<DocumentDto>(),
+                        TotalCount = 0,
+                        Skip = skip,
+                        Take = take
+                    });
+                }
+                
+                // Get documents for user's cases only
+                var userDocuments = new List<DomainDocument>();
+                foreach (var caseId in userCaseIdSet)
+                {
+                    var caseDocuments = await _repository.GetByCaseIdAsync(caseId);
+                    userDocuments.AddRange(caseDocuments);
+                }
+                
+                // Apply pagination
+                var paginatedDocuments = userDocuments.Skip(skip).Take(take).ToList();
+                var userResult = new PagedDocumentsResult
+                {
+                    Items = paginatedDocuments.Select(d => DocumentQueryHelpers.MapToDto(d)).ToList(),
+                    TotalCount = userDocuments.Count,
+                    Skip = skip,
+                    Take = take
+                };
+                
+                return Ok(userResult);
+            }
+            
+            // Admin/reviewer can see all documents
             var query = new GetAllDocumentsQuery(skip, take);
-            var result = await _mediator.Send(query);
-            return Ok(result);
+            var adminResult = await _mediator.Send(query);
+            return Ok(adminResult);
         }
         catch (Exception ex)
         {
@@ -174,10 +286,29 @@ public class DocumentsController : ControllerBase
     /// </summary>
     [HttpGet("case/{caseId}")]
     [ProducesResponseType(typeof(List<DocumentDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
     public async Task<IActionResult> ListByCase(Guid caseId)
     {
         try
         {
+            // SECURITY FIX: Verify case ownership before listing documents
+            var caseEntity = await _caseRepository.GetByIdAsync(caseId);
+            if (caseEntity != null)
+            {
+                var userEmail = _currentUser.Email;
+                if (!string.IsNullOrWhiteSpace(userEmail))
+                {
+                    var expectedPartnerId = OnboardingApi.Infrastructure.Utilities.PartnerIdGenerator.GenerateFromEmail(userEmail);
+                    if (caseEntity.PartnerId != expectedPartnerId && !User.IsInRole("admin") && !User.IsInRole("reviewer"))
+                    {
+                        _logger.LogWarning("Document list denied - case ownership mismatch. User: {Email}, Case PartnerId: {CasePartnerId}",
+                            Infrastructure.Utilities.LoggingExtensions.MaskEmail(userEmail),
+                            Infrastructure.Utilities.LoggingExtensions.MaskGuid(caseEntity.PartnerId));
+                        return StatusCode(403, new { error = "Access denied", message = "This case does not belong to your account" });
+                    }
+                }
+            }
+
             var query = new GetDocumentsByCaseQuery(caseId);
             var result = await _mediator.Send(query);
             return Ok(result);
@@ -195,6 +326,7 @@ public class DocumentsController : ControllerBase
     [HttpGet("{documentId}")]
     [ProducesResponseType(typeof(DocumentDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
     public async Task<IActionResult> GetById(Guid documentId)
     {
         try
@@ -204,6 +336,24 @@ public class DocumentsController : ControllerBase
             
             if (result == null)
                 return NotFound(new { message = $"Document {documentId} not found" });
+
+            // SECURITY FIX: Verify document ownership through case ownership
+            var caseEntity = await _caseRepository.GetByIdAsync(result.CaseId);
+            if (caseEntity != null)
+            {
+                var userEmail = _currentUser.Email;
+                if (!string.IsNullOrWhiteSpace(userEmail))
+                {
+                    var expectedPartnerId = OnboardingApi.Infrastructure.Utilities.PartnerIdGenerator.GenerateFromEmail(userEmail);
+                    if (caseEntity.PartnerId != expectedPartnerId && !User.IsInRole("admin") && !User.IsInRole("reviewer"))
+                    {
+                        _logger.LogWarning("Document access denied - ownership mismatch. User: {Email}, Document CaseId: {CaseId}",
+                            Infrastructure.Utilities.LoggingExtensions.MaskEmail(userEmail),
+                            Infrastructure.Utilities.LoggingExtensions.MaskGuid(result.CaseId));
+                        return StatusCode(403, new { error = "Access denied", message = "This document does not belong to your account" });
+                    }
+                }
+            }
 
             return Ok(result);
         }
@@ -217,11 +367,18 @@ public class DocumentsController : ControllerBase
     /// <summary>
     /// Direct download endpoint - streams file directly without presigned URL
     /// </summary>
+    /// <summary>
+    /// Direct download endpoint - uses signed URL key for security
+    /// SECURITY: Key should be a time-limited signed token, not a simple key
+    /// </summary>
     [HttpGet("direct")]
     [HttpHead("direct")]
     [ProducesResponseType(typeof(FileStreamResult), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    [AllowAnonymous]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    // SECURITY FIX: Consider implementing signed URL validation instead of AllowAnonymous
+    // For now, require authentication or implement proper signed URL validation
+    [Microsoft.AspNetCore.Authorization.Authorize] // SECURITY FIX: Require authentication
     public async Task<IActionResult> DirectDownload([FromQuery] string key)
     {
         try

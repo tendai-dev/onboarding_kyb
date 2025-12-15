@@ -27,24 +27,29 @@ public static class AuthenticationConfiguration
         {
             var keycloakUrl = configuration["Authentication:Keycloak:Authority"] ?? "http://keycloak.158.220.110.88.nip.io/realms/kyb-platform";
             
+            // In development, make authentication more lenient
+            var isDevelopment = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") == "Development" ||
+                                 configuration.GetValue<string>("ASPNETCORE_ENVIRONMENT") == "Development";
+            
             options.Authority = keycloakUrl;
             options.Audience = configuration["Authentication:Keycloak:Audience"] ?? "account";
-            options.RequireHttpsMetadata = false; // For development
+            // SECURITY FIX: Require HTTPS metadata in production
+            options.RequireHttpsMetadata = !isDevelopment;
             options.SaveToken = true;
             
             // Configure metadata address to use internal service for key retrieval
             options.MetadataAddress = "http://keycloak.keycloak.svc.cluster.local:8080/realms/kyb-platform/.well-known/openid_configuration";
             
-            // In development, make authentication more lenient
-            var isDevelopment = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") == "Development" ||
-                                 configuration.GetValue<string>("ASPNETCORE_ENVIRONMENT") == "Development";
-            
+            // SECURITY FIX: Always validate in production, be lenient only in development
+            var audience = configuration["Authentication:Keycloak:Audience"] ?? "account";
             options.TokenValidationParameters = new TokenValidationParameters
             {
                 ValidateIssuer = true,
-                ValidateAudience = false, // Keycloak doesn't always include audience
-                ValidateLifetime = !isDevelopment, // In development, don't validate lifetime if development headers are present
-                ValidateIssuerSigningKey = !isDevelopment, // In development, be more lenient
+                ValidIssuer = keycloakUrl,
+                ValidateAudience = !isDevelopment, // SECURITY FIX: Always validate audience in production
+                ValidAudience = audience,
+                ValidateLifetime = true, // SECURITY FIX: Always validate lifetime
+                ValidateIssuerSigningKey = true, // SECURITY FIX: Always validate signing key
                 ClockSkew = TimeSpan.FromMinutes(5),
                 NameClaimType = ClaimTypes.Name,
                 RoleClaimType = ClaimTypes.Role

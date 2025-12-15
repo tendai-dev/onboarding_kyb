@@ -27,6 +27,8 @@ public interface IWorkItemRepository
     Task DetachIfTrackedAsync(Guid workItemId, CancellationToken cancellationToken = default);
     Task<int> UpdateAssignmentDirectlyAsync(Guid workItemId, Guid assignedToUserId, string assignedToUserName, string assignedByUserId, CancellationToken cancellationToken = default);
     Task<int> UpdateStatusDirectlyAsync(Guid workItemId, WorkItemStatus newStatus, string updatedBy, CancellationToken cancellationToken = default);
+    Task<int> CompleteDirectlyAsync(Guid workItemId, string completedBy, CancellationToken cancellationToken = default);
+    Task<int> ApproveDirectlyAsync(Guid workItemId, Guid approverId, string approverName, CancellationToken cancellationToken = default);
     Task AddHistoryEntryAsync(Guid workItemId, string action, string performedBy, string status, CancellationToken cancellationToken = default);
     
     // Step review methods

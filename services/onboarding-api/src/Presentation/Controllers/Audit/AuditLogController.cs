@@ -118,12 +118,14 @@ public class AuditLogController : ControllerBase
 
     /// <summary>
     /// Search audit logs with criteria
+    /// SECURITY: Requires admin authentication - audit logs contain sensitive information
     /// </summary>
     [HttpPost("search")]
     [ProducesResponseType(typeof(AuditLogSearchResult), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-    [AllowAnonymous]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [Microsoft.AspNetCore.Authorization.Authorize(Policy = "AdminPolicy")] // SECURITY FIX: Require admin role for audit logs
     public async Task<IActionResult> SearchAuditLogs([FromBody] AuditLogSearchRequest request)
     {
         var criteria = new AuditLogSearchCriteria

@@ -4,7 +4,7 @@ import { Container, VStack, HStack, Flex, Box, Avatar, Circle } from '@chakra-ui
 import { Button, Typography, Tag, MukuruLogo } from '@/lib/mukuruImports';
 import { motion } from 'framer-motion';
 import Link from 'next/link';
-import { PartnerNavbar } from '@/components/PartnerNavbar';
+import { PartnerHeader } from '@/components/PartnerHeader';
 import { useState } from 'react';
 import { getCustomerApplication } from '../../../lib/mockData';
 
@@ -103,7 +103,7 @@ export default function CustomerDocumentsPage() {
 
   return (
     <Box minH="100vh" bg="mukuru.background.light">
-      <PartnerNavbar currentUser={{ name: 'Partner User', email: partnerEmail }} />
+      <PartnerHeader />
 
       <Container maxW="7xl" py="8">
         <VStack gap="8" align="stretch">

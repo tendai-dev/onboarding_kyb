@@ -1,4 +1,3 @@
-/* eslint-disable react/jsx-props-no-spreading */
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
@@ -18,6 +17,7 @@ import {
   FilterIcon,
   WarningIcon,
 } from '@mukuru/mukuru-react-components';
+import { FiCheckCircle } from 'react-icons/fi';
 import type { NavigationItem, HelpCentreItem } from '@mukuru/mukuru-react-components';
 
 export default function AdminSidebar() {
@@ -34,12 +34,14 @@ export default function AdminSidebar() {
       setActiveItemId('work-queue');
     } else if (pathname?.startsWith('/applications')) {
       setActiveItemId('applications');
-    } else if (pathname?.startsWith('/risk-review') || pathname?.startsWith('/risk-assessment')) {
-      setActiveItemId('risk-review');
     } else if (
-      pathname?.startsWith('/review') ||
-      pathname?.startsWith('/approvals')
+      pathname?.startsWith('/risk-review') ||
+      pathname?.startsWith('/risk-assessment')
     ) {
+      setActiveItemId('risk-review');
+    } else if (pathname?.startsWith('/approvals')) {
+      setActiveItemId('approvals');
+    } else if (pathname?.startsWith('/review')) {
       setActiveItemId('reviews');
     } else if (pathname?.startsWith('/documents')) {
       setActiveItemId('documents');
@@ -115,6 +117,16 @@ export default function AdminSidebar() {
         },
       },
       {
+        id: 'approvals',
+        label: 'Approvals',
+        icon: <FiCheckCircle size={20} color="#F05423" />,
+        isActive: activeItemId === 'approvals',
+        onClick: () => {
+          setActiveItemId('approvals');
+          router.push('/approvals');
+        },
+      },
+      {
         id: 'documents',
         label: 'Documents',
         icon: <FileOpenIcon width="20" height="20" />,
@@ -137,7 +149,8 @@ export default function AdminSidebar() {
           {
             id: 'requirements',
             label: 'Requirements',
-            isActive: activeItemId === 'configuration' && pathname?.startsWith('/requirements'),
+            isActive:
+              activeItemId === 'configuration' && pathname?.startsWith('/requirements'),
             onClick: () => {
               setActiveItemId('configuration');
               router.push('/requirements');
@@ -146,7 +159,8 @@ export default function AdminSidebar() {
           {
             id: 'entity-types',
             label: 'Entity Types',
-            isActive: activeItemId === 'configuration' && pathname?.startsWith('/entity-types'),
+            isActive:
+              activeItemId === 'configuration' && pathname?.startsWith('/entity-types'),
             onClick: () => {
               setActiveItemId('configuration');
               router.push('/entity-types');
@@ -155,7 +169,8 @@ export default function AdminSidebar() {
           {
             id: 'checklists',
             label: 'Checklists',
-            isActive: activeItemId === 'configuration' && pathname?.startsWith('/checklists'),
+            isActive:
+              activeItemId === 'configuration' && pathname?.startsWith('/checklists'),
             onClick: () => {
               setActiveItemId('configuration');
               router.push('/checklists');
@@ -164,7 +179,9 @@ export default function AdminSidebar() {
           {
             id: 'wizard-configurations',
             label: 'Wizard Configurations',
-            isActive: activeItemId === 'configuration' && pathname?.startsWith('/wizard-configurations'),
+            isActive:
+              activeItemId === 'configuration' &&
+              pathname?.startsWith('/wizard-configurations'),
             onClick: () => {
               setActiveItemId('configuration');
               router.push('/wizard-configurations');
@@ -173,7 +190,9 @@ export default function AdminSidebar() {
           {
             id: 'country-configurations',
             label: 'Country Configurations',
-            isActive: activeItemId === 'configuration' && pathname?.startsWith('/country-configurations'),
+            isActive:
+              activeItemId === 'configuration' &&
+              pathname?.startsWith('/country-configurations'),
             onClick: () => {
               setActiveItemId('configuration');
               router.push('/country-configurations');
@@ -182,7 +201,9 @@ export default function AdminSidebar() {
           {
             id: 'roles-and-permissions',
             label: 'Roles & Permissions',
-            isActive: activeItemId === 'configuration' && pathname?.startsWith('/roles-and-permissions'),
+            isActive:
+              activeItemId === 'configuration' &&
+              pathname?.startsWith('/roles-and-permissions'),
             onClick: () => {
               setActiveItemId('configuration');
               router.push('/roles-and-permissions');
@@ -230,7 +251,8 @@ export default function AdminSidebar() {
           {
             id: 'data-migration',
             label: 'Data Migration',
-            isActive: activeItemId === 'system' && pathname?.startsWith('/data-migration'),
+            isActive:
+              activeItemId === 'system' && pathname?.startsWith('/data-migration'),
             onClick: () => {
               setActiveItemId('system');
               router.push('/data-migration');

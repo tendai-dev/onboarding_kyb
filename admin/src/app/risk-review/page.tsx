@@ -27,10 +27,7 @@ import AdminSidebar from '../../components/AdminSidebar';
 import PortalHeader from '../../components/PortalHeader';
 import { useSidebar } from '../../contexts/SidebarContext';
 import { riskApiService, EnrichedRiskAssessment } from '../../services/riskApi';
-import {
-  getApplications,
-  OnboardingCaseProjection,
-} from '../../services';
+import { getApplications, OnboardingCaseProjection } from '../../services';
 import { logger } from '../../lib/logger';
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
@@ -63,13 +60,13 @@ export default function RiskReviewPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [activeTab, setActiveTab] = useState<TabFilter>('All');
   const [showFilters, setShowFilters] = useState(false);
-  
+
   // Advanced filters
   const [filters, setFilters] = useState<{
     riskLevel?: string;
     status?: string;
   }>({});
-  
+
   // Pagination
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize] = useState(20);
@@ -165,31 +162,33 @@ export default function RiskReviewPage() {
         assessment.caseId?.toLowerCase().includes(searchTerm.toLowerCase()) ||
         assessment.applicantName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
         assessment.businessName?.toLowerCase().includes(searchTerm.toLowerCase());
-      
+
       // Tab filter
       let matchesTab = true;
       if (activeTab === 'Pending') {
-        matchesTab = assessment.status === 'InProgress' || assessment.status === 'Pending';
+        matchesTab =
+          assessment.status === 'InProgress' || assessment.status === 'Pending';
       } else if (activeTab === 'Completed') {
         matchesTab = assessment.status === 'Completed';
       } else if (activeTab === 'High Risk') {
         const level = assessment.overallRiskLevel?.toLowerCase();
         matchesTab = level === 'high' || level === 'mediumhigh';
       }
-      
+
       // Advanced filters
       const matchesRiskLevel =
         !filters.riskLevel || assessment.overallRiskLevel === filters.riskLevel;
-      const matchesStatus =
-        !filters.status || assessment.status === filters.status;
-      
+      const matchesStatus = !filters.status || assessment.status === filters.status;
+
       return matchesSearch && matchesTab && matchesRiskLevel && matchesStatus;
     });
   }, [assessments, searchTerm, activeTab, filters]);
 
   // Get counts for tabs
   const tabCounts = useMemo(() => {
-    const pending = assessments.filter((a) => a.status === 'InProgress' || a.status === 'Pending').length;
+    const pending = assessments.filter(
+      (a) => a.status === 'InProgress' || a.status === 'Pending'
+    ).length;
     const completed = assessments.filter((a) => a.status === 'Completed').length;
     const highRisk = assessments.filter((a) => {
       const level = a.overallRiskLevel?.toLowerCase();
@@ -233,10 +232,10 @@ export default function RiskReviewPage() {
             fontSize="12px"
             fontFamily="mono"
             color={textColor}
-            style={{ 
-              whiteSpace: 'nowrap', 
-              overflow: 'hidden', 
-              textOverflow: 'ellipsis' 
+            style={{
+              whiteSpace: 'nowrap',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
             }}
           >
             {caseId}
@@ -250,23 +249,23 @@ export default function RiskReviewPage() {
       sortable: true,
       render: (value, row) => (
         <VStack align="start" gap="2px">
-          <Typography 
-            fontSize="13px" 
-            fontWeight="500" 
+          <Typography
+            fontSize="13px"
+            fontWeight="500"
             color={textColor}
-            style={{ 
-              whiteSpace: 'nowrap', 
-              overflow: 'hidden', 
-              textOverflow: 'ellipsis', 
+            style={{
+              whiteSpace: 'nowrap',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
               maxWidth: '100%',
-              lineHeight: '20px'
+              lineHeight: '20px',
             }}
           >
             {row.businessName || (value as string) || row.caseId || 'N/A'}
           </Typography>
           {row.businessName && value && (
-            <Typography 
-              fontSize="11px" 
+            <Typography
+              fontSize="11px"
               color="mukuru.grey.medium"
               fontWeight="400"
               style={{
@@ -274,7 +273,7 @@ export default function RiskReviewPage() {
                 overflow: 'hidden',
                 textOverflow: 'ellipsis',
                 maxWidth: '100%',
-                lineHeight: '1.3'
+                lineHeight: '1.3',
               }}
             >
               {value as string}
@@ -308,9 +307,9 @@ export default function RiskReviewPage() {
       header: 'SCORE',
       sortable: true,
       render: (value) => (
-        <Typography 
-          fontSize="13px" 
-          fontWeight="500" 
+        <Typography
+          fontSize="13px"
+          fontWeight="500"
           color={textColor}
           style={{ lineHeight: '20px' }}
         >
@@ -326,19 +325,19 @@ export default function RiskReviewPage() {
         const status = (value as string) || 'InProgress';
         const riskLevel = row.overallRiskLevel?.toLowerCase();
         const isHighRisk = riskLevel === 'high' || riskLevel === 'mediumhigh';
-        
+
         // For high risk cases, check if EDD is required
         // If status is "Completed" but it's high risk, show "Pending EDD" unless EDD form is completed
         // EDD is considered complete if notes contain structured EDD data (JSON format)
-        const hasEddCompleted = row.notes && (
-          row.notes.includes('"partnerCustomerDetails"') || 
-          row.notes.includes('"eddFindings"') ||
-          row.notes.includes('"recommendations"')
-        );
-        
+        const hasEddCompleted =
+          row.notes &&
+          (row.notes.includes('"partnerCustomerDetails"') ||
+            row.notes.includes('"eddFindings"') ||
+            row.notes.includes('"recommendations"'));
+
         let displayStatus = status;
         let statusColor = 'mukuru.buttons.primary';
-        
+
         if (isHighRisk && status === 'Completed' && !hasEddCompleted) {
           displayStatus = 'Pending EDD';
           statusColor = 'orange.500';
@@ -350,10 +349,10 @@ export default function RiskReviewPage() {
         } else if (status === 'Rejected') {
           statusColor = 'mukuru.text.error';
         }
-        
+
         return (
-          <Typography 
-            fontSize="13px" 
+          <Typography
+            fontSize="13px"
             fontWeight="500"
             color={statusColor}
             style={{ lineHeight: '20px' }}
@@ -368,11 +367,7 @@ export default function RiskReviewPage() {
       header: 'CREATED',
       sortable: true,
       render: (value) => (
-        <Typography 
-          fontSize="13px" 
-          color={subtleText}
-          style={{ lineHeight: '20px' }}
-        >
+        <Typography fontSize="13px" color={subtleText} style={{ lineHeight: '20px' }}>
           {value
             ? new Date(value as string).toLocaleDateString('en-ZA', {
                 day: '2-digit',
@@ -386,7 +381,15 @@ export default function RiskReviewPage() {
   ];
 
   // Tab component - Entity Types style (underline on active)
-  const Tab = ({ label, isActive, onClick }: { label: string; isActive: boolean; onClick: () => void }) => (
+  const Tab = ({
+    label,
+    isActive,
+    onClick,
+  }: {
+    label: string;
+    isActive: boolean;
+    onClick: () => void;
+  }) => (
     <Box
       as="button"
       pb="2"
@@ -426,7 +429,7 @@ export default function RiskReviewPage() {
       // ENFORCEMENT: Only show Review button for High or MediumHigh risk cases
       const riskLevel = row.overallRiskLevel?.toLowerCase();
       const isHighRisk = riskLevel === 'high' || riskLevel === 'mediumhigh';
-      
+
       if (!isHighRisk) {
         return (
           <Typography fontSize="sm" color="mukuru.grey.medium" fontStyle="italic">
@@ -434,7 +437,7 @@ export default function RiskReviewPage() {
           </Typography>
         );
       }
-      
+
       return (
         <Button
           size="sm"
@@ -520,7 +523,11 @@ export default function RiskReviewPage() {
                 opacity={loading ? 0.5 : 1}
                 cursor={loading ? 'not-allowed' : 'pointer'}
               >
-                <FiRefreshCw size={18} color="var(--chakra-colors-mukuru-charcoal)" className={loading ? 'animate-spin' : ''} />
+                <FiRefreshCw
+                  size={18}
+                  color="var(--chakra-colors-mukuru-charcoal)"
+                  className={loading ? 'animate-spin' : ''}
+                />
               </Box>
             </Tooltip>
           </HStack>
@@ -529,7 +536,12 @@ export default function RiskReviewPage() {
         {/* Stats Row - Inline like Work Queue */}
         <HStack gap="12" mb="4">
           <HStack gap="2" cursor="pointer" onClick={() => setActiveTab('All')}>
-            <Typography fontSize="xs" color={subtleText} textTransform="uppercase" letterSpacing="wide">
+            <Typography
+              fontSize="xs"
+              color={subtleText}
+              textTransform="uppercase"
+              letterSpacing="wide"
+            >
               Total
             </Typography>
             <Typography fontSize="sm" fontWeight="600" color={textColor}>
@@ -537,7 +549,12 @@ export default function RiskReviewPage() {
             </Typography>
           </HStack>
           <HStack gap="2" cursor="pointer" onClick={() => setActiveTab('Pending')}>
-            <Typography fontSize="xs" color={subtleText} textTransform="uppercase" letterSpacing="wide">
+            <Typography
+              fontSize="xs"
+              color={subtleText}
+              textTransform="uppercase"
+              letterSpacing="wide"
+            >
               Pending
             </Typography>
             <Typography fontSize="sm" fontWeight="600" color="mukuru.buttons.primary">
@@ -545,7 +562,12 @@ export default function RiskReviewPage() {
             </Typography>
           </HStack>
           <HStack gap="2" cursor="pointer" onClick={() => setActiveTab('Completed')}>
-            <Typography fontSize="xs" color={subtleText} textTransform="uppercase" letterSpacing="wide">
+            <Typography
+              fontSize="xs"
+              color={subtleText}
+              textTransform="uppercase"
+              letterSpacing="wide"
+            >
               Completed
             </Typography>
             <Typography fontSize="sm" fontWeight="600" color="mukuru.teal">
@@ -553,7 +575,12 @@ export default function RiskReviewPage() {
             </Typography>
           </HStack>
           <HStack gap="2" cursor="pointer" onClick={() => setActiveTab('High Risk')}>
-            <Typography fontSize="xs" color={subtleText} textTransform="uppercase" letterSpacing="wide">
+            <Typography
+              fontSize="xs"
+              color={subtleText}
+              textTransform="uppercase"
+              letterSpacing="wide"
+            >
               High Risk
             </Typography>
             <Typography fontSize="sm" fontWeight="600" color="mukuru.text.error">
@@ -629,7 +656,9 @@ export default function RiskReviewPage() {
                     { value: 'Low', label: 'Low' },
                   ]}
                   defaultValue={filters.riskLevel || ''}
-                  onSelectionChange={(value: string) => setFilters({ ...filters, riskLevel: value || undefined })}
+                  onSelectionChange={(value: string) =>
+                    setFilters({ ...filters, riskLevel: value || undefined })
+                  }
                   placeholder="Select Risk Level"
                 />
               </Box>
@@ -645,17 +674,15 @@ export default function RiskReviewPage() {
                     { value: 'Rejected', label: 'Rejected' },
                   ]}
                   defaultValue={filters.status || ''}
-                  onSelectionChange={(value: string) => setFilters({ ...filters, status: value || undefined })}
+                  onSelectionChange={(value: string) =>
+                    setFilters({ ...filters, status: value || undefined })
+                  }
                   placeholder="Select Status"
                 />
               </Box>
               <Box display="flex" alignItems="flex-end">
                 {(filters.riskLevel || filters.status) && (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => setFilters({})}
-                  >
+                  <Button variant="ghost" size="sm" onClick={() => setFilters({})}>
                     Clear Filters
                   </Button>
                 )}
@@ -815,12 +842,16 @@ export default function RiskReviewPage() {
           <Flex justify="space-between" align="center" mt="4">
             <HStack gap="2">
               <Typography fontSize="sm" color={subtleText}>
-                Showing {((currentPage - 1) * pageSize) + 1} to {Math.min(currentPage * pageSize, filteredAssessments.length)} of {filteredAssessments.length} items
+                Showing {(currentPage - 1) * pageSize + 1} to{' '}
+                {Math.min(currentPage * pageSize, filteredAssessments.length)} of{' '}
+                {filteredAssessments.length} items
               </Typography>
               <Typography fontSize="sm" fontWeight="500" color={textColor}>
                 {pageSize}
               </Typography>
-              <Typography fontSize="sm" color={subtleText}>per page</Typography>
+              <Typography fontSize="sm" color={subtleText}>
+                per page
+              </Typography>
             </HStack>
             <HStack gap="2">
               <HStack
@@ -828,16 +859,23 @@ export default function RiskReviewPage() {
                 gap="1"
                 opacity={currentPage === 1 || loading ? 0.4 : 1}
                 cursor={currentPage === 1 || loading ? 'not-allowed' : 'pointer'}
-                onClick={() => currentPage > 1 && !loading && setCurrentPage(prev => prev - 1)}
+                onClick={() =>
+                  currentPage > 1 && !loading && setCurrentPage((prev) => prev - 1)
+                }
                 _hover={{ color: 'mukuru.charcoal' }}
               >
-                <FiChevronLeft size={16} color="var(--chakra-colors-mukuru-grey-medium)" />
-                <Typography fontSize="sm" color={subtleText}>Previous</Typography>
+                <FiChevronLeft
+                  size={16}
+                  color="var(--chakra-colors-mukuru-grey-medium)"
+                />
+                <Typography fontSize="sm" color={subtleText}>
+                  Previous
+                </Typography>
               </HStack>
               <HStack gap="1">
                 {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
                   let pageNum: number;
-                  
+
                   if (totalPages <= 5) {
                     pageNum = i + 1;
                   } else if (currentPage <= 3) {
@@ -847,7 +885,7 @@ export default function RiskReviewPage() {
                   } else {
                     pageNum = currentPage - 2 + i;
                   }
-                  
+
                   return (
                     <Box
                       key={pageNum}
@@ -855,11 +893,18 @@ export default function RiskReviewPage() {
                       px="3"
                       py="1"
                       borderRadius="md"
-                      bg={currentPage === pageNum ? 'mukuru.buttons.primary' : 'transparent'}
+                      bg={
+                        currentPage === pageNum ? 'mukuru.buttons.primary' : 'transparent'
+                      }
                       color={currentPage === pageNum ? 'white' : subtleText}
                       fontSize="sm"
                       fontWeight="500"
-                      _hover={{ bg: currentPage === pageNum ? 'mukuru.buttons.primary' : 'mukuru.state.hover' }}
+                      _hover={{
+                        bg:
+                          currentPage === pageNum
+                            ? 'mukuru.buttons.primary'
+                            : 'mukuru.state.hover',
+                      }}
                       onClick={() => !loading && setCurrentPage(pageNum)}
                       cursor={loading ? 'not-allowed' : 'pointer'}
                       minW="28px"
@@ -874,11 +919,20 @@ export default function RiskReviewPage() {
                 gap="1"
                 opacity={currentPage >= totalPages || loading ? 0.4 : 1}
                 cursor={currentPage >= totalPages || loading ? 'not-allowed' : 'pointer'}
-                onClick={() => currentPage < totalPages && !loading && setCurrentPage(prev => prev + 1)}
+                onClick={() =>
+                  currentPage < totalPages &&
+                  !loading &&
+                  setCurrentPage((prev) => prev + 1)
+                }
                 _hover={{ color: 'mukuru.charcoal' }}
               >
-                <Typography fontSize="sm" color={subtleText}>Next</Typography>
-                <FiChevronRight size={16} color="var(--chakra-colors-mukuru-grey-medium)" />
+                <Typography fontSize="sm" color={subtleText}>
+                  Next
+                </Typography>
+                <FiChevronRight
+                  size={16}
+                  color="var(--chakra-colors-mukuru-grey-medium)"
+                />
               </HStack>
             </HStack>
           </Flex>
@@ -887,4 +941,3 @@ export default function RiskReviewPage() {
     </Box>
   );
 }
-

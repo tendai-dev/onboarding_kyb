@@ -33,6 +33,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useRequireAuth } from '@/hooks/useRequireAuth';
 import { SchemaDrivenView } from '@/components/SchemaDrivenView';
 import { findUserCaseByEmail, generateUserIdFromEmail } from '@/lib/api';
+import { PartnerHeader } from '@/components/PartnerHeader';
 
 const MotionBox = motion.create(Box);
 
@@ -496,54 +497,83 @@ export default function ApplicationDetailsPage() {
             (metadata as any)?.legal_name ||
             (metadata as any)?.businessLegalName ||
             (metadata as any)?.companyname ||
+            (metadata as any)?.company_name ||
+            (metadata as any)?.legalName ||
+            (metadata as any)?.LEGAL_NAME ||
+            (metadata as any)?.['Legal Name'] ||
             '',
           applicantFirstName:
             caseData.applicantFirstName ||
             data.applicantFirstName ||
             (metadata as any)?.applicant_first_name ||
+            (metadata as any)?.applicantFirstName ||
+            (metadata as any)?.firstName ||
+            (metadata as any)?.first_name ||
             '',
           applicantLastName:
             caseData.applicantLastName ||
             data.applicantLastName ||
             (metadata as any)?.applicant_last_name ||
+            (metadata as any)?.applicantLastName ||
+            (metadata as any)?.lastName ||
+            (metadata as any)?.last_name ||
             '',
           applicantEmail:
             caseData.applicantEmail ||
             data.applicantEmail ||
             (metadata as any)?.applicant_email ||
+            (metadata as any)?.applicantEmail ||
             (metadata as any)?.email ||
             '',
           applicantPhone:
             caseData.applicantPhone ||
             data.applicantPhone ||
             (metadata as any)?.applicant_phone ||
+            (metadata as any)?.applicantPhone ||
             (metadata as any)?.phone ||
             '',
           businessRegistrationNumber:
             caseData.businessRegistrationNumber ||
             data.businessRegistrationNumber ||
             (metadata as any)?.registration_number ||
+            (metadata as any)?.registrationNumber ||
+            (metadata as any)?.registered_number ||
+            (metadata as any)?.registeredNumber ||
+            (metadata as any)?.REGISTRATION_NUMBER ||
+            (metadata as any)?.['Registration Number'] ||
             '',
           businessCountryOfRegistration:
             caseData.businessCountryOfRegistration ||
             data.businessCountryOfRegistration ||
             (metadata as any)?.country_of_incorporation ||
             (metadata as any)?.countryOfIncorporation ||
+            (metadata as any)?.country_of_registration ||
+            (metadata as any)?.countryOfRegistration ||
             '',
           businessAddress:
             caseData.businessAddress ||
             data.businessAddress ||
             (metadata as any)?.business_address ||
+            (metadata as any)?.businessAddress ||
+            (metadata as any)?.registered_address ||
+            (metadata as any)?.registeredAddress ||
+            (metadata as any)?.REGISTERED_ADDRESS ||
+            (metadata as any)?.['Registered Address'] ||
+            (metadata as any)?.address ||
             '',
           businessIndustry:
             caseData.businessIndustry ||
             data.businessIndustry ||
             (metadata as any)?.business_industry ||
+            (metadata as any)?.businessIndustry ||
+            (metadata as any)?.industry ||
             '',
           businessTaxId:
             caseData.businessTaxId ||
             data.businessTaxId ||
             (metadata as any)?.tax_id ||
+            (metadata as any)?.taxId ||
+            (metadata as any)?.tax_number ||
             '',
         };
 
@@ -559,17 +589,63 @@ export default function ApplicationDetailsPage() {
           'metadata.full_name': (metadata as any)?.full_name,
         });
 
+        // Find company name from all possible sources
+        const findCompanyName = (): string => {
+          // Check all possible locations for company/legal name
+          const sources = [
+            comprehensiveRawData.businessLegalName,
+            caseData.businessLegalName,
+            data.businessLegalName,
+            (metadata as any)?.legal_name,
+            (metadata as any)?.businessLegalName,
+            (metadata as any)?.legalName,
+            (metadata as any)?.companyname,
+            (metadata as any)?.company_name,
+            (metadata as any)?.companyName,
+            (metadata as any)?.['Legal Name'],
+            (metadata as any)?.['legal_name'],
+            (metadata as any)?.LEGAL_NAME,
+            // Also check for full name as fallback
+            `${comprehensiveRawData.applicantFirstName || ''} ${comprehensiveRawData.applicantLastName || ''}`.trim(),
+            (metadata as any)?.['full_name'],
+            (metadata as any)?.full_name,
+            (metadata as any)?.applicant_name,
+          ];
+          
+          for (const source of sources) {
+            if (source && typeof source === 'string' && source.trim() !== '') {
+              console.info('✅ Found company name from source:', source);
+              return source;
+            }
+          }
+          
+          // Last resort: search metadata for any key containing 'name', 'legal', or 'company'
+          if (metadata && typeof metadata === 'object') {
+            const metadataKeys = Object.keys(metadata as object);
+            console.info('🔍 Searching metadata keys for company name:', metadataKeys);
+            
+            for (const key of metadataKeys) {
+              const keyLower = key.toLowerCase();
+              if (keyLower.includes('legal') || keyLower.includes('company') || 
+                  (keyLower.includes('name') && !keyLower.includes('first') && !keyLower.includes('last'))) {
+                const value = (metadata as any)[key];
+                if (value && typeof value === 'string' && value.trim() !== '') {
+                  console.info(`✅ Found company name in metadata["${key}"]:`, value);
+                  return value;
+                }
+              }
+            }
+          }
+          
+          console.warn('⚠️ No company name found in any source. Metadata:', metadata);
+          return 'Not provided';
+        };
+
         setApplication({
           id: data.caseId || data.id,
           status: data.status || 'InProgress',
           submissionDate: data.createdAt || data.created_at || new Date().toISOString(),
-          companyName:
-            comprehensiveRawData.businessLegalName ||
-            `${comprehensiveRawData.applicantFirstName || ''} ${comprehensiveRawData.applicantLastName || ''}`.trim() ||
-            (metadata as any)?.['full_name'] ||
-            (metadata as any)?.companyName ||
-            (metadata as any)?.legal_name ||
-            'Not provided',
+          companyName: findCompanyName(),
           entityType:
             cleanedEntityTypeCode ||
             effectiveData.entityType ||
@@ -703,27 +779,158 @@ export default function ApplicationDetailsPage() {
         }))
       );
 
-      // Log all requirement types for debugging
-      const allReqTypes = formSchema.requirements.map((r: any) => r.requirement?.type);
+      // Log all requirement types for debugging - handle both nested and flat structures
+      const allReqTypes = formSchema.requirements.map((r: any) => r.requirement?.type || r.type);
       console.info('ALL requirement types in schema:', allReqTypes);
+      console.info('ALL requirements structure (first 3):', JSON.stringify(formSchema.requirements.slice(0, 3), null, 2));
+      
+      // Check if wizard steps have requirementTypes defined with actual values
+      const hasRequirementTypes = activeWizardSteps.some(
+        (step) => step.requirementTypes && step.requirementTypes.length > 0 && 
+                  step.requirementTypes.some(rt => rt && rt.trim() !== '')
+      );
+      
+      console.info('Wizard steps have requirementTypes:', hasRequirementTypes, 
+        activeWizardSteps.map(s => ({ title: s.title, types: s.requirementTypes })));
+      
+      // If wizard steps don't have requirementTypes, distribute requirements by step number
+      if (!hasRequirementTypes) {
+        console.info('Wizard steps have no requirementTypes - distributing requirements by step');
+        
+        // Group requirements by type first - handle both nested and flat structures
+        const reqsByType = new Map<string, any[]>();
+        formSchema.requirements.forEach((req: any) => {
+          // Handle both nested (req.requirement.type) and flat (req.type) structures
+          const type = (req.requirement?.type || req.type || 'information').toLowerCase();
+          if (!reqsByType.has(type)) {
+            reqsByType.set(type, []);
+          }
+          reqsByType.get(type)!.push(req);
+        });
+        
+        console.info('Requirements grouped by type:', Array.from(reqsByType.entries()).map(([k, v]) => `${k}: ${v.length}`));
+        
+        // Assign to wizard steps based on step title matching
+        return activeWizardSteps.map((wizardStep, wizardIndex) => {
+          const stepTitleLower = wizardStep.title.toLowerCase();
+          let stepRequirements: any[] = [];
+          
+          // Match based on step title
+          if (stepTitleLower.includes('business') || stepTitleLower.includes('information') || stepTitleLower.includes('company')) {
+            stepRequirements = reqsByType.get('information') || [];
+          } else if (stepTitleLower.includes('document')) {
+            stepRequirements = reqsByType.get('documentation') || reqsByType.get('document') || [];
+          } else if (stepTitleLower.includes('identity')) {
+            stepRequirements = reqsByType.get('proofofidentity') || [];
+          } else if (stepTitleLower.includes('address')) {
+            stepRequirements = reqsByType.get('proofofaddress') || [];
+          } else if (stepTitleLower.includes('owner')) {
+            stepRequirements = reqsByType.get('ownershipstructure') || [];
+          } else if (stepTitleLower.includes('director') || stepTitleLower.includes('board')) {
+            stepRequirements = reqsByType.get('boarddirectors') || [];
+          } else if (stepTitleLower.includes('signator')) {
+            stepRequirements = reqsByType.get('authorizedsignatories') || [];
+          }
+          
+          // If still no match, for first step show all non-document requirements, for second show documents
+          if (stepRequirements.length === 0) {
+            const allTypes = Array.from(reqsByType.keys());
+            console.info(`Step ${wizardIndex + 1} - no match found. Available types:`, allTypes);
+            
+            if (wizardIndex === 0) {
+              // First step: show information or all non-document requirements
+              stepRequirements = reqsByType.get('information') || [];
+              if (stepRequirements.length === 0) {
+                // Get all requirements except documents
+                const nonDocReqs: any[] = [];
+                reqsByType.forEach((reqs, type) => {
+                  if (!type.includes('document')) {
+                    nonDocReqs.push(...reqs);
+                  }
+                });
+                stepRequirements = nonDocReqs.length > 0 ? nonDocReqs : Array.from(reqsByType.values())[0] || [];
+              }
+            } else if (wizardIndex === 1) {
+              // Second step: show documents
+              stepRequirements = reqsByType.get('documentation') || reqsByType.get('document') || [];
+              if (stepRequirements.length === 0) {
+                // Get any remaining requirements not shown in first step
+                const docReqs: any[] = [];
+                reqsByType.forEach((reqs, type) => {
+                  if (type.includes('document')) {
+                    docReqs.push(...reqs);
+                  }
+                });
+                stepRequirements = docReqs;
+              }
+            }
+          }
+          
+          console.info(`Step ${wizardIndex + 1} "${wizardStep.title}" assigned ${stepRequirements.length} requirements by title matching`);
+          
+          const primaryType = wizardStep.requirementTypes?.[0] || 'Information';
+          const stepIcon = iconMap[primaryType] || FileOpenIcon;
+          
+          return {
+            id: wizardStep.stepNumber,
+            type: primaryType,
+            title: wizardStep.title,
+            subtitle: wizardStep.subtitle || '',
+            icon: stepIcon,
+            requirements: stepRequirements,
+            stepNumber: wizardStep.stepNumber,
+          };
+        });
+      }
       
       // Map wizard steps to schema steps - FULLY DYNAMIC matching
       return activeWizardSteps.map((wizardStep, wizardIndex) => {
         // Find all requirements that match this wizard step's requirement types
-        // STRICT matching - only exact matches to prevent "Information" matching "Documentation"
+        // Flexible matching to handle variations like "Document" vs "Documentation"
         const stepRequirements = formSchema.requirements.filter(
           (_req: Record<string, unknown>) => {
-            if (!_req.requirement) return false;
+            // Handle both nested (req.requirement.type) and flat (req.type) structures
             const reqType = String(
-              (_req.requirement as Record<string, unknown>).type || ''
+              (_req.requirement as Record<string, unknown>)?.type || 
+              (_req as Record<string, unknown>).type || 
+              ''
             ).toLowerCase().trim();
             
-            // Match if requirement type EXACTLY matches ANY of the wizard step's requirement types
+            if (!reqType) return false;
+            
+            // Match if requirement type matches ANY of the wizard step's requirement types
             return wizardStep.requirementTypes.some((wizardReqType) => {
               const wizardTypeLower = wizardReqType.toLowerCase().trim();
               
-              // EXACT match only - "information" should NOT match "documentation"
-              return reqType === wizardTypeLower;
+              // Flexible matching:
+              // 1. Exact match
+              if (reqType === wizardTypeLower) return true;
+              
+              // 2. Document/Documentation variations
+              if ((wizardTypeLower === 'document' || wizardTypeLower === 'documentation') &&
+                  (reqType === 'document' || reqType === 'documentation')) return true;
+              
+              // 3. Information type
+              if (wizardTypeLower === 'information' && reqType === 'information') return true;
+              
+              // 4. Partial match - wizard type starts with or contains req type
+              if (wizardTypeLower.includes(reqType) || reqType.includes(wizardTypeLower)) return true;
+              
+              // 5. Handle numeric type values (1=Information, 2=Document, etc.)
+              const typeNumMap: Record<string, string[]> = {
+                '1': ['information'],
+                '2': ['document', 'documentation'],
+                '3': ['proofofidentity'],
+                '4': ['proofofaddress'],
+                '5': ['ownershipstructure'],
+                '6': ['boarddirectors'],
+                '7': ['authorizedsignatories'],
+              };
+              
+              if (typeNumMap[reqType]?.includes(wizardTypeLower)) return true;
+              if (typeNumMap[wizardTypeLower]?.includes(reqType)) return true;
+              
+              return false;
             });
           }
         );
@@ -927,6 +1134,7 @@ export default function ApplicationDetailsPage() {
 
   return (
     <Box minH="100vh" bg="mukuru.background.light">
+      <PartnerHeader />
       {/* Wizard Header */}
       <Box bg="mukuru.cards.white" boxShadow="sm" position="sticky" top="0" zIndex="10">
         <Container maxW="4xl" py="6">
@@ -1129,13 +1337,23 @@ export default function ApplicationDetailsPage() {
                   {/* Render requirements for current step - FULLY DYNAMIC */}
                   {(() => {
                     // Use pre-filtered requirements from currentStepData
-                    let requirementsToShow: any[] = [];
+                    // Don't fallback to all requirements - show only what's configured for this step
+                    const requirementsToShow = currentStepData?.requirements || [];
                     
-                    if (currentStepData?.requirements && currentStepData.requirements.length > 0) {
-                      requirementsToShow = currentStepData.requirements;
-                    } else {
-                      // Fallback: show all requirements
-                      requirementsToShow = formSchema.requirements || [];
+                    // If no requirements for this step, show empty state
+                    if (requirementsToShow.length === 0) {
+                      return (
+                        <Box
+                          p="6"
+                          bg="mukuru.cards.white"
+                          borderRadius="lg"
+                          textAlign="center"
+                        >
+                          <Typography color="mukuru.grey.medium" fontSize="sm">
+                            No fields configured for this step.
+                          </Typography>
+                        </Box>
+                      );
                     }
 
                           return (
@@ -1154,6 +1372,7 @@ export default function ApplicationDetailsPage() {
                                 ...application,
                                 // Include all possible field variations for comprehensive mapping
                                 businessLegalName:
+                                  (application?.caseData as any)?.businessLegalName ||
                                   application?.rawData?.businessLegalName ||
                                   application?.companyName ||
                                   (application?.metadata as any)?.legal_name ||
@@ -1179,8 +1398,17 @@ export default function ApplicationDetailsPage() {
                                   (application?.metadata as any)?.applicant_phone ||
                                   '',
                                 businessRegistrationNumber:
+                                  (application?.caseData as any)?.businessRegistrationNumber ||
                                   application?.rawData?.businessRegistrationNumber ||
                                   (application?.metadata as any)?.registration_number ||
+                                  (application?.metadata as any)?.registrationNumber ||
+                                  (application?.metadata as any)?.['Registration Number'] ||
+                                  '',
+                                registrationNumber:
+                                  application?.rawData?.businessRegistrationNumber ||
+                                  (application?.metadata as any)?.registration_number ||
+                                  (application?.metadata as any)?.registrationNumber ||
+                                  (application?.metadata as any)?.['Registration Number'] ||
                                   '',
                                 businessCountryOfRegistration:
                                   application?.rawData?.businessCountryOfRegistration ||
@@ -1191,10 +1419,12 @@ export default function ApplicationDetailsPage() {
                                 businessAddress:
                                   application?.rawData?.businessAddress ||
                                   (application?.metadata as any)?.business_address ||
+                                  (application?.metadata as any)?.businessAddress ||
                                   (application?.metadata as any)?.registered_address ||
                                   (application?.metadata as any)?.registeredAddress ||
                                   '',
                                 registeredAddress:
+                                  (application?.caseData as any)?.registeredAddress ||
                                   application?.rawData?.registeredAddress ||
                                   application?.rawData?.registered_address ||
                                   (application?.metadata as any)?.registered_address ||

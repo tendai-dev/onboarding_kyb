@@ -11,13 +11,15 @@ import {
   Icon,
   Spinner,
 } from '@chakra-ui/react';
-import { Button, Typography, Tag, AlertBar } from '@/lib/mukuruImports';
+import { Button, Typography, Tag, AlertBar, Card } from '@/lib/mukuruImports';
 import { motion, AnimatePresence } from 'framer-motion';
 import Link from 'next/link';
 import { useEffect, useState, useCallback, useRef, Suspense } from 'react';
-import { useSearchParams } from 'next/navigation';
+import { useSearchParams, useRouter } from 'next/navigation';
 import { getAuthUser } from '@/lib/auth/session';
-import { PartnerNavbar } from '@/components/PartnerNavbar';
+import { PartnerHeader } from '@/components/PartnerHeader';
+import { AcknowledgementForm } from '@/components/AcknowledgementForm';
+import { AcknowledgementEmailNotification } from '@/components/AcknowledgementEmailNotification';
 import {
   findUserCaseByEmail,
   getCaseById,
@@ -75,13 +77,13 @@ const journeyStages: JourneyStage[] = [
     id: 'in_review',
     label: 'In Review',
     icon: FiClipboard,
-    status: ['IN PROGRESS', 'INPROGRESS', 'IN_REVIEW', 'INPROGRESS'],
+    status: ['IN PROGRESS', 'INPROGRESS', 'IN_REVIEW'],
   },
   {
     id: 'risk_assessment',
     label: 'Risk Assessment',
     icon: FiShield,
-    status: ['RISK REVIEW', 'PENDING APPROVAL', 'PENDINGAPPROVAL', 'PENDING APPROVAL'],
+    status: ['RISK REVIEW', 'PENDING APPROVAL', 'PENDINGAPPROVAL'],
   },
   {
     id: 'approved',
@@ -100,9 +102,21 @@ const journeyStages: JourneyStage[] = [
 function ApplicationJourneyProgress({ status }: { status: string }) {
   const normalizedStatus = (status || '').toUpperCase().trim();
 
-  // Find current stage index
+  // Find current stage index - use exact match or startsWith to avoid partial matches
   const currentStageIndex = journeyStages.findIndex((stage) =>
-    stage.status.some((s) => normalizedStatus.includes(s))
+    stage.status.some((s) => {
+      const normalizedStageStatus = s.toUpperCase().trim();
+      // Use exact match first (most reliable)
+      if (normalizedStatus === normalizedStageStatus) {
+        return true;
+      }
+      // For partial matches, only match if status is longer than stage status
+      // This prevents "PENDING" from matching "PENDING APPROVAL", but allows "IN PROGRESS DETAILED" to match "IN PROGRESS"
+      if (normalizedStatus.length > normalizedStageStatus.length) {
+        return normalizedStatus.startsWith(normalizedStageStatus + ' ');
+      }
+      return false;
+    })
   );
 
   // Default to first stage if not found
@@ -312,6 +326,7 @@ function PartnerDashboardContent() {
   useRequireAuth();
   const { user: authUser, isLoading: authLoading } = useAuth();
   const searchParams = useSearchParams();
+  const router = useRouter();
   const submitted = searchParams?.get('submitted') === 'true';
   const caseIdFromUrl = searchParams?.get('caseId');
 
@@ -334,6 +349,9 @@ function PartnerDashboardContent() {
   const [retryCount, setRetryCount] = useState(0);
   const [showSuccessMessage, setShowSuccessMessage] = useState(false);
   const [, setLoadingHandler] = useState<boolean>(false);
+  const [acknowledgementEmailSent, setAcknowledgementEmailSent] = useState(false);
+  const [previousStatus, setPreviousStatus] = useState<string | null>(null);
+  const [statusChangeEmailSent, setStatusChangeEmailSent] = useState<Set<string>>(new Set());
 
   // Use ref to track application state without causing dependency issues
   const applicationRef = useRef<any | null>(null);
@@ -376,6 +394,60 @@ function PartnerDashboardContent() {
   useEffect(() => {
     applicationRef.current = application;
   }, [application]);
+
+  // Detect status changes and send email notifications
+  useEffect(() => {
+    if (!application || !currentUser.email) return;
+
+    const currentStatus = application.status;
+    const statusKey = `${application.id || application.caseId}-${currentStatus}`;
+
+    // Only send email if status actually changed and we haven't sent for this status yet
+    if (
+      previousStatus &&
+      previousStatus !== currentStatus &&
+      !statusChangeEmailSent.has(statusKey) &&
+      // Don't send for initial load or for statuses that have their own notifications
+      previousStatus !== null
+    ) {
+      // Skip sending email for COMPLETED status (handled by AcknowledgementEmailNotification)
+      if (currentStatus !== 'COMPLETED' && currentStatus !== 'COMPLETE') {
+        const sendStatusEmail = async () => {
+          try {
+            const { sendStatusUpdateNotification } = await import('@/lib/notificationService');
+            await sendStatusUpdateNotification({
+              to: currentUser.email || '',
+              applicantName: currentUser.name,
+              caseId: application.id || application.caseId,
+              caseNumber: application.caseId,
+              status: currentStatus,
+              message: `Your application status has been updated to ${currentStatus}.`,
+              link: `${window.location.origin}/partner/dashboard`,
+            });
+
+            // Mark this status as notified
+            setStatusChangeEmailSent((prev) => new Set(prev).add(statusKey));
+            console.info('Status update email sent for status change:', {
+              from: previousStatus,
+              to: currentStatus,
+            });
+          } catch (error) {
+            // Log error but don't block user flow
+            console.warn('Failed to send status update email:', error);
+          }
+        };
+
+        // Send email after a short delay to avoid spam
+        const timer = setTimeout(sendStatusEmail, 2000);
+        return () => clearTimeout(timer);
+      }
+    }
+
+    // Update previous status
+    if (currentStatus) {
+      setPreviousStatus(currentStatus);
+    }
+  }, [application?.status, previousStatus, currentUser.email, currentUser.name, statusChangeEmailSent, application]);
 
   // Load application data function - fetches REAL data from API
   const loadApplicationData = useCallback(
@@ -444,85 +516,9 @@ function PartnerDashboardContent() {
           }
         }
 
-        // LAST RESORT: Try fetching all recent cases and filter by email client-side
-        // This handles edge cases where PartnerId/email matching might fail
-        if (!found) {
-          console.info('🔍 Last resort: Fetching all recent cases to find match...');
-          try {
-            const response = await fetch(
-              '/api/v1/cases?take=50&sortBy=createdAt&sortDirection=desc'
-            );
-            if (response.ok) {
-              const allCasesResult = (await response.json()) as {
-                items: Array<{
-                  caseId: string;
-                  caseNumber?: string;
-                  type: string;
-                  status: string;
-                  partnerId?: string;
-                  applicantEmail?: string;
-                  applicantFirstName?: string;
-                  applicantLastName?: string;
-                  applicantCountry?: string;
-                  businessLegalName?: string;
-                  createdAt?: string;
-                  updatedAt?: string;
-                  progressPercentage?: number;
-                }>;
-              };
-
-              if (allCasesResult?.items && allCasesResult.items.length > 0) {
-                const normalizedEmail = currentUser.email.toLowerCase().trim();
-                // Try to find by email match
-                const emailMatch = allCasesResult.items.find(
-                  (c: { caseId: string; applicantEmail?: string }) => {
-                    if (!c.applicantEmail) return false;
-                    return c.applicantEmail.toLowerCase().trim() === normalizedEmail;
-                  }
-                );
-
-                if (emailMatch) {
-                  console.info(
-                    '✅ Found case in all cases by email match:',
-                    emailMatch.caseId
-                  );
-                  found = {
-                    id: emailMatch.caseId,
-                    caseId: emailMatch.caseNumber || emailMatch.caseId,
-                    type: emailMatch.type,
-                    status: emailMatch.status,
-                    partnerId: emailMatch.partnerId,
-                    applicantEmail: emailMatch.applicantEmail,
-                    applicantFirstName: emailMatch.applicantFirstName,
-                    applicantLastName: emailMatch.applicantLastName,
-                    country: emailMatch.applicantCountry,
-                    businessLegalName: emailMatch.businessLegalName,
-                    createdAt: emailMatch.createdAt,
-                    updatedAt: emailMatch.updatedAt,
-                    progressPercentage: emailMatch.progressPercentage,
-                  };
-                } else {
-                  console.warn(
-                    '⚠️ No email match found in all cases. Searched:',
-                    normalizedEmail,
-                    'Found cases:',
-                    allCasesResult.items.length
-                  );
-                  // Log first few cases for debugging
-                  if (allCasesResult.items.length > 0) {
-                    console.info('First case sample:', {
-                      caseId: allCasesResult.items[0].caseId,
-                      applicantEmail: allCasesResult.items[0].applicantEmail,
-                      partnerId: allCasesResult.items[0].partnerId,
-                    });
-                  }
-                }
-              }
-            }
-          } catch (allCasesError) {
-            console.warn('⚠️ Last resort query failed:', allCasesError);
-          }
-        }
+        // SECURITY: Removed "fetch all cases" fallback to prevent data leakage
+        // All queries must be filtered by PartnerId or email at the backend level
+        // Client-side filtering is NOT a security measure
 
         if (!found) {
           console.warn('⚠️ No application found in API after all attempts');
@@ -606,7 +602,7 @@ function PartnerDashboardContent() {
 
           // Use REAL progress from API - no fallbacks, no defaults
           const realProgress = found.progressPercentage ?? 0;
-          let realStatus = statusRaw.replace('_', ' ').toUpperCase();
+          let realStatus = statusRaw.replace(/_/g, ' ').toUpperCase();
 
           // Get caseId first
           const caseIdForLink = found.caseId || found.caseNumber || found.id;
@@ -623,7 +619,7 @@ function PartnerDashboardContent() {
 
                 // Override case status with work item status if available
                 if (workItemStatus) {
-                  realStatus = workItemStatus.replace('_', ' ').toUpperCase();
+                  realStatus = workItemStatus.replace(/_/g, ' ').toUpperCase();
                   console.info('✅ Using work item status:', realStatus);
                 }
 
@@ -828,6 +824,7 @@ function PartnerDashboardContent() {
   useEffect(() => {
     let cancelled = false;
     let retryTimeout: NodeJS.Timeout | null = null;
+    let successTimer: NodeJS.Timeout | null = null;
     let syncTriggered = false;
 
     async function load() {
@@ -887,7 +884,8 @@ function PartnerDashboardContent() {
 
       // If application was just submitted but not found, retry a few times
       // (projections service might need time to index the new case)
-      if (submitted && !loaded && retryCount < 8) {
+      const MAX_RETRIES = 5; // Consistent with UI display
+      if (submitted && !loaded && retryCount < MAX_RETRIES) {
         const delay = Math.min(1500 * (retryCount + 1), 6000); // Exponential backoff, max 6s
         retryTimeout = setTimeout(() => {
           if (!cancelled) {
@@ -898,9 +896,9 @@ function PartnerDashboardContent() {
       } else if (submitted && loaded) {
         // Show success message when application is found
         setShowSuccessMessage(true);
-        setTimeout(() => setShowSuccessMessage(false), 5000);
+        successTimer = setTimeout(() => setShowSuccessMessage(false), 5000);
         setRetryCount(0); // Reset retry count on success
-      } else if (submitted && !loaded && retryCount >= 8) {
+      } else if (submitted && !loaded && retryCount >= MAX_RETRIES) {
         // Max retries reached - show warning but don't block
         console.warn(
           'Application not found after max retries. It may take longer to appear.'
@@ -913,6 +911,7 @@ function PartnerDashboardContent() {
     return () => {
       cancelled = true;
       if (retryTimeout) clearTimeout(retryTimeout);
+      if (successTimer) clearTimeout(successTimer);
     };
   }, [currentUser.email, submitted, retryCount, loadApplicationData, caseIdFromUrl]);
 
@@ -961,7 +960,10 @@ function PartnerDashboardContent() {
   return (
     <Box minH="100vh" bg="mukuru.background.light">
       {/* Header */}
-      <PartnerNavbar currentUser={currentUser} hasExistingApplication={!!application} />
+      <PartnerHeader 
+        showBackButton={false} 
+        disableNewApplication={!!application}
+      />
 
       <Container maxW="7xl" py="4">
         <VStack gap="4" align="stretch">
@@ -1570,6 +1572,82 @@ function PartnerDashboardContent() {
               </MotionBox>
             )}
           </MotionBox>
+
+          {/* Acknowledgement Email Notification - Send email when status becomes COMPLETED */}
+          {partnerData.application &&
+            (partnerData.application.status === 'COMPLETED' ||
+              partnerData.application.status === 'COMPLETE') && (
+              <AcknowledgementEmailNotification
+                application={partnerData.application}
+                userEmail={currentUser.email}
+                userName={currentUser.name}
+                onEmailSent={() => setAcknowledgementEmailSent(true)}
+                emailSent={acknowledgementEmailSent}
+              />
+            )}
+
+          {/* Acknowledgement Card - Show when application is COMPLETED */}
+          {partnerData.application &&
+            (partnerData.application.status === 'COMPLETED' ||
+              partnerData.application.status === 'COMPLETE') && (
+              <MotionBox
+                initial={{ opacity: 0, y: 30 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.8, delay: handler ? 3.2 : 2.6 }}
+                mt="6"
+                width="100%"
+              >
+                <Card p="6" borderRadius="xl" boxShadow="md" bg="white" width="100%">
+                  <Flex
+                    direction={{ base: 'column', md: 'row' }}
+                    justify="space-between"
+                    align={{ base: 'stretch', md: 'center' }}
+                    gap="4"
+                    width="100%"
+                  >
+                    <HStack gap="4" flex="1" align="center">
+                      <Box
+                        p="3"
+                        borderRadius="xl"
+                        bg="teal.50"
+                        color="teal.500"
+                        flexShrink={0}
+                      >
+                        <FiShield size={28} />
+                      </Box>
+                      <VStack align="start" gap="1" flex="1">
+                        <Typography fontSize="lg" fontWeight="bold" color="gray.800">
+                          Final Acknowledgement Required
+                        </Typography>
+                        <Typography fontSize="sm" color="gray.500">
+                          Review and sign the acknowledgement to complete your application
+                        </Typography>
+                      </VStack>
+                    </HStack>
+                    <Box flexShrink={0}>
+                      <Button
+                        variant="primary"
+                        onClick={() => {
+                          if (!partnerData.application) return;
+                          const appId = partnerData.application.id ||
+                            partnerData.application.caseId ||
+                            partnerData.application.Id ||
+                            '';
+                          if (appId) {
+                            router.push(`/partner/acknowledgement/${appId}`);
+                          }
+                        }}
+                        rightIcon={<FiArrowRight size={16} color="white" />}
+                        width={{ base: '100%', md: 'auto' }}
+                        style={{ color: 'white' }}
+                      >
+                        Sign Acknowledgement
+                      </Button>
+                    </Box>
+                  </Flex>
+                </Card>
+              </MotionBox>
+            )}
         </VStack>
       </Container>
     </Box>

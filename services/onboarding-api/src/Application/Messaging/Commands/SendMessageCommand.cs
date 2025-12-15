@@ -12,7 +12,8 @@ public record SendMessageCommand(
     string Content,
     Guid? ReceiverId = null,
     Guid? ReplyToMessageId = null,
-    IEnumerable<AttachmentInfo>? Attachments = null
+    IEnumerable<AttachmentInfo>? Attachments = null,
+    string? SenderEmail = null // Optional email for SignalR broadcasting
 ) : IRequest<SendMessageResult>;
 
 public record AttachmentInfo(
@@ -98,10 +99,11 @@ public record ArchiveThreadCommand(
 public record ArchiveThreadResult
 {
     public bool Success { get; init; }
+    public bool IsArchived { get; init; }
     public string? ErrorMessage { get; init; }
     
-    public static ArchiveThreadResult Successful() => new() { Success = true };
-    public static ArchiveThreadResult Failed(string error) => new() { Success = false, ErrorMessage = error };
+    public static ArchiveThreadResult Successful(bool isArchived) => new() { Success = true, IsArchived = isArchived };
+    public static ArchiveThreadResult Failed(string error) => new() { Success = false, IsArchived = false, ErrorMessage = error };
 }
 
 public record StarThreadCommand(
@@ -122,6 +124,8 @@ public record StarThreadResult
 public record ForwardMessageCommand(
     Guid MessageId,
     Guid UserId,
+    string UserName,
+    UserRole UserRole,
     Guid ToApplicationId,
     Guid? ToReceiverId,
     string? AdditionalContent
@@ -131,9 +135,10 @@ public record ForwardMessageResult
 {
     public bool Success { get; init; }
     public Guid? NewMessageId { get; init; }
+    public Guid? NewThreadId { get; init; }
     public string? ErrorMessage { get; init; }
     
-    public static ForwardMessageResult Successful(Guid newMessageId) => new() { Success = true, NewMessageId = newMessageId };
+    public static ForwardMessageResult Successful(Guid newMessageId, Guid newThreadId) => new() { Success = true, NewMessageId = newMessageId, NewThreadId = newThreadId };
     public static ForwardMessageResult Failed(string error) => new() { Success = false, ErrorMessage = error };
 }
 

@@ -1,12 +1,6 @@
 'use client';
 
-import {
-  Box,
-  VStack,
-  Flex,
-  Spinner,
-  HStack,
-} from '@chakra-ui/react';
+import { Box, VStack, Flex, Spinner, HStack } from '@chakra-ui/react';
 import {
   Typography,
   Button,
@@ -326,15 +320,20 @@ export default function CreateRequirementPage() {
         )}
 
         {/* General Information Card */}
-        <Box 
-          bg="white" 
-          borderRadius="12px" 
+        <Box
+          bg="white"
+          borderRadius="12px"
           border="1px solid #E5E7EB"
           p="28px"
           mb="24px"
           boxShadow="0 2px 8px rgba(0,0,0,0.06)"
         >
-          <Typography fontSize="16px" fontWeight="600" color="mukuru.text.primary" mb="20px">
+          <Typography
+            fontSize="16px"
+            fontWeight="600"
+            color="mukuru.text.primary"
+            mb="20px"
+          >
             General Information
           </Typography>
 
@@ -342,7 +341,12 @@ export default function CreateRequirementPage() {
           <Flex gap="24px" mb="24px">
             {/* Code Field */}
             <Box flex="1">
-              <Typography fontSize="13px" fontWeight="500" color="mukuru.text.primary" mb="8px">
+              <Typography
+                fontSize="13px"
+                fontWeight="500"
+                color="mukuru.text.primary"
+                mb="8px"
+              >
                 Code <span style={{ color: '#EF4444' }}>*</span>
               </Typography>
               <input
@@ -373,7 +377,12 @@ export default function CreateRequirementPage() {
 
             {/* Display Name Field */}
             <Box flex="1">
-              <Typography fontSize="13px" fontWeight="500" color="mukuru.text.primary" mb="8px">
+              <Typography
+                fontSize="13px"
+                fontWeight="500"
+                color="mukuru.text.primary"
+                mb="8px"
+              >
                 Display Name <span style={{ color: '#EF4444' }}>*</span>
               </Typography>
               <input
@@ -405,7 +414,12 @@ export default function CreateRequirementPage() {
 
           {/* Description Field */}
           <Box>
-            <Typography fontSize="13px" fontWeight="500" color="mukuru.text.primary" mb="8px">
+            <Typography
+              fontSize="13px"
+              fontWeight="500"
+              color="mukuru.text.primary"
+              mb="8px"
+            >
               Description <span style={{ color: '#EF4444' }}>*</span>
             </Typography>
             <textarea
@@ -435,22 +449,32 @@ export default function CreateRequirementPage() {
         </Box>
 
         {/* Configuration Card */}
-        <Box 
-          bg="white" 
-          borderRadius="12px" 
+        <Box
+          bg="white"
+          borderRadius="12px"
           border="1px solid #E5E7EB"
           p="28px"
           mb="24px"
           boxShadow="0 2px 8px rgba(0,0,0,0.06)"
         >
-          <Typography fontSize="16px" fontWeight="600" color="mukuru.text.primary" mb="20px">
+          <Typography
+            fontSize="16px"
+            fontWeight="600"
+            color="mukuru.text.primary"
+            mb="20px"
+          >
             Configuration
           </Typography>
 
           <Flex gap="24px">
             {/* Requirement Type */}
             <Box flex="1">
-              <Typography fontSize="13px" fontWeight="500" color="mukuru.text.primary" mb="8px">
+              <Typography
+                fontSize="13px"
+                fontWeight="500"
+                color="mukuru.text.primary"
+                mb="8px"
+              >
                 Requirement Type <span style={{ color: '#EF4444' }}>*</span>
               </Typography>
               <select
@@ -484,7 +508,12 @@ export default function CreateRequirementPage() {
 
             {/* Field Type */}
             <Box flex="1">
-              <Typography fontSize="13px" fontWeight="500" color="mukuru.text.primary" mb="8px">
+              <Typography
+                fontSize="13px"
+                fontWeight="500"
+                color="mukuru.text.primary"
+                mb="8px"
+              >
                 Field Type <span style={{ color: '#EF4444' }}>*</span>
               </Typography>
               <select
@@ -519,15 +548,20 @@ export default function CreateRequirementPage() {
         </Box>
 
         {/* Advanced Options Card */}
-        <Box 
-          bg="white" 
-          borderRadius="12px" 
+        <Box
+          bg="white"
+          borderRadius="12px"
           border="1px solid #E5E7EB"
           p="28px"
           mb="24px"
           boxShadow="0 2px 8px rgba(0,0,0,0.06)"
         >
-          <Typography fontSize="16px" fontWeight="600" color="mukuru.text.primary" mb="20px">
+          <Typography
+            fontSize="16px"
+            fontWeight="600"
+            color="mukuru.text.primary"
+            mb="20px"
+          >
             Advanced Options
           </Typography>
 
@@ -536,7 +570,9 @@ export default function CreateRequirementPage() {
             <HStack
               gap="12px"
               cursor="pointer"
-              onClick={() => setValidationState((prev) => ({ ...prev, required: !prev.required }))}
+              onClick={() =>
+                setValidationState((prev) => ({ ...prev, required: !prev.required }))
+              }
             >
               <Box
                 w="20px"
@@ -551,7 +587,9 @@ export default function CreateRequirementPage() {
                 flexShrink={0}
               >
                 {validationState.required && (
-                  <Box as="span" color="white" fontSize="12px" fontWeight="bold">✓</Box>
+                  <Box as="span" color="white" fontSize="12px" fontWeight="bold">
+                    ✓
+                  </Box>
                 )}
               </Box>
               <Typography fontSize="14px" color="mukuru.text.primary">
@@ -566,7 +604,12 @@ export default function CreateRequirementPage() {
               formData.fieldType === FieldType.Phone) && (
               <Flex gap="24px">
                 <Box flex="1">
-                  <Typography fontSize="13px" fontWeight="500" color="mukuru.text.primary" mb="8px">
+                  <Typography
+                    fontSize="13px"
+                    fontWeight="500"
+                    color="mukuru.text.primary"
+                    mb="8px"
+                  >
                     Minimum Characters
                   </Typography>
                   <input
@@ -594,7 +637,12 @@ export default function CreateRequirementPage() {
                   />
                 </Box>
                 <Box flex="1">
-                  <Typography fontSize="13px" fontWeight="500" color="mukuru.text.primary" mb="8px">
+                  <Typography
+                    fontSize="13px"
+                    fontWeight="500"
+                    color="mukuru.text.primary"
+                    mb="8px"
+                  >
                     Maximum Characters
                   </Typography>
                   <input
@@ -628,7 +676,12 @@ export default function CreateRequirementPage() {
             {formData.fieldType === FieldType.Number && (
               <Flex gap="24px">
                 <Box flex="1">
-                  <Typography fontSize="13px" fontWeight="500" color="mukuru.text.primary" mb="8px">
+                  <Typography
+                    fontSize="13px"
+                    fontWeight="500"
+                    color="mukuru.text.primary"
+                    mb="8px"
+                  >
                     Minimum Value
                   </Typography>
                   <input
@@ -655,7 +708,12 @@ export default function CreateRequirementPage() {
                   />
                 </Box>
                 <Box flex="1">
-                  <Typography fontSize="13px" fontWeight="500" color="mukuru.text.primary" mb="8px">
+                  <Typography
+                    fontSize="13px"
+                    fontWeight="500"
+                    color="mukuru.text.primary"
+                    mb="8px"
+                  >
                     Maximum Value
                   </Typography>
                   <input
@@ -686,7 +744,12 @@ export default function CreateRequirementPage() {
 
             {/* Help Text */}
             <Box>
-              <Typography fontSize="13px" fontWeight="500" color="mukuru.text.primary" mb="8px">
+              <Typography
+                fontSize="13px"
+                fontWeight="500"
+                color="mukuru.text.primary"
+                mb="8px"
+              >
                 Help Text (optional)
               </Typography>
               <textarea
@@ -721,17 +784,19 @@ export default function CreateRequirementPage() {
 
         {/* Action Buttons */}
         <HStack justify="flex-end" gap="12px" mt="24px">
-          <Button
-            onClick={handleCancel}
-            variant="secondary"
-            disabled={saving}
-          >
+          <Button onClick={handleCancel} variant="secondary" disabled={saving}>
             Cancel
           </Button>
           <Button
             onClick={handleCreate}
             variant="primary"
-            disabled={loading || saving || !formData.code || !formData.displayName || !formData.description}
+            disabled={
+              loading ||
+              saving ||
+              !formData.code ||
+              !formData.displayName ||
+              !formData.description
+            }
             loading={saving}
           >
             {saving ? 'Creating...' : 'Create Requirement'}

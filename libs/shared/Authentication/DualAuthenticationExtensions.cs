@@ -175,13 +175,18 @@ public static class DualAuthenticationExtensions
     /// <summary>
     /// Adds authorization policies that work with both authentication schemes
     /// </summary>
-    public static IServiceCollection AddDualAuthorization(this IServiceCollection services, bool isDevelopment = false)
+    public static IServiceCollection AddDualAuthorization(this IServiceCollection services, IConfiguration? configuration = null, bool isDevelopment = false)
     {
+        // SECURITY FIX: Check configuration flag to prevent accidental bypass in production
+        var allowDevelopmentBypass = configuration?.GetValue<bool>("Security:AllowDevelopmentBypass", false) ?? false;
+        var actualIsDevelopment = isDevelopment && allowDevelopmentBypass;
+
         services.AddAuthorization(options =>
         {
-            if (isDevelopment)
+            if (actualIsDevelopment)
             {
-                // In development, allow anonymous access
+                // SECURITY FIX: Only allow bypass if explicitly configured
+                // In development, allow anonymous access ONLY if explicitly enabled
                 options.DefaultPolicy = new Microsoft.AspNetCore.Authorization.AuthorizationPolicyBuilder()
                     .RequireAssertion(_ => true)
                     .Build();

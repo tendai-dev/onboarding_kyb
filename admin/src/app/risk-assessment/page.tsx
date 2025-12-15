@@ -1,7 +1,18 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Box, Container, Heading, Text, VStack, HStack, Badge, Button, Spinner, SimpleGrid } from '@chakra-ui/react';
+import {
+  Box,
+  Container,
+  Heading,
+  Text,
+  VStack,
+  HStack,
+  Badge,
+  Button,
+  Spinner,
+  SimpleGrid,
+} from '@chakra-ui/react';
 import { useRouter } from 'next/navigation';
 
 interface WorkItem {
@@ -67,7 +78,9 @@ export default function RiskAssessmentPage() {
           {/* Stats */}
           <HStack gap={4}>
             <Box bg="white" p={4} borderRadius="md" boxShadow="sm" flex={1}>
-              <Text fontSize="sm" color="mukuru.text.secondary">Pending Assessment</Text>
+              <Text fontSize="sm" color="mukuru.text.secondary">
+                Pending Assessment
+              </Text>
               <Text fontSize="2xl" fontWeight="bold" color="mukuru.buttons.primary">
                 {workItems.length}
               </Text>
@@ -82,7 +95,9 @@ export default function RiskAssessmentPage() {
               </Box>
             ) : workItems.length === 0 ? (
               <Box textAlign="center" py={10}>
-                <Text color="mukuru.text.secondary">No applications pending risk assessment</Text>
+                <Text color="mukuru.text.secondary">
+                  No applications pending risk assessment
+                </Text>
               </Box>
             ) : (
               <SimpleGrid columns={{ base: 1, md: 2, lg: 3 }} gap={4}>
@@ -97,12 +112,22 @@ export default function RiskAssessmentPage() {
                   >
                     <VStack align="stretch" gap={2}>
                       <HStack justify="space-between">
-                        <Text fontSize="sm" fontWeight="bold">{item.workItemNumber || item.applicationId}</Text>
-                        <Badge colorScheme="blue" fontSize="xs">{item.priority || 'NORMAL'}</Badge>
+                        <Text fontSize="sm" fontWeight="bold">
+                          {item.workItemNumber || item.applicationId}
+                        </Text>
+                        <Badge colorScheme="blue" fontSize="xs">
+                          {item.priority || 'NORMAL'}
+                        </Badge>
                       </HStack>
-                      <Text fontSize="sm" color="mukuru.text.secondary">{item.applicantName || 'N/A'}</Text>
-                      <Text fontSize="xs" color="mukuru.text.secondary">{item.entityTypeDisplayName || item.entityType || 'N/A'}</Text>
-                      <Text fontSize="xs" color="mukuru.text.secondary">Assigned: {item.assignedToName || 'Unassigned'}</Text>
+                      <Text fontSize="sm" color="mukuru.text.secondary">
+                        {item.applicantName || 'N/A'}
+                      </Text>
+                      <Text fontSize="xs" color="mukuru.text.secondary">
+                        {item.entityTypeDisplayName || item.entityType || 'N/A'}
+                      </Text>
+                      <Text fontSize="xs" color="mukuru.text.secondary">
+                        Assigned: {item.assignedToName || 'Unassigned'}
+                      </Text>
                       <Button
                         size="sm"
                         colorScheme="orange"
@@ -122,4 +147,3 @@ export default function RiskAssessmentPage() {
     </Box>
   );
 }
-

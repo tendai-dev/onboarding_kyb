@@ -18,6 +18,12 @@
 /Users/mukurusystemsadministrator/Desktop/onboarding_kyc copy/services/onboarding-api/src/Infrastructure/obj/Debug/net8.0/OnboardingApi.Infrastructure.pdb
 /Users/mukurusystemsadministrator/Desktop/onboarding_kyc copy/services/onboarding-api/src/Infrastructure/obj/Debug/net8.0/OnboardingApi.Infrastructure.genruntimeconfig.cache
 /Users/mukurusystemsadministrator/Desktop/onboarding_kyc copy/services/onboarding-api/src/Infrastructure/obj/Debug/net8.0/ref/OnboardingApi.Infrastructure.dll
+/Users/mukurusystemsadministrator/Desktop/Archive/services/onboarding-api/src/Infrastructure/obj/Debug/net8.0/OnboardingApi.Infrastructure.csproj.AssemblyReference.cache
+/Users/mukurusystemsadministrator/Desktop/Archive/services/onboarding-api/src/Infrastructure/obj/Debug/net8.0/OnboardingApi.Infrastructure.GeneratedMSBuildEditorConfig.editorconfig
+/Users/mukurusystemsadministrator/Desktop/Archive/services/onboarding-api/src/Infrastructure/obj/Debug/net8.0/OnboardingApi.Infrastructure.AssemblyInfoInputs.cache
+/Users/mukurusystemsadministrator/Desktop/Archive/services/onboarding-api/src/Infrastructure/obj/Debug/net8.0/OnboardingApi.Infrastructure.AssemblyInfo.cs
+/Users/mukurusystemsadministrator/Desktop/Archive/services/onboarding-api/src/Infrastructure/obj/Debug/net8.0/OnboardingApi.Infrastructure.csproj.CoreCompileInputs.cache
+/Users/mukurusystemsadministrator/Desktop/Archive/services/onboarding-api/src/Infrastructure/obj/Debug/net8.0/OnboardingApi.Infrastructure.sourcelink.json
 /Users/mukurusystemsadministrator/Desktop/Archive/services/onboarding-api/src/Infrastructure/bin/Debug/net8.0/OnboardingApi.Infrastructure.deps.json
 /Users/mukurusystemsadministrator/Desktop/Archive/services/onboarding-api/src/Infrastructure/bin/Debug/net8.0/OnboardingApi.Infrastructure.runtimeconfig.json
 /Users/mukurusystemsadministrator/Desktop/Archive/services/onboarding-api/src/Infrastructure/bin/Debug/net8.0/OnboardingApi.Infrastructure.dll
@@ -26,11 +32,6 @@
 /Users/mukurusystemsadministrator/Desktop/Archive/services/onboarding-api/src/Infrastructure/bin/Debug/net8.0/OnboardingApi.Domain.dll
 /Users/mukurusystemsadministrator/Desktop/Archive/services/onboarding-api/src/Infrastructure/bin/Debug/net8.0/OnboardingApi.Domain.pdb
 /Users/mukurusystemsadministrator/Desktop/Archive/services/onboarding-api/src/Infrastructure/bin/Debug/net8.0/OnboardingApi.Application.pdb
-/Users/mukurusystemsadministrator/Desktop/Archive/services/onboarding-api/src/Infrastructure/obj/Debug/net8.0/OnboardingApi.Infrastructure.csproj.AssemblyReference.cache
-/Users/mukurusystemsadministrator/Desktop/Archive/services/onboarding-api/src/Infrastructure/obj/Debug/net8.0/OnboardingApi.Infrastructure.GeneratedMSBuildEditorConfig.editorconfig
-/Users/mukurusystemsadministrator/Desktop/Archive/services/onboarding-api/src/Infrastructure/obj/Debug/net8.0/OnboardingApi.Infrastructure.AssemblyInfoInputs.cache
-/Users/mukurusystemsadministrator/Desktop/Archive/services/onboarding-api/src/Infrastructure/obj/Debug/net8.0/OnboardingApi.Infrastructure.AssemblyInfo.cs
-/Users/mukurusystemsadministrator/Desktop/Archive/services/onboarding-api/src/Infrastructure/obj/Debug/net8.0/OnboardingApi.Infrastructure.csproj.CoreCompileInputs.cache
 /Users/mukurusystemsadministrator/Desktop/Archive/services/onboarding-api/src/Infrastructure/obj/Debug/net8.0/Onboardi.C2D295C3.Up2Date
 /Users/mukurusystemsadministrator/Desktop/Archive/services/onboarding-api/src/Infrastructure/obj/Debug/net8.0/OnboardingApi.Infrastructure.dll
 /Users/mukurusystemsadministrator/Desktop/Archive/services/onboarding-api/src/Infrastructure/obj/Debug/net8.0/refint/OnboardingApi.Infrastructure.dll

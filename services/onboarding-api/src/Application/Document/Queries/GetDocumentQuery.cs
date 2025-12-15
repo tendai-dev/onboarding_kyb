@@ -69,7 +69,7 @@ public class GetAllDocumentsQueryHandler : IRequestHandler<GetAllDocumentsQuery,
     }
 }
 
-internal static class DocumentQueryHelpers
+public static class DocumentQueryHelpers
 {
     public static DocumentDto MapToDto(DomainDocument document)
     {

@@ -1,13 +1,7 @@
 'use client';
 
 import { useState, useMemo } from 'react';
-import {
-  Box,
-  SimpleGrid,
-  VStack,
-  HStack,
-  Input,
-} from '@chakra-ui/react';
+import { Box, SimpleGrid, VStack, HStack, Input } from '@chakra-ui/react';
 // Import components directly from Mukuru package
 import { Typography, Button } from '@mukuru/mukuru-react-components';
 // Color mode - always light mode
@@ -116,7 +110,12 @@ export default function IconPicker({ value, onChange }: IconPickerProps) {
             onClick={(e) => e.stopPropagation()}
           >
             {/* Header */}
-            <HStack justify="space-between" p="6" borderBottom="1px" borderColor="gray.200">
+            <HStack
+              justify="space-between"
+              p="6"
+              borderBottom="1px"
+              borderColor="gray.200"
+            >
               <Typography fontSize="xl" fontWeight="bold">
                 Select an Icon
               </Typography>
@@ -166,7 +165,10 @@ export default function IconPicker({ value, onChange }: IconPickerProps) {
                           transition: 'all 0.2s',
                         }}
                       >
-                        <Box fontSize="2xl" color={value === iconName ? 'orange.500' : 'gray.600'}>
+                        <Box
+                          fontSize="2xl"
+                          color={value === iconName ? 'orange.500' : 'gray.600'}
+                        >
                           <IconComponent />
                         </Box>
                         <Typography
@@ -205,7 +207,13 @@ export default function IconPicker({ value, onChange }: IconPickerProps) {
             </VStack>
 
             {/* Footer */}
-            <HStack justify="flex-end" p="6" borderTop="1px" borderColor="gray.200" gap="2">
+            <HStack
+              justify="flex-end"
+              p="6"
+              borderTop="1px"
+              borderColor="gray.200"
+              gap="2"
+            >
               <Button variant="secondary" onClick={() => setIsOpen(false)}>
                 Cancel
               </Button>

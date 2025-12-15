@@ -32,7 +32,7 @@ const mukuruBaseColors = {
     500: '#3E3E3E', // mukuru.cards.dark
     600: '#373A36', // mukuru.charcoal, mukuru.text.primary
     700: '#222222', // mukuru.background.dark
-    800: '#BBBBBB',
+    800: '#BBBBBB', // mukuru.text.placeholder
   },
   teal: {
     100: '#99DBDA', // mukuru.text.success
@@ -91,6 +91,7 @@ const mukuruColors = {
       accent: mukuruBaseColors.orange[200], // #F05423
       inverse: mukuruBaseColors.white[100], // #FFFFFF
       input: mukuruBaseColors.grey[350], // #828282
+      placeholder: mukuruBaseColors.grey[800], // #BBBBBB
       error: mukuruBaseColors.red[300], // #D10007
       'error.dark': mukuruBaseColors.red[100], // #FF6469
       success: mukuruBaseColors.teal[100], // #99DBDA

@@ -3,14 +3,13 @@ using Microsoft.AspNetCore.Mvc;
 using OnboardingApi.Application.Interfaces;
 using OnboardingApi.Domain.Aggregates;
 using System.Text.Json;
+using System.Linq;
 
 namespace OnboardingApi.Presentation.Controllers;
 
 [ApiController]
 [Route("api/v1/migrations")]
-#if !DEBUG
-[Authorize]
-#endif
+[Microsoft.AspNetCore.Authorization.Authorize] // SECURITY FIX: Always require authentication
 public class MigrationsController : ControllerBase
 {
     private readonly IOnboardingCaseRepository _repository;
@@ -28,10 +27,13 @@ public class MigrationsController : ControllerBase
 
     /// <summary>
     /// Get all migration jobs
+    /// SECURITY: Requires admin authentication - migration operations are sensitive
     /// </summary>
     [HttpGet]
     [ProducesResponseType(typeof(List<MigrationJobDto>), StatusCodes.Status200OK)]
-    [AllowAnonymous]
+    [Microsoft.AspNetCore.Authorization.Authorize(Policy = "AdminPolicy")] // SECURITY FIX: Require admin role
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
     public IActionResult GetMigrationJobs()
     {
         lock (_lock)
@@ -42,11 +44,14 @@ public class MigrationsController : ControllerBase
 
     /// <summary>
     /// Get migration job by ID
+    /// SECURITY: Requires admin authentication
     /// </summary>
     [HttpGet("{id}")]
     [ProducesResponseType(typeof(MigrationJobDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    [AllowAnonymous]
+    [Microsoft.AspNetCore.Authorization.Authorize(Policy = "AdminPolicy")] // SECURITY FIX: Require admin role
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
     public IActionResult GetMigrationJob(string id)
     {
         lock (_lock)
@@ -61,11 +66,14 @@ public class MigrationsController : ControllerBase
 
     /// <summary>
     /// Start a new migration job
+    /// SECURITY: Requires admin authentication - migrations can modify data
     /// </summary>
     [HttpPost("start")]
     [ProducesResponseType(typeof(MigrationJobDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    [AllowAnonymous]
+    [Microsoft.AspNetCore.Authorization.Authorize(Policy = "AdminPolicy")] // SECURITY FIX: Require admin role
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
     public async Task<IActionResult> StartMigration([FromForm] StartMigrationRequest request, CancellationToken cancellationToken)
     {
         if (request.File == null || request.File.Length == 0)
@@ -76,6 +84,37 @@ public class MigrationsController : ControllerBase
 
         if (string.IsNullOrWhiteSpace(request.EntityType))
             return BadRequest(new { error = "Entity type is required" });
+
+        // SECURITY FIX: Validate file size (10MB limit)
+        const long maxFileSize = 10 * 1024 * 1024; // 10MB
+        if (request.File.Length > maxFileSize)
+        {
+            _logger.LogWarning("Migration file upload failed: File size {Size} exceeds maximum {MaxSize}", request.File.Length, maxFileSize);
+            return BadRequest(new { error = "File size exceeds maximum allowed size", message = $"File size must be less than {maxFileSize / (1024 * 1024)}MB." });
+        }
+
+        // SECURITY FIX: Validate file name
+        if (string.IsNullOrWhiteSpace(request.File.FileName) || request.File.FileName.Length > 255)
+        {
+            _logger.LogWarning("Migration file upload failed: Invalid file name");
+            return BadRequest(new { error = "Invalid file name", message = "File name is required and must be less than 255 characters." });
+        }
+
+        // SECURITY FIX: Sanitize file name to prevent path traversal
+        var sanitizedFileName = System.IO.Path.GetFileName(request.File.FileName);
+        if (sanitizedFileName != request.File.FileName || sanitizedFileName.Contains(".."))
+        {
+            _logger.LogWarning("Migration file upload failed: Potentially malicious file name {FileName}", request.File.FileName);
+            return BadRequest(new { error = "Invalid file name", message = "File name contains invalid characters." });
+        }
+
+        // SECURITY FIX: Validate file content type (only allow CSV, Excel, or JSON)
+        var allowedContentTypes = new[] { "text/csv", "application/vnd.ms-excel", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", "application/json" };
+        if (!allowedContentTypes.Contains(request.File.ContentType?.ToLowerInvariant()))
+        {
+            _logger.LogWarning("Migration file upload failed: Invalid content type {ContentType}", request.File.ContentType);
+            return BadRequest(new { error = "Invalid file type", message = $"File type {request.File.ContentType} is not allowed. Allowed types: CSV, Excel, JSON." });
+        }
 
         var jobId = $"MIG-{DateTime.UtcNow:yyyyMMddHHmmss}-{Guid.NewGuid().ToString("N")[..8]}";
         
@@ -89,7 +128,7 @@ public class MigrationsController : ControllerBase
             ProcessedRecords = 0,
             FailedRecords = 0,
             EntityType = request.EntityType,
-            Source = request.File.FileName,
+            Source = sanitizedFileName, // SECURITY FIX: Use sanitized file name
             StartTime = DateTime.UtcNow.ToString("O")
         };
 

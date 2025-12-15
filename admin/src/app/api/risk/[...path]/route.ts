@@ -22,11 +22,12 @@ async function forwardRequest(
     const searchParams = request.nextUrl.searchParams;
     const queryString = searchParams.toString();
     // Handle empty path (base route) - don't add trailing slash
-    const servicePath = pathAfterRisk === '' 
-      ? '' 
-      : pathAfterRisk.startsWith('/')
-      ? pathAfterRisk
-      : `/${pathAfterRisk}`;
+    const servicePath =
+      pathAfterRisk === ''
+        ? ''
+        : pathAfterRisk.startsWith('/')
+          ? pathAfterRisk
+          : `/${pathAfterRisk}`;
 
     // Build proxy URL - proxy will handle token injection and refresh
     const proxyPath = `/api/proxy/api/v1/risk-assessments${servicePath}${queryString ? `?${queryString}` : ''}`;
@@ -92,10 +93,7 @@ async function forwardRequest(
         errorText = await response.text().catch(() => `HTTP ${response.status}`);
       }
 
-      return NextResponse.json(
-        { error: errorText },
-        { status: response.status }
-      );
+      return NextResponse.json({ error: errorText }, { status: response.status });
     }
 
     const data = await response.json();
@@ -137,4 +135,3 @@ export async function DELETE(
 ) {
   return forwardRequest(request, 'DELETE', params);
 }
-

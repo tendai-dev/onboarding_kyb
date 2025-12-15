@@ -80,19 +80,20 @@ export async function GET(request: NextRequest) {
         errorText = await response.text().catch(() => `HTTP ${response.status}`);
       }
 
-      logger.error('[Work Queue API Route] Backend error', {
-        status: response.status,
-        error: errorText,
+      logger.error(new Error(errorText), '[Work Queue API Route] Backend error', {
+        extra: {
+          status: response.status,
+          error: errorText,
+        },
       });
 
-      return NextResponse.json(
-        { error: errorText },
-        { status: response.status }
-      );
+      return NextResponse.json({ error: errorText }, { status: response.status });
     }
 
     const data = await response.json();
-    logger.debug('[Work Queue API Route] Success', { itemCount: data.items?.length || 0 });
+    logger.debug('[Work Queue API Route] Success', {
+      itemCount: data.items?.length || 0,
+    });
 
     return NextResponse.json(data);
   } catch (error) {
@@ -108,4 +109,3 @@ export async function GET(request: NextRequest) {
     );
   }
 }
-

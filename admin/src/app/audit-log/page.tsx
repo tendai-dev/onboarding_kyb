@@ -1,13 +1,6 @@
 'use client';
 
-import {
-  Box,
-  VStack,
-  HStack,
-  Flex,
-  Spinner,
-  Grid,
-} from '@chakra-ui/react';
+import { Box, VStack, HStack, Flex, Spinner, Grid } from '@chakra-ui/react';
 import {
   Search,
   Typography,
@@ -28,7 +21,16 @@ import {
 import { useState, useEffect, useCallback, useRef } from 'react';
 import AdminSidebar from '../../components/AdminSidebar';
 import { useSidebar } from '../../contexts/SidebarContext';
-import { FiShield, FiActivity, FiClock, FiUser, FiHash, FiFileText, FiLayers, FiCalendar } from 'react-icons/fi';
+import {
+  FiShield,
+  FiActivity,
+  FiClock,
+  FiUser,
+  FiHash,
+  FiFileText,
+  FiLayers,
+  FiCalendar,
+} from 'react-icons/fi';
 import { auditLogApiService, AuditLogEntryDto } from '../../services/auditLogApi';
 
 export default function AuditLogPage() {
@@ -55,17 +57,17 @@ export default function AuditLogPage() {
   // Calculate summary statistics from audit events
   const calculateSummary = useCallback((events: AuditLogEntryDto[]) => {
     const totalEvents = events.length;
-    const created = events.filter(
-      (e) => e.action.toUpperCase().includes('CREATE')
+    const created = events.filter((e) =>
+      e.action.toUpperCase().includes('CREATE')
     ).length;
-    const updated = events.filter(
-      (e) => e.action.toUpperCase().includes('UPDATE')
+    const updated = events.filter((e) =>
+      e.action.toUpperCase().includes('UPDATE')
     ).length;
-    const approved = events.filter(
-      (e) => e.action.toUpperCase().includes('APPROVE')
+    const approved = events.filter((e) =>
+      e.action.toUpperCase().includes('APPROVE')
     ).length;
-    const deleted = events.filter(
-      (e) => e.action.toUpperCase().includes('DELETE')
+    const deleted = events.filter((e) =>
+      e.action.toUpperCase().includes('DELETE')
     ).length;
 
     return { totalEvents, created, updated, approved, deleted };
@@ -124,13 +126,21 @@ export default function AuditLogPage() {
             : 'Failed to load audit logs. Please ensure the audit log service is running.';
 
         if (err instanceof Error && err.message.includes('Unable to connect')) {
-          setError('Unable to connect to Audit Log service. The service may not be running.');
+          setError(
+            'Unable to connect to Audit Log service. The service may not be running.'
+          );
         } else {
           setError(errorMessage);
         }
 
         setAuditEvents([]);
-        setAuditSummary({ totalEvents: 0, created: 0, updated: 0, approved: 0, deleted: 0 });
+        setAuditSummary({
+          totalEvents: 0,
+          created: 0,
+          updated: 0,
+          approved: 0,
+          deleted: 0,
+        });
       } finally {
         setLoading(false);
         isFetchingRef.current = false;
@@ -174,10 +184,13 @@ export default function AuditLogPage() {
   };
 
   // Get action tag variant
-  const getActionTagVariant = (action: string): 'solid' | 'danger' | 'success' | 'warning' => {
+  const getActionTagVariant = (
+    action: string
+  ): 'solid' | 'danger' | 'success' | 'warning' => {
     const actionUpper = action.toUpperCase();
     if (actionUpper.includes('DELETE') || actionUpper.includes('ERROR')) return 'danger';
-    if (actionUpper.includes('CREATE') || actionUpper.includes('APPROVE')) return 'success';
+    if (actionUpper.includes('CREATE') || actionUpper.includes('APPROVE'))
+      return 'success';
     if (actionUpper.includes('UPDATE')) return 'warning';
     return 'solid';
   };
@@ -185,8 +198,10 @@ export default function AuditLogPage() {
   // Get action color for icon background
   const getActionColor = (action: string) => {
     const actionUpper = action.toUpperCase();
-    if (actionUpper.includes('DELETE') || actionUpper.includes('ERROR')) return { bg: '#FEE2E2', color: '#DC2626' };
-    if (actionUpper.includes('CREATE') || actionUpper.includes('APPROVE')) return { bg: '#D1FAE5', color: '#059669' };
+    if (actionUpper.includes('DELETE') || actionUpper.includes('ERROR'))
+      return { bg: '#FEE2E2', color: '#DC2626' };
+    if (actionUpper.includes('CREATE') || actionUpper.includes('APPROVE'))
+      return { bg: '#D1FAE5', color: '#059669' };
     if (actionUpper.includes('UPDATE')) return { bg: '#FEF3C7', color: '#D97706' };
     return { bg: '#E5E7EB', color: '#6B7280' };
   };
@@ -210,16 +225,20 @@ export default function AuditLogPage() {
   // Filter events based on filter type
   const filteredEvents = auditEvents.filter((event) => {
     const actionUpper = event.action.toUpperCase();
-    
+
     if (filterType === 'CREATE' && !actionUpper.includes('CREATE')) return false;
     if (filterType === 'UPDATE' && !actionUpper.includes('UPDATE')) return false;
     if (filterType === 'DELETE' && !actionUpper.includes('DELETE')) return false;
     if (filterType === 'APPROVE' && !actionUpper.includes('APPROVE')) return false;
-    
-    if (showOnlyErrors && !actionUpper.includes('ERROR') && !actionUpper.includes('FAIL')) {
+
+    if (
+      showOnlyErrors &&
+      !actionUpper.includes('ERROR') &&
+      !actionUpper.includes('FAIL')
+    ) {
       return false;
     }
-    
+
     return true;
   });
 
@@ -235,11 +254,11 @@ export default function AuditLogPage() {
         transition="margin-left 0.3s ease"
       >
         {/* Page Header */}
-        <Box 
-          px="32px" 
-          py="24px" 
-          bg="white" 
-          borderBottom="1px solid" 
+        <Box
+          px="32px"
+          py="24px"
+          bg="white"
+          borderBottom="1px solid"
           borderColor="#E2E8F0"
           position="sticky"
           top="0"
@@ -247,8 +266,8 @@ export default function AuditLogPage() {
         >
           <Flex justify="space-between" align="center">
             <HStack gap="16px" align="center">
-              <Box 
-                p="12px" 
+              <Box
+                p="12px"
                 bg="linear-gradient(135deg, #F05423 0%, #FF7A50 100%)"
                 borderRadius="12px"
                 boxShadow="0 4px 12px rgba(240, 84, 35, 0.25)"
@@ -256,7 +275,12 @@ export default function AuditLogPage() {
                 <FiShield size={24} color="white" />
               </Box>
               <VStack align="start" gap="2px">
-                <Typography fontSize="24px" fontWeight="700" color="#1E293B" lineHeight="1.2">
+                <Typography
+                  fontSize="24px"
+                  fontWeight="700"
+                  color="#1E293B"
+                  lineHeight="1.2"
+                >
                   Audit Log
                 </Typography>
                 <Typography fontSize="14px" color="#64748B" fontWeight="400">
@@ -268,10 +292,10 @@ export default function AuditLogPage() {
             <HStack gap="12px">
               {/* Stats Pills */}
               <HStack gap="8px">
-                <Box 
-                  px="16px" 
-                  py="8px" 
-                  bg="#F1F5F9" 
+                <Box
+                  px="16px"
+                  py="8px"
+                  bg="#F1F5F9"
                   borderRadius="20px"
                   border="1px solid #E2E8F0"
                 >
@@ -280,13 +304,15 @@ export default function AuditLogPage() {
                     <Typography fontSize="13px" fontWeight="600" color="#1E293B">
                       {auditSummary.created}
                     </Typography>
-                    <Typography fontSize="13px" color="#64748B">Created</Typography>
+                    <Typography fontSize="13px" color="#64748B">
+                      Created
+                    </Typography>
                   </HStack>
                 </Box>
-                <Box 
-                  px="16px" 
-                  py="8px" 
-                  bg="#F1F5F9" 
+                <Box
+                  px="16px"
+                  py="8px"
+                  bg="#F1F5F9"
                   borderRadius="20px"
                   border="1px solid #E2E8F0"
                 >
@@ -295,13 +321,15 @@ export default function AuditLogPage() {
                     <Typography fontSize="13px" fontWeight="600" color="#1E293B">
                       {auditSummary.updated}
                     </Typography>
-                    <Typography fontSize="13px" color="#64748B">Updated</Typography>
+                    <Typography fontSize="13px" color="#64748B">
+                      Updated
+                    </Typography>
                   </HStack>
                 </Box>
-                <Box 
-                  px="16px" 
-                  py="8px" 
-                  bg="#F1F5F9" 
+                <Box
+                  px="16px"
+                  py="8px"
+                  bg="#F1F5F9"
                   borderRadius="20px"
                   border="1px solid #E2E8F0"
                 >
@@ -310,19 +338,17 @@ export default function AuditLogPage() {
                     <Typography fontSize="13px" fontWeight="600" color="#1E293B">
                       {auditSummary.deleted}
                     </Typography>
-                    <Typography fontSize="13px" color="#64748B">Deleted</Typography>
+                    <Typography fontSize="13px" color="#64748B">
+                      Deleted
+                    </Typography>
                   </HStack>
                 </Box>
               </HStack>
 
               <Box w="1px" h="32px" bg="#E2E8F0" />
-              
+
               <Tooltip content="Refresh audit logs">
-                <Button
-                  variant="secondary"
-                  size="sm"
-                  onClick={handleRefresh}
-                >
+                <Button variant="secondary" size="sm" onClick={handleRefresh}>
                   <IconWrapper>
                     <RetryIcon width="16" height="16" />
                   </IconWrapper>
@@ -357,7 +383,7 @@ export default function AuditLogPage() {
                     placeholder="Search events, users, entities..."
                     onSearchChange={handleSearchChange}
                   />
-                  
+
                   <Flex gap="12px" align="center">
                     <Box flex="1">
                       <Dropdown
@@ -375,7 +401,9 @@ export default function AuditLogPage() {
                     </Box>
                     <Checkbox
                       checked={showOnlyErrors}
-                      onCheckedChange={(details) => setShowOnlyErrors(details.checked === true)}
+                      onCheckedChange={(details) =>
+                        setShowOnlyErrors(details.checked === true)
+                      }
                     >
                       <HStack gap="6px">
                         <ErrorIcon width="14" height="14" color="#EF4444" />
@@ -390,7 +418,13 @@ export default function AuditLogPage() {
 
               {/* Events Count */}
               <Box px="20px" py="12px" bg="#F8FAFC" borderBottom="1px solid #E2E8F0">
-                <Typography fontSize="12px" fontWeight="600" color="#64748B" textTransform="uppercase" letterSpacing="0.5px">
+                <Typography
+                  fontSize="12px"
+                  fontWeight="600"
+                  color="#64748B"
+                  textTransform="uppercase"
+                  letterSpacing="0.5px"
+                >
                   {loading ? 'Loading...' : `${filteredEvents.length} Events`}
                 </Typography>
               </Box>
@@ -401,7 +435,9 @@ export default function AuditLogPage() {
                   <Flex justify="center" align="center" h="300px">
                     <VStack gap="16px">
                       <Spinner size="lg" color="orange.500" />
-                      <Typography color="#64748B" fontSize="14px">Loading audit logs...</Typography>
+                      <Typography color="#64748B" fontSize="14px">
+                        Loading audit logs...
+                      </Typography>
                     </VStack>
                   </Flex>
                 ) : error ? (
@@ -417,7 +453,9 @@ export default function AuditLogPage() {
                         {error}
                       </Typography>
                       <Button variant="secondary" size="sm" onClick={handleRefresh}>
-                        <IconWrapper><RetryIcon width="14" height="14" /></IconWrapper>
+                        <IconWrapper>
+                          <RetryIcon width="14" height="14" />
+                        </IconWrapper>
                         Try Again
                       </Button>
                     </VStack>
@@ -432,8 +470,8 @@ export default function AuditLogPage() {
                         No events found
                       </Typography>
                       <Typography color="#64748B" fontSize="13px">
-                        {searchTerm || filterType !== 'ALL' 
-                          ? 'Try adjusting your filters' 
+                        {searchTerm || filterType !== 'ALL'
+                          ? 'Try adjusting your filters'
                           : 'Events will appear here'}
                       </Typography>
                     </VStack>
@@ -443,7 +481,7 @@ export default function AuditLogPage() {
                     {filteredEvents.map((event) => {
                       const actionColors = getActionColor(event.action);
                       const isSelected = event.id === selectedEvent?.id;
-                      
+
                       return (
                         <Box
                           key={event.id}
@@ -453,13 +491,15 @@ export default function AuditLogPage() {
                           bg={isSelected ? '#FFF7ED' : 'white'}
                           border="1px solid"
                           borderColor={isSelected ? '#F05423' : '#E2E8F0'}
-                          boxShadow={isSelected ? '0 0 0 3px rgba(240, 84, 35, 0.1)' : 'none'}
+                          boxShadow={
+                            isSelected ? '0 0 0 3px rgba(240, 84, 35, 0.1)' : 'none'
+                          }
                           _hover={{
                             bg: isSelected ? '#FFF7ED' : '#F8FAFC',
                             borderColor: isSelected ? '#F05423' : '#CBD5E1',
                             transform: 'translateY(-1px)',
-                            boxShadow: isSelected 
-                              ? '0 0 0 3px rgba(240, 84, 35, 0.1)' 
+                            boxShadow: isSelected
+                              ? '0 0 0 3px rgba(240, 84, 35, 0.1)'
                               : '0 4px 12px rgba(0, 0, 0, 0.05)',
                           }}
                           onClick={() => setSelectedEvent(event)}
@@ -476,12 +516,12 @@ export default function AuditLogPage() {
                                 {getActionIcon(event.action)}
                               </Box>
                             </Box>
-                            
+
                             <Box flex="1" minW="0">
                               <Flex justify="space-between" align="start" mb="6px">
-                                <Typography 
-                                  fontSize="14px" 
-                                  fontWeight="600" 
+                                <Typography
+                                  fontSize="14px"
+                                  fontWeight="600"
                                   color="#1E293B"
                                   overflow="hidden"
                                   textOverflow="ellipsis"
@@ -489,15 +529,20 @@ export default function AuditLogPage() {
                                 >
                                   {event.entityType}
                                 </Typography>
-                                <Typography fontSize="12px" color="#94A3B8" flexShrink={0} ml="8px">
+                                <Typography
+                                  fontSize="12px"
+                                  color="#94A3B8"
+                                  flexShrink={0}
+                                  ml="8px"
+                                >
                                   {getRelativeTime(event.timestamp)}
                                 </Typography>
                               </Flex>
-                              
+
                               {event.description && (
-                                <Typography 
-                                  fontSize="13px" 
-                                  color="#64748B" 
+                                <Typography
+                                  fontSize="13px"
+                                  color="#64748B"
                                   mb="10px"
                                   lineHeight="1.5"
                                   style={{
@@ -510,13 +555,19 @@ export default function AuditLogPage() {
                                   {event.description}
                                 </Typography>
                               )}
-                              
+
                               <Flex gap="8px" align="center" flexWrap="wrap">
                                 <Tag variant={getActionTagVariant(event.action)}>
                                   {event.action}
                                 </Tag>
-                                <Typography fontSize="12px" color="#94A3B8">•</Typography>
-                                <Typography fontSize="12px" color="#64748B" fontFamily="mono">
+                                <Typography fontSize="12px" color="#94A3B8">
+                                  •
+                                </Typography>
+                                <Typography
+                                  fontSize="12px"
+                                  color="#64748B"
+                                  fontFamily="mono"
+                                >
                                   {event.entityId?.substring(0, 8)}...
                                 </Typography>
                               </Flex>
@@ -544,8 +595,8 @@ export default function AuditLogPage() {
               {selectedEvent ? (
                 <>
                   {/* Detail Header */}
-                  <Box 
-                    p="24px" 
+                  <Box
+                    p="24px"
                     borderBottom="1px solid #E2E8F0"
                     bg="linear-gradient(180deg, #FFFFFF 0%, #F8FAFC 100%)"
                   >
@@ -559,7 +610,7 @@ export default function AuditLogPage() {
                         </Typography>
                       </VStack>
                     </Flex>
-                    
+
                     <Flex gap="24px">
                       <HStack gap="8px">
                         <Box p="6px" borderRadius="6px" bg="#F1F5F9">
@@ -588,11 +639,22 @@ export default function AuditLogPage() {
                         <Box>
                           <HStack gap="8px" mb="12px">
                             <FiFileText size={16} color="#64748B" />
-                            <Typography fontSize="12px" fontWeight="600" color="#64748B" textTransform="uppercase" letterSpacing="0.5px">
+                            <Typography
+                              fontSize="12px"
+                              fontWeight="600"
+                              color="#64748B"
+                              textTransform="uppercase"
+                              letterSpacing="0.5px"
+                            >
                               Description
                             </Typography>
                           </HStack>
-                          <Box p="16px" bg="#F8FAFC" borderRadius="12px" border="1px solid #E2E8F0">
+                          <Box
+                            p="16px"
+                            bg="#F8FAFC"
+                            borderRadius="12px"
+                            border="1px solid #E2E8F0"
+                          >
                             <Typography fontSize="14px" color="#1E293B" lineHeight="1.7">
                               {selectedEvent.description}
                             </Typography>
@@ -604,24 +666,57 @@ export default function AuditLogPage() {
                       <Box>
                         <HStack gap="8px" mb="12px">
                           <FiLayers size={16} color="#64748B" />
-                          <Typography fontSize="12px" fontWeight="600" color="#64748B" textTransform="uppercase" letterSpacing="0.5px">
+                          <Typography
+                            fontSize="12px"
+                            fontWeight="600"
+                            color="#64748B"
+                            textTransform="uppercase"
+                            letterSpacing="0.5px"
+                          >
                             Entity Details
                           </Typography>
                         </HStack>
                         <Grid templateColumns="1fr 1fr" gap="12px">
-                          <Box p="16px" bg="#F8FAFC" borderRadius="12px" border="1px solid #E2E8F0">
-                            <Typography fontSize="11px" color="#94A3B8" fontWeight="500" mb="4px" textTransform="uppercase">
+                          <Box
+                            p="16px"
+                            bg="#F8FAFC"
+                            borderRadius="12px"
+                            border="1px solid #E2E8F0"
+                          >
+                            <Typography
+                              fontSize="11px"
+                              color="#94A3B8"
+                              fontWeight="500"
+                              mb="4px"
+                              textTransform="uppercase"
+                            >
                               Entity Type
                             </Typography>
                             <Typography fontSize="14px" color="#1E293B" fontWeight="600">
                               {selectedEvent.entityType}
                             </Typography>
                           </Box>
-                          <Box p="16px" bg="#F8FAFC" borderRadius="12px" border="1px solid #E2E8F0">
-                            <Typography fontSize="11px" color="#94A3B8" fontWeight="500" mb="4px" textTransform="uppercase">
+                          <Box
+                            p="16px"
+                            bg="#F8FAFC"
+                            borderRadius="12px"
+                            border="1px solid #E2E8F0"
+                          >
+                            <Typography
+                              fontSize="11px"
+                              color="#94A3B8"
+                              fontWeight="500"
+                              mb="4px"
+                              textTransform="uppercase"
+                            >
                               Entity ID
                             </Typography>
-                            <Typography fontSize="14px" color="#1E293B" fontWeight="600" fontFamily="mono">
+                            <Typography
+                              fontSize="14px"
+                              color="#1E293B"
+                              fontWeight="600"
+                              fontFamily="mono"
+                            >
                               {selectedEvent.entityId}
                             </Typography>
                           </Box>
@@ -632,13 +727,30 @@ export default function AuditLogPage() {
                       <Box>
                         <HStack gap="8px" mb="12px">
                           <FiUser size={16} color="#64748B" />
-                          <Typography fontSize="12px" fontWeight="600" color="#64748B" textTransform="uppercase" letterSpacing="0.5px">
+                          <Typography
+                            fontSize="12px"
+                            fontWeight="600"
+                            color="#64748B"
+                            textTransform="uppercase"
+                            letterSpacing="0.5px"
+                          >
                             Actor Details
                           </Typography>
                         </HStack>
                         <Grid templateColumns="1fr 1fr" gap="12px">
-                          <Box p="16px" bg="#F8FAFC" borderRadius="12px" border="1px solid #E2E8F0">
-                            <Typography fontSize="11px" color="#94A3B8" fontWeight="500" mb="4px" textTransform="uppercase">
+                          <Box
+                            p="16px"
+                            bg="#F8FAFC"
+                            borderRadius="12px"
+                            border="1px solid #E2E8F0"
+                          >
+                            <Typography
+                              fontSize="11px"
+                              color="#94A3B8"
+                              fontWeight="500"
+                              mb="4px"
+                              textTransform="uppercase"
+                            >
                               User ID
                             </Typography>
                             <Typography fontSize="14px" color="#1E293B" fontWeight="600">
@@ -646,11 +758,26 @@ export default function AuditLogPage() {
                             </Typography>
                           </Box>
                           {selectedEvent.userRole && (
-                            <Box p="16px" bg="#F8FAFC" borderRadius="12px" border="1px solid #E2E8F0">
-                              <Typography fontSize="11px" color="#94A3B8" fontWeight="500" mb="4px" textTransform="uppercase">
+                            <Box
+                              p="16px"
+                              bg="#F8FAFC"
+                              borderRadius="12px"
+                              border="1px solid #E2E8F0"
+                            >
+                              <Typography
+                                fontSize="11px"
+                                color="#94A3B8"
+                                fontWeight="500"
+                                mb="4px"
+                                textTransform="uppercase"
+                              >
                                 Role
                               </Typography>
-                              <Typography fontSize="14px" color="#1E293B" fontWeight="600">
+                              <Typography
+                                fontSize="14px"
+                                color="#1E293B"
+                                fontWeight="600"
+                              >
                                 {selectedEvent.userRole}
                               </Typography>
                             </Box>
@@ -662,34 +789,68 @@ export default function AuditLogPage() {
                       <Box>
                         <HStack gap="8px" mb="12px">
                           <FiCalendar size={16} color="#64748B" />
-                          <Typography fontSize="12px" fontWeight="600" color="#64748B" textTransform="uppercase" letterSpacing="0.5px">
+                          <Typography
+                            fontSize="12px"
+                            fontWeight="600"
+                            color="#64748B"
+                            textTransform="uppercase"
+                            letterSpacing="0.5px"
+                          >
                             Timestamp
                           </Typography>
                         </HStack>
                         <Grid templateColumns="1fr 1fr" gap="12px">
-                          <Box p="16px" bg="#F8FAFC" borderRadius="12px" border="1px solid #E2E8F0">
-                            <Typography fontSize="11px" color="#94A3B8" fontWeight="500" mb="4px" textTransform="uppercase">
+                          <Box
+                            p="16px"
+                            bg="#F8FAFC"
+                            borderRadius="12px"
+                            border="1px solid #E2E8F0"
+                          >
+                            <Typography
+                              fontSize="11px"
+                              color="#94A3B8"
+                              fontWeight="500"
+                              mb="4px"
+                              textTransform="uppercase"
+                            >
                               Date
                             </Typography>
                             <Typography fontSize="14px" color="#1E293B" fontWeight="600">
-                              {new Date(selectedEvent.timestamp).toLocaleDateString('en-US', {
-                                weekday: 'long',
-                                year: 'numeric',
-                                month: 'long',
-                                day: 'numeric',
-                              })}
+                              {new Date(selectedEvent.timestamp).toLocaleDateString(
+                                'en-US',
+                                {
+                                  weekday: 'long',
+                                  year: 'numeric',
+                                  month: 'long',
+                                  day: 'numeric',
+                                }
+                              )}
                             </Typography>
                           </Box>
-                          <Box p="16px" bg="#F8FAFC" borderRadius="12px" border="1px solid #E2E8F0">
-                            <Typography fontSize="11px" color="#94A3B8" fontWeight="500" mb="4px" textTransform="uppercase">
+                          <Box
+                            p="16px"
+                            bg="#F8FAFC"
+                            borderRadius="12px"
+                            border="1px solid #E2E8F0"
+                          >
+                            <Typography
+                              fontSize="11px"
+                              color="#94A3B8"
+                              fontWeight="500"
+                              mb="4px"
+                              textTransform="uppercase"
+                            >
                               Time
                             </Typography>
                             <Typography fontSize="14px" color="#1E293B" fontWeight="600">
-                              {new Date(selectedEvent.timestamp).toLocaleTimeString('en-US', {
-                                hour: '2-digit',
-                                minute: '2-digit',
-                                second: '2-digit',
-                              })}
+                              {new Date(selectedEvent.timestamp).toLocaleTimeString(
+                                'en-US',
+                                {
+                                  hour: '2-digit',
+                                  minute: '2-digit',
+                                  second: '2-digit',
+                                }
+                              )}
                             </Typography>
                           </Box>
                         </Grid>
@@ -699,12 +860,28 @@ export default function AuditLogPage() {
                       <Box>
                         <HStack gap="8px" mb="12px">
                           <FiHash size={16} color="#64748B" />
-                          <Typography fontSize="12px" fontWeight="600" color="#64748B" textTransform="uppercase" letterSpacing="0.5px">
+                          <Typography
+                            fontSize="12px"
+                            fontWeight="600"
+                            color="#64748B"
+                            textTransform="uppercase"
+                            letterSpacing="0.5px"
+                          >
                             Event ID
                           </Typography>
                         </HStack>
-                        <Box p="16px" bg="#F1F5F9" borderRadius="12px" border="1px solid #E2E8F0">
-                          <Typography fontSize="13px" color="#475569" fontFamily="mono" wordBreak="break-all">
+                        <Box
+                          p="16px"
+                          bg="#F1F5F9"
+                          borderRadius="12px"
+                          border="1px solid #E2E8F0"
+                        >
+                          <Typography
+                            fontSize="13px"
+                            color="#475569"
+                            fontFamily="mono"
+                            wordBreak="break-all"
+                          >
                             {selectedEvent.id}
                           </Typography>
                         </Box>
@@ -715,9 +892,9 @@ export default function AuditLogPage() {
               ) : (
                 <Flex justify="center" align="center" h="100%">
                   <VStack gap="20px" textAlign="center">
-                    <Box 
-                      p="24px" 
-                      borderRadius="full" 
+                    <Box
+                      p="24px"
+                      borderRadius="full"
                       bg="linear-gradient(135deg, #F1F5F9 0%, #E2E8F0 100%)"
                     >
                       <FiActivity size={40} color="#94A3B8" />
@@ -727,7 +904,8 @@ export default function AuditLogPage() {
                         Select an event to view details
                       </Typography>
                       <Typography color="#64748B" fontSize="14px" maxW="300px">
-                        Choose an audit event from the list to view its complete details and metadata
+                        Choose an audit event from the list to view its complete details
+                        and metadata
                       </Typography>
                     </VStack>
                   </VStack>

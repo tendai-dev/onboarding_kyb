@@ -56,6 +56,7 @@ import { PushNotificationService } from '../../lib/pushNotifications';
 import { uploadFileToDocumentService } from '../../lib/documentUpload';
 import { logger } from '../../lib/logger';
 import NextLink from 'next/link';
+import { sendMessageNotificationEmail } from '../../lib/notificationService';
 
 interface DisplayMessage {
   id: string;
@@ -127,10 +128,18 @@ export default function MessagesPage() {
     [fileName: string]: number;
   }>({});
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const messagesContainerRef = useRef<HTMLDivElement>(null);
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  // Refs to access current values in SignalR callbacks without re-initializing
+  const selectedThreadRef = useRef<MessageThreadDto | null>(null);
 
   const pushNotificationService = PushNotificationService.getInstance();
+
+  // Keep refs in sync with state
+  useEffect(() => {
+    selectedThreadRef.current = selectedThread;
+  }, [selectedThread]);
 
   // Initialize SignalR connection
   useEffect(() => {
@@ -165,15 +174,27 @@ export default function MessagesPage() {
               }>;
             };
 
-            logger.debug('[Admin Messages] Received SignalR message', {
+            logger.info('[Admin Messages] Received SignalR message', {
               messageId: message.id,
+              threadId: message.threadId,
+              sender: message.senderName || message.senderEmail,
+            });
+
+            // Use ref to get current thread (avoids stale closures)
+            const currentThread = selectedThreadRef.current;
+
+            console.info('[Admin Messages] SignalR message received:', {
+              messageId: message.id,
+              threadId: message.threadId,
+              currentThreadId: currentThread?.id,
+              matches: currentThread?.id === message.threadId,
             });
 
             // Show push notification for new messages
             if (
               document.hidden ||
-              !selectedThread ||
-              message.threadId !== selectedThread.id
+              !currentThread ||
+              message.threadId !== currentThread.id
             ) {
               try {
                 await pushNotificationService.showMessageNotification(
@@ -189,7 +210,17 @@ export default function MessagesPage() {
             }
 
             // If message is for current thread, add it immediately
-            if (selectedThread && message.threadId === selectedThread.id) {
+            // Use string comparison to ensure exact match (handle both string and GUID formats)
+            const messageThreadId = String(message.threadId || '').toLowerCase();
+            const currentThreadIdStr = currentThread?.id
+              ? String(currentThread.id).toLowerCase()
+              : '';
+            const isForCurrentThread =
+              currentThreadIdStr &&
+              messageThreadId &&
+              messageThreadId === currentThreadIdStr;
+
+            if (isForCurrentThread) {
               // Determine sender type more accurately
               const senderEmail = (
                 message.senderEmail ||
@@ -198,30 +229,69 @@ export default function MessagesPage() {
               ).toLowerCase();
               const senderNameLower = (message.senderName || '').toLowerCase();
 
-              // Determine if message is from admin
-              // Check common admin patterns
-              const hasAdminKeywords = 
-                senderNameLower.includes('admin') ||
-                senderNameLower.includes('compliance') ||
-                senderNameLower.includes('manager') ||
-                senderNameLower.includes('tendai') ||
-                senderNameLower.includes('mukuru');
-              
+              // SIMPLE LOGIC: Admin/ComplianceManager/Reviewer = admin (right), Applicant = partner (left)
+              // Handle 'None' string from backend
+              const rawRole =
+                message.senderRole && message.senderRole !== 'None'
+                  ? message.senderRole
+                  : (message as any).sender_role;
+              const senderRoleLower = (rawRole || '').toLowerCase();
               const isFromAdmin =
-                senderNameLower.includes('@mukuru.com') ||
-                senderEmail.includes('@mukuru.com') ||
-                message.senderRole === 'Admin' ||
-                message.senderRole === 'ComplianceManager' ||
-                hasAdminKeywords;
+                senderRoleLower === 'admin' ||
+                senderRoleLower === 'compliancemanager' ||
+                senderRoleLower === 'reviewer' ||
+                senderRoleLower === 'administrator';
+
+              // Get proper sender name - ALWAYS use thread info to ensure correct names for each side
+              let senderDisplayName = '';
+
+              if (!isFromAdmin) {
+                // Partner messages: ALWAYS use thread's applicantName to ensure consistency
+                senderDisplayName =
+                  currentThread?.applicantName || message.senderName || 'Partner';
+              } else {
+                // Admin messages: Use thread's assignedAdminName, or fallback to senderName
+                // If senderName exists and doesn't match applicantName, use it (might be different admin)
+                if (currentThread?.assignedAdminName) {
+                  senderDisplayName = currentThread.assignedAdminName;
+                } else if (
+                  message.senderName &&
+                  message.senderName !== currentThread?.applicantName
+                ) {
+                  // Use senderName if it's different from applicant name (likely an admin name)
+                  senderDisplayName = message.senderName;
+                } else {
+                  // Try to extract from email or use default
+                  if (message.senderEmail && message.senderEmail.includes('@')) {
+                    const emailParts = message.senderEmail.split('@');
+                    senderDisplayName =
+                      emailParts[0]
+                        .split('.')
+                        .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+                        .join(' ') || emailParts[0];
+                  } else if (message.senderId && message.senderId.includes('@')) {
+                    const emailParts = message.senderId.split('@');
+                    senderDisplayName =
+                      emailParts[0]
+                        .split('.')
+                        .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+                        .join(' ') || emailParts[0];
+                  } else {
+                    senderDisplayName = message.senderName || 'Admin';
+                  }
+                }
+              }
 
               const displayMessage: DisplayMessage = {
                 id: message.id,
-                sender: message.senderName || 'Unknown',
+                sender: senderDisplayName,
                 senderType: isFromAdmin ? 'ADMIN' : 'PARTNER',
-                subject: getSubjectFromThread(selectedThread),
+                subject: currentThread ? getSubjectFromThread(currentThread) : 'Message',
                 content: message.content || '',
                 timestamp: message.sentAt || new Date().toISOString(),
-                applicationId: message.applicationId || selectedThread.applicationId,
+                applicationId:
+                  message.applicationId ||
+                  (currentThread ? currentThread.applicationId : ''),
                 attachments: message.attachments || [],
                 isRead: false,
                 isStarred: false,
@@ -231,28 +301,79 @@ export default function MessagesPage() {
                 threadId: message.threadId,
               };
 
+              // Add message immediately to state - this makes it appear instantly without page refresh
               setMessages((prev) => {
                 // Check if message already exists (avoid duplicates)
                 if (prev.some((m) => m.id === message.id)) {
                   return prev;
                 }
-                return [...prev, displayMessage].sort(
-                  (a, b) =>
-                    new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
+
+                // Replace optimistic message if this is the real message (same content, recent timestamp)
+                const messageSentAt = message.sentAt || new Date().toISOString();
+                const optimisticIndex = prev.findIndex(
+                  (m) =>
+                    m.id.startsWith('temp-') &&
+                    m.content === message.content &&
+                    Math.abs(
+                      new Date(m.timestamp).getTime() - new Date(messageSentAt).getTime()
+                    ) < 5000
                 );
+
+                if (optimisticIndex >= 0) {
+                  // Replace optimistic message with real one
+                  const updated = [...prev];
+                  updated[optimisticIndex] = displayMessage;
+                  return updated.sort((a, b) => {
+                    const timeA = new Date(a.timestamp).getTime();
+                    const timeB = new Date(b.timestamp).getTime();
+                    if (isNaN(timeA) && isNaN(timeB)) return 0;
+                    if (isNaN(timeA)) return 1;
+                    if (isNaN(timeB)) return -1;
+                    const diff = timeA - timeB;
+                    return diff !== 0 ? diff : 0;
+                  });
+                }
+
+                // Sort ascending: oldest first, newest last (at bottom)
+                // Create new array to ensure proper sorting
+                // Message appears instantly!
+                const updated = [...prev, displayMessage];
+                return updated.sort((a, b) => {
+                  const timeA = new Date(a.timestamp).getTime();
+                  const timeB = new Date(b.timestamp).getTime();
+                  // Handle invalid dates
+                  if (isNaN(timeA) && isNaN(timeB)) return 0;
+                  if (isNaN(timeA)) return 1; // Put invalid dates at end
+                  if (isNaN(timeB)) return -1; // Put invalid dates at end
+                  // Ascending: older messages first, newer messages last
+                  // This puts latest messages at the bottom
+                  const diff = timeA - timeB;
+                  // If timestamps are equal, maintain original order (stable sort)
+                  return diff !== 0 ? diff : 0;
+                });
               });
 
-              // Scroll to bottom
+              // Scroll to bottom (same logic as partner portal)
               setTimeout(() => {
                 if (messagesEndRef.current) {
-                  messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
+                  messagesEndRef.current.scrollIntoView({
+                    behavior: 'smooth',
+                    block: 'end',
+                  });
                 }
-              }, 100);
+                if (messagesContainerRef.current) {
+                  messagesContainerRef.current.scrollTop =
+                    messagesContainerRef.current.scrollHeight;
+                }
+              }, 150);
 
               // Also reload messages from backend to ensure consistency and proper sender type
+              // Note: Background refresh happens here, but message is already visible above
               setTimeout(async () => {
                 try {
-                  await loadThreadMessages(selectedThread.id);
+                  if (currentThread?.id) {
+                    await loadThreadMessages(currentThread.id);
+                  }
                 } catch (error) {
                   logger.error(
                     error,
@@ -276,8 +397,9 @@ export default function MessagesPage() {
           (messageData: Record<string, unknown>) => {
             const message = messageData as { threadId?: string };
             // Message was sent successfully via SignalR
-            if (selectedThread && message.threadId === selectedThread.id) {
-              loadThreadMessages(selectedThread.id);
+            const currentThread = selectedThreadRef.current;
+            if (currentThread && message.threadId === currentThread.id) {
+              loadThreadMessages(currentThread.id);
             }
             loadThreads();
             loadUnreadCount();
@@ -289,7 +411,8 @@ export default function MessagesPage() {
           (data: Record<string, unknown>) => {
             const threadId = data.threadId as string;
             const userName = data.userName as string;
-            if (selectedThread && threadId === selectedThread.id) {
+            const currentThread = selectedThreadRef.current;
+            if (currentThread && threadId === currentThread.id) {
               setIsTyping((prev) => ({
                 ...prev,
                 [threadId]: { userName },
@@ -329,11 +452,29 @@ export default function MessagesPage() {
           }
         );
 
+        // Listen for connection state changes
+        const unsubscribeReconnected = signalRService.on('Reconnected', () => {
+          console.info('[Admin Messages] SignalR reconnected');
+          setSignalRConnected(true);
+          // Rejoin current thread if one is selected (use ref to get current value)
+          const thread = selectedThreadRef.current;
+          if (thread) {
+            signalRService.joinThread(thread.id).catch(() => {});
+          }
+        });
+
+        const unsubscribeConnectionClosed = signalRService.on('ConnectionClosed', () => {
+          console.warn('[Admin Messages] SignalR connection closed');
+          setSignalRConnected(false);
+        });
+
         return () => {
           unsubscribeReceive();
           unsubscribeSent();
           unsubscribeTyping();
           unsubscribeRead();
+          unsubscribeReconnected();
+          unsubscribeConnectionClosed();
           signalRService.disconnect();
         };
       } catch (error) {
@@ -361,47 +502,72 @@ export default function MessagesPage() {
 
   // Join/leave thread when selection changes
   useEffect(() => {
-    if (selectedThread && signalRConnected && selectedThread.id) {
-      // Validate threadId is a valid GUID before joining
-      const guidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-      if (
-        guidRegex.test(selectedThread.id) &&
-        selectedThread.id !== '00000000-0000-0000-0000-000000000000'
-      ) {
-        signalRService.joinThread(selectedThread.id).catch((error) => {
+    if (!selectedThread?.id) return;
+
+    // Wait for SignalR to be connected before joining
+    if (!signalRConnected) {
+      // If not connected, try to connect first
+      signalRService
+        .connect()
+        .then(() => {
+          if (signalRService.isConnected()) {
+            setSignalRConnected(true);
+            // Then join thread
+            const guidRegex =
+              /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+            if (
+              guidRegex.test(selectedThread.id) &&
+              selectedThread.id !== '00000000-0000-0000-0000-000000000000'
+            ) {
+              signalRService.joinThread(selectedThread.id).catch(() => {});
+            }
+          }
+        })
+        .catch(() => {});
+      return;
+    }
+
+    // Validate threadId is a valid GUID before joining
+    const guidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    if (
+      guidRegex.test(selectedThread.id) &&
+      selectedThread.id !== '00000000-0000-0000-0000-000000000000'
+    ) {
+      console.info('[Admin Messages] Joining thread:', selectedThread.id);
+      signalRService.joinThread(selectedThread.id).catch((error) => {
+        // Errors are already handled in signalRService - only log if it's unexpected
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        if (
+          !errorMessage.includes('Method does not exist') &&
+          !errorMessage.includes('HubException')
+        ) {
+          logger.warn('[Messages] Failed to join thread', {
+            tags: { error_type: 'thread_join_error' },
+            extra: { error: errorMessage },
+          });
+        }
+      });
+      return () => {
+        console.info('[Admin Messages] Leaving thread:', selectedThread.id);
+        signalRService.leaveThread(selectedThread.id).catch((error) => {
           // Errors are already handled in signalRService - only log if it's unexpected
           const errorMessage = error instanceof Error ? error.message : String(error);
           if (
             !errorMessage.includes('Method does not exist') &&
             !errorMessage.includes('HubException')
           ) {
-            logger.warn('[Messages] Failed to join thread', {
-              tags: { error_type: 'thread_join_error' },
+            logger.warn('[Messages] Failed to leave thread', {
+              tags: { error_type: 'thread_leave_error' },
               extra: { error: errorMessage },
             });
           }
         });
-        return () => {
-          signalRService.leaveThread(selectedThread.id).catch((error) => {
-            // Errors are already handled in signalRService - only log if it's unexpected
-            const errorMessage = error instanceof Error ? error.message : String(error);
-            if (
-              !errorMessage.includes('Method does not exist') &&
-              !errorMessage.includes('HubException')
-            ) {
-              logger.warn('[Messages] Failed to leave thread', {
-                tags: { error_type: 'thread_leave_error' },
-                extra: { error: errorMessage },
-              });
-            }
-          });
-        };
-      } else {
-        logger.warn('[Messages] Invalid thread ID, skipping join', {
-          tags: { warning_type: 'invalid_thread_id' },
-          extra: { threadId: selectedThread.id },
-        });
-      }
+      };
+    } else {
+      logger.warn('[Messages] Invalid thread ID, skipping join', {
+        tags: { warning_type: 'invalid_thread_id' },
+        extra: { threadId: selectedThread.id },
+      });
     }
   }, [selectedThread, signalRConnected]);
 
@@ -425,10 +591,35 @@ export default function MessagesPage() {
       if (selectedThread) {
         loadThreadMessages(selectedThread.id);
       }
-    }, 30000); // 30 seconds
+    }, 5000); // 5 seconds - faster polling when SignalR is not connected
 
     return () => clearInterval(interval);
   }, [selectedThread, signalRConnected]);
+
+  // Auto-retry SignalR connection every 30 seconds if disconnected
+  useEffect(() => {
+    if (signalRConnected) return; // Already connected
+
+    const retryInterval = setInterval(async () => {
+      console.info('[Messages] Attempting to reconnect SignalR...');
+      try {
+        await signalRService.connect();
+        if (signalRService.isConnected()) {
+          console.info('[Messages] SignalR reconnected successfully!');
+          setSignalRConnected(true);
+          // Rejoin thread if one is selected (use ref to get current value)
+          const thread = selectedThreadRef.current;
+          if (thread?.id) {
+            await signalRService.joinThread(thread.id);
+          }
+        }
+      } catch (e) {
+        console.debug('[Messages] SignalR reconnection attempt failed:', e);
+      }
+    }, 30000); // Retry every 30 seconds
+
+    return () => clearInterval(retryInterval);
+  }, [signalRConnected]);
 
   // Prevent body scrolling - page should be fixed
   useEffect(() => {
@@ -437,12 +628,12 @@ export default function MessagesPage() {
     const originalBodyHeight = document.body.style.height;
     const originalHtmlOverflow = document.documentElement.style.overflow;
     const originalHtmlHeight = document.documentElement.style.height;
-    
+
     document.body.style.overflow = 'hidden';
     document.body.style.height = '100vh';
     document.documentElement.style.overflow = 'hidden';
     document.documentElement.style.height = '100vh';
-    
+
     return () => {
       // Restore original styles when component unmounts
       document.body.style.overflow = originalBodyOverflow;
@@ -530,11 +721,20 @@ export default function MessagesPage() {
   }, [selectedThread?.id]); // Only depend on thread ID to prevent unnecessary reloads
 
   useEffect(() => {
-    // Auto-scroll to bottom when new messages arrive
-    if (messagesEndRef.current) {
-      messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
-    }
-  }, [messages]);
+    // Auto-scroll to bottom when messages change (same logic as partner portal)
+    // Use setTimeout to ensure DOM has updated
+    const timer = setTimeout(() => {
+      // Try both methods for reliable scrolling (same as partner portal)
+      if (messagesEndRef.current) {
+        messagesEndRef.current.scrollIntoView({ behavior: 'smooth', block: 'end' });
+      }
+      if (messagesContainerRef.current) {
+        messagesContainerRef.current.scrollTop =
+          messagesContainerRef.current.scrollHeight;
+      }
+    }, 150);
+    return () => clearTimeout(timer);
+  }, [messages, messages.length]);
 
   const loadThreads = async () => {
     try {
@@ -654,66 +854,96 @@ export default function MessagesPage() {
       const displayMessages: DisplayMessage[] = (result.items || []).map(
         (msg: MessageDto) => {
           // Determine sender type based on email domain, name, and role
-          const senderNameLower = (msg.senderName || '').toLowerCase();
-          const senderIdLower = (msg.senderId || '').toLowerCase();
-          const senderRole = (msg.senderRole || '').trim();
-          const roleUpper = senderRole.toUpperCase();
+          // Handle both camelCase and snake_case from backend
+          // Note: Backend may return 'None' as a string, so check for that too
+          const senderNameLower = (msg.senderName || msg.sender_name || '').toLowerCase();
+          const senderIdLower = (msg.senderId || msg.sender_id || '').toLowerCase();
+          const rawSenderRole =
+            msg.senderRole && msg.senderRole !== 'None'
+              ? msg.senderRole
+              : msg.sender_role;
+          const senderRole = (rawSenderRole || '').trim();
 
-          // Check email domain first (most reliable)
+          // Debug log to verify senderRole
+          console.log('[loadThreadMessages] Message role:', {
+            senderRole,
+            content: msg.content?.substring(0, 20),
+          });
+
+          // Check email domain for fallback
           const hasMukuruEmail =
             senderNameLower.includes('@mukuru.com') ||
             senderIdLower.includes('@mukuru.com');
-          const hasKurasikaEmail =
-            senderNameLower.includes('@kurasika.com') ||
-            senderIdLower.includes('@kurasika.com');
 
-          // Admin detection: check role first, then email domain, then name patterns
-          const adminNames = [
-            'tendai gatahwa',
-            'tendai',
-            'admin',
-            'compliance',
-            'mukuru',
-          ];
-          const customerNames = ['alpha tembo', 'alpha', 'customer', 'applicant'];
-
-          // Check if admin by name
-          const isAdminByName = adminNames.some((name) => senderNameLower.includes(name));
-
-          // Check if customer by name
-          const isCustomerByName = customerNames.some((name) =>
-            senderNameLower.includes(name)
-          );
-
-          // Determine if admin: check role first, then email domain, then name
-          const isAdmin =
-            senderRole === 'Admin' ||
-            senderRole === 'ComplianceManager' ||
-            roleUpper === 'ADMIN' ||
-            roleUpper === 'COMPLIANCEMANAGER' ||
-            roleUpper.includes('ADMIN') ||
-            roleUpper.includes('COMPLIANCE') ||
-            hasMukuruEmail ||
-            (isAdminByName && !isCustomerByName && !hasKurasikaEmail);
-
-          // Determine sender type
+          // SIMPLE LOGIC: In Admin Portal, Admin/ComplianceManager/Reviewer = admin (right side), Applicant = partner (left side)
+          // Check senderRole from backend (single source of truth)
           let senderType: 'ADMIN' | 'PARTNER' | 'CUSTOMER';
-          if (isAdmin) {
+          const senderRoleLower = senderRole.toLowerCase();
+
+          if (
+            senderRoleLower === 'admin' ||
+            senderRoleLower === 'compliancemanager' ||
+            senderRoleLower === 'reviewer' ||
+            senderRoleLower === 'administrator'
+          ) {
             senderType = 'ADMIN';
-          } else if (roleUpper.includes('PARTNER') || hasKurasikaEmail) {
+          } else if (senderRoleLower === 'applicant' || senderRoleLower === 'partner') {
             senderType = 'PARTNER';
           } else {
-            senderType = 'CUSTOMER';
+            // Fallback for unknown roles
+            senderType = hasMukuruEmail ? 'ADMIN' : 'PARTNER';
+          }
+
+          console.log('[loadThreadMessages] Determined senderType:', {
+            senderType,
+            senderRole,
+          });
+
+          // Get proper sender name - ALWAYS use thread info to ensure correct names for each side
+          let senderDisplayName = '';
+
+          if (senderType === 'PARTNER') {
+            // Partner messages: ALWAYS use thread's applicantName to ensure consistency
+            senderDisplayName =
+              selectedThread?.applicantName ||
+              msg.senderName ||
+              msg.sender_name ||
+              'Partner';
+          } else {
+            // Admin messages: Use thread's assignedAdminName, or fallback to senderName
+            // If senderName exists and doesn't match applicantName, use it (might be different admin)
+            if (selectedThread?.assignedAdminName) {
+              senderDisplayName = selectedThread.assignedAdminName;
+            } else if (
+              (msg.senderName || msg.sender_name) &&
+              (msg.senderName || msg.sender_name) !== selectedThread?.applicantName
+            ) {
+              // Use senderName if it's different from applicant name (likely an admin name)
+              senderDisplayName = msg.senderName || msg.sender_name || '';
+            } else {
+              // Try to extract from email or use default
+              const senderId = msg.senderId || msg.sender_id || '';
+              if (senderId && senderId.includes('@')) {
+                const emailParts = senderId.split('@');
+                senderDisplayName =
+                  emailParts[0]
+                    .split('.')
+                    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+                    .join(' ') || emailParts[0];
+              } else {
+                senderDisplayName = msg.senderName || msg.sender_name || 'Admin';
+              }
+            }
           }
 
           return {
             id: msg.id,
-            sender: msg.senderName,
+            sender: senderDisplayName,
             senderType: senderType,
-            recipient: msg.receiverName || undefined,
+            recipient: msg.receiverName || msg.receiver_name || undefined,
             subject: getSubjectFromThread(selectedThread),
             content: msg.content,
-            timestamp: msg.sentAt,
+            timestamp: msg.sentAt || msg.sent_at || new Date().toISOString(),
             applicationId: selectedThread?.applicationId || '',
             attachments: msg.attachments?.map((a) => ({
               id: a.id,
@@ -733,11 +963,42 @@ export default function MessagesPage() {
           };
         }
       );
-      // Sort messages by timestamp: oldest first (ascending order)
-      const sortedMessages = displayMessages.sort(
-        (a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
+      // Sort messages by timestamp: oldest first, newest last (ascending order)
+      // This ensures latest messages appear at the bottom
+      // Create a new array to avoid mutating the original
+      const sortedMessages = [...displayMessages].sort((a, b) => {
+        const timeA = new Date(a.timestamp).getTime();
+        const timeB = new Date(b.timestamp).getTime();
+        // Handle invalid dates
+        if (isNaN(timeA) && isNaN(timeB)) return 0;
+        if (isNaN(timeA)) return 1; // Put invalid dates at end
+        if (isNaN(timeB)) return -1; // Put invalid dates at end
+        // Ascending: older messages first (smaller timestamp), newer messages last (larger timestamp)
+        // This puts latest messages at the bottom
+        const diff = timeA - timeB;
+        // If timestamps are equal, maintain original order (stable sort)
+        return diff !== 0 ? diff : 0;
+      });
+      console.log(
+        '[loadThreadMessages] Sorted messages:',
+        sortedMessages.map((m) => ({
+          id: m.id,
+          timestamp: m.timestamp,
+          content: m.content?.substring(0, 30),
+        }))
       );
       setMessages(sortedMessages);
+
+      // Scroll to bottom after loading messages to show latest (same logic as partner portal)
+      setTimeout(() => {
+        if (messagesEndRef.current) {
+          messagesEndRef.current.scrollIntoView({ behavior: 'smooth', block: 'end' });
+        }
+        if (messagesContainerRef.current) {
+          messagesContainerRef.current.scrollTop =
+            messagesContainerRef.current.scrollHeight;
+        }
+      }, 150);
 
       // Mark unread messages as read (don't await to avoid blocking)
       const unreadMessages = displayMessages.filter((m) => !m.isRead);
@@ -791,75 +1052,100 @@ export default function MessagesPage() {
   // mapSenderRole removed - not currently used
 
   // Determine if message is from admin (for alignment)
-  // In admin view: admin messages go on the right, customer messages on the left
-  // NOTE: Backend is storing all messages with sender_role='Applicant', so we detect by name
+  // In admin view: admin messages go on the right, customer/partner messages on the left
   const isFromAdmin = (message: DisplayMessage): boolean => {
+    // Primary: Trust backend's senderType field (single source of truth)
+    if (message.senderType === 'ADMIN') {
+      return true;
+    }
+
+    if (message.senderType === 'CUSTOMER' || message.senderType === 'PARTNER') {
+      return false;
+    }
+
+    // Fallback: Check sender name/email for admin indicators
     if (!message.sender) {
-      console.log('[isFromAdmin] No sender, returning false');
       return false;
     }
 
     const senderLower = message.sender.toLowerCase();
-    console.log('[isFromAdmin] Checking message:', {
-      sender: message.sender,
-      senderLower,
-      senderType: message.senderType,
-    });
-
-    // Check senderType first (if backend ever fixes it)
-    if (message.senderType === 'ADMIN') {
-      console.log('[isFromAdmin] ✅ TRUE - senderType is ADMIN');
-      return true;
-    }
 
     // Check for @mukuru.com email domain
     if (senderLower.includes('@mukuru.com')) {
-      console.log('[isFromAdmin] ✅ TRUE - has @mukuru.com email');
       return true;
     }
 
-    // Check for known admin names (since backend role is broken)
-    // Admin names: Tendai Gatahwa, or any name that doesn't match customer patterns
-    const adminNames = ['tendai gatahwa', 'tendai', 'admin', 'compliance', 'mukuru'];
-    const customerNames = ['alpha tembo', 'alpha', 'customer', 'applicant'];
-
-    // If it matches admin name patterns, it's admin
+    // Check for admin name patterns
+    const adminNames = ['admin', 'compliance', 'mukuru', 'manager'];
     if (adminNames.some((name) => senderLower.includes(name))) {
-      console.log('[isFromAdmin] ✅ TRUE - matches admin name pattern');
       return true;
     }
 
-    // If it matches customer name patterns, it's NOT admin
-    if (customerNames.some((name) => senderLower.includes(name))) {
-      console.log('[isFromAdmin] ❌ FALSE - matches customer name pattern');
-      return false;
-    }
-
-    // Default: if senderType is CUSTOMER or senderRole was Applicant, assume customer
-    // Otherwise, if unclear, check if it's NOT a known customer name
-    if (message.senderType === 'CUSTOMER') {
-      return false;
-    }
-
-    // Last resort: if name contains common admin indicators
-    return senderLower.includes('mukuru') || senderLower.includes('admin');
+    // Default: assume partner/customer (not admin)
+    return false;
   };
 
   const getSubjectFromThread = (thread: MessageThreadDto | null): string => {
     if (!thread) return 'No Subject';
     if (thread.applicationReference) return `Application ${thread.applicationReference}`;
-    if (thread.applicationId) return `Application ${thread.applicationId.substring(0, 8)}...`;
+    if (thread.applicationId)
+      return `Application ${thread.applicationId.substring(0, 8)}...`;
     return 'Message Thread';
   };
 
   // Helper to format date safely
-  const formatDate = (dateString: string | null | undefined, format: 'short' | 'full' = 'short'): string => {
+  const formatDate = (
+    dateString: string | null | undefined,
+    format: 'short' | 'full' = 'short'
+  ): string => {
     if (!dateString) return '';
     try {
-      const date = new Date(dateString);
-      if (isNaN(date.getTime())) return '';
+      // Handle various date formats from backend
+      let date: Date;
+      if (typeof dateString === 'string') {
+        // Try parsing as ISO string first
+        date = new Date(dateString);
+        // If invalid, try parsing as timestamp
+        if (isNaN(date.getTime()) && !isNaN(Number(dateString))) {
+          date = new Date(Number(dateString));
+        }
+      } else {
+        date = new Date(dateString);
+      }
+
+      if (isNaN(date.getTime())) {
+        console.warn('[formatDate] Invalid date:', dateString);
+        return '';
+      }
+
+      const now = new Date();
+      const diffMs = now.getTime() - date.getTime();
+      const diffMins = Math.floor(diffMs / 60000);
+      const diffHours = Math.floor(diffMs / 3600000);
+      const diffDays = Math.floor(diffMs / 86400000);
+
       if (format === 'short') {
+        // For thread list - show relative time or date
+        if (diffMins < 1) return 'Just now';
+        if (diffMins < 60) return `${diffMins}m ago`;
+        if (diffHours < 24) return `${diffHours}h ago`;
+        if (diffDays < 7) return `${diffDays}d ago`;
         return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+      }
+
+      // For full format - show time with date context
+      const isToday = date.toDateString() === now.toDateString();
+      const isYesterday =
+        new Date(now.getTime() - 86400000).toDateString() === date.toDateString();
+
+      if (isToday) {
+        return date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+      }
+      if (isYesterday) {
+        return (
+          'Yesterday ' +
+          date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })
+        );
       }
       return date.toLocaleString('en-US', {
         month: 'short',
@@ -867,7 +1153,8 @@ export default function MessagesPage() {
         hour: 'numeric',
         minute: '2-digit',
       });
-    } catch {
+    } catch (e) {
+      console.warn('[formatDate] Error parsing date:', dateString, e);
       return '';
     }
   };
@@ -875,8 +1162,30 @@ export default function MessagesPage() {
   // Helper to get sender display name
   const getSenderName = (sender: string | null | undefined): string => {
     if (!sender || sender.trim() === '') return 'User';
-    const name = sender.split(',')[0].trim();
-    return name || 'User';
+
+    // If it's an email address, extract and format the name part
+    if (sender.includes('@')) {
+      const emailParts = sender.split('@');
+      const namePart = emailParts[0];
+      // Convert "john.doe" or "john_doe" to "John Doe"
+      return (
+        namePart
+          .split(/[._-]/)
+          .map((part) => part.charAt(0).toUpperCase() + part.slice(1).toLowerCase())
+          .join(' ') || 'User'
+      );
+    }
+
+    // If it contains a comma (e.g., "Doe, John"), handle that
+    if (sender.includes(',')) {
+      const parts = sender.split(',').map((p) => p.trim());
+      if (parts.length >= 2) {
+        return `${parts[1]} ${parts[0]}`; // "John Doe"
+      }
+      return parts[0];
+    }
+
+    return sender.trim() || 'User';
   };
 
   const determinePriority = (msg: MessageDto): 'LOW' | 'MEDIUM' | 'HIGH' => {
@@ -987,7 +1296,9 @@ export default function MessagesPage() {
       console.warn('[Messages] No applicationId found, using thread ID as fallback');
       applicationId = selectedThread.id;
       // Update the selectedThread state with the thread ID as applicationId
-      setSelectedThread((prev) => (prev ? { ...prev, applicationId: selectedThread.id } : null));
+      setSelectedThread((prev) =>
+        prev ? { ...prev, applicationId: selectedThread.id } : null
+      );
     }
 
     try {
@@ -1110,6 +1421,72 @@ export default function MessagesPage() {
         setSendSuccess(true);
         setTimeout(() => setSendSuccess(false), 3000);
 
+        // Send email notification to partner (non-blocking)
+        try {
+          // Try to get recipient email from thread or application
+          let recipientEmail: string | undefined;
+          let recipientName: string | undefined;
+          let caseNumber: string | undefined;
+          let applicationName: string | undefined;
+
+          // Get from thread if available (thread has applicantName but we need to get email from application)
+          if (selectedThread?.applicantName) {
+            recipientName = selectedThread.applicantName;
+          }
+          if (selectedThread?.applicationReference) {
+            caseNumber = selectedThread.applicationReference;
+          }
+
+          // Always fetch application details to get recipient email
+          if (applicationId) {
+            try {
+              const appResponse = await fetch(`/api/proxy/projections/v1/cases/${applicationId}`);
+              if (appResponse.ok) {
+                const appData = await appResponse.json();
+                recipientEmail = appData.applicantEmail || appData.applicant_email;
+                recipientName = appData.applicantFirstName && appData.applicantLastName
+                  ? `${appData.applicantFirstName} ${appData.applicantLastName}`.trim()
+                  : appData.applicantFirstName || appData.applicantLastName || appData.businessLegalName;
+                caseNumber = appData.caseNumber || appData.caseId || applicationId;
+                applicationName = appData.businessLegalName || appData.legalName;
+              }
+            } catch (error) {
+              console.warn('Failed to fetch application details for email:', error);
+            }
+          }
+
+          // Get admin name from session
+          let adminName: string | undefined;
+          try {
+            const sessionResponse = await fetch('/api/auth/session');
+            if (sessionResponse.ok) {
+              const session = await sessionResponse.json();
+              adminName = session?.user?.name || session?.user?.email?.split('@')[0] || 'Support Team';
+            }
+          } catch (error) {
+            console.warn('Failed to get admin name:', error);
+          }
+
+          // Send email if we have recipient email and receiverId is set (message to partner)
+          if (recipientEmail && newMessage.receiverId) {
+            sendMessageNotificationEmail({
+              to: recipientEmail,
+              recipientName: recipientName || 'Valued Partner',
+              caseId: applicationId,
+              caseNumber: caseNumber,
+              message: newMessage.content.trim().substring(0, 200), // Preview
+              adminName: adminName,
+              applicationName: applicationName,
+            }).catch((error) => {
+              // Log error but don't block user flow
+              console.warn('Failed to send message notification email:', error);
+            });
+          }
+        } catch (error) {
+          // Log error but don't block user flow
+          console.warn('Error sending message notification email:', error);
+        }
+
         // Clear the message input and attachments
         setNewMessage({ applicationId: '', content: '', receiverId: '' });
         setSelectedAttachments([]);
@@ -1127,12 +1504,16 @@ export default function MessagesPage() {
           await loadThreads();
           await loadUnreadCount();
 
-          // Scroll to bottom to show new message
+          // Scroll to bottom to show new message (same logic as partner portal)
           setTimeout(() => {
             if (messagesEndRef.current) {
-              messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
+              messagesEndRef.current.scrollIntoView({ behavior: 'smooth', block: 'end' });
             }
-          }, 100);
+            if (messagesContainerRef.current) {
+              messagesContainerRef.current.scrollTop =
+                messagesContainerRef.current.scrollHeight;
+            }
+          }, 150);
         }, 500);
       } else {
         throw new Error(result.errorMessage || 'Failed to send message');
@@ -1175,7 +1556,8 @@ export default function MessagesPage() {
   });
 
   // Filter and sort messages: oldest at top, newest at bottom
-  const filteredMessages = messages
+  // Latest messages should appear at the bottom (ascending order)
+  const filteredMessages = [...messages]
     .filter((message) => {
       if (!messageSearchTerm) return true;
       const search = messageSearchTerm.toLowerCase();
@@ -1186,8 +1568,18 @@ export default function MessagesPage() {
       );
     })
     .sort((a, b) => {
-      // Sort by timestamp: oldest first (ascending order)
-      return new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime();
+      // Sort by timestamp: oldest first, newest last (ascending order)
+      // This ensures latest messages appear at the bottom
+      const timeA = new Date(a.timestamp).getTime();
+      const timeB = new Date(b.timestamp).getTime();
+      // Handle invalid dates
+      if (isNaN(timeA) && isNaN(timeB)) return 0;
+      if (isNaN(timeA)) return 1; // Put invalid dates at end
+      if (isNaN(timeB)) return -1; // Put invalid dates at end
+      // Ascending: older messages first (smaller timestamp), newer messages last (larger timestamp)
+      const diff = timeA - timeB;
+      // If timestamps are equal, maintain original order (stable sort)
+      return diff !== 0 ? diff : 0;
     });
 
   // _getPriorityColor removed - not currently used
@@ -1246,13 +1638,7 @@ export default function MessagesPage() {
   }
 
   return (
-    <Box 
-      height="100vh" 
-      overflow="hidden" 
-      display="flex" 
-      bg="#F8FAFC"
-      width="100%"
-    >
+    <Box height="100vh" overflow="hidden" display="flex" bg="#F8FAFC" width="100%">
       <AdminSidebar />
       <Box
         ml={condensed ? '72px' : '280px'}
@@ -1276,7 +1662,14 @@ export default function MessagesPage() {
           minH="0"
           height="100%"
         >
-          <VStack gap="3" align="stretch" flex="1" minH="0" overflow="hidden" height="100%">
+          <VStack
+            gap="3"
+            align="stretch"
+            flex="1"
+            minH="0"
+            overflow="hidden"
+            height="100%"
+          >
             {/* Premium Header */}
             <Box
               bg="white"
@@ -1297,7 +1690,7 @@ export default function MessagesPage() {
                 bgGradient="linear(to-r, mukuru.primary, mukuru.teal)"
                 borderTopRadius="16px"
               />
-              
+
               <Flex justify="space-between" align="center" pt="1">
                 <HStack gap="3">
                   {/* Icon */}
@@ -1382,17 +1775,41 @@ export default function MessagesPage() {
                       </Typography>
                     </Box>
                   ) : (
-                    <Box
-                      bg="mukuru.grey.medium"
-                      color="white"
-                      px="2.5"
-                      py="1.5"
-                      borderRadius="8px"
-                    >
-                      <Typography fontSize="xs" fontWeight="medium">
-                        Offline
-                      </Typography>
-                    </Box>
+                    <Tooltip content="Real-time updates unavailable. Messages refresh every 5 seconds. Click to retry connection.">
+                      <Box
+                        as="button"
+                        onClick={async () => {
+                          try {
+                            await signalRService.reconnect();
+                            setSignalRConnected(signalRService.isConnected());
+                          } catch (e) {
+                            console.warn('[Messages] Failed to reconnect SignalR:', e);
+                          }
+                        }}
+                        bg="#EF4444"
+                        color="white"
+                        px="2.5"
+                        py="1.5"
+                        borderRadius="8px"
+                        display="flex"
+                        alignItems="center"
+                        gap="1.5"
+                        cursor="pointer"
+                        _hover={{ bg: '#DC2626' }}
+                        transition="all 0.2s"
+                      >
+                        <Box
+                          w="6px"
+                          h="6px"
+                          borderRadius="full"
+                          bg="white"
+                          opacity={0.7}
+                        />
+                        <Typography fontSize="xs" fontWeight="medium">
+                          Offline - Click to retry
+                        </Typography>
+                      </Box>
+                    </Tooltip>
                   )}
 
                   {/* New Message Button */}
@@ -1423,7 +1840,9 @@ export default function MessagesPage() {
                       <IconWrapper>
                         <AddIcon width="14" height="14" />
                       </IconWrapper>
-                      <Typography fontWeight="semibold" fontSize="xs">New Message</Typography>
+                      <Typography fontWeight="semibold" fontSize="xs">
+                        New Message
+                      </Typography>
                     </Box>
                   </Tooltip>
 
@@ -1458,7 +1877,9 @@ export default function MessagesPage() {
                       <IconWrapper>
                         <RetryIcon width="14" height="14" />
                       </IconWrapper>
-                      <Typography fontWeight="medium" fontSize="xs">Refresh</Typography>
+                      <Typography fontWeight="medium" fontSize="xs">
+                        Refresh
+                      </Typography>
                     </Box>
                   </Tooltip>
                 </HStack>
@@ -1590,7 +2011,11 @@ export default function MessagesPage() {
                         cursor="pointer"
                         transition="all 0.2s"
                         onClick={() => setFilterArchived(!filterArchived)}
-                        boxShadow={filterArchived ? '0 1px 4px rgba(240, 84, 35, 0.2)' : '0 1px 2px rgba(0,0,0,0.04)'}
+                        boxShadow={
+                          filterArchived
+                            ? '0 1px 4px rgba(240, 84, 35, 0.2)'
+                            : '0 1px 2px rgba(0,0,0,0.04)'
+                        }
                         _hover={{
                           bg: filterArchived ? 'mukuru.primary' : '#F8FAFC',
                           transform: 'translateY(-1px)',
@@ -1618,7 +2043,7 @@ export default function MessagesPage() {
                           Hide Archived
                         </Typography>
                       </Box>
-                      
+
                       <Box
                         as="button"
                         px="2"
@@ -1631,7 +2056,11 @@ export default function MessagesPage() {
                         cursor="pointer"
                         transition="all 0.2s"
                         onClick={() => setFilterStarred(!filterStarred)}
-                        boxShadow={filterStarred ? '0 1px 4px rgba(245, 158, 11, 0.2)' : '0 1px 2px rgba(0,0,0,0.04)'}
+                        boxShadow={
+                          filterStarred
+                            ? '0 1px 4px rgba(245, 158, 11, 0.2)'
+                            : '0 1px 2px rgba(0,0,0,0.04)'
+                        }
                         _hover={{
                           bg: filterStarred ? '#FEF3C7' : '#F8FAFC',
                           transform: 'translateY(-1px)',
@@ -1652,12 +2081,12 @@ export default function MessagesPage() {
                 </Box>
 
                 {/* Threads List */}
-                <Box 
-                  flex="1" 
-                  overflowY="auto" 
+                <Box
+                  flex="1"
+                  overflowY="auto"
                   overflowX="hidden"
-                  minH="0" 
-                  p="2.5" 
+                  minH="0"
+                  p="2.5"
                   bg="#F8FAFC"
                   position="relative"
                   borderBottomRadius="14px"
@@ -1703,11 +2132,19 @@ export default function MessagesPage() {
                             No messages found
                           </Typography>
                           {searchTerm || filterType !== 'ALL' ? (
-                            <Typography color="mukuru.grey.medium" fontSize="xs" lineHeight="1.4">
+                            <Typography
+                              color="mukuru.grey.medium"
+                              fontSize="xs"
+                              lineHeight="1.4"
+                            >
                               Try adjusting your search or filter criteria
                             </Typography>
                           ) : (
-                            <Typography color="mukuru.grey.medium" fontSize="xs" lineHeight="1.4">
+                            <Typography
+                              color="mukuru.grey.medium"
+                              fontSize="xs"
+                              lineHeight="1.4"
+                            >
                               Messages will appear here when available
                             </Typography>
                           )}
@@ -1718,7 +2155,11 @@ export default function MessagesPage() {
                     <Flex justify="center" align="center" height="100%" minH="200px">
                       <VStack gap="2.5">
                         <Spinner size="md" color="mukuru.primary" />
-                        <Typography fontSize="xs" color="mukuru.grey.medium" fontWeight="medium">
+                        <Typography
+                          fontSize="xs"
+                          color="mukuru.grey.medium"
+                          fontWeight="medium"
+                        >
                           Loading messages...
                         </Typography>
                       </VStack>
@@ -1767,35 +2208,33 @@ export default function MessagesPage() {
                               bgGradient="linear(to-b, mukuru.primary, #FF7A50)"
                             />
                           )}
-                          
+
                           <HStack gap="2.5" align="start">
                             {/* Avatar */}
                             <Box
                               w="36px"
                               h="36px"
                               borderRadius="10px"
-                              bg={thread.id === selectedThread?.id 
-                                ? 'mukuru.primary' 
-                                : 'mukuru.teal'
+                              bg={
+                                thread.id === selectedThread?.id
+                                  ? 'mukuru.primary'
+                                  : 'mukuru.teal'
                               }
                               display="flex"
                               alignItems="center"
                               justifyContent="center"
                               flexShrink={0}
-                              boxShadow={thread.id === selectedThread?.id 
-                                ? '0 2px 6px rgba(240, 84, 35, 0.25)' 
-                                : '0 1px 3px rgba(0, 0, 0, 0.1)'
+                              boxShadow={
+                                thread.id === selectedThread?.id
+                                  ? '0 2px 6px rgba(240, 84, 35, 0.25)'
+                                  : '0 1px 3px rgba(0, 0, 0, 0.1)'
                               }
                             >
-                              <Typography 
-                                fontSize="sm" 
-                                fontWeight="bold" 
-                                color="white"
-                              >
+                              <Typography fontSize="sm" fontWeight="bold" color="white">
                                 {(thread.applicantName || 'U').charAt(0).toUpperCase()}
                               </Typography>
                             </Box>
-                            
+
                             <VStack gap="1.5" align="stretch" flex="1" minW="0">
                               <Flex justify="space-between" align="start">
                                 <HStack gap="2" flex="1" minW="0">
@@ -1854,7 +2293,8 @@ export default function MessagesPage() {
                               )}
 
                               <HStack gap="2" fontSize="2xs">
-                                {(thread.applicationReference || thread.applicationId) && (
+                                {(thread.applicationReference ||
+                                  thread.applicationId) && (
                                   <Box
                                     px="2"
                                     py="0.5"
@@ -1863,17 +2303,28 @@ export default function MessagesPage() {
                                     border="1px solid"
                                     borderColor="#E5E7EB"
                                   >
-                                    <Typography fontSize="2xs" fontWeight="medium" color="#6B7280">
-                                      {thread.applicationReference || thread.applicationId?.substring(0, 8)}
+                                    <Typography
+                                      fontSize="2xs"
+                                      fontWeight="medium"
+                                      color="#6B7280"
+                                    >
+                                      {thread.applicationReference ||
+                                        thread.applicationId?.substring(0, 8)}
                                     </Typography>
                                   </Box>
                                 )}
-                                {(thread.applicationReference || thread.applicationId) && thread.messageCount !== undefined && (
-                                  <Typography color="#D1D5DB">•</Typography>
-                                )}
+                                {(thread.applicationReference || thread.applicationId) &&
+                                  thread.messageCount !== undefined && (
+                                    <Typography color="#D1D5DB">•</Typography>
+                                  )}
                                 {thread.messageCount !== undefined && (
-                                  <Typography fontSize="2xs" fontWeight="medium" color="#9CA3AF">
-                                    {thread.messageCount} {thread.messageCount === 1 ? 'msg' : 'msgs'}
+                                  <Typography
+                                    fontSize="2xs"
+                                    fontWeight="medium"
+                                    color="#9CA3AF"
+                                  >
+                                    {thread.messageCount}{' '}
+                                    {thread.messageCount === 1 ? 'msg' : 'msgs'}
                                   </Typography>
                                 )}
                               </HStack>
@@ -1939,10 +2390,12 @@ export default function MessagesPage() {
                             flexShrink={0}
                           >
                             <Typography fontSize="sm" fontWeight="bold" color="white">
-                              {(selectedThread.applicantName || 'U').charAt(0).toUpperCase()}
+                              {(selectedThread.applicantName || 'U')
+                                .charAt(0)
+                                .toUpperCase()}
                             </Typography>
                           </Box>
-                          
+
                           <VStack align="start" gap="1" flex="1">
                             {/* Title and Applicant */}
                             <VStack align="start" gap="0">
@@ -1954,12 +2407,7 @@ export default function MessagesPage() {
                                 {getSubjectFromThread(selectedThread)}
                               </Typography>
                               <HStack gap="1.5" align="center">
-                                <Box
-                                  w="6px"
-                                  h="6px"
-                                  borderRadius="full"
-                                  bg="#10B981"
-                                />
+                                <Box w="6px" h="6px" borderRadius="full" bg="#10B981" />
                                 <Typography
                                   fontSize="xs"
                                   color="mukuru.grey.mediumDark"
@@ -1984,7 +2432,11 @@ export default function MessagesPage() {
                                 <IconWrapper>
                                   <UserIcon width="10" height="10" />
                                 </IconWrapper>
-                                <Typography fontSize="2xs" fontWeight="medium" color="mukuru.charcoal">
+                                <Typography
+                                  fontSize="2xs"
+                                  fontWeight="medium"
+                                  color="mukuru.charcoal"
+                                >
                                   {selectedThread.assignedAdminName || 'Unassigned'}
                                 </Typography>
                               </HStack>
@@ -2000,7 +2452,11 @@ export default function MessagesPage() {
                                 <IconWrapper>
                                   <MailIcon width="10" height="10" />
                                 </IconWrapper>
-                                <Typography fontSize="2xs" fontWeight="medium" color="mukuru.charcoal">
+                                <Typography
+                                  fontSize="2xs"
+                                  fontWeight="medium"
+                                  color="mukuru.charcoal"
+                                >
                                   {selectedThread.messageCount} messages
                                 </Typography>
                               </HStack>
@@ -2009,9 +2465,7 @@ export default function MessagesPage() {
                         </HStack>
 
                         {/* Action Button */}
-                        <NextLink
-                          href={`/applications/${selectedThread.applicationId}`}
-                        >
+                        <NextLink href={`/applications/${selectedThread.applicationId}`}>
                           <Box
                             as="button"
                             bg="#F8FAFC"
@@ -2033,7 +2487,9 @@ export default function MessagesPage() {
                               boxShadow: '0 2px 8px rgba(240, 84, 35, 0.15)',
                             }}
                           >
-                            <Typography fontWeight="medium" fontSize="xs">View Application</Typography>
+                            <Typography fontWeight="medium" fontSize="xs">
+                              View Application
+                            </Typography>
                           </Box>
                         </NextLink>
                       </Flex>
@@ -2041,6 +2497,7 @@ export default function MessagesPage() {
 
                     {/* Messages List */}
                     <Box
+                      ref={messagesContainerRef}
                       flex="1"
                       overflowY="auto"
                       overflowX="hidden"
@@ -2088,7 +2545,11 @@ export default function MessagesPage() {
                                 variant="secondary"
                                 onClick={() => setMessageSearchTerm('')}
                               >
-                                <Typography color="mukuru.text.primary" fontSize="xs" fontWeight="medium">
+                                <Typography
+                                  color="mukuru.text.primary"
+                                  fontSize="xs"
+                                  fontWeight="medium"
+                                >
                                   Clear Search
                                 </Typography>
                               </Button>
@@ -2096,11 +2557,7 @@ export default function MessagesPage() {
                           </VStack>
                         </Flex>
                       ) : (
-                        <VStack 
-                          gap="2" 
-                          align="stretch" 
-                          width="100%"
-                        >
+                        <VStack gap="2" align="stretch" width="100%">
                           {filteredMessages.map((message) => {
                             const isAdmin = isFromAdmin(message);
                             // Enhanced debug logging - log ALL messages
@@ -2130,16 +2587,24 @@ export default function MessagesPage() {
                                     justifyContent="center"
                                     flexShrink={0}
                                   >
-                                    <Typography fontSize="2xs" fontWeight="bold" color="white">
-                                      {getSenderName(message.sender).substring(0, 2).toUpperCase()}
+                                    <Typography
+                                      fontSize="2xs"
+                                      fontWeight="bold"
+                                      color="white"
+                                    >
+                                      {getSenderName(message.sender)
+                                        .substring(0, 2)
+                                        .toUpperCase()}
                                     </Typography>
                                   </Box>
                                 )}
                                 <Box
                                   maxW="70%"
                                   p="3"
-                                  bg={isAdmin ? 'mukuru.primary' : 'white'}
-                                  color={isAdmin ? 'white' : 'mukuru.text.primary'}
+                                  style={{
+                                    backgroundColor: isAdmin ? '#F05423' : '#FFFFFF',
+                                    color: isAdmin ? '#FFFFFF' : '#1F2937',
+                                  }}
                                   borderRadius="12px"
                                   borderTopLeftRadius={!isAdmin ? '4px' : '12px'}
                                   borderTopRightRadius={isAdmin ? '4px' : '12px'}
@@ -2150,43 +2615,54 @@ export default function MessagesPage() {
                                 >
                                   <VStack gap="1.5" align="stretch">
                                     <Flex justify="space-between" align="center" gap="2">
-                                      <Typography
+                                      <Box
+                                        as="span"
                                         fontSize="xs"
                                         fontWeight="semibold"
-                                        color={isAdmin ? 'white' : 'mukuru.charcoal'}
+                                        style={{ color: isAdmin ? '#FFFFFF' : '#1F2937' }}
                                       >
                                         {getSenderName(message.sender)}
-                                      </Typography>
-                                      <Typography
+                                      </Box>
+                                      <Box
+                                        as="span"
                                         fontSize="2xs"
-                                        color={
-                                          isAdmin
+                                        style={{
+                                          color: isAdmin
                                             ? 'rgba(255, 255, 255, 0.7)'
-                                            : '#9CA3AF'
-                                        }
+                                            : '#9CA3AF',
+                                        }}
                                       >
-                                        {formatDate(message.timestamp, 'full') || 'Just now'}
-                                      </Typography>
+                                        {formatDate(message.timestamp, 'full') ||
+                                          'Just now'}
+                                      </Box>
                                     </Flex>
 
-                                    <Typography
+                                    <Box
+                                      as="p"
                                       fontSize="sm"
                                       whiteSpace="pre-wrap"
                                       lineHeight="1.5"
-                                      color={isAdmin ? 'white' : '#374151'}
+                                      style={{
+                                        color: isAdmin ? '#FFFFFF' : '#374151',
+                                        margin: 0,
+                                      }}
                                     >
                                       {message.content || ''}
-                                    </Typography>
+                                    </Box>
 
                                     {message.attachments &&
                                       message.attachments.length > 0 && (
                                         <Box
                                           mt="2"
                                           p="2"
-                                          bg={isAdmin ? 'rgba(255,255,255,0.1)' : '#F9FAFB'}
+                                          bg={
+                                            isAdmin ? 'rgba(255,255,255,0.1)' : '#F9FAFB'
+                                          }
                                           borderRadius="8px"
                                           border="1px solid"
-                                          borderColor={isAdmin ? 'rgba(255,255,255,0.2)' : '#E5E7EB'}
+                                          borderColor={
+                                            isAdmin ? 'rgba(255,255,255,0.2)' : '#E5E7EB'
+                                          }
                                         >
                                           <VStack gap="1.5" align="stretch">
                                             {message.attachments.map(
@@ -2200,7 +2676,11 @@ export default function MessagesPage() {
                                                     <Box
                                                       p="1.5"
                                                       borderRadius="6px"
-                                                      bg={isAdmin ? 'rgba(255,255,255,0.15)' : '#E5E7EB'}
+                                                      bg={
+                                                        isAdmin
+                                                          ? 'rgba(255,255,255,0.15)'
+                                                          : '#E5E7EB'
+                                                      }
                                                     >
                                                       <IconWrapper>
                                                         <DownloadIcon
@@ -2215,26 +2695,36 @@ export default function MessagesPage() {
                                                       flex="1"
                                                       minW="0"
                                                     >
-                                                      <Typography
+                                                      <Box
+                                                        as="span"
                                                         fontSize="xs"
-                                                        color={isAdmin ? 'white' : '#374151'}
                                                         fontWeight="medium"
                                                         overflow="hidden"
                                                         textOverflow="ellipsis"
                                                         whiteSpace="nowrap"
+                                                        style={{
+                                                          color: isAdmin
+                                                            ? '#FFFFFF'
+                                                            : '#374151',
+                                                        }}
                                                       >
                                                         {attachment.fileName ||
                                                           `Attachment ${idx + 1}`}
-                                                      </Typography>
-                                                      <Typography
+                                                      </Box>
+                                                      <Box
+                                                        as="span"
                                                         fontSize="2xs"
-                                                        color={isAdmin ? 'rgba(255,255,255,0.7)' : '#9CA3AF'}
+                                                        style={{
+                                                          color: isAdmin
+                                                            ? 'rgba(255,255,255,0.7)'
+                                                            : '#9CA3AF',
+                                                        }}
                                                       >
                                                         {(
                                                           attachment.fileSizeBytes / 1024
                                                         ).toFixed(1)}{' '}
                                                         KB
-                                                      </Typography>
+                                                      </Box>
                                                     </VStack>
                                                   </HStack>
                                                   {(attachment.storageUrl ||
@@ -2412,16 +2902,19 @@ export default function MessagesPage() {
                                         cursor="pointer"
                                         transition="all 0.15s"
                                         bg="transparent"
-                                        _hover={{ 
-                                          bg: isAdmin ? 'rgba(255,255,255,0.1)' : '#F3F4F6',
+                                        _hover={{
+                                          bg: isAdmin
+                                            ? 'rgba(255,255,255,0.1)'
+                                            : '#F3F4F6',
                                         }}
                                         onClick={() => setReplyingTo(message)}
                                         title="Reply"
+                                        style={{ color: isAdmin ? '#FFFFFF' : '#9CA3AF' }}
                                       >
-                                        <ForwardToInboxIcon 
-                                          width="14" 
-                                          height="14" 
-                                          color={isAdmin ? 'rgba(255,255,255,0.6)' : '#9CA3AF'}
+                                        <ForwardToInboxIcon
+                                          width="14"
+                                          height="14"
+                                          color={isAdmin ? '#FFFFFF' : '#9CA3AF'}
                                         />
                                       </Box>
                                       <Box
@@ -2431,16 +2924,19 @@ export default function MessagesPage() {
                                         cursor="pointer"
                                         transition="all 0.15s"
                                         bg="transparent"
-                                        _hover={{ 
-                                          bg: isAdmin ? 'rgba(255,255,255,0.1)' : '#F3F4F6',
+                                        _hover={{
+                                          bg: isAdmin
+                                            ? 'rgba(255,255,255,0.1)'
+                                            : '#F3F4F6',
                                         }}
                                         onClick={() => setForwardingMessage(message)}
                                         title="Forward"
+                                        style={{ color: isAdmin ? '#FFFFFF' : '#9CA3AF' }}
                                       >
-                                        <ShareIcon 
-                                          width="14" 
-                                          height="14" 
-                                          color={isAdmin ? 'rgba(255,255,255,0.6)' : '#9CA3AF'}
+                                        <ShareIcon
+                                          width="14"
+                                          height="14"
+                                          color={isAdmin ? '#FFFFFF' : '#9CA3AF'}
                                         />
                                       </Box>
                                       <Box
@@ -2450,9 +2946,12 @@ export default function MessagesPage() {
                                         cursor="pointer"
                                         transition="all 0.15s"
                                         bg="transparent"
-                                        _hover={{ 
-                                          bg: isAdmin ? 'rgba(255,255,255,0.1)' : '#FEF3C7',
+                                        _hover={{
+                                          bg: isAdmin
+                                            ? 'rgba(255,255,255,0.1)'
+                                            : '#FEF3C7',
                                         }}
+                                        style={{ color: isAdmin ? '#FFFFFF' : '#9CA3AF' }}
                                         onClick={async () => {
                                           try {
                                             const result = await messagingApi.starMessage(
@@ -2480,10 +2979,16 @@ export default function MessagesPage() {
                                         }}
                                         title={message.isStarred ? 'Unstar' : 'Star'}
                                       >
-                                        <StarIcon 
-                                          width="14" 
-                                          height="14" 
-                                          color={isAdmin ? 'rgba(255,255,255,0.6)' : (message.isStarred ? '#F59E0B' : '#9CA3AF')}
+                                        <StarIcon
+                                          width="14"
+                                          height="14"
+                                          color={
+                                            isAdmin
+                                              ? '#FFFFFF'
+                                              : message.isStarred
+                                                ? '#F59E0B'
+                                                : '#9CA3AF'
+                                          }
                                         />
                                       </Box>
                                       <Box
@@ -2493,9 +2998,12 @@ export default function MessagesPage() {
                                         cursor="pointer"
                                         transition="all 0.15s"
                                         bg="transparent"
-                                        _hover={{ 
-                                          bg: isAdmin ? 'rgba(255,255,255,0.1)' : '#FEE2E2',
+                                        _hover={{
+                                          bg: isAdmin
+                                            ? 'rgba(255,255,255,0.1)'
+                                            : '#FEE2E2',
                                         }}
+                                        style={{ color: isAdmin ? '#FFFFFF' : '#EF4444' }}
                                         onClick={async () => {
                                           const result = await SweetAlert.confirm(
                                             'Delete Message',
@@ -2555,10 +3063,10 @@ export default function MessagesPage() {
                                         }}
                                         title="Delete"
                                       >
-                                        <DeleteIcon 
-                                          width="14" 
-                                          height="14" 
-                                          color={isAdmin ? 'rgba(255,255,255,0.6)' : '#9CA3AF'}
+                                        <DeleteIcon
+                                          width="14"
+                                          height="14"
+                                          color={isAdmin ? '#FFFFFF' : '#9CA3AF'}
                                         />
                                       </Box>
                                     </HStack>
@@ -2575,8 +3083,14 @@ export default function MessagesPage() {
                                     justifyContent="center"
                                     flexShrink={0}
                                   >
-                                    <Typography fontSize="2xs" fontWeight="bold" color="white">
-                                      {getSenderName(message.sender).substring(0, 2).toUpperCase()}
+                                    <Typography
+                                      fontSize="2xs"
+                                      fontWeight="bold"
+                                      color="white"
+                                    >
+                                      {getSenderName(message.sender)
+                                        .substring(0, 2)
+                                        .toUpperCase()}
                                     </Typography>
                                   </Box>
                                 )}
@@ -2680,10 +3194,10 @@ export default function MessagesPage() {
                           borderColor="mukuru.grey.light"
                           borderRadius="8px"
                           p="2.5"
-                          _focus={{ 
+                          _focus={{
                             color: 'mukuru.text.primary',
                             borderColor: 'mukuru.primary',
-                            boxShadow: '0 0 0 1px var(--chakra-colors-mukuru-primary)'
+                            boxShadow: '0 0 0 1px var(--chakra-colors-mukuru-primary)',
                           }}
                           _placeholder={{ color: 'mukuru.grey.medium' }}
                         />
@@ -2786,13 +3300,28 @@ export default function MessagesPage() {
                         {/* Typing indicator */}
                         {selectedThread && isTyping[selectedThread.id] && (
                           <HStack gap="1.5" align="center">
-                            <Box
-                              display="flex"
-                              gap="0.5"
-                            >
-                              <Box w="4px" h="4px" borderRadius="full" bg="mukuru.primary" animation="bounce 1s infinite" />
-                              <Box w="4px" h="4px" borderRadius="full" bg="mukuru.primary" animation="bounce 1s infinite 0.2s" />
-                              <Box w="4px" h="4px" borderRadius="full" bg="mukuru.primary" animation="bounce 1s infinite 0.4s" />
+                            <Box display="flex" gap="0.5">
+                              <Box
+                                w="4px"
+                                h="4px"
+                                borderRadius="full"
+                                bg="mukuru.primary"
+                                animation="bounce 1s infinite"
+                              />
+                              <Box
+                                w="4px"
+                                h="4px"
+                                borderRadius="full"
+                                bg="mukuru.primary"
+                                animation="bounce 1s infinite 0.2s"
+                              />
+                              <Box
+                                w="4px"
+                                h="4px"
+                                borderRadius="full"
+                                bg="mukuru.primary"
+                                animation="bounce 1s infinite 0.4s"
+                              />
                             </Box>
                             <Typography
                               fontSize="2xs"
@@ -2825,7 +3354,9 @@ export default function MessagesPage() {
                                 <IconWrapper>
                                   <DownloadIcon width="12" height="12" />
                                 </IconWrapper>
-                                <Typography fontWeight="medium" fontSize="xs">Attach</Typography>
+                                <Typography fontWeight="medium" fontSize="xs">
+                                  Attach
+                                </Typography>
                               </HStack>
                             </Button>
                             {selectedThread && (
@@ -2895,10 +3426,10 @@ export default function MessagesPage() {
                     </Box>
                   </>
                 ) : showCompose ? (
-                  <Flex 
-                    justify="center" 
-                    align="center" 
-                    height="100%" 
+                  <Flex
+                    justify="center"
+                    align="center"
+                    height="100%"
                     bg="#F8FAFC"
                     borderRadius="14px"
                     pt="3"
@@ -2931,8 +3462,8 @@ export default function MessagesPage() {
                           color="mukuru.grey.medium"
                           lineHeight="1.5"
                         >
-                          To send a message, please select a thread from the list or navigate to an
-                          application to start a conversation.
+                          To send a message, please select a thread from the list or
+                          navigate to an application to start a conversation.
                         </Typography>
                       </VStack>
                       <Box
@@ -2953,15 +3484,17 @@ export default function MessagesPage() {
                           borderColor: 'mukuru.grey.medium',
                         }}
                       >
-                        <Typography fontWeight="semibold" fontSize="xs">Cancel</Typography>
+                        <Typography fontWeight="semibold" fontSize="xs">
+                          Cancel
+                        </Typography>
                       </Box>
                     </VStack>
                   </Flex>
                 ) : (
-                  <Flex 
-                    justify="center" 
-                    align="center" 
-                    height="100%" 
+                  <Flex
+                    justify="center"
+                    align="center"
+                    height="100%"
                     bg="#F8FAFC"
                     borderRadius="14px"
                     pt="3"
@@ -2998,7 +3531,7 @@ export default function MessagesPage() {
                           Choose a conversation from the list to start messaging
                         </Typography>
                       </VStack>
-                      
+
                       {/* Decorative elements */}
                       <HStack gap="2">
                         <Box w="28px" h="3px" borderRadius="1.5px" bg="#E5E7EB" />

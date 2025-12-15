@@ -1,7 +1,7 @@
 /**
  * SignNow Integration Test Script
  * Tests the SignNow API integration to verify credentials and connectivity
- * 
+ *
  * Usage: node scripts/test-signnow.js
  */
 
@@ -26,7 +26,9 @@ async function testSignNowIntegration() {
           throw new Error('Authentication failed: Invalid credentials');
         }
         if (error.message.includes('404') || error.message.includes('not found')) {
-          console.log('   ✅ Authentication successful! (Document not found is expected)');
+          console.log(
+            '   ✅ Authentication successful! (Document not found is expected)'
+          );
         } else {
           throw error;
         }
@@ -57,7 +59,6 @@ async function testSignNowIntegration() {
     console.log('   - Upload documents: POST /api/signnow/document');
     console.log('   - Send invites: POST /api/signnow/document/:id/invite');
     console.log('   - Download documents: GET /api/signnow/document/:id/download');
-
   } catch (error) {
     console.error('\n❌ SignNow Integration Test Failed!');
     console.error('\nError:', error.message);
@@ -71,4 +72,3 @@ async function testSignNowIntegration() {
 
 // Run the test
 testSignNowIntegration();
-

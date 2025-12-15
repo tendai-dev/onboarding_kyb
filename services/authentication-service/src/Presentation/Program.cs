@@ -49,7 +49,10 @@ builder.Services.AddAuthentication("Bearer")
         options.TokenValidationParameters = new Microsoft.IdentityModel.Tokens.TokenValidationParameters
         {
             ValidateIssuer = true,
-            ValidateAudience = false,
+            ValidIssuer = builder.Configuration["Keycloak:Authority"],
+            // SECURITY FIX: Always validate audience in production
+            ValidateAudience = !builder.Environment.IsDevelopment(),
+            ValidAudience = builder.Configuration["Keycloak:Audience"] ?? "account",
             ValidateLifetime = true,
             ValidateIssuerSigningKey = true,
             ClockSkew = TimeSpan.FromMinutes(5)

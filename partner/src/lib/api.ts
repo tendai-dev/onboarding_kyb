@@ -1316,19 +1316,30 @@ export type MessageAttachmentDto = {
 export type MessageDto = {
   id: string;
   threadId: string;
+  thread_id?: string; // snake_case from backend
   senderId: string;
+  sender_id?: string; // snake_case from backend
   senderName: string;
+  sender_name?: string; // snake_case from backend
   senderRole?: string;
+  sender_role?: string; // snake_case from backend
   receiverId?: string;
+  receiver_id?: string; // snake_case from backend
   receiverName?: string;
+  receiver_name?: string; // snake_case from backend
   content: string;
   type?: string;
   status: string;
   sentAt: string;
+  sent_at?: string; // snake_case from backend
   readAt?: string | null;
+  read_at?: string | null; // snake_case from backend
   isRead: boolean;
+  is_read?: boolean; // snake_case from backend
   isStarred?: boolean;
+  is_starred?: boolean; // snake_case from backend
   replyToMessageId?: string;
+  reply_to_message_id?: string; // snake_case from backend
   attachments?: MessageAttachmentDto[];
 };
 
@@ -1336,6 +1347,14 @@ export type MessageThreadDto = {
   id: string;
   applicationId: string;
   applicationReference?: string;
+  applicantId?: string;
+  applicantName?: string;
+  assignedAdminId?: string | null;
+  assignedAdminName?: string | null;
+  isActive?: boolean;
+  isArchived?: boolean;
+  isStarred?: boolean;
+  createdAt?: string;
   lastMessageAt: string;
   messageCount: number;
   unreadCount: number;
@@ -1867,9 +1886,8 @@ export async function getUserApplications(email?: string): Promise<UserCase[]> {
             );
           }
 
-          // Filter by PartnerId if available, otherwise by email
-          // If no matches, return all cases (user might have cases without PartnerId/email set)
-          let caseFilteredItems = caseApiResult.items;
+          // SECURITY: Filter by PartnerId or email - NEVER return unmatched cases
+          let caseFilteredItems: any[] = [];
           if (userPartnerId) {
             const partnerIdMatches = caseApiResult.items.filter((item: any) => {
               // Backend uses snake_case, so prioritize that
@@ -1884,7 +1902,7 @@ export async function getUserApplications(email?: string): Promise<UserCase[]> {
                 'cases matching PartnerId'
               );
             } else if (userEmail) {
-              // No PartnerId match, try email
+              // No PartnerId match, try email as fallback
               const emailMatches = caseApiResult.items.filter((item: any) => {
                 // Backend uses snake_case, so prioritize that
                 const itemEmail =
@@ -1899,22 +1917,18 @@ export async function getUserApplications(email?: string): Promise<UserCase[]> {
                   'cases matching email'
                 );
               } else {
-                // No email match either, return all cases (user might own them even without PartnerId/email)
+                // SECURITY: No matches found - return empty array, NOT all cases
                 console.warn(
-                  '[getUserApplications] No PartnerId or email match, but returning all',
-                  caseApiResult.items.length,
-                  'cases (user may own them)'
+                  '[getUserApplications] No PartnerId or email match found - returning empty array for security'
                 );
-                caseFilteredItems = caseApiResult.items;
+                caseFilteredItems = [];
               }
             } else {
-              // No email, return all cases
+              // SECURITY: No email available - return empty array
               console.warn(
-                '[getUserApplications] No email available, returning all',
-                caseApiResult.items.length,
-                'cases'
+                '[getUserApplications] No email available - returning empty array for security'
               );
-              caseFilteredItems = caseApiResult.items;
+              caseFilteredItems = [];
             }
           } else if (userEmail) {
             const emailMatches = caseApiResult.items.filter((item: any) => {
@@ -1931,22 +1945,18 @@ export async function getUserApplications(email?: string): Promise<UserCase[]> {
                 'cases matching email'
               );
             } else {
-              // No email match, return all cases
+              // SECURITY: No email match - return empty array
               console.warn(
-                '[getUserApplications] No email match, returning all',
-                caseApiResult.items.length,
-                'cases'
+                '[getUserApplications] No email match found - returning empty array for security'
               );
-              caseFilteredItems = caseApiResult.items;
+              caseFilteredItems = [];
             }
           } else {
-            // No filter criteria, return all cases
-            console.warn(
-              '[getUserApplications] No filter criteria, returning all',
-              caseApiResult.items.length,
-              'cases'
+            // SECURITY: No filter criteria - return empty array
+            console.error(
+              '[getUserApplications] No filter criteria available - returning empty array for security'
             );
-            caseFilteredItems = caseApiResult.items;
+            caseFilteredItems = [];
           }
 
           // Map case API results to UserCase format

@@ -103,4 +103,3 @@ export interface WorkItemFilters {
   page?: number;
   pageSize?: number;
 }
-

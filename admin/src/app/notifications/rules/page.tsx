@@ -1,13 +1,6 @@
 'use client';
 
-import {
-  Box,
-  VStack,
-  HStack,
-  SimpleGrid,
-  Flex,
-  Spinner,
-} from '@chakra-ui/react';
+import { Box, VStack, HStack, SimpleGrid, Flex, Spinner } from '@chakra-ui/react';
 import {
   Search,
   Typography,
@@ -122,11 +115,11 @@ export default function NotificationRulesPage() {
         transition="margin-left 0.3s ease"
       >
         {/* Page Header */}
-        <Box 
-          px="32px" 
-          py="24px" 
-          bg="white" 
-          borderBottom="1px solid" 
+        <Box
+          px="32px"
+          py="24px"
+          bg="white"
+          borderBottom="1px solid"
           borderColor="#E2E8F0"
           position="sticky"
           top="0"
@@ -146,8 +139,8 @@ export default function NotificationRulesPage() {
               >
                 <FiArrowLeft size={18} color="#64748B" />
               </Box>
-              <Box 
-                p="12px" 
+              <Box
+                p="12px"
                 bg="linear-gradient(135deg, #D97706 0%, #F59E0B 100%)"
                 borderRadius="12px"
                 boxShadow="0 4px 12px rgba(217, 119, 6, 0.25)"
@@ -155,7 +148,12 @@ export default function NotificationRulesPage() {
                 <FiAlertCircle size={24} color="white" />
               </Box>
               <VStack align="start" gap="2px">
-                <Typography fontSize="24px" fontWeight="700" color="#1E293B" lineHeight="1.2">
+                <Typography
+                  fontSize="24px"
+                  fontWeight="700"
+                  color="#1E293B"
+                  lineHeight="1.2"
+                >
                   Notification Rules
                 </Typography>
                 <Typography fontSize="14px" color="#64748B" fontWeight="400">
@@ -167,10 +165,10 @@ export default function NotificationRulesPage() {
             <HStack gap="12px">
               {/* Stats Pills */}
               <HStack gap="8px">
-                <Box 
-                  px="16px" 
-                  py="8px" 
-                  bg="#F1F5F9" 
+                <Box
+                  px="16px"
+                  py="8px"
+                  bg="#F1F5F9"
                   borderRadius="20px"
                   border="1px solid #E2E8F0"
                 >
@@ -179,13 +177,15 @@ export default function NotificationRulesPage() {
                     <Typography fontSize="13px" fontWeight="600" color="#1E293B">
                       {activeCount}
                     </Typography>
-                    <Typography fontSize="13px" color="#64748B">Active</Typography>
+                    <Typography fontSize="13px" color="#64748B">
+                      Active
+                    </Typography>
                   </HStack>
                 </Box>
-                <Box 
-                  px="16px" 
-                  py="8px" 
-                  bg="#F1F5F9" 
+                <Box
+                  px="16px"
+                  py="8px"
+                  bg="#F1F5F9"
                   borderRadius="20px"
                   border="1px solid #E2E8F0"
                 >
@@ -194,13 +194,15 @@ export default function NotificationRulesPage() {
                     <Typography fontSize="13px" fontWeight="600" color="#1E293B">
                       {urgentCount}
                     </Typography>
-                    <Typography fontSize="13px" color="#64748B">Urgent</Typography>
+                    <Typography fontSize="13px" color="#64748B">
+                      Urgent
+                    </Typography>
                   </HStack>
                 </Box>
-                <Box 
-                  px="16px" 
-                  py="8px" 
-                  bg="#F1F5F9" 
+                <Box
+                  px="16px"
+                  py="8px"
+                  bg="#F1F5F9"
                   borderRadius="20px"
                   border="1px solid #E2E8F0"
                 >
@@ -209,7 +211,9 @@ export default function NotificationRulesPage() {
                     <Typography fontSize="13px" fontWeight="600" color="#1E293B">
                       {highCount}
                     </Typography>
-                    <Typography fontSize="13px" color="#64748B">High</Typography>
+                    <Typography fontSize="13px" color="#64748B">
+                      High
+                    </Typography>
                   </HStack>
                 </Box>
               </HStack>
@@ -234,7 +238,9 @@ export default function NotificationRulesPage() {
             <Flex justify="center" align="center" h="400px">
               <VStack gap="16px">
                 <Spinner size="lg" color="orange.500" />
-                <Typography color="#64748B" fontSize="14px">Loading rules...</Typography>
+                <Typography color="#64748B" fontSize="14px">
+                  Loading rules...
+                </Typography>
               </VStack>
             </Flex>
           ) : (
@@ -269,7 +275,8 @@ export default function NotificationRulesPage() {
                     />
                   </Box>
                   <Typography fontSize="13px" color="#64748B">
-                    {filteredRules.length} rule{filteredRules.length !== 1 ? 's' : ''} found
+                    {filteredRules.length} rule{filteredRules.length !== 1 ? 's' : ''}{' '}
+                    found
                   </Typography>
                 </Flex>
               </Box>
@@ -293,7 +300,7 @@ export default function NotificationRulesPage() {
                 <SimpleGrid columns={{ base: 1, lg: 2, xl: 3 }} gap="20px">
                   {filteredRules.map((rule) => {
                     const isSelected = rule.id === selectedRule?.id;
-                    
+
                     return (
                       <Box
                         key={rule.id}
@@ -303,28 +310,40 @@ export default function NotificationRulesPage() {
                         bg="white"
                         transition="all 0.15s ease"
                         cursor="pointer"
-                        boxShadow={isSelected ? '0 0 0 3px rgba(245, 158, 11, 0.1)' : '0 1px 3px rgba(0,0,0,0.05)'}
-                        _hover={{ borderColor: isSelected ? '#F59E0B' : '#CBD5E1', boxShadow: '0 4px 12px rgba(0,0,0,0.06)' }}
+                        boxShadow={
+                          isSelected
+                            ? '0 0 0 3px rgba(245, 158, 11, 0.1)'
+                            : '0 1px 3px rgba(0,0,0,0.05)'
+                        }
+                        _hover={{
+                          borderColor: isSelected ? '#F59E0B' : '#CBD5E1',
+                          boxShadow: '0 4px 12px rgba(0,0,0,0.06)',
+                        }}
                         onClick={() => setSelectedRule(rule)}
                         display="flex"
                         flexDirection="column"
                         h="100%"
                       >
                         {/* Card Header */}
-                        <Flex 
-                          justify="space-between" 
-                          align="center" 
-                          p="20px" 
+                        <Flex
+                          justify="space-between"
+                          align="center"
+                          p="20px"
                           pb="16px"
                           borderBottom="1px solid #F1F5F9"
                         >
                           <Box flex="1" minW="0">
-                            <Typography fontSize="15px" fontWeight="600" color="#1E293B" mb="4px">
+                            <Typography
+                              fontSize="15px"
+                              fontWeight="600"
+                              color="#1E293B"
+                              mb="4px"
+                            >
                               {rule.name}
                             </Typography>
-                            <Typography 
-                              fontSize="13px" 
-                              color="#64748B" 
+                            <Typography
+                              fontSize="13px"
+                              color="#64748B"
                               lineHeight="1.4"
                               style={{
                                 display: '-webkit-box',
@@ -336,18 +355,34 @@ export default function NotificationRulesPage() {
                               {rule.action}
                             </Typography>
                           </Box>
-                          <Box 
-                            px="10px" 
-                            py="4px" 
-                            bg={rule.priority === 'URGENT' ? '#FEE2E2' : rule.priority === 'HIGH' ? '#FEF3C7' : rule.priority === 'MEDIUM' ? '#E0E7FF' : '#F1F5F9'}
+                          <Box
+                            px="10px"
+                            py="4px"
+                            bg={
+                              rule.priority === 'URGENT'
+                                ? '#FEE2E2'
+                                : rule.priority === 'HIGH'
+                                  ? '#FEF3C7'
+                                  : rule.priority === 'MEDIUM'
+                                    ? '#E0E7FF'
+                                    : '#F1F5F9'
+                            }
                             borderRadius="6px"
                             flexShrink={0}
                             ml="12px"
                           >
-                            <Typography 
-                              fontSize="11px" 
-                              fontWeight="600" 
-                              color={rule.priority === 'URGENT' ? '#DC2626' : rule.priority === 'HIGH' ? '#D97706' : rule.priority === 'MEDIUM' ? '#4F46E5' : '#64748B'}
+                            <Typography
+                              fontSize="11px"
+                              fontWeight="600"
+                              color={
+                                rule.priority === 'URGENT'
+                                  ? '#DC2626'
+                                  : rule.priority === 'HIGH'
+                                    ? '#D97706'
+                                    : rule.priority === 'MEDIUM'
+                                      ? '#4F46E5'
+                                      : '#64748B'
+                              }
                             >
                               {rule.priority}
                             </Typography>
@@ -356,17 +391,28 @@ export default function NotificationRulesPage() {
 
                         {/* Card Body - Condition */}
                         <Box p="20px" pt="16px" flex="1">
-                          <Box p="14px" bg="#F8FAFC" borderRadius="10px" border="1px solid #E2E8F0">
+                          <Box
+                            p="14px"
+                            bg="#F8FAFC"
+                            borderRadius="10px"
+                            border="1px solid #E2E8F0"
+                          >
                             <HStack gap="6px" mb="8px">
                               <FiZap size={14} color="#D97706" />
-                              <Typography fontSize="10px" color="#64748B" fontWeight="600" textTransform="uppercase" letterSpacing="0.5px">
+                              <Typography
+                                fontSize="10px"
+                                color="#64748B"
+                                fontWeight="600"
+                                textTransform="uppercase"
+                                letterSpacing="0.5px"
+                              >
                                 Condition
                               </Typography>
                             </HStack>
-                            <Typography 
-                              fontSize="12px" 
-                              color="#475569" 
-                              fontFamily="mono" 
+                            <Typography
+                              fontSize="12px"
+                              color="#475569"
+                              fontFamily="mono"
                               lineHeight="1.5"
                               style={{
                                 display: '-webkit-box',
@@ -381,10 +427,10 @@ export default function NotificationRulesPage() {
                         </Box>
 
                         {/* Card Footer */}
-                        <Flex 
-                          justify="space-between" 
-                          align="center" 
-                          px="20px" 
+                        <Flex
+                          justify="space-between"
+                          align="center"
+                          px="20px"
                           py="14px"
                           borderTop="1px solid #F1F5F9"
                           bg="#FAFBFC"
@@ -403,7 +449,9 @@ export default function NotificationRulesPage() {
                               onClick={(e) => {
                                 e.stopPropagation();
                                 setRules((prev) =>
-                                  prev.map((r) => (r.id === rule.id ? { ...r, isActive: !r.isActive } : r))
+                                  prev.map((r) =>
+                                    r.id === rule.id ? { ...r, isActive: !r.isActive } : r
+                                  )
                                 );
                               }}
                             >
@@ -419,7 +467,11 @@ export default function NotificationRulesPage() {
                                 boxShadow="0 1px 3px rgba(0,0,0,0.15)"
                               />
                             </Box>
-                            <Typography fontSize="12px" color={rule.isActive ? '#059669' : '#94A3B8'} fontWeight="500">
+                            <Typography
+                              fontSize="12px"
+                              color={rule.isActive ? '#059669' : '#94A3B8'}
+                              fontWeight="500"
+                            >
                               {rule.isActive ? 'Active' : 'Inactive'}
                             </Typography>
                           </HStack>

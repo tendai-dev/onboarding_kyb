@@ -68,6 +68,14 @@ public class ProjectionRepository : IProjectionRepository
 
         if (!string.IsNullOrEmpty(searchTerm))
         {
+            // SECURITY FIX: Validate and sanitize search term to prevent injection
+            if (searchTerm.Length > 100)
+            {
+                searchTerm = searchTerm.Substring(0, 100);
+            }
+            // Remove potentially dangerous characters
+            searchTerm = System.Text.RegularExpressions.Regex.Replace(searchTerm, @"[^\w\s@.-]", "");
+            
             query = query.Where(c => 
                 c.CaseId.Contains(searchTerm) ||
                 c.ApplicantFirstName.Contains(searchTerm) ||

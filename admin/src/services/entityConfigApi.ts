@@ -316,32 +316,60 @@ class EntityConfigApiService {
       if (Array.isArray(requirements) && requirements.length > 0) {
         transformedRequirements = requirements.map((req: unknown) => {
           const reqObj = req as Record<string, unknown>;
-          
+
           // Backend returns requirement data as flat properties OR nested requirement object
           // Handle both cases - backend DTO flattens requirement properties
-          const nestedRequirement = (reqObj.requirement || reqObj.Requirement) as Requirement | undefined;
-          const hasFlatData = !!(reqObj.code || reqObj.Code || reqObj.displayName || reqObj.DisplayName || reqObj.type || reqObj.Type);
-          
+          const nestedRequirement = (reqObj.requirement || reqObj.Requirement) as
+            | Requirement
+            | undefined;
+          const hasFlatData = !!(
+            reqObj.code ||
+            reqObj.Code ||
+            reqObj.displayName ||
+            reqObj.DisplayName ||
+            reqObj.type ||
+            reqObj.Type
+          );
+
           // If we have flat data but no nested requirement, create a requirement object from flat properties
           let requirement: Requirement | undefined = nestedRequirement;
           if (!requirement && hasFlatData) {
-            const valRules = reqObj.validationRules || reqObj.ValidationRules || reqObj.validation_rules;
+            const valRules =
+              reqObj.validationRules || reqObj.ValidationRules || reqObj.validation_rules;
             const helpTxt = reqObj.helpText || reqObj.HelpText || reqObj.help_text;
             requirement = {
-              id: String(reqObj.requirementId || reqObj.RequirementId || reqObj.requirement_id || ''),
+              id: String(
+                reqObj.requirementId ||
+                  reqObj.RequirementId ||
+                  reqObj.requirement_id ||
+                  ''
+              ),
               code: String(reqObj.code || reqObj.Code || ''),
-              displayName: String(reqObj.displayName || reqObj.DisplayName || reqObj.display_name || ''),
+              displayName: String(
+                reqObj.displayName || reqObj.DisplayName || reqObj.display_name || ''
+              ),
               description: String(reqObj.description || reqObj.Description || ''),
               type: String(reqObj.type || reqObj.Type || ''),
-              fieldType: String(reqObj.fieldType || reqObj.FieldType || reqObj.field_type || 'text'),
+              fieldType: String(
+                reqObj.fieldType || reqObj.FieldType || reqObj.field_type || 'text'
+              ),
               validationRules: valRules ? String(valRules) : undefined,
               helpText: helpTxt ? String(helpTxt) : undefined,
-              isActive: reqObj.isActive !== undefined ? Boolean(reqObj.isActive) : (reqObj.is_active !== undefined ? Boolean(reqObj.is_active) : true),
-              createdAt: String(reqObj.createdAt || reqObj.CreatedAt || reqObj.created_at || ''),
-              updatedAt: String(reqObj.updatedAt || reqObj.UpdatedAt || reqObj.updated_at || ''),
+              isActive:
+                reqObj.isActive !== undefined
+                  ? Boolean(reqObj.isActive)
+                  : reqObj.is_active !== undefined
+                    ? Boolean(reqObj.is_active)
+                    : true,
+              createdAt: String(
+                reqObj.createdAt || reqObj.CreatedAt || reqObj.created_at || ''
+              ),
+              updatedAt: String(
+                reqObj.updatedAt || reqObj.UpdatedAt || reqObj.updated_at || ''
+              ),
             } as Requirement;
           }
-          
+
           return {
             id: String(reqObj.id || reqObj.Id || ''),
             requirementId: String(
@@ -437,32 +465,60 @@ class EntityConfigApiService {
       if (Array.isArray(requirements) && requirements.length > 0) {
         transformedRequirements = requirements.map((req: unknown) => {
           const reqObj = req as Record<string, unknown>;
-          
+
           // Backend returns requirement data as flat properties OR nested requirement object
           // Handle both cases - backend DTO flattens requirement properties
-          const nestedRequirement = (reqObj.requirement || reqObj.Requirement) as Requirement | undefined;
-          const hasFlatData = !!(reqObj.code || reqObj.Code || reqObj.displayName || reqObj.DisplayName || reqObj.type || reqObj.Type);
-          
+          const nestedRequirement = (reqObj.requirement || reqObj.Requirement) as
+            | Requirement
+            | undefined;
+          const hasFlatData = !!(
+            reqObj.code ||
+            reqObj.Code ||
+            reqObj.displayName ||
+            reqObj.DisplayName ||
+            reqObj.type ||
+            reqObj.Type
+          );
+
           // If we have flat data but no nested requirement, create a requirement object from flat properties
           let requirement: Requirement | undefined = nestedRequirement;
           if (!requirement && hasFlatData) {
-            const valRules = reqObj.validationRules || reqObj.ValidationRules || reqObj.validation_rules;
+            const valRules =
+              reqObj.validationRules || reqObj.ValidationRules || reqObj.validation_rules;
             const helpTxt = reqObj.helpText || reqObj.HelpText || reqObj.help_text;
             requirement = {
-              id: String(reqObj.requirementId || reqObj.RequirementId || reqObj.requirement_id || ''),
+              id: String(
+                reqObj.requirementId ||
+                  reqObj.RequirementId ||
+                  reqObj.requirement_id ||
+                  ''
+              ),
               code: String(reqObj.code || reqObj.Code || ''),
-              displayName: String(reqObj.displayName || reqObj.DisplayName || reqObj.display_name || ''),
+              displayName: String(
+                reqObj.displayName || reqObj.DisplayName || reqObj.display_name || ''
+              ),
               description: String(reqObj.description || reqObj.Description || ''),
               type: String(reqObj.type || reqObj.Type || ''),
-              fieldType: String(reqObj.fieldType || reqObj.FieldType || reqObj.field_type || 'text'),
+              fieldType: String(
+                reqObj.fieldType || reqObj.FieldType || reqObj.field_type || 'text'
+              ),
               validationRules: valRules ? String(valRules) : undefined,
               helpText: helpTxt ? String(helpTxt) : undefined,
-              isActive: reqObj.isActive !== undefined ? Boolean(reqObj.isActive) : (reqObj.is_active !== undefined ? Boolean(reqObj.is_active) : true),
-              createdAt: String(reqObj.createdAt || reqObj.CreatedAt || reqObj.created_at || ''),
-              updatedAt: String(reqObj.updatedAt || reqObj.UpdatedAt || reqObj.updated_at || ''),
+              isActive:
+                reqObj.isActive !== undefined
+                  ? Boolean(reqObj.isActive)
+                  : reqObj.is_active !== undefined
+                    ? Boolean(reqObj.is_active)
+                    : true,
+              createdAt: String(
+                reqObj.createdAt || reqObj.CreatedAt || reqObj.created_at || ''
+              ),
+              updatedAt: String(
+                reqObj.updatedAt || reqObj.UpdatedAt || reqObj.updated_at || ''
+              ),
             } as Requirement;
           }
-          
+
           return {
             id: String(reqObj.id || reqObj.Id || ''),
             requirementId: String(
@@ -760,23 +816,29 @@ class EntityConfigApiService {
         steps: Array.isArray(configObj.steps)
           ? (configObj.steps as unknown[]).map((step: unknown) => {
               const stepObj = step as Record<string, unknown>;
-              
+
               // Backend returns requirementTypes as JSON string, parse it
               let requirementTypes: string[] = [];
-              const reqTypesRaw = stepObj.requirement_types || stepObj.requirementTypes || stepObj.RequirementTypes;
-              
+              const reqTypesRaw =
+                stepObj.requirement_types ||
+                stepObj.requirementTypes ||
+                stepObj.RequirementTypes;
+
               if (typeof reqTypesRaw === 'string') {
                 try {
                   // Try parsing as JSON string
                   requirementTypes = JSON.parse(reqTypesRaw);
                 } catch {
                   // If not valid JSON, treat as comma-separated or single value
-                  requirementTypes = reqTypesRaw.split(',').map((s: string) => s.trim()).filter(Boolean);
+                  requirementTypes = reqTypesRaw
+                    .split(',')
+                    .map((s: string) => s.trim())
+                    .filter(Boolean);
                 }
               } else if (Array.isArray(reqTypesRaw)) {
                 requirementTypes = reqTypesRaw;
               }
-              
+
               return {
                 id: String(stepObj.id || ''),
                 title: String(stepObj.title || ''),
@@ -815,23 +877,29 @@ class EntityConfigApiService {
       updatedAt: String(configObj.updated_at || configObj.updatedAt || ''),
       steps: ((configObj.steps || []) as unknown[]).map((step: unknown) => {
         const stepObj = step as Record<string, unknown>;
-        
+
         // Backend returns requirementTypes as JSON string, parse it
         let requirementTypes: string[] = [];
-        const reqTypesRaw = stepObj.requirement_types || stepObj.requirementTypes || stepObj.RequirementTypes;
-        
+        const reqTypesRaw =
+          stepObj.requirement_types ||
+          stepObj.requirementTypes ||
+          stepObj.RequirementTypes;
+
         if (typeof reqTypesRaw === 'string') {
           try {
             // Try parsing as JSON string
             requirementTypes = JSON.parse(reqTypesRaw);
           } catch {
             // If not valid JSON, treat as comma-separated or single value
-            requirementTypes = reqTypesRaw.split(',').map((s: string) => s.trim()).filter(Boolean);
+            requirementTypes = reqTypesRaw
+              .split(',')
+              .map((s: string) => s.trim())
+              .filter(Boolean);
           }
         } else if (Array.isArray(reqTypesRaw)) {
           requirementTypes = reqTypesRaw;
         }
-        
+
         return {
           id: stepObj.id as string,
           title: stepObj.title as string,
@@ -857,11 +925,11 @@ class EntityConfigApiService {
       const config = await this.request<unknown>(
         `/wizardconfigurations/by-entity-type/${entityTypeId}`
       );
-      
+
       if (!config) return null;
-      
+
       const configObj = config as Record<string, unknown>;
-      
+
       // Transform snake_case to camelCase and parse requirementTypes
       return {
         id: String(configObj.id || ''),
@@ -877,23 +945,29 @@ class EntityConfigApiService {
         updatedAt: String(configObj.updated_at || configObj.updatedAt || ''),
         steps: ((configObj.steps || []) as unknown[]).map((step: unknown) => {
           const stepObj = step as Record<string, unknown>;
-          
+
           // Backend returns requirementTypes as JSON string, parse it
           let requirementTypes: string[] = [];
-          const reqTypesRaw = stepObj.requirement_types || stepObj.requirementTypes || stepObj.RequirementTypes;
-          
+          const reqTypesRaw =
+            stepObj.requirement_types ||
+            stepObj.requirementTypes ||
+            stepObj.RequirementTypes;
+
           if (typeof reqTypesRaw === 'string') {
             try {
               // Try parsing as JSON string
               requirementTypes = JSON.parse(reqTypesRaw);
             } catch {
               // If not valid JSON, treat as comma-separated or single value
-              requirementTypes = reqTypesRaw.split(',').map((s: string) => s.trim()).filter(Boolean);
+              requirementTypes = reqTypesRaw
+                .split(',')
+                .map((s: string) => s.trim())
+                .filter(Boolean);
             }
           } else if (Array.isArray(reqTypesRaw)) {
             requirementTypes = reqTypesRaw;
           }
-          
+
           return {
             id: String(stepObj.id || ''),
             title: String(stepObj.title || ''),

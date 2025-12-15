@@ -65,37 +65,145 @@ function mapDataToFieldValue(
 ): any {
   const metadata = applicationData.metadata || {};
   const rawData = applicationData.rawData || {};
+  const appCaseData = applicationData.caseData || {};
   const code = fieldCode.toUpperCase();
+  
+  // DEBUG: Log all available data sources for registration_number and registered_address
+  if (code === 'REGISTRATION_NUMBER' || code === 'REGISTERED_ADDRESS') {
+    console.info(`[SchemaDrivenView] 🔍 DEBUG ${code} - All data sources:`, {
+      'metadata keys': Object.keys(metadata),
+      'rawData keys': Object.keys(rawData),
+      'caseData keys': Object.keys(appCaseData),
+      'applicationData keys': Object.keys(applicationData),
+      // Specific values
+      'metadata.registration_number': metadata.registration_number,
+      'metadata.registered_address': metadata.registered_address,
+      'metadata.registered_legal_name': metadata.registered_legal_name,
+      'rawData.businessRegistrationNumber': rawData.businessRegistrationNumber,
+      'rawData.registeredAddress': rawData.registeredAddress,
+      'caseData.businessRegistrationNumber': appCaseData.businessRegistrationNumber,
+      'caseData.registeredAddress': appCaseData.registeredAddress,
+      'applicationData.business': applicationData.business,
+    });
+  }
+  
   // Create comprehensive data object with all possible sources
   const data = {
     ...rawData,
     ...metadata,
     ...applicationData,
     // Also include caseData if present
-    ...(applicationData.caseData || {}),
+    ...appCaseData,
   };
 
   // Comprehensive mapping for common requirement codes
   const mapping: Record<string, (data: Record<string, unknown>) => any> = {
-    // Legal name / Business name
-    LEGAL_NAME: (data) =>
-      data.businessLegalName ||
-      metadata.legal_name ||
-      metadata.businessLegalName ||
-      metadata.legalName ||
-      rawData.businessLegalName ||
-      rawData.legal_name ||
-      `${data.applicantFirstName || ''} ${data.applicantLastName || ''}`.trim() ||
-      '',
+    // Legal name / Business name - multiple variations
+    LEGAL_NAME: (data) => {
+      // Check caseData first (from API route)
+      const caseData = applicationData.caseData || {};
+      if (caseData.businessLegalName) return caseData.businessLegalName;
+      
+      // Then check metadata and other sources
+      return (
+        metadata.registered_legal_name ||  // Exact match for requirement code
+        metadata.legal_name ||
+        data.businessLegalName ||
+        data.legalName ||
+        data.legal_name ||
+        metadata.businessLegalName ||
+        metadata.legalName ||
+        metadata['Legal Name'] ||
+        rawData.businessLegalName ||
+        rawData.legal_name ||
+        `${data.applicantFirstName || ''} ${data.applicantLastName || ''}`.trim() ||
+        ''
+      );
+    },
+    'REGISTERED/LEGALNAME': (data) => {
+      const caseData = applicationData.caseData || {};
+      if (caseData.businessLegalName) return caseData.businessLegalName;
+      return (
+        metadata.registered_legal_name ||
+        data.businessLegalName ||
+        data.legalName ||
+        metadata.legal_name ||
+        metadata['Legal Name'] ||
+        ''
+      );
+    },
+    REGISTEREDLEGALNAME: (data) => {
+      const caseData = applicationData.caseData || {};
+      if (caseData.businessLegalName) return caseData.businessLegalName;
+      return (
+        metadata.registered_legal_name ||
+        data.businessLegalName ||
+        data.legalName ||
+        metadata.legal_name ||
+        metadata['Legal Name'] ||
+        ''
+      );
+    },
+    REGISTERED_LEGAL_NAME: (data) => {
+      const caseData = applicationData.caseData || {};
+      if (caseData.businessLegalName) return caseData.businessLegalName;
+      return (
+        metadata.registered_legal_name ||
+        metadata.legal_name ||
+        data.businessLegalName ||
+        data.legalName ||
+        metadata['Legal Name'] ||
+        ''
+      );
+    },
 
-    // Registration number
-    REGISTRATION_NUMBER: (_data) =>
-      rawData.businessRegistrationNumber ||
-      metadata.registration_number ||
-      metadata.registrationNumber ||
-      metadata.registration_number ||
-      rawData.registrationNumber ||
-      '',
+    // Registration number - map to various possible keys
+    REGISTRATION_NUMBER: (data) => {
+      // Check caseData first (from API route) - but only if value is not empty
+      const caseData = applicationData.caseData || {};
+      const caseDataValue = caseData.businessRegistrationNumber;
+      if (caseDataValue && String(caseDataValue).trim() !== '') {
+        console.info(`[SchemaDrivenView] ✅ REGISTRATION_NUMBER found in caseData.businessRegistrationNumber:`, caseDataValue);
+        return String(caseDataValue).trim();
+      }
+      
+      // Check rawData (often has the actual values)
+      const rawDataValue = rawData.businessRegistrationNumber;
+      if (rawDataValue && String(rawDataValue).trim() !== '') {
+        console.info(`[SchemaDrivenView] ✅ REGISTRATION_NUMBER found in rawData.businessRegistrationNumber:`, rawDataValue);
+        return String(rawDataValue).trim();
+      }
+      
+      // Check metadata with exact requirement code key (snake_case)
+      const metadataValue = metadata.registration_number;
+      if (metadataValue && String(metadataValue).trim() !== '') {
+        console.info(`[SchemaDrivenView] ✅ REGISTRATION_NUMBER found in metadata.registration_number:`, metadataValue);
+        return String(metadataValue).trim();
+      }
+      
+      // Log what we found (for debugging)
+      console.info(`[SchemaDrivenView] 🔍 REGISTRATION_NUMBER check:`, {
+        caseDataValue: caseDataValue,
+        rawDataValue: rawDataValue,
+        metadataValue: metadataValue,
+        caseDataValueType: typeof caseDataValue,
+        rawDataValueType: typeof rawDataValue,
+      });
+      
+      // Then check metadata and other sources
+      const value = (
+        metadata.registrationNumber ||
+        metadata['Registration Number'] ||
+        metadata.REGISTRATION_NUMBER ||
+        data.businessRegistrationNumber ||
+        data.registrationNumber ||
+        data.registration_number ||
+        rawData.registrationNumber ||
+        ''
+      );
+      
+      return value && String(value).trim() !== '' ? String(value).trim() : '';
+    },
 
     // Tax ID / TIN
     TAX_ID: (_data) =>
@@ -141,30 +249,121 @@ function mapDataToFieldValue(
       metadata.applicant_address ||
       '',
 
-    // Registered Address (common variation)
-    REGISTERED_ADDRESS: (_data) =>
-      rawData.businessAddress ||
-      metadata.registered_address ||
-      metadata.registeredAddress ||
-      metadata.business_address ||
-      metadata.businessAddress ||
-      rawData.registeredAddress ||
-      rawData.registered_address ||
-      rawData.applicantAddress ||
-      metadata.applicant_address ||
-      metadata.address ||
-      rawData.address ||
-      '',
+    // Registered Address (common variation) - check metadata first with exact key
+    REGISTERED_ADDRESS: (data) => {
+      // Helper to format address object to string
+      const formatAddress = (addr: any): string => {
+        if (!addr) return '';
+        if (typeof addr === 'string') return addr.trim();
+        if (typeof addr === 'object') {
+          const parts = [
+            addr.street || addr.Street,
+            addr.street2 || addr.Street2,
+            addr.city || addr.City,
+            addr.state || addr.State,
+            addr.postalCode || addr.PostalCode,
+            addr.country || addr.Country,
+          ].filter(Boolean);
+          return parts.length > 0 ? parts.join(', ') : '';
+        }
+        return String(addr).trim();
+      };
+      
+      // Check metadata with exact requirement code key (snake_case) FIRST
+      const metadataValue = metadata.registered_address;
+      const formattedMetadata = formatAddress(metadataValue);
+      if (formattedMetadata) {
+        console.info(`[SchemaDrivenView] ✅ REGISTERED_ADDRESS found in metadata.registered_address:`, formattedMetadata);
+        return formattedMetadata;
+      }
+      
+      // Check caseData (from API route) - but only if value is not empty
+      const caseData = applicationData.caseData || {};
+      const caseDataValue = caseData.registeredAddress;
+      const formattedCaseData = formatAddress(caseDataValue);
+      if (formattedCaseData) {
+        console.info(`[SchemaDrivenView] ✅ REGISTERED_ADDRESS found in caseData.registeredAddress:`, formattedCaseData);
+        return formattedCaseData;
+      }
+      
+      // Check rawData (often has the actual values)
+      const rawDataValue = rawData.registeredAddress;
+      const formattedRawData = formatAddress(rawDataValue);
+      if (formattedRawData) {
+        console.info(`[SchemaDrivenView] ✅ REGISTERED_ADDRESS found in rawData.registeredAddress:`, formattedRawData);
+        return formattedRawData;
+      }
+      
+      // Check if business object has registeredAddress
+      const business = data.business || applicationData.business || {};
+      const businessAddr = business.registeredAddress || business.RegisteredAddress;
+      const formattedBusiness = formatAddress(businessAddr);
+      if (formattedBusiness) {
+        console.info(`[SchemaDrivenView] ✅ REGISTERED_ADDRESS found in business.registeredAddress:`, formattedBusiness);
+        return formattedBusiness;
+      }
+      
+      // Log what we found (for debugging)
+      console.info(`[SchemaDrivenView] 🔍 REGISTERED_ADDRESS check:`, {
+        metadataValue: metadataValue,
+        caseDataValue: caseDataValue,
+        rawDataValue: rawDataValue,
+        businessAddr: businessAddr,
+        caseDataValueType: typeof caseDataValue,
+        rawDataValueType: typeof rawDataValue,
+      });
+      
+      // Then check metadata with all variations
+      const value = (
+        metadata.registeredAddress ||
+        metadata['Registered Address'] ||
+        metadata.REGISTERED_ADDRESS ||
+        data.registeredAddress ||
+        data.registered_address ||
+        data.businessAddress ||
+        data.business_address ||
+        data.address ||
+        rawData.registered_address ||
+        rawData.businessAddress ||
+        metadata.business_address ||
+        metadata.businessAddress ||
+        rawData.applicantAddress ||
+        metadata.applicant_address ||
+        metadata.address ||
+        rawData.address ||
+        ''
+      );
+      
+      return value && String(value).trim() !== '' ? String(value).trim() : '';
+    },
 
-    REGISTEREDADDRESS: (_data) =>
-      rawData.businessAddress ||
-      metadata.registered_address ||
-      metadata.registeredAddress ||
-      metadata.business_address ||
-      metadata.businessAddress ||
-      rawData.registeredAddress ||
-      rawData.registered_address ||
-      '',
+    REGISTEREDADDRESS: (data) => {
+      // Check caseData first (from API route) - but only if value is not empty
+      const caseData = applicationData.caseData || {};
+      if (caseData.registeredAddress && String(caseData.registeredAddress).trim() !== '') {
+        return String(caseData.registeredAddress).trim();
+      }
+      
+      // Check rawData (often has the actual values)
+      if (rawData.registeredAddress && String(rawData.registeredAddress).trim() !== '') {
+        return String(rawData.registeredAddress).trim();
+      }
+      
+      const value = (
+        data.registeredAddress ||
+        data.registered_address ||
+        data.businessAddress ||
+        rawData.businessAddress ||
+        metadata.registered_address ||
+        metadata.registeredAddress ||
+        metadata.business_address ||
+        metadata.businessAddress ||
+        rawData.registered_address ||
+        ''
+      );
+      
+      return value && String(value).trim() !== '' ? String(value).trim() : '';
+    },
 
     // Industry / Nature of business
     BUSINESS_NATURE: (_data) =>
@@ -340,8 +539,8 @@ function mapDataToFieldValue(
     const caseDataKeys = Object.keys(caseData);
     const matchingKey = caseDataKeys.find((key) => {
       const normalizedKey = key.toLowerCase().replace(/[_\s-]/g, '');
-      const normalizedCode = code.toLowerCase().replace(/[_\s-]/g, '');
-      return normalizedKey === normalizedCode || normalizedKey.includes(normalizedCode);
+      const normalizedCodeLower = code.toLowerCase().replace(/[_\s-]/g, '');
+      return normalizedKey === normalizedCodeLower || normalizedKey.includes(normalizedCodeLower);
     });
 
     if (matchingKey && caseData[matchingKey]) {
@@ -377,13 +576,25 @@ function mapDataToFieldValue(
 
   // Check metadata first (most common location)
   for (const variation of variations) {
+    const value = metadata[variation];
     if (
-      metadata[variation] !== undefined &&
-      metadata[variation] !== null &&
-      metadata[variation] !== ''
+      value !== undefined &&
+      value !== null &&
+      value !== '' &&
+      String(value).trim() !== ''
     ) {
-      console.info(`  ✅ Found in metadata["${variation}"]:`, metadata[variation]);
-      return metadata[variation];
+      console.info(`  ✅ Found in metadata["${variation}"]:`, value);
+      return String(value).trim();
+    }
+  }
+  
+  // Also try snake_case version directly (common in metadata)
+  const snakeCaseKey = fieldCode.toLowerCase().replace(/[_\s-]/g, '_');
+  if (metadata[snakeCaseKey] !== undefined) {
+    const value = metadata[snakeCaseKey];
+    if (value !== null && value !== undefined && value !== '' && String(value).trim() !== '') {
+      console.info(`  ✅ Found in metadata["${snakeCaseKey}"] (snake_case):`, value);
+      return String(value).trim();
     }
   }
 
@@ -422,31 +633,54 @@ function mapDataToFieldValue(
     { name: 'applicationData', data: applicationData },
   ];
 
+  // First, try exact normalized matches (most reliable)
+  const normalizedFieldCode = code.toLowerCase().replace(/[_\s-]/g, '');
   for (const source of allDataSources) {
     if (!source.data || typeof source.data !== 'object') continue;
 
     const sourceKeys = Object.keys(source.data);
-    const normalizedCode = code.toLowerCase().replace(/[_\s-]/g, '');
+    for (const key of sourceKeys) {
+      const normalizedKey = key.toLowerCase().replace(/[_\s-]/g, '');
+      
+      // Exact normalized match
+      if (normalizedKey === normalizedFieldCode) {
+        const value = source.data[key];
+        if (value !== null && value !== undefined && value !== '' && String(value).trim() !== '') {
+          console.info(
+            `[SchemaDrivenView] ✅ Found via exact normalized match in ${source.name}["${key}"] (matched "${code}"):`,
+            value
+          );
+          return String(value).trim();
+        }
+      }
+    }
+  }
 
+  // Then try partial matches (contains)
+  for (const source of allDataSources) {
+    if (!source.data || typeof source.data !== 'object') continue;
+
+    const sourceKeys = Object.keys(source.data);
     for (const key of sourceKeys) {
       const normalizedKey = key.toLowerCase().replace(/[_\s-]/g, '');
 
-      // Check if key matches code (fuzzy match)
-      if (
-        normalizedKey === normalizedCode ||
-        normalizedKey.includes(normalizedCode) ||
-        normalizedCode.includes(normalizedKey) ||
-        // Check if key ends with code or code ends with key
-        normalizedKey.endsWith(normalizedCode) ||
-        normalizedCode.endsWith(normalizedKey)
-      ) {
-        const value = source.data[key];
-        if (value !== null && value !== undefined && value !== '') {
-          console.info(
-            `[SchemaDrivenView] ✅ Found via fuzzy match in ${source.name}["${key}"] (matched "${code}"):`,
-            value
-          );
-          return value;
+      // Check if key contains code or code contains key (but not already matched exactly)
+      if (normalizedKey !== normalizedFieldCode) {
+        if (
+          normalizedKey.includes(normalizedFieldCode) ||
+          normalizedFieldCode.includes(normalizedKey) ||
+          // Check if key ends with code or code ends with key
+          normalizedKey.endsWith(normalizedFieldCode) ||
+          normalizedFieldCode.endsWith(normalizedKey)
+        ) {
+          const value = source.data[key];
+          if (value !== null && value !== undefined && value !== '' && String(value).trim() !== '') {
+            console.info(
+              `[SchemaDrivenView] ✅ Found via fuzzy match in ${source.name}["${key}"] (matched "${code}"):`,
+              value
+            );
+            return String(value).trim();
+          }
         }
       }
     }
@@ -493,6 +727,42 @@ function mapDataToFieldValue(
     rawData[snakeCase] !== ''
   ) {
     return rawData[snakeCase];
+  }
+
+  // Last resort: search for any key that contains significant words from the field code
+  const significantWords = fieldCode
+    .toLowerCase()
+    .replace(/[_\-\/]/g, ' ')
+    .split(/\s+/)
+    .filter(word => word.length > 2); // Only words with more than 2 chars
+  
+  if (significantWords.length > 0) {
+    const allSources = [
+      { name: 'metadata', obj: metadata },
+      { name: 'rawData', obj: rawData },
+      { name: 'caseData', obj: applicationData.caseData || {} },
+      { name: 'applicationData', obj: applicationData },
+    ];
+    
+    for (const source of allSources) {
+      if (!source.obj || typeof source.obj !== 'object') continue;
+      
+      for (const key of Object.keys(source.obj)) {
+        const keyLower = key.toLowerCase();
+        // Check if key contains ALL significant words
+        const matchesAllWords = significantWords.every(word => 
+          keyLower.includes(word) || word.includes(keyLower.replace(/[_\-]/g, ''))
+        );
+        
+        if (matchesAllWords) {
+          const value = source.obj[key];
+          if (value !== null && value !== undefined && value !== '' && typeof value !== 'object') {
+            console.info(`[SchemaDrivenView] ✅ Found via word match in ${source.name}["${key}"] for "${fieldCode}":`, value);
+            return value;
+          }
+        }
+      }
+    }
   }
 
   return null;
@@ -887,6 +1157,17 @@ function renderDocumentField(field: SchemaField, value: any): React.ReactNode {
                         minW="auto"
                         h="auto"
                         borderRadius="md"
+                        title="View document"
+                        onClick={() => {
+                          // Try to open document - check for URL or blob
+                          const docUrl = (doc as any).url || (doc as any).fileUrl || (doc as any).downloadUrl;
+                          if (docUrl) {
+                            window.open(docUrl, '_blank');
+                          } else {
+                            // Show alert if no URL available
+                            alert(`Document: ${doc.fileName}\nStatus: ${statusInfo.label}\n\nDocument preview not available. The document may need to be downloaded from the server.`);
+                          }
+                        }}
                       >
                         <VisibleIcon
                           width="14px"
@@ -1121,6 +1402,23 @@ export function SchemaDrivenView({
             `  - Potential matching keys found:`,
             potentialMatches.slice(0, 10)
           );
+          // Also show the actual values for these potential matches
+          const matchDetails = potentialMatches.slice(0, 10).map((key) => {
+            let value = null;
+            let source = '';
+            if (applicationData.metadata?.[key] !== undefined) {
+              value = applicationData.metadata[key];
+              source = 'metadata';
+            } else if (applicationData.rawData?.[key] !== undefined) {
+              value = applicationData.rawData[key];
+              source = 'rawData';
+            } else if (applicationData.caseData?.[key] !== undefined) {
+              value = applicationData.caseData[key];
+              source = 'caseData';
+            }
+            return { key, value, source, isEmpty: !value || String(value).trim() === '' };
+          });
+          console.info(`  - Potential match details:`, matchDetails);
         }
       }
 

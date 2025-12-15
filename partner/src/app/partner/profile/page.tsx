@@ -28,13 +28,13 @@ import {
   PhoneInput,
 } from '@/lib/mukuruImports';
 import Link from 'next/link';
-import { PartnerNavbar } from '@/components/PartnerNavbar';
+import { PartnerHeader } from '@/components/PartnerHeader';
 import { useState, useEffect } from 'react';
 import { Formik, Form, Field } from 'formik';
 import * as Yup from 'yup';
 import { FiCheckCircle, FiXCircle, FiInfo, FiX, FiLogOut } from 'react-icons/fi';
-import { getAuthUser, getInitials, logout } from '@/lib/auth/session';
-import { useSession } from 'next-auth/react';
+import { getAuthUser, getInitials } from '@/lib/auth/session';
+import { useSession, signOut } from 'next-auth/react';
 import {
   getUserProfile,
   updateUserProfile,
@@ -264,6 +264,25 @@ export default function PartnerProfilePage() {
     }
   };
 
+  const handleLogout = async () => {
+    try {
+      // Clear any local storage/session storage
+      if (typeof window !== 'undefined') {
+        localStorage.clear();
+        sessionStorage.clear();
+      }
+      // Use NextAuth signOut with redirect
+      await signOut({ 
+        callbackUrl: '/auth/login',
+        redirect: true 
+      });
+    } catch (error) {
+      console.error('Logout error:', error);
+      // Force redirect even if signOut fails
+      window.location.href = '/auth/login';
+    }
+  };
+
   const handleDeleteAccount = async () => {
     try {
       const result = await deleteUserAccount({ reason: deleteReason });
@@ -275,7 +294,7 @@ export default function PartnerProfilePage() {
         });
         // Logout and redirect
         setTimeout(() => {
-          logout('http://localhost:3000/');
+          handleLogout();
         }, 2000);
       }
     } catch (error: any) {
@@ -326,9 +345,11 @@ export default function PartnerProfilePage() {
         alignItems="center"
         justifyContent="center"
       >
-        <VStack gap="4">
+        <VStack gap="5">
           <Spinner size="xl" color="mukuru.buttons.primary" />
-          <Typography color="mukuru.text.primary">Loading profile...</Typography>
+          <Typography color="mukuru.text.primary" fontSize="lg" fontWeight="500">
+            Loading profile...
+          </Typography>
         </VStack>
       </Box>
     );
@@ -337,8 +358,8 @@ export default function PartnerProfilePage() {
   // Do not block the page if there is no application; render profile with auth data
 
   return (
-    <Box minH="100vh" bg="gray.50" position="relative">
-      <PartnerNavbar currentUser={{ name: userName, email: userEmail }} />
+    <Box minH="100vh" bg="mukuru.background.light" position="relative">
+      <PartnerHeader />
       {/* Toast Notification */}
       {toastState && (
         <Box
@@ -347,16 +368,9 @@ export default function PartnerProfilePage() {
           right="4"
           zIndex={9999}
           maxW="400px"
-          p="4"
-          borderRadius="md"
-          bg={
-            toastState.status === 'success'
-              ? 'mukuru.text.success'
-              : toastState.status === 'error'
-                ? 'mukuru.text.error.dark'
-                : 'mukuru.teal'
-          }
-          border="1px"
+          borderRadius="lg"
+          bg="white"
+          border="1px solid"
           borderColor={
             toastState.status === 'success'
               ? 'mukuru.text.success'
@@ -364,58 +378,72 @@ export default function PartnerProfilePage() {
                 ? 'mukuru.text.error'
                 : 'mukuru.teal'
           }
-          boxShadow="lg"
+          boxShadow="0 4px 12px rgba(0, 0, 0, 0.1)"
+          overflow="hidden"
         >
-          <HStack gap="3" align="start">
-            <Icon
-              as={
-                toastState.status === 'success'
-                  ? FiCheckCircle
-                  : toastState.status === 'error'
-                    ? FiXCircle
-                    : FiInfo
-              }
-              color={
-                toastState.status === 'success'
-                  ? 'mukuru.text.success'
-                  : toastState.status === 'error'
-                    ? 'mukuru.text.error'
-                    : 'mukuru.teal'
-              }
-              boxSize="5"
-              flexShrink={0}
-              mt="0.5"
-            />
-            <VStack align="start" gap="1" flex="1">
-              <Typography fontWeight="semibold" fontSize="sm" color="mukuru.text.primary">
-                {toastState.title}
-              </Typography>
-              {toastState.description && (
-                <Typography fontSize="sm" color="mukuru.text.primary">
-                  {toastState.description}
+          <Box
+            h="4px"
+            w="100%"
+            bg={
+              toastState.status === 'success'
+                ? 'mukuru.text.success'
+                : toastState.status === 'error'
+                  ? 'mukuru.text.error'
+                  : 'mukuru.teal'
+            }
+          />
+          <Box p="4">
+            <HStack gap="3" align="start">
+              <Icon
+                as={
+                  toastState.status === 'success'
+                    ? FiCheckCircle
+                    : toastState.status === 'error'
+                      ? FiXCircle
+                      : FiInfo
+                }
+                color={
+                  toastState.status === 'success'
+                    ? 'mukuru.text.success'
+                    : toastState.status === 'error'
+                      ? 'mukuru.text.error'
+                      : 'mukuru.teal'
+                }
+                boxSize="5"
+                flexShrink={0}
+                mt="0.5"
+              />
+              <VStack align="start" gap="1" flex="1">
+                <Typography fontWeight="semibold" fontSize="sm" color="mukuru.text.primary">
+                  {toastState.title}
                 </Typography>
-              )}
-            </VStack>
-            <Button
-              size="sm"
-              variant="ghost"
-              onClick={() => setToastState(null)}
-              minW="auto"
-              px="2"
-            >
-              <Icon as={FiX} boxSize="3" />
-            </Button>
-          </HStack>
+                {toastState.description && (
+                  <Typography fontSize="sm" color="mukuru.grey.mediumDark">
+                    {toastState.description}
+                  </Typography>
+                )}
+              </VStack>
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={() => setToastState(null)}
+                minW="auto"
+                px="2"
+              >
+                <Icon as={FiX} boxSize="3" />
+              </Button>
+            </HStack>
+          </Box>
         </Box>
       )}
       <Container maxW="6xl" py={{ base: 6, md: 10 }} px={{ base: 4, md: 6, lg: 8 }}>
         <VStack gap={{ base: 6, md: 8 }} align="stretch" width="100%">
           {/* Page Header */}
-          <VStack align="start" gap="2" mb={{ base: 2, md: 4 }} width="100%">
-            <Typography fontSize="4xl" fontWeight="bold" color="mukuru.text.primary">
+          <VStack align="start" gap="3" mb={{ base: 2, md: 4 }} width="100%">
+            <Typography fontSize="3xl" fontWeight="bold" color="mukuru.text.primary">
               Profile Settings
             </Typography>
-            <Typography color="mukuru.text.primary" fontSize="sm" mt="0">
+            <Typography color="mukuru.grey.mediumDark" fontSize="md" mt="0">
               Manage your account information and preferences
             </Typography>
           </VStack>
@@ -426,9 +454,9 @@ export default function PartnerProfilePage() {
             width="100%"
             minH="auto"
             borderRadius="lg"
-            boxShadow="sm"
+            boxShadow="0 2px 8px rgba(0, 0, 0, 0.08)"
             overflow="visible"
-            borderColor="white"
+            borderColor="mukuru.grey.light"
             borderWidth="1px"
             style={{ height: 'auto', minHeight: 'auto', maxHeight: 'none' }}
             css={{
@@ -437,28 +465,29 @@ export default function PartnerProfilePage() {
               maxHeight: 'none !important',
             }}
           >
-            <Box p={{ base: 4, md: 6 }} borderBottom="1px" borderColor="white" bg="white">
+            <Box p={{ base: 5, md: 6 }} borderBottom="1px" borderColor="mukuru.grey.light" bg="mukuru.cards.white">
               <Flex
                 justify="space-between"
                 align={{ base: 'start', md: 'center' }}
                 flexWrap={{ base: 'wrap', md: 'nowrap' }}
                 gap="4"
               >
-                <VStack align="start" gap="1" flex="1" minW="0">
-                  <Typography fontSize="lg" fontWeight="bold" color="mukuru.text.primary">
+                <VStack align="start" gap="2" flex="1" minW="0">
+                  <Typography fontSize="xl" fontWeight="bold" color="mukuru.text.primary">
                     Personal Information
                   </Typography>
-                  <Typography fontSize="sm" color="mukuru.text.primary" mt="0">
+                  <Typography fontSize="sm" color="mukuru.grey.mediumDark" mt="0">
                     Your account details from Keycloak
                   </Typography>
                 </VStack>
                 {!isEditing && (
                   <Button
-                    size={{ base: 'sm', md: 'md' }}
+                    size="md"
                     variant="primary"
                     className="mukuru-primary-button"
                     onClick={() => setIsEditing(true)}
                     flexShrink={0}
+                    px="6"
                   >
                     Edit Profile
                   </Button>
@@ -467,11 +496,11 @@ export default function PartnerProfilePage() {
             </Box>
 
             <Box
-              p={{ base: 4, md: 6, lg: 8 }}
+              p={{ base: 5, md: 6, lg: 8 }}
               width="100%"
               display="block"
               visibility="visible"
-              bg="white"
+              bg="mukuru.cards.white"
             >
               <Formik
                 key={`form-${givenName}-${familyName}-${userEmail}`}
@@ -517,7 +546,7 @@ export default function PartnerProfilePage() {
                           <Box width="100%">
                             <Typography
                               fontSize="sm"
-                              fontWeight="semibold"
+                              fontWeight="600"
                               color="mukuru.text.primary"
                               mb="2"
                             >
@@ -547,7 +576,7 @@ export default function PartnerProfilePage() {
                           <Box width="100%">
                             <Typography
                               fontSize="sm"
-                              fontWeight="semibold"
+                              fontWeight="600"
                               color="mukuru.text.primary"
                               mb="2"
                             >
@@ -590,7 +619,7 @@ export default function PartnerProfilePage() {
                           <Box width="100%">
                             <Typography
                               fontSize="sm"
-                              fontWeight="semibold"
+                              fontWeight="600"
                               color="mukuru.text.primary"
                               mb="2"
                             >
@@ -616,7 +645,7 @@ export default function PartnerProfilePage() {
                           <Box width="100%">
                             <Typography
                               fontSize="sm"
-                              fontWeight="semibold"
+                              fontWeight="600"
                               color="mukuru.text.primary"
                               mb="2"
                             >
@@ -663,7 +692,7 @@ export default function PartnerProfilePage() {
                           </Box>
                         </SimpleGrid>
 
-                        <Separator borderColor="gray.200" my={{ base: 2, md: 4 }} />
+                        <Separator borderColor="mukuru.grey.light" my={{ base: 4, md: 6 }} />
 
                         {/* Company & Location Fields */}
                         <SimpleGrid
@@ -674,7 +703,7 @@ export default function PartnerProfilePage() {
                           <Box width="100%">
                             <Typography
                               fontSize="sm"
-                              fontWeight="semibold"
+                              fontWeight="600"
                               color="mukuru.text.primary"
                               mb="2"
                             >
@@ -700,7 +729,7 @@ export default function PartnerProfilePage() {
                           <Box width="100%">
                             <Typography
                               fontSize="sm"
-                              fontWeight="semibold"
+                              fontWeight="600"
                               color="mukuru.text.primary"
                               mb="2"
                             >
@@ -749,8 +778,8 @@ export default function PartnerProfilePage() {
                         <Box width="100%">
                           <Typography
                             fontSize="sm"
-                            fontWeight="semibold"
-                            color="gray.900"
+                            fontWeight="600"
+                            color="mukuru.text.primary"
                             mb="2"
                           >
                             Entity Type
@@ -769,16 +798,20 @@ export default function PartnerProfilePage() {
                         {isEditing && (
                           <HStack
                             gap="3"
-                            pt={{ base: 2, md: 4 }}
+                            pt={{ base: 4, md: 6 }}
                             justify="flex-end"
                             width="100%"
                             flexWrap={{ base: 'wrap', sm: 'nowrap' }}
+                            borderTop="1px"
+                            borderColor="mukuru.grey.light"
+                            mt="4"
                           >
                             <Button
                               variant="secondary"
                               onClick={() => setIsEditing(false)}
-                              size={{ base: 'sm', md: 'md' }}
+                              size="md"
                               width={{ base: '100%', sm: 'auto' }}
+                              px="6"
                             >
                               Cancel
                             </Button>
@@ -787,8 +820,9 @@ export default function PartnerProfilePage() {
                               className="mukuru-primary-button"
                               loading={saving}
                               loadingText="Saving..."
-                              size={{ base: 'sm', md: 'md' }}
+                              size="md"
                               width={{ base: '100%', sm: 'auto' }}
+                              px="6"
                             >
                               Save Changes
                             </Button>
@@ -808,9 +842,9 @@ export default function PartnerProfilePage() {
             width="100%"
             minH="auto"
             borderRadius="lg"
-            boxShadow="sm"
+            boxShadow="0 2px 8px rgba(0, 0, 0, 0.08)"
             overflow="visible"
-            borderColor="gray.200"
+            borderColor="mukuru.grey.light"
             borderWidth="1px"
             style={{ height: 'auto', minHeight: 'auto', maxHeight: 'none' }}
             css={{
@@ -820,42 +854,44 @@ export default function PartnerProfilePage() {
             }}
           >
             <Box
-              p={{ base: 4, md: 6 }}
+              p={{ base: 5, md: 6 }}
               borderBottom="1px"
-              borderColor="gray.200"
-              bg="white"
+              borderColor="mukuru.grey.light"
+              bg="mukuru.cards.white"
             >
-              <VStack align="start" gap="1">
-                <Typography fontSize="lg" fontWeight="bold" color="gray.900">
+              <VStack align="start" gap="2">
+                <Typography fontSize="xl" fontWeight="bold" color="mukuru.text.primary">
                   Notification Preferences
                 </Typography>
-                <Typography fontSize="sm" color="gray.600" mt="0">
+                <Typography fontSize="sm" color="mukuru.grey.mediumDark" mt="0">
                   Choose how you want to receive updates about your application
                 </Typography>
               </VStack>
             </Box>
 
             <Box
-              p={{ base: 4, md: 6, lg: 8 }}
+              p={{ base: 5, md: 6, lg: 8 }}
               width="100%"
               display="block"
               visibility="visible"
-              bg="white"
+              bg="mukuru.cards.white"
             >
-              <VStack gap={{ base: 4, md: 5 }} align="stretch" width="100%">
+              <VStack gap="0" align="stretch" width="100%">
                 <HStack
                   justify="space-between"
                   align="center"
                   width="100%"
-                  py={{ base: 2, md: 3 }}
+                  py={{ base: 4, md: 5 }}
+                  borderBottom="1px"
+                  borderColor="mukuru.grey.light"
                   flexWrap={{ base: 'wrap', sm: 'nowrap' }}
                   gap={{ base: 3, sm: 0 }}
                 >
                   <VStack align="start" gap="1" flex="1" minW="0" pr={{ base: 0, sm: 4 }}>
-                    <Typography fontWeight="semibold" color="gray.900" fontSize="md">
+                    <Typography fontWeight="600" color="mukuru.text.primary" fontSize="md">
                       Email Notifications
                     </Typography>
-                    <Typography fontSize="sm" color="mukuru.text.primary" mt="0">
+                    <Typography fontSize="sm" color="mukuru.grey.mediumDark" mt="0">
                       Receive updates via email
                     </Typography>
                   </VStack>
@@ -879,15 +915,17 @@ export default function PartnerProfilePage() {
                   justify="space-between"
                   align="center"
                   width="100%"
-                  py={{ base: 2, md: 3 }}
+                  py={{ base: 4, md: 5 }}
+                  borderBottom="1px"
+                  borderColor="mukuru.grey.light"
                   flexWrap={{ base: 'wrap', sm: 'nowrap' }}
                   gap={{ base: 3, sm: 0 }}
                 >
                   <VStack align="start" gap="1" flex="1" minW="0" pr={{ base: 0, sm: 4 }}>
-                    <Typography fontWeight="semibold" color="gray.900" fontSize="md">
+                    <Typography fontWeight="600" color="mukuru.text.primary" fontSize="md">
                       SMS Notifications
                     </Typography>
-                    <Typography fontSize="sm" color="mukuru.text.primary" mt="0">
+                    <Typography fontSize="sm" color="mukuru.grey.mediumDark" mt="0">
                       Receive updates via SMS
                     </Typography>
                   </VStack>
@@ -911,15 +949,15 @@ export default function PartnerProfilePage() {
                   justify="space-between"
                   align="center"
                   width="100%"
-                  py={{ base: 2, md: 3 }}
+                  py={{ base: 4, md: 5 }}
                   flexWrap={{ base: 'wrap', sm: 'nowrap' }}
                   gap={{ base: 3, sm: 0 }}
                 >
                   <VStack align="start" gap="1" flex="1" minW="0" pr={{ base: 0, sm: 4 }}>
-                    <Typography fontWeight="semibold" color="gray.900" fontSize="md">
+                    <Typography fontWeight="600" color="mukuru.text.primary" fontSize="md">
                       Status Updates
                     </Typography>
-                    <Typography fontSize="sm" color="mukuru.text.primary" mt="0">
+                    <Typography fontSize="sm" color="mukuru.grey.mediumDark" mt="0">
                       Get notified when your application status changes
                     </Typography>
                   </VStack>
@@ -948,9 +986,9 @@ export default function PartnerProfilePage() {
             width="100%"
             minH="auto"
             borderRadius="lg"
-            boxShadow="sm"
+            boxShadow="0 2px 8px rgba(0, 0, 0, 0.08)"
             overflow="visible"
-            borderColor="gray.200"
+            borderColor="mukuru.grey.light"
             borderWidth="1px"
             style={{ height: 'auto', minHeight: 'auto', maxHeight: 'none' }}
             css={{
@@ -960,38 +998,40 @@ export default function PartnerProfilePage() {
             }}
           >
             <Box
-              p={{ base: 4, md: 6 }}
+              p={{ base: 5, md: 6 }}
               borderBottom="1px"
-              borderColor="gray.200"
-              bg="white"
+              borderColor="mukuru.grey.light"
+              bg="mukuru.cards.white"
             >
-              <Typography fontSize="lg" fontWeight="bold" color="gray.900">
+              <Typography fontSize="xl" fontWeight="bold" color="mukuru.text.primary">
                 Account Actions
               </Typography>
             </Box>
 
             <Box
-              p={{ base: 4, md: 6, lg: 8 }}
+              p={{ base: 5, md: 6, lg: 8 }}
               width="100%"
               display="block"
               visibility="visible"
-              bg="white"
+              bg="mukuru.cards.white"
             >
-              <VStack gap={{ base: 4, md: 5 }} align="stretch" width="100%">
+              <VStack gap="0" align="stretch" width="100%">
                 {/* Change Password Row */}
                 <HStack
                   justify="space-between"
                   align="center"
                   width="100%"
-                  py={{ base: 2, md: 3 }}
+                  py={{ base: 4, md: 5 }}
+                  borderBottom="1px"
+                  borderColor="mukuru.grey.light"
                   flexWrap={{ base: 'wrap', sm: 'nowrap' }}
                   gap={{ base: 3, sm: 0 }}
                 >
                   <VStack align="start" gap="1" flex="1" minW="0" pr={{ base: 0, sm: 4 }}>
-                    <Typography fontWeight="semibold" color="gray.900" fontSize="md">
+                    <Typography fontWeight="600" color="mukuru.text.primary" fontSize="md">
                       Change Password
                     </Typography>
-                    <Typography fontSize="sm" color="mukuru.text.primary" mt="0">
+                    <Typography fontSize="sm" color="mukuru.grey.mediumDark" mt="0">
                       Update your account password
                     </Typography>
                   </VStack>
@@ -999,8 +1039,9 @@ export default function PartnerProfilePage() {
                     <Button
                       variant="primary"
                       className="mukuru-primary-button"
-                      size={{ base: 'sm', md: 'md' }}
+                      size="md"
                       onClick={onPasswordDialogOpen}
+                      px="6"
                     >
                       Change
                     </Button>
@@ -1012,15 +1053,17 @@ export default function PartnerProfilePage() {
                   justify="space-between"
                   align="center"
                   width="100%"
-                  py={{ base: 2, md: 3 }}
+                  py={{ base: 4, md: 5 }}
+                  borderBottom="1px"
+                  borderColor="mukuru.grey.light"
                   flexWrap={{ base: 'wrap', sm: 'nowrap' }}
                   gap={{ base: 3, sm: 0 }}
                 >
                   <VStack align="start" gap="1" flex="1" minW="0" pr={{ base: 0, sm: 4 }}>
-                    <Typography fontWeight="semibold" color="gray.900" fontSize="md">
+                    <Typography fontWeight="600" color="mukuru.text.primary" fontSize="md">
                       Marketing Communications
                     </Typography>
-                    <Typography fontSize="sm" color="mukuru.text.primary" mt="0">
+                    <Typography fontSize="sm" color="mukuru.grey.mediumDark" mt="0">
                       Receive news and updates about Mukuru services
                     </Typography>
                   </VStack>
@@ -1048,15 +1091,17 @@ export default function PartnerProfilePage() {
                   justify="space-between"
                   align="center"
                   width="100%"
-                  py={{ base: 2, md: 3 }}
+                  py={{ base: 4, md: 5 }}
+                  borderBottom="1px"
+                  borderColor="mukuru.grey.light"
                   flexWrap={{ base: 'wrap', sm: 'nowrap' }}
                   gap={{ base: 3, sm: 0 }}
                 >
                   <VStack align="start" gap="1" flex="1" minW="0" pr={{ base: 0, sm: 4 }}>
-                    <Typography fontWeight="semibold" color="gray.900" fontSize="md">
+                    <Typography fontWeight="600" color="mukuru.text.primary" fontSize="md">
                       Download Data
                     </Typography>
-                    <Typography fontSize="sm" color="mukuru.text.primary" mt="0">
+                    <Typography fontSize="sm" color="mukuru.grey.mediumDark" mt="0">
                       Download a copy of your application data
                     </Typography>
                   </VStack>
@@ -1064,8 +1109,9 @@ export default function PartnerProfilePage() {
                     <Button
                       variant="primary"
                       className="mukuru-primary-button"
-                      size={{ base: 'sm', md: 'md' }}
+                      size="md"
                       onClick={handleDownloadData}
+                      px="6"
                     >
                       Download
                     </Button>
@@ -1077,15 +1123,17 @@ export default function PartnerProfilePage() {
                   justify="space-between"
                   align="center"
                   width="100%"
-                  py={{ base: 2, md: 3 }}
+                  py={{ base: 4, md: 5 }}
+                  borderBottom="1px"
+                  borderColor="mukuru.grey.light"
                   flexWrap={{ base: 'wrap', sm: 'nowrap' }}
                   gap={{ base: 3, sm: 0 }}
                 >
                   <VStack align="start" gap="1" flex="1" minW="0" pr={{ base: 0, sm: 4 }}>
-                    <Typography fontWeight="semibold" color="gray.900" fontSize="md">
+                    <Typography fontWeight="600" color="mukuru.text.primary" fontSize="md">
                       Logout
                     </Typography>
-                    <Typography fontSize="sm" color="mukuru.text.primary" mt="0">
+                    <Typography fontSize="sm" color="mukuru.grey.mediumDark" mt="0">
                       Sign out of your account
                     </Typography>
                   </VStack>
@@ -1093,12 +1141,13 @@ export default function PartnerProfilePage() {
                     <Button
                       variant="primary"
                       className="mukuru-primary-button"
-                      size={{ base: 'sm', md: 'md' }}
-                      onClick={() => logout('http://localhost:3000/')}
+                      size="md"
+                      onClick={handleLogout}
+                      px="6"
                     >
                       <HStack gap="2">
-                        <Icon as={FiLogOut} color="white" />
-                        <Typography color="white">Logout</Typography>
+                        <Icon as={FiLogOut} color="white" boxSize="4" />
+                        <Typography color="white" fontWeight="500">Logout</Typography>
                       </HStack>
                     </Button>
                   </Box>
@@ -1109,15 +1158,21 @@ export default function PartnerProfilePage() {
                   justify="space-between"
                   align="center"
                   width="100%"
-                  py={{ base: 2, md: 3 }}
+                  py={{ base: 4, md: 5 }}
+                  borderWidth="2px"
+                  borderColor="mukuru.text.error"
+                  borderRadius="md"
+                  px={{ base: 4, md: 5 }}
+                  bg="rgba(239, 68, 68, 0.02)"
                   flexWrap={{ base: 'wrap', sm: 'nowrap' }}
                   gap={{ base: 3, sm: 0 }}
+                  mt="4"
                 >
                   <VStack align="start" gap="1" flex="1" minW="0" pr={{ base: 0, sm: 4 }}>
-                    <Typography fontWeight="semibold" color="red.600" fontSize="md">
+                    <Typography fontWeight="600" color="mukuru.text.error" fontSize="md">
                       Delete Account
                     </Typography>
-                    <Typography fontSize="sm" color="mukuru.text.primary" mt="0">
+                    <Typography fontSize="sm" color="mukuru.grey.mediumDark" mt="0">
                       Permanently delete your account and all data
                     </Typography>
                   </VStack>
@@ -1125,8 +1180,11 @@ export default function PartnerProfilePage() {
                     <Button
                       variant="primary"
                       className="mukuru-primary-button"
-                      size={{ base: 'sm', md: 'md' }}
+                      size="md"
                       onClick={onDeleteDialogOpen}
+                      bg="mukuru.text.error"
+                      _hover={{ bg: 'mukuru.text.error.dark' }}
+                      px="6"
                     >
                       Delete
                     </Button>
@@ -1143,9 +1201,9 @@ export default function PartnerProfilePage() {
             title="Change Password"
           >
             <ModalBody>
-              <VStack gap="4" align="stretch">
+              <VStack gap="5" align="stretch">
                 <VStack align="start" gap="2">
-                  <Typography fontSize="sm" fontWeight="medium" color="gray.800">
+                  <Typography fontSize="sm" fontWeight="600" color="mukuru.text.primary">
                     Current Password
                   </Typography>
                   <Input
@@ -1161,7 +1219,7 @@ export default function PartnerProfilePage() {
                   />
                 </VStack>
                 <VStack align="start" gap="2">
-                  <Typography fontSize="sm" fontWeight="medium" color="gray.800">
+                  <Typography fontSize="sm" fontWeight="600" color="mukuru.text.primary">
                     New Password
                   </Typography>
                   <Input
@@ -1174,7 +1232,7 @@ export default function PartnerProfilePage() {
                   />
                 </VStack>
                 <VStack align="start" gap="2">
-                  <Typography fontSize="sm" fontWeight="medium" color="gray.800">
+                  <Typography fontSize="sm" fontWeight="600" color="mukuru.text.primary">
                     Confirm New Password
                   </Typography>
                   <Input
@@ -1192,17 +1250,19 @@ export default function PartnerProfilePage() {
               </VStack>
             </ModalBody>
             <ModalFooter>
-              <Button variant="secondary" onClick={onPasswordDialogClose} mr="2">
-                Cancel
-              </Button>
-              <Button
-                variant="primary"
-                className="mukuru-primary-button"
-                onClick={handleChangePassword}
-                fontWeight="medium"
-              >
-                Change Password
-              </Button>
+              <HStack gap="3" width="100%" justify="flex-end">
+                <Button variant="secondary" onClick={onPasswordDialogClose} size="md">
+                  Cancel
+                </Button>
+                <Button
+                  variant="primary"
+                  className="mukuru-primary-button"
+                  onClick={handleChangePassword}
+                  size="md"
+                >
+                  Change Password
+                </Button>
+              </HStack>
             </ModalFooter>
           </Modal>
 
@@ -1213,14 +1273,14 @@ export default function PartnerProfilePage() {
             title="Delete Account"
           >
             <ModalBody>
-              <VStack gap="4" align="stretch">
+              <VStack gap="5" align="stretch">
                 <AlertBar
                   status="error"
                   title="Warning"
                   description="This action cannot be undone. All your data will be permanently deleted."
                 />
                 <VStack align="start" gap="2">
-                  <Typography fontSize="sm" fontWeight="medium" color="gray.800">
+                  <Typography fontSize="sm" fontWeight="600" color="mukuru.text.primary">
                     Reason (optional)
                   </Typography>
                   <Input
@@ -1230,7 +1290,7 @@ export default function PartnerProfilePage() {
                   />
                 </VStack>
                 <VStack align="start" gap="2">
-                  <Typography fontSize="sm" fontWeight="medium" color="red.600">
+                  <Typography fontSize="sm" fontWeight="600" color="mukuru.text.error">
                     Type "DELETE" to confirm
                   </Typography>
                   <Input
@@ -1242,18 +1302,23 @@ export default function PartnerProfilePage() {
               </VStack>
             </ModalBody>
             <ModalFooter>
-              <Button variant="secondary" onClick={handleDeleteDialogClose} mr="2">
-                Cancel
-              </Button>
-              <Button
-                onClick={handleDeleteAccount}
-                variant="primary"
-                className="mukuru-primary-button"
-                fontWeight="medium"
-                disabled={deleteConfirmation !== 'DELETE'}
-              >
-                Delete Account
-              </Button>
+              <HStack gap="3" width="100%" justify="flex-end">
+                <Button variant="secondary" onClick={handleDeleteDialogClose} size="md">
+                  Cancel
+                </Button>
+                <Button
+                  onClick={handleDeleteAccount}
+                  variant="primary"
+                  className="mukuru-primary-button"
+                  size="md"
+                  disabled={deleteConfirmation !== 'DELETE'}
+                  bg="mukuru.text.error"
+                  _hover={{ bg: 'mukuru.text.error.dark' }}
+                  opacity={deleteConfirmation !== 'DELETE' ? 0.5 : 1}
+                >
+                  Delete Account
+                </Button>
+              </HStack>
             </ModalFooter>
           </Modal>
         </VStack>

@@ -1,13 +1,6 @@
 'use client';
 
-import {
-  Box,
-  VStack,
-  HStack,
-  Flex,
-  Spinner,
-  SimpleGrid,
-} from '@chakra-ui/react';
+import { Box, VStack, HStack, Flex, Spinner, SimpleGrid } from '@chakra-ui/react';
 import {
   Search,
   Typography,
@@ -24,7 +17,13 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import AdminSidebar from '../../components/AdminSidebar';
 import { useSidebar } from '../../contexts/SidebarContext';
-import { FiBell, FiMail, FiAlertCircle, FiMessageSquare, FiArrowRight } from 'react-icons/fi';
+import {
+  FiBell,
+  FiMail,
+  FiAlertCircle,
+  FiMessageSquare,
+  FiArrowRight,
+} from 'react-icons/fi';
 
 interface Notification {
   id: string;
@@ -82,7 +81,8 @@ export default function NotificationsPage() {
           description: 'Alert senior management for high-risk applications',
           isActive: true,
           recipients: ['senior@mukuru.com', 'risk@mukuru.com'],
-          template: 'URGENT: High risk application {{applicationId}} requires immediate review',
+          template:
+            'URGENT: High risk application {{applicationId}} requires immediate review',
           lastSent: '2024-01-14T15:45:00Z',
           frequency: 'IMMEDIATE',
         },
@@ -123,9 +123,30 @@ export default function NotificationsPage() {
       ]);
 
       setRules([
-        { id: 'RULE-001', name: 'Critical Risk', condition: '', action: '', isActive: true, priority: 'URGENT' },
-        { id: 'RULE-002', name: 'Overdue', condition: '', action: '', isActive: true, priority: 'HIGH' },
-        { id: 'RULE-003', name: 'Missing Docs', condition: '', action: '', isActive: true, priority: 'MEDIUM' },
+        {
+          id: 'RULE-001',
+          name: 'Critical Risk',
+          condition: '',
+          action: '',
+          isActive: true,
+          priority: 'URGENT',
+        },
+        {
+          id: 'RULE-002',
+          name: 'Overdue',
+          condition: '',
+          action: '',
+          isActive: true,
+          priority: 'HIGH',
+        },
+        {
+          id: 'RULE-003',
+          name: 'Missing Docs',
+          condition: '',
+          action: '',
+          isActive: true,
+          priority: 'MEDIUM',
+        },
       ]);
 
       setLoading(false);
@@ -146,19 +167,27 @@ export default function NotificationsPage() {
 
   const getTypeIcon = (type: string) => {
     switch (type) {
-      case 'EMAIL': return <FiMail size={18} />;
-      case 'SYSTEM': return <FiBell size={18} />;
-      case 'SMS': return <FiMessageSquare size={18} />;
-      default: return <FiBell size={18} />;
+      case 'EMAIL':
+        return <FiMail size={18} />;
+      case 'SYSTEM':
+        return <FiBell size={18} />;
+      case 'SMS':
+        return <FiMessageSquare size={18} />;
+      default:
+        return <FiBell size={18} />;
     }
   };
 
   const getTypeColor = (type: string) => {
     switch (type) {
-      case 'EMAIL': return { bg: '#DBEAFE', color: '#2563EB' };
-      case 'SYSTEM': return { bg: '#D1FAE5', color: '#059669' };
-      case 'SMS': return { bg: '#FEF3C7', color: '#D97706' };
-      default: return { bg: '#E5E7EB', color: '#6B7280' };
+      case 'EMAIL':
+        return { bg: '#DBEAFE', color: '#2563EB' };
+      case 'SYSTEM':
+        return { bg: '#D1FAE5', color: '#059669' };
+      case 'SMS':
+        return { bg: '#FEF3C7', color: '#D97706' };
+      default:
+        return { bg: '#E5E7EB', color: '#6B7280' };
     }
   };
 
@@ -173,11 +202,11 @@ export default function NotificationsPage() {
         transition="margin-left 0.3s ease"
       >
         {/* Page Header */}
-        <Box 
-          px="32px" 
-          py="24px" 
-          bg="white" 
-          borderBottom="1px solid" 
+        <Box
+          px="32px"
+          py="24px"
+          bg="white"
+          borderBottom="1px solid"
           borderColor="#E2E8F0"
           position="sticky"
           top="0"
@@ -185,8 +214,8 @@ export default function NotificationsPage() {
         >
           <Flex justify="space-between" align="center">
             <HStack gap="16px" align="center">
-              <Box 
-                p="12px" 
+              <Box
+                p="12px"
                 bg="linear-gradient(135deg, #F05423 0%, #FF7A50 100%)"
                 borderRadius="12px"
                 boxShadow="0 4px 12px rgba(240, 84, 35, 0.25)"
@@ -194,7 +223,12 @@ export default function NotificationsPage() {
                 <FiBell size={24} color="white" />
               </Box>
               <VStack align="start" gap="2px">
-                <Typography fontSize="24px" fontWeight="700" color="#1E293B" lineHeight="1.2">
+                <Typography
+                  fontSize="24px"
+                  fontWeight="700"
+                  color="#1E293B"
+                  lineHeight="1.2"
+                >
                   Notifications
                 </Typography>
                 <Typography fontSize="14px" color="#64748B" fontWeight="400">
@@ -205,25 +239,55 @@ export default function NotificationsPage() {
 
             <HStack gap="12px">
               <HStack gap="8px">
-                <Box px="16px" py="8px" bg="#F1F5F9" borderRadius="20px" border="1px solid #E2E8F0">
+                <Box
+                  px="16px"
+                  py="8px"
+                  bg="#F1F5F9"
+                  borderRadius="20px"
+                  border="1px solid #E2E8F0"
+                >
                   <HStack gap="6px">
                     <Box w="8px" h="8px" borderRadius="full" bg="#10B981" />
-                    <Typography fontSize="13px" fontWeight="600" color="#1E293B">{activeCount}</Typography>
-                    <Typography fontSize="13px" color="#64748B">Active</Typography>
+                    <Typography fontSize="13px" fontWeight="600" color="#1E293B">
+                      {activeCount}
+                    </Typography>
+                    <Typography fontSize="13px" color="#64748B">
+                      Active
+                    </Typography>
                   </HStack>
                 </Box>
-                <Box px="16px" py="8px" bg="#F1F5F9" borderRadius="20px" border="1px solid #E2E8F0">
+                <Box
+                  px="16px"
+                  py="8px"
+                  bg="#F1F5F9"
+                  borderRadius="20px"
+                  border="1px solid #E2E8F0"
+                >
                   <HStack gap="6px">
                     <Box w="8px" h="8px" borderRadius="full" bg="#2563EB" />
-                    <Typography fontSize="13px" fontWeight="600" color="#1E293B">{emailCount}</Typography>
-                    <Typography fontSize="13px" color="#64748B">Email</Typography>
+                    <Typography fontSize="13px" fontWeight="600" color="#1E293B">
+                      {emailCount}
+                    </Typography>
+                    <Typography fontSize="13px" color="#64748B">
+                      Email
+                    </Typography>
                   </HStack>
                 </Box>
-                <Box px="16px" py="8px" bg="#F1F5F9" borderRadius="20px" border="1px solid #E2E8F0">
+                <Box
+                  px="16px"
+                  py="8px"
+                  bg="#F1F5F9"
+                  borderRadius="20px"
+                  border="1px solid #E2E8F0"
+                >
                   <HStack gap="6px">
                     <Box w="8px" h="8px" borderRadius="full" bg="#EF4444" />
-                    <Typography fontSize="13px" fontWeight="600" color="#1E293B">{immediateCount}</Typography>
-                    <Typography fontSize="13px" color="#64748B">Immediate</Typography>
+                    <Typography fontSize="13px" fontWeight="600" color="#1E293B">
+                      {immediateCount}
+                    </Typography>
+                    <Typography fontSize="13px" color="#64748B">
+                      Immediate
+                    </Typography>
                   </HStack>
                 </Box>
               </HStack>
@@ -232,13 +296,17 @@ export default function NotificationsPage() {
 
               <Tooltip content="Add new notification">
                 <Button variant="primary" size="sm">
-                  <IconWrapper><AddIcon width="16" height="16" /></IconWrapper>
+                  <IconWrapper>
+                    <AddIcon width="16" height="16" />
+                  </IconWrapper>
                   New Notification
                 </Button>
               </Tooltip>
 
               <Button variant="secondary" size="sm">
-                <IconWrapper><SettingsIcon width="16" height="16" /></IconWrapper>
+                <IconWrapper>
+                  <SettingsIcon width="16" height="16" />
+                </IconWrapper>
                 Settings
               </Button>
             </HStack>
@@ -251,7 +319,9 @@ export default function NotificationsPage() {
             <Flex justify="center" align="center" h="400px">
               <VStack gap="16px">
                 <Spinner size="lg" color="orange.500" />
-                <Typography color="#64748B" fontSize="14px">Loading notifications...</Typography>
+                <Typography color="#64748B" fontSize="14px">
+                  Loading notifications...
+                </Typography>
               </VStack>
             </Flex>
           ) : (
@@ -279,7 +349,8 @@ export default function NotificationsPage() {
                     />
                   </Box>
                   <Typography fontSize="13px" color="#64748B">
-                    {filteredNotifications.length} notification{filteredNotifications.length !== 1 ? 's' : ''} found
+                    {filteredNotifications.length} notification
+                    {filteredNotifications.length !== 1 ? 's' : ''} found
                   </Typography>
                 </Flex>
               </Box>
@@ -303,7 +374,7 @@ export default function NotificationsPage() {
                 <SimpleGrid columns={{ base: 1, md: 2, xl: 3 }} gap="20px">
                   {filteredNotifications.map((notification) => {
                     const typeColors = getTypeColor(notification.type);
-                    
+
                     return (
                       <Box
                         key={notification.id}
@@ -312,59 +383,75 @@ export default function NotificationsPage() {
                         border="1px solid #E2E8F0"
                         cursor="pointer"
                         transition="all 0.15s ease"
-                        _hover={{ borderColor: '#F05423', boxShadow: '0 4px 12px rgba(240, 84, 35, 0.1)' }}
+                        _hover={{
+                          borderColor: '#F05423',
+                          boxShadow: '0 4px 12px rgba(240, 84, 35, 0.1)',
+                        }}
                         onClick={() => router.push(`/notifications/${notification.id}`)}
                         display="flex"
                         flexDirection="column"
                         h="100%"
                       >
                         {/* Card Header */}
-                        <Flex 
-                          justify="space-between" 
-                          align="center" 
-                          p="20px" 
+                        <Flex
+                          justify="space-between"
+                          align="center"
+                          p="20px"
                           pb="16px"
                           borderBottom="1px solid #F1F5F9"
                         >
                           <HStack gap="12px" flex="1">
-                            <Box 
-                              p="10px" 
-                              borderRadius="10px" 
+                            <Box
+                              p="10px"
+                              borderRadius="10px"
                               bg={typeColors.bg}
                               flexShrink={0}
                             >
-                              <Box color={typeColors.color}>{getTypeIcon(notification.type)}</Box>
+                              <Box color={typeColors.color}>
+                                {getTypeIcon(notification.type)}
+                              </Box>
                             </Box>
                             <Box flex="1" minW="0">
-                              <Typography 
-                                fontSize="15px" 
-                                fontWeight="600" 
+                              <Typography
+                                fontSize="15px"
+                                fontWeight="600"
                                 color="#1E293B"
                                 mb="2px"
                               >
                                 {notification.name}
                               </Typography>
                               <HStack gap="6px">
-                                <Box 
-                                  px="6px" 
-                                  py="2px" 
-                                  bg="#F1F5F9" 
-                                  borderRadius="4px"
-                                >
-                                  <Typography fontSize="10px" fontWeight="600" color="#64748B">
+                                <Box px="6px" py="2px" bg="#F1F5F9" borderRadius="4px">
+                                  <Typography
+                                    fontSize="10px"
+                                    fontWeight="600"
+                                    color="#64748B"
+                                  >
                                     {notification.type}
                                   </Typography>
                                 </Box>
-                                <Box 
-                                  px="6px" 
-                                  py="2px" 
-                                  bg={notification.frequency === 'IMMEDIATE' ? '#FEE2E2' : notification.frequency === 'DAILY' ? '#FEF3C7' : '#E0E7FF'}
+                                <Box
+                                  px="6px"
+                                  py="2px"
+                                  bg={
+                                    notification.frequency === 'IMMEDIATE'
+                                      ? '#FEE2E2'
+                                      : notification.frequency === 'DAILY'
+                                        ? '#FEF3C7'
+                                        : '#E0E7FF'
+                                  }
                                   borderRadius="4px"
                                 >
-                                  <Typography 
-                                    fontSize="10px" 
-                                    fontWeight="600" 
-                                    color={notification.frequency === 'IMMEDIATE' ? '#DC2626' : notification.frequency === 'DAILY' ? '#D97706' : '#4F46E5'}
+                                  <Typography
+                                    fontSize="10px"
+                                    fontWeight="600"
+                                    color={
+                                      notification.frequency === 'IMMEDIATE'
+                                        ? '#DC2626'
+                                        : notification.frequency === 'DAILY'
+                                          ? '#D97706'
+                                          : '#4F46E5'
+                                    }
                                   >
                                     {notification.frequency}
                                   </Typography>
@@ -372,17 +459,17 @@ export default function NotificationsPage() {
                               </HStack>
                             </Box>
                           </HStack>
-                          <Box 
-                            px="10px" 
-                            py="4px" 
+                          <Box
+                            px="10px"
+                            py="4px"
                             bg={notification.isActive ? '#D1FAE5' : '#F1F5F9'}
                             borderRadius="6px"
                             flexShrink={0}
                             ml="12px"
                           >
-                            <Typography 
-                              fontSize="11px" 
-                              fontWeight="600" 
+                            <Typography
+                              fontSize="11px"
+                              fontWeight="600"
                               color={notification.isActive ? '#059669' : '#64748B'}
                             >
                               {notification.isActive ? 'Active' : 'Inactive'}
@@ -392,9 +479,9 @@ export default function NotificationsPage() {
 
                         {/* Card Body */}
                         <Box p="20px" pt="16px" flex="1">
-                          <Typography 
-                            fontSize="13px" 
-                            color="#64748B" 
+                          <Typography
+                            fontSize="13px"
+                            color="#64748B"
                             lineHeight="1.6"
                             style={{
                               display: '-webkit-box',
@@ -408,20 +495,23 @@ export default function NotificationsPage() {
                         </Box>
 
                         {/* Card Footer */}
-                        <Flex 
-                          justify="space-between" 
-                          align="center" 
-                          px="20px" 
+                        <Flex
+                          justify="space-between"
+                          align="center"
+                          px="20px"
                           py="14px"
                           borderTop="1px solid #F1F5F9"
                           bg="#FAFBFC"
                           borderBottomRadius="16px"
                         >
                           <Typography fontSize="12px" color="#94A3B8">
-                            {notification.recipients.length} recipient{notification.recipients.length !== 1 ? 's' : ''}
+                            {notification.recipients.length} recipient
+                            {notification.recipients.length !== 1 ? 's' : ''}
                           </Typography>
                           <HStack gap="6px" color="#F05423">
-                            <Typography fontSize="12px" fontWeight="600">View Details</Typography>
+                            <Typography fontSize="12px" fontWeight="600">
+                              View Details
+                            </Typography>
                             <FiArrowRight size={14} />
                           </HStack>
                         </Flex>
@@ -440,16 +530,19 @@ export default function NotificationsPage() {
                 p="24px"
                 cursor="pointer"
                 transition="all 0.15s ease"
-                _hover={{ borderColor: '#F59E0B', boxShadow: '0 4px 12px rgba(245, 158, 11, 0.1)' }}
+                _hover={{
+                  borderColor: '#F59E0B',
+                  boxShadow: '0 4px 12px rgba(245, 158, 11, 0.1)',
+                }}
                 onClick={() => router.push('/notifications/rules')}
                 width="100%"
                 textAlign="left"
               >
                 <Flex justify="space-between" align="center">
                   <HStack gap="16px">
-                    <Box 
-                      p="14px" 
-                      borderRadius="12px" 
+                    <Box
+                      p="14px"
+                      borderRadius="12px"
                       bg="linear-gradient(135deg, #D97706 0%, #F59E0B 100%)"
                       boxShadow="0 4px 12px rgba(217, 119, 6, 0.25)"
                     >
@@ -468,7 +561,7 @@ export default function NotificationsPage() {
                     <HStack gap="8px">
                       <Box px="12px" py="6px" bg="#D1FAE5" borderRadius="8px">
                         <Typography fontSize="13px" fontWeight="600" color="#059669">
-                          {rules.filter(r => r.isActive).length} Active
+                          {rules.filter((r) => r.isActive).length} Active
                         </Typography>
                       </Box>
                       <Box px="12px" py="6px" bg="#F1F5F9" borderRadius="8px">
@@ -477,7 +570,12 @@ export default function NotificationsPage() {
                         </Typography>
                       </Box>
                     </HStack>
-                    <Box p="10px" borderRadius="10px" bg="#F8FAFC" border="1px solid #E2E8F0">
+                    <Box
+                      p="10px"
+                      borderRadius="10px"
+                      bg="#F8FAFC"
+                      border="1px solid #E2E8F0"
+                    >
                       <FiArrowRight size={18} color="#64748B" />
                     </Box>
                   </HStack>

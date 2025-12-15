@@ -38,12 +38,17 @@ public class NotificationController : ControllerBase
         if (!Enum.TryParse<NotificationPriority>(request.Priority, out var priority))
             return BadRequest(new { error = $"Invalid notification priority: {request.Priority}" });
 
+        // Use HTML content if provided, otherwise use plain text content
+        var emailContent = !string.IsNullOrWhiteSpace(request.HtmlContent) 
+            ? request.HtmlContent 
+            : (!string.IsNullOrWhiteSpace(request.TextContent) ? request.TextContent : request.Content);
+
         var command = new SendNotificationCommand(
             type,
             channel,
             request.Recipient,
             request.Subject,
-            request.Content,
+            emailContent,
             priority,
             request.CaseId,
             request.PartnerId,
@@ -137,10 +142,11 @@ The Onboarding Team";
 
     /// <summary>
     /// List all notifications
+    /// SECURITY: Requires authentication
     /// </summary>
     [HttpGet]
     [ProducesResponseType(typeof(IEnumerable<NotificationDto>), StatusCodes.Status200OK)]
-    [AllowAnonymous]
+    [Microsoft.AspNetCore.Authorization.Authorize] // SECURITY FIX: Require authentication
     public async Task<IActionResult> GetAllNotifications()
     {
         var result = await _mediator.Send(new GetAllNotificationsQuery());
@@ -149,10 +155,11 @@ The Onboarding Team";
 
     /// <summary>
     /// List notifications by case id
+    /// SECURITY: Requires authentication
     /// </summary>
     [HttpGet("case/{caseId}")]
     [ProducesResponseType(typeof(IEnumerable<NotificationDto>), StatusCodes.Status200OK)]
-    [AllowAnonymous]
+    [Microsoft.AspNetCore.Authorization.Authorize] // SECURITY FIX: Require authentication
     public async Task<IActionResult> ListByCase(string caseId)
     {
         var result = await _mediator.Send(new GetNotificationsByCaseQuery(caseId));
@@ -161,10 +168,11 @@ The Onboarding Team";
 
     /// <summary>
     /// List notifications by status
+    /// SECURITY: Requires authentication
     /// </summary>
     [HttpGet("status/{status}")]
     [ProducesResponseType(typeof(IEnumerable<NotificationDto>), StatusCodes.Status200OK)]
-    [AllowAnonymous]
+    [Microsoft.AspNetCore.Authorization.Authorize] // SECURITY FIX: Require authentication
     public async Task<IActionResult> ListByStatus(string status)
     {
         var result = await _mediator.Send(new GetNotificationsByStatusQuery(status));
@@ -173,11 +181,12 @@ The Onboarding Team";
 
     /// <summary>
     /// Get notification by ID
+    /// SECURITY: Requires authentication
     /// </summary>
     [HttpGet("{id:guid}")]
     [ProducesResponseType(typeof(NotificationDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    [AllowAnonymous]
+    [Microsoft.AspNetCore.Authorization.Authorize] // SECURITY FIX: Require authentication
     public async Task<IActionResult> GetNotification(Guid id)
     {
         // Simplified - would use a GetNotificationQuery in production
@@ -192,6 +201,8 @@ public class SendNotificationRequest
     public string Recipient { get; set; } = string.Empty;
     public string Subject { get; set; } = string.Empty;
     public string Content { get; set; } = string.Empty;
+    public string? HtmlContent { get; set; } // HTML version of email
+    public string? TextContent { get; set; } // Plain text version
     public string Priority { get; set; } = "Medium";
     public string? CaseId { get; set; }
     public string? PartnerId { get; set; }

@@ -355,6 +355,7 @@
 /Users/mukurusystemsadministrator/Desktop/Archive/services/onboarding-api/src/Presentation/obj/Debug/net8.0/OnboardingApi.Presentation.csproj.CoreCompileInputs.cache
 /Users/mukurusystemsadministrator/Desktop/Archive/services/onboarding-api/src/Presentation/obj/Debug/net8.0/OnboardingApi.Presentation.MvcApplicationPartsAssemblyInfo.cs
 /Users/mukurusystemsadministrator/Desktop/Archive/services/onboarding-api/src/Presentation/obj/Debug/net8.0/OnboardingApi.Presentation.MvcApplicationPartsAssemblyInfo.cache
+/Users/mukurusystemsadministrator/Desktop/Archive/services/onboarding-api/src/Presentation/obj/Debug/net8.0/OnboardingApi.Presentation.sourcelink.json
 /Users/mukurusystemsadministrator/Desktop/Archive/services/onboarding-api/src/Presentation/obj/Debug/net8.0/scopedcss/bundle/OnboardingApi.Presentation.styles.css
 /Users/mukurusystemsadministrator/Desktop/Archive/services/onboarding-api/src/Presentation/obj/Debug/net8.0/staticwebassets.build.json
 /Users/mukurusystemsadministrator/Desktop/Archive/services/onboarding-api/src/Presentation/obj/Debug/net8.0/staticwebassets.development.json
@@ -371,3 +372,7 @@
 /Users/mukurusystemsadministrator/Desktop/Archive/services/onboarding-api/src/Presentation/obj/Debug/net8.0/OnboardingApi.Presentation.pdb
 /Users/mukurusystemsadministrator/Desktop/Archive/services/onboarding-api/src/Presentation/obj/Debug/net8.0/OnboardingApi.Presentation.genruntimeconfig.cache
 /Users/mukurusystemsadministrator/Desktop/Archive/services/onboarding-api/src/Presentation/obj/Debug/net8.0/ref/OnboardingApi.Presentation.dll
+/Users/mukurusystemsadministrator/Desktop/Archive/services/onboarding-api/src/Presentation/bin/Debug/net8.0/Microsoft.Extensions.Configuration.Binder.dll
+/Users/mukurusystemsadministrator/Desktop/Archive/services/onboarding-api/src/Presentation/bin/Debug/net8.0/Newtonsoft.Json.dll
+/Users/mukurusystemsadministrator/Desktop/Archive/services/onboarding-api/src/Presentation/bin/Debug/net8.0/SendGrid.dll
+/Users/mukurusystemsadministrator/Desktop/Archive/services/onboarding-api/src/Presentation/bin/Debug/net8.0/StarkbankEcdsa.dll

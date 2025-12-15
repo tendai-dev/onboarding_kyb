@@ -92,11 +92,12 @@ const formatFileSize = (bytes: number): string => {
 const mapApiDocumentToDocument = (apiDoc: Record<string, unknown>): Document => {
   // Parse Type from string to number (backend returns "1", "2", etc. as string)
   const typeValue = apiDoc.type || apiDoc.Type;
-  const typeNumber = typeof typeValue === 'string' 
-    ? parseInt(typeValue, 10) 
-    : typeof typeValue === 'number' 
-    ? typeValue 
-    : 99; // Default to "Other" if invalid
+  const typeNumber =
+    typeof typeValue === 'string'
+      ? parseInt(typeValue, 10)
+      : typeof typeValue === 'number'
+        ? typeValue
+        : 99; // Default to "Other" if invalid
 
   // Handle uploadedAt - can be string or Date object
   let uploadedAtStr = '';
@@ -115,24 +116,34 @@ const mapApiDocumentToDocument = (apiDoc: Record<string, unknown>): Document => 
 
   return {
     id: String(apiDoc.id || apiDoc.Id || ''),
-    documentNumber: String(apiDoc.document_number || apiDoc.documentNumber || apiDoc.DocumentNumber || ''),
+    documentNumber: String(
+      apiDoc.document_number || apiDoc.documentNumber || apiDoc.DocumentNumber || ''
+    ),
     caseId: String(apiDoc.case_id || apiDoc.caseId || apiDoc.CaseId || ''),
     partnerId: String(apiDoc.partner_id || apiDoc.partnerId || apiDoc.PartnerId || ''),
     type: typeNumber,
     fileName: String(apiDoc.file_name || apiDoc.fileName || apiDoc.FileName || ''),
-    contentType: String(apiDoc.content_type || apiDoc.contentType || apiDoc.ContentType || ''),
+    contentType: String(
+      apiDoc.content_type || apiDoc.contentType || apiDoc.ContentType || ''
+    ),
     sizeBytes: Number(apiDoc.size_bytes || apiDoc.sizeBytes || apiDoc.SizeBytes || 0),
-    storageKey: String(apiDoc.storage_key || apiDoc.storageKey || apiDoc.StorageKey || ''),
-    bucketName: String(apiDoc.bucket_name || apiDoc.bucketName || apiDoc.BucketName || ''),
+    storageKey: String(
+      apiDoc.storage_key || apiDoc.storageKey || apiDoc.StorageKey || ''
+    ),
+    bucketName: String(
+      apiDoc.bucket_name || apiDoc.bucketName || apiDoc.BucketName || ''
+    ),
     uploadedAt: uploadedAtStr,
-    uploadedBy: String(apiDoc.uploaded_by || apiDoc.uploadedBy || apiDoc.UploadedBy || ''),
+    uploadedBy: String(
+      apiDoc.uploaded_by || apiDoc.uploadedBy || apiDoc.UploadedBy || ''
+    ),
   };
 };
 
 export default function DocumentsPage() {
   const { condensed } = useSidebar();
   const [mounted, setMounted] = useState(false);
-  
+
   // All useState hooks must be declared before any conditional returns
   const [documents, setDocuments] = useState<Document[]>([]);
   const [loading, setLoading] = useState(false);
@@ -194,10 +205,10 @@ export default function DocumentsPage() {
       }
 
       const _data = await response.json();
-      
+
       // Backend returns snake_case: items, total_count
       const rawDocuments = _data.items || _data.Items || _data || [];
-      
+
       // Map API response to frontend Document interface
       const mappedDocuments = Array.isArray(rawDocuments)
         ? rawDocuments.map(mapApiDocumentToDocument)
@@ -208,12 +219,15 @@ export default function DocumentsPage() {
       console.info('[Documents Page] Mapped documents:', mappedDocuments);
 
       setDocuments(mappedDocuments);
-      setTotal(_data.total_count || _data.totalCount || _data.TotalCount || _data.total || mappedDocuments.length);
-
-      console.info(
-        '[Documents Page] Documents loaded:',
-        mappedDocuments.length
+      setTotal(
+        _data.total_count ||
+          _data.totalCount ||
+          _data.TotalCount ||
+          _data.total ||
+          mappedDocuments.length
       );
+
+      console.info('[Documents Page] Documents loaded:', mappedDocuments.length);
     } catch (err) {
       console.error('[Documents Page] Error loading documents:', err);
       const errorMessage =
@@ -276,7 +290,7 @@ export default function DocumentsPage() {
       setViewerOpen(true);
       setViewerLoading(true);
       setViewerError(null);
-      
+
       const url = await getDocumentUrl(document);
       if (url) {
         // Test if the document can be fetched before showing iframe
@@ -287,10 +301,16 @@ export default function DocumentsPage() {
             const getResponse = await fetch(url);
             const errorData = await getResponse.json().catch(() => null);
             // Extract error message from multiple possible fields
-            const errorMsg = 
-              (errorData?.error && typeof errorData.error === 'string' ? errorData.error : null) ||
-              (errorData?.message && typeof errorData.message === 'string' ? errorData.message : null) ||
-              (errorData?.details && typeof errorData.details === 'string' ? errorData.details : null) ||
+            const errorMsg =
+              (errorData?.error && typeof errorData.error === 'string'
+                ? errorData.error
+                : null) ||
+              (errorData?.message && typeof errorData.message === 'string'
+                ? errorData.message
+                : null) ||
+              (errorData?.details && typeof errorData.details === 'string'
+                ? errorData.details
+                : null) ||
               'Document could not be loaded';
             setViewerError(errorMsg);
             setViewerUrl(null);
@@ -375,7 +395,9 @@ export default function DocumentsPage() {
       sortable: true,
       width: '25%',
       render: (value, row) => (
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', maxWidth: '200px' }}>
+        <div
+          style={{ display: 'flex', alignItems: 'center', gap: '8px', maxWidth: '200px' }}
+        >
           <FiFileText size={16} color="#F05423" style={{ flexShrink: 0 }} />
           <Typography
             fontSize="13px"
@@ -383,7 +405,7 @@ export default function DocumentsPage() {
             color="#F05423"
             cursor="pointer"
             onClick={() => handleView(row)}
-            style={{ 
+            style={{
               textDecoration: 'none',
               overflow: 'hidden',
               textOverflow: 'ellipsis',
@@ -457,8 +479,8 @@ export default function DocumentsPage() {
       sortable: true,
       width: '12%',
       render: (value) => (
-        <Typography 
-          fontSize="13px" 
+        <Typography
+          fontSize="13px"
           color="#1D2939"
           style={{
             overflow: 'hidden',
@@ -489,7 +511,11 @@ export default function DocumentsPage() {
           return (
             <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
               <FiCalendar size={14} color="#94A3B8" />
-              <Typography fontSize="13px" color="#1D2939" style={{ whiteSpace: 'nowrap' }}>
+              <Typography
+                fontSize="13px"
+                color="#1D2939"
+                style={{ whiteSpace: 'nowrap' }}
+              >
                 {new Date(dateValue).toLocaleDateString('en-GB', {
                   day: '2-digit',
                   month: '2-digit',
@@ -590,8 +616,14 @@ export default function DocumentsPage() {
                 View and manage all uploaded documents
               </Typography>
             </VStack>
-            <Button variant="primary" size="md" onClick={() => setRefreshKey((prev) => prev + 1)}>
-              <IconWrapper><RetryIcon /></IconWrapper>
+            <Button
+              variant="primary"
+              size="md"
+              onClick={() => setRefreshKey((prev) => prev + 1)}
+            >
+              <IconWrapper>
+                <RetryIcon />
+              </IconWrapper>
               Refresh
             </Button>
           </Flex>
@@ -604,18 +636,35 @@ export default function DocumentsPage() {
               <AlertBar status="error" title="Error" description={error} />
             </Box>
           )}
-          <TabsRoot 
-            value={typeFilter} 
-            onValueChange={(details) => setTypeFilter(details.value as DocumentTypeFilter)}
+          <TabsRoot
+            value={typeFilter}
+            onValueChange={(details) =>
+              setTypeFilter(details.value as DocumentTypeFilter)
+            }
           >
             <TabsList>
-              {(['ALL', 'ID', 'ADDRESS', 'FINANCIAL', 'BUSINESS', 'OTHER'] as DocumentTypeFilter[]).map((filter) => {
-                const label = filter === 'ALL' ? 'All Documents' 
-                  : filter === 'ID' ? 'ID Documents' 
-                  : filter === 'ADDRESS' ? 'Address Proof' 
-                  : filter === 'FINANCIAL' ? 'Financial' 
-                  : filter === 'BUSINESS' ? 'Business' 
-                  : 'Other';
+              {(
+                [
+                  'ALL',
+                  'ID',
+                  'ADDRESS',
+                  'FINANCIAL',
+                  'BUSINESS',
+                  'OTHER',
+                ] as DocumentTypeFilter[]
+              ).map((filter) => {
+                const label =
+                  filter === 'ALL'
+                    ? 'All Documents'
+                    : filter === 'ID'
+                      ? 'ID Documents'
+                      : filter === 'ADDRESS'
+                        ? 'Address Proof'
+                        : filter === 'FINANCIAL'
+                          ? 'Financial'
+                          : filter === 'BUSINESS'
+                            ? 'Business'
+                            : 'Other';
                 return (
                   <TabsTrigger key={filter} value={filter}>
                     {label}
@@ -628,7 +677,13 @@ export default function DocumentsPage() {
         </Box>
 
         {/* Search Row */}
-        <Box px="24px" py="12px" bg={cardBg} borderBottom="1px solid" borderColor={borderColor}>
+        <Box
+          px="24px"
+          py="12px"
+          bg={cardBg}
+          borderBottom="1px solid"
+          borderColor={borderColor}
+        >
           <Box maxW="400px">
             <Search
               placeholder="Search documents..."
@@ -638,16 +693,16 @@ export default function DocumentsPage() {
         </Box>
 
         {/* Table Section */}
-        <Box 
-          flex="1" 
-          minH="0" 
-          px="24px" 
-          py="16px" 
+        <Box
+          flex="1"
+          minH="0"
+          px="24px"
+          py="16px"
           bg={bgColor}
           display="flex"
           flexDirection="column"
         >
-          <Box 
+          <Box
             flex="1"
             minH="0"
             bg={cardBg}
@@ -932,168 +987,221 @@ export default function DocumentsPage() {
               backgroundColor: '#F8FAFC',
             }}
           >
-          {viewerLoading ? (
-            <Box
-              display="flex"
-              justifyContent="center"
-              alignItems="center"
-              height="100%"
-              minH="500px"
-              bg="#F8FAFC"
-            >
-              <VStack gap="20px" align="center">
-                <Box
-                  w="56px"
-                  h="56px"
-                  borderRadius="full"
-                  style={{
-                    border: '4px solid #E5E7EB',
-                    borderTopColor: '#F05423',
-                    animation: 'spin 1s linear infinite',
-                  }}
-                />
-                <Typography fontSize="15px" color="#6B7280" fontWeight="500">Loading document...</Typography>
-              </VStack>
-            </Box>
-          ) : viewerError ? (
-            <div
-              style={{
-                display: 'flex',
-                justifyContent: 'center',
-                alignItems: 'center',
-                minHeight: '420px',
-                padding: '48px',
-                background: 'linear-gradient(180deg, #FAFBFC 0%, #F3F4F6 100%)',
-              }}
-            >
+            {viewerLoading ? (
+              <Box
+                display="flex"
+                justifyContent="center"
+                alignItems="center"
+                height="100%"
+                minH="500px"
+                bg="#F8FAFC"
+              >
+                <VStack gap="20px" align="center">
+                  <Box
+                    w="56px"
+                    h="56px"
+                    borderRadius="full"
+                    style={{
+                      border: '4px solid #E5E7EB',
+                      borderTopColor: '#F05423',
+                      animation: 'spin 1s linear infinite',
+                    }}
+                  />
+                  <Typography fontSize="15px" color="#6B7280" fontWeight="500">
+                    Loading document...
+                  </Typography>
+                </VStack>
+              </Box>
+            ) : viewerError ? (
               <div
                 style={{
                   display: 'flex',
-                  flexDirection: 'column',
+                  justifyContent: 'center',
                   alignItems: 'center',
-                  gap: '28px',
-                  maxWidth: '400px',
+                  minHeight: '420px',
+                  padding: '48px',
+                  background: 'linear-gradient(180deg, #FAFBFC 0%, #F3F4F6 100%)',
                 }}
               >
-                {/* Icon Container */}
                 <div
                   style={{
-                    width: '96px',
-                    height: '96px',
-                    borderRadius: '24px',
-                    background: 'linear-gradient(135deg, #FEF2F2 0%, #FEE2E2 100%)',
-                    border: '2px solid #FECACA',
                     display: 'flex',
+                    flexDirection: 'column',
                     alignItems: 'center',
-                    justifyContent: 'center',
-                    boxShadow: '0 8px 24px rgba(220, 38, 38, 0.12), 0 4px 8px rgba(0, 0, 0, 0.04)',
+                    gap: '28px',
+                    maxWidth: '400px',
                   }}
                 >
-                  <FiFileText size={44} color="#DC2626" />
-                </div>
-                
-                {/* Text Content */}
-                <div style={{ textAlign: 'center' }}>
-                  <h3
+                  {/* Icon Container */}
+                  <div
                     style={{
-                      margin: '0 0 12px 0',
-                      fontSize: '22px',
-                      fontWeight: '700',
-                      color: '#111827',
-                      letterSpacing: '-0.02em',
+                      width: '96px',
+                      height: '96px',
+                      borderRadius: '24px',
+                      background: 'linear-gradient(135deg, #FEF2F2 0%, #FEE2E2 100%)',
+                      border: '2px solid #FECACA',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      boxShadow:
+                        '0 8px 24px rgba(220, 38, 38, 0.12), 0 4px 8px rgba(0, 0, 0, 0.04)',
                     }}
                   >
-                    Unable to Preview Document
-                  </h3>
-                  <p
-                    style={{
-                      margin: 0,
-                      fontSize: '15px',
-                      color: '#6B7280',
-                      lineHeight: '1.6',
-                      maxWidth: '300px',
-                    }}
-                  >
-                    {viewerError}
-                  </p>
-                </div>
-                
-                {/* Action Buttons */}
-                <div style={{ display: 'flex', gap: '14px', marginTop: '8px' }}>
-                  {viewingDocument && (
+                    <FiFileText size={44} color="#DC2626" />
+                  </div>
+
+                  {/* Text Content */}
+                  <div style={{ textAlign: 'center' }}>
+                    <h3
+                      style={{
+                        margin: '0 0 12px 0',
+                        fontSize: '22px',
+                        fontWeight: '700',
+                        color: '#111827',
+                        letterSpacing: '-0.02em',
+                      }}
+                    >
+                      Unable to Preview Document
+                    </h3>
+                    <p
+                      style={{
+                        margin: 0,
+                        fontSize: '15px',
+                        color: '#6B7280',
+                        lineHeight: '1.6',
+                        maxWidth: '300px',
+                      }}
+                    >
+                      {viewerError}
+                    </p>
+                  </div>
+
+                  {/* Action Buttons */}
+                  <div style={{ display: 'flex', gap: '14px', marginTop: '8px' }}>
+                    {viewingDocument && (
+                      <button
+                        onClick={() => handleDownload(viewingDocument)}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '10px',
+                          padding: '14px 24px',
+                          backgroundColor: '#F05423',
+                          color: 'white',
+                          border: 'none',
+                          borderRadius: '10px',
+                          fontSize: '15px',
+                          fontWeight: '600',
+                          cursor: 'pointer',
+                          boxShadow:
+                            '0 4px 14px rgba(240, 84, 35, 0.35), 0 2px 4px rgba(0, 0, 0, 0.08)',
+                          transition: 'all 0.2s ease',
+                        }}
+                        onMouseOver={(e) => {
+                          e.currentTarget.style.backgroundColor = '#E04A1F';
+                          e.currentTarget.style.transform = 'translateY(-2px)';
+                          e.currentTarget.style.boxShadow =
+                            '0 6px 20px rgba(240, 84, 35, 0.4), 0 4px 8px rgba(0, 0, 0, 0.1)';
+                        }}
+                        onMouseOut={(e) => {
+                          e.currentTarget.style.backgroundColor = '#F05423';
+                          e.currentTarget.style.transform = 'translateY(0)';
+                          e.currentTarget.style.boxShadow =
+                            '0 4px 14px rgba(240, 84, 35, 0.35), 0 2px 4px rgba(0, 0, 0, 0.08)';
+                        }}
+                      >
+                        <FiDownload size={18} />
+                        Download Instead
+                      </button>
+                    )}
                     <button
-                      onClick={() => handleDownload(viewingDocument)}
+                      onClick={() => {
+                        setViewerOpen(false);
+                        setViewingDocument(null);
+                        setViewerUrl(null);
+                        setViewerError(null);
+                      }}
                       style={{
                         display: 'flex',
                         alignItems: 'center',
-                        gap: '10px',
-                        padding: '14px 24px',
-                        backgroundColor: '#F05423',
-                        color: 'white',
-                        border: 'none',
+                        justifyContent: 'center',
+                        padding: '14px 28px',
+                        backgroundColor: 'white',
+                        color: '#374151',
+                        border: '2px solid #E5E7EB',
                         borderRadius: '10px',
                         fontSize: '15px',
                         fontWeight: '600',
                         cursor: 'pointer',
-                        boxShadow: '0 4px 14px rgba(240, 84, 35, 0.35), 0 2px 4px rgba(0, 0, 0, 0.08)',
                         transition: 'all 0.2s ease',
                       }}
                       onMouseOver={(e) => {
-                        e.currentTarget.style.backgroundColor = '#E04A1F';
-                        e.currentTarget.style.transform = 'translateY(-2px)';
-                        e.currentTarget.style.boxShadow = '0 6px 20px rgba(240, 84, 35, 0.4), 0 4px 8px rgba(0, 0, 0, 0.1)';
+                        e.currentTarget.style.backgroundColor = '#F9FAFB';
+                        e.currentTarget.style.borderColor = '#D1D5DB';
                       }}
                       onMouseOut={(e) => {
-                        e.currentTarget.style.backgroundColor = '#F05423';
-                        e.currentTarget.style.transform = 'translateY(0)';
-                        e.currentTarget.style.boxShadow = '0 4px 14px rgba(240, 84, 35, 0.35), 0 2px 4px rgba(0, 0, 0, 0.08)';
+                        e.currentTarget.style.backgroundColor = 'white';
+                        e.currentTarget.style.borderColor = '#E5E7EB';
                       }}
                     >
-                      <FiDownload size={18} />
-                      Download Instead
+                      Close
                     </button>
-                  )}
-                  <button
-                    onClick={() => {
-                      setViewerOpen(false);
-                      setViewingDocument(null);
-                      setViewerUrl(null);
-                      setViewerError(null);
-                    }}
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      padding: '14px 28px',
-                      backgroundColor: 'white',
-                      color: '#374151',
-                      border: '2px solid #E5E7EB',
-                      borderRadius: '10px',
-                      fontSize: '15px',
-                      fontWeight: '600',
-                      cursor: 'pointer',
-                      transition: 'all 0.2s ease',
-                    }}
-                    onMouseOver={(e) => {
-                      e.currentTarget.style.backgroundColor = '#F9FAFB';
-                      e.currentTarget.style.borderColor = '#D1D5DB';
-                    }}
-                    onMouseOut={(e) => {
-                      e.currentTarget.style.backgroundColor = 'white';
-                      e.currentTarget.style.borderColor = '#E5E7EB';
-                    }}
-                  >
-                    Close
-                  </button>
+                  </div>
                 </div>
               </div>
-            </div>
-          ) : viewerUrl && viewingDocument ? (
-            isImageFile(viewingDocument.fileName, viewingDocument.contentType) ? (
+            ) : viewerUrl && viewingDocument ? (
+              isImageFile(viewingDocument.fileName, viewingDocument.contentType) ? (
+                <div
+                  style={{
+                    padding: '24px',
+                    backgroundColor: '#F8FAFC',
+                    display: 'flex',
+                    justifyContent: 'center',
+                    alignItems: 'center',
+                    height: '100%',
+                    minHeight: 'calc(92vh - 140px)',
+                  }}
+                >
+                  <img
+                    src={viewerUrl}
+                    alt={viewingDocument.fileName}
+                    style={{
+                      maxWidth: '100%',
+                      maxHeight: 'calc(92vh - 180px)',
+                      objectFit: 'contain',
+                      borderRadius: '12px',
+                      boxShadow: '0 4px 20px rgba(0, 0, 0, 0.1)',
+                    }}
+                    onError={() => setViewerError('Failed to load image')}
+                  />
+                </div>
+              ) : (
+                <div
+                  style={{
+                    padding: '24px',
+                    backgroundColor: '#F8FAFC',
+                    height: '100%',
+                    minHeight: 'calc(92vh - 140px)',
+                  }}
+                >
+                  <iframe
+                    src={viewerUrl}
+                    style={{
+                      width: '100%',
+                      height: 'calc(92vh - 180px)',
+                      border: 'none',
+                      borderRadius: '12px',
+                      backgroundColor: 'white',
+                      boxShadow: '0 2px 12px rgba(0, 0, 0, 0.08)',
+                    }}
+                    title={viewingDocument.fileName}
+                    onError={() => setViewerError('Failed to load document')}
+                  />
+                </div>
+              )
+            ) : (
               <div
                 style={{
-                  padding: '24px',
-                  backgroundColor: '#F8FAFC',
                   display: 'flex',
                   justifyContent: 'center',
                   alignItems: 'center',
@@ -1101,56 +1209,9 @@ export default function DocumentsPage() {
                   minHeight: 'calc(92vh - 140px)',
                 }}
               >
-                <img
-                  src={viewerUrl}
-                  alt={viewingDocument.fileName}
-                  style={{
-                    maxWidth: '100%',
-                    maxHeight: 'calc(92vh - 180px)',
-                    objectFit: 'contain',
-                    borderRadius: '12px',
-                    boxShadow: '0 4px 20px rgba(0, 0, 0, 0.1)',
-                  }}
-                  onError={() => setViewerError('Failed to load image')}
-                />
+                <Typography color="#667085">No document selected</Typography>
               </div>
-            ) : (
-              <div
-                style={{
-                  padding: '24px',
-                  backgroundColor: '#F8FAFC',
-                  height: '100%',
-                  minHeight: 'calc(92vh - 140px)',
-                }}
-              >
-                <iframe
-                  src={viewerUrl}
-                  style={{
-                    width: '100%',
-                    height: 'calc(92vh - 180px)',
-                    border: 'none',
-                    borderRadius: '12px',
-                    backgroundColor: 'white',
-                    boxShadow: '0 2px 12px rgba(0, 0, 0, 0.08)',
-                  }}
-                  title={viewingDocument.fileName}
-                  onError={() => setViewerError('Failed to load document')}
-                />
-              </div>
-            )
-          ) : (
-            <div
-              style={{
-                display: 'flex',
-                justifyContent: 'center',
-                alignItems: 'center',
-                height: '100%',
-                minHeight: 'calc(92vh - 140px)',
-              }}
-            >
-              <Typography color="#667085">No document selected</Typography>
-            </div>
-          )}
+            )}
           </div>
         </ModalBody>
       </Modal>

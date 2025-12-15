@@ -81,10 +81,29 @@ async function forward(req: NextRequest) {
       console.info(
         '[Proxy] Session-based auth - user identified from session (no tokens exposed)'
       );
+    } else {
+      // SECURITY: No session found - only allow in development mode
+      const isDevelopment =
+        process.env.NODE_ENV === 'development' ||
+        process.env.NEXT_PUBLIC_ENV === 'development';
+      
+      if (!isDevelopment) {
+        console.error('[Proxy] No session in production - blocking request');
+        return new NextResponse(
+          JSON.stringify({
+            error: 'Unauthorized',
+            details: 'Authentication required',
+          }),
+          {
+            status: 401,
+            headers: { 'Content-Type': 'application/json' },
+          }
+        );
+      }
     }
   } catch (error) {
     console.warn('[Proxy] Failed to get session:', error);
-    // Continue - will use default dev email if needed
+    // Continue - will use default dev email if needed in development
   }
 
   // NOTE: We intentionally do NOT fetch or forward tokens to prevent token leakage
@@ -301,11 +320,14 @@ async function forward(req: NextRequest) {
             })
           );
           // Try to get form data info if it was FormData
+          // Note: Don't iterate over FormData entries as it consumes the stream
+          // Just log that it was FormData
           if (body instanceof FormData) {
             console.error(`[Proxy] FormData body type: FormData`);
-            console.error(
-              `[Proxy] FormData entries count: ${Array.from(body.entries()).length}`
-            );
+            // Check if FormData has keys without consuming the stream
+            const hasFile = body.has('File') || body.has('file');
+            const hasCaseId = body.has('CaseId') || body.has('caseId');
+            console.error(`[Proxy] FormData has File: ${hasFile}, has CaseId: ${hasCaseId}`);
           }
         }
       }
@@ -322,6 +344,12 @@ async function forward(req: NextRequest) {
         'Access-Control-Allow-Headers',
         'Content-Type, Authorization, X-User-Id, X-User-Email, X-User-Name, X-User-Role, X-Entity-Type, X-Form-Config-Id, X-Form-Version, X-Request-Id'
       );
+      
+      // SECURITY: Add security headers
+      respHeaders.set('X-Content-Type-Options', 'nosniff');
+      respHeaders.set('X-Frame-Options', 'DENY');
+      respHeaders.set('X-XSS-Protection', '1; mode=block');
+      respHeaders.set('Referrer-Policy', 'strict-origin-when-cross-origin');
 
       return new NextResponse(responseBody, { status: res.status, headers: respHeaders });
     } catch (fetchError) {

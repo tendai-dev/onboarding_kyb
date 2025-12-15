@@ -1,4 +1,3 @@
-/* eslint-disable security/detect-object-injection */
 /**
  * Work Queue Mappers
  * Functions to transform between backend DTOs and frontend domain models
@@ -13,7 +12,7 @@ export function mapWorkItemToApplication(workItem: WorkItemDto): Application {
   // Extract both applicantName and businessName from API response
   const applicantName = workItem.applicantName || '';
   const businessName = workItem.businessName || '';
-  
+
   // Create legalName for backwards compatibility: businessName || applicantName
   const legalName = businessName || applicantName || 'Unknown';
 
@@ -73,4 +72,3 @@ export function mapWorkItemToApplication(workItem: WorkItemDto): Application {
 export function mapWorkItemsToApplications(workItems: WorkItemDto[]): Application[] {
   return workItems.map(mapWorkItemToApplication);
 }
-

@@ -280,7 +280,13 @@ export default function AdminDashboard() {
                 mb="6"
               >
                 <Card width="full" height="100%">
-                  <VStack align="stretch" gap={{ base: 3, md: 4 }} width="100%" height="100%" p={{ base: 4, md: 5 }}>
+                  <VStack
+                    align="stretch"
+                    gap={{ base: 3, md: 4 }}
+                    width="100%"
+                    height="100%"
+                    p={{ base: 4, md: 5 }}
+                  >
                     <Flex
                       alignItems="flex-start"
                       justifyContent="space-between"
@@ -288,7 +294,12 @@ export default function AdminDashboard() {
                       gap="2"
                       flexWrap="nowrap"
                     >
-                      <Flex alignItems="center" gap={{ base: 2, md: 3 }} flex="1" minW="0">
+                      <Flex
+                        alignItems="center"
+                        gap={{ base: 2, md: 3 }}
+                        flex="1"
+                        minW="0"
+                      >
                         <Box
                           height={{ base: '28px', md: '36px' }}
                           width={{ base: '28px', md: '36px' }}
@@ -302,8 +313,19 @@ export default function AdminDashboard() {
                             alignItems="center"
                             justifyContent="center"
                           >
-                            <Box width={{ base: '18px', md: '24px' }} height={{ base: '18px', md: '24px' }} display="flex" alignItems="center" justifyContent="center">
-                              <DocumentIcon color="#F05423" height="24px" width="24px" style={{ maxWidth: '100%', maxHeight: '100%' }} />
+                            <Box
+                              width={{ base: '18px', md: '24px' }}
+                              height={{ base: '18px', md: '24px' }}
+                              display="flex"
+                              alignItems="center"
+                              justifyContent="center"
+                            >
+                              <DocumentIcon
+                                color="#F05423"
+                                height="24px"
+                                width="24px"
+                                style={{ maxWidth: '100%', maxHeight: '100%' }}
+                              />
                             </Box>
                           </Avatar.Root>
                         </Box>
@@ -335,7 +357,13 @@ export default function AdminDashboard() {
                 </Card>
 
                 <Card width="full" height="100%">
-                  <VStack align="stretch" gap={{ base: 3, md: 4 }} width="100%" height="100%" p={{ base: 3, md: 4 }}>
+                  <VStack
+                    align="stretch"
+                    gap={{ base: 3, md: 4 }}
+                    width="100%"
+                    height="100%"
+                    p={{ base: 3, md: 4 }}
+                  >
                     <Flex
                       alignItems="center"
                       justifyContent="space-between"
@@ -343,7 +371,12 @@ export default function AdminDashboard() {
                       gap="2"
                       flexWrap="nowrap"
                     >
-                      <Flex alignItems="center" gap={{ base: 2, md: 3 }} minW="0" flex="1">
+                      <Flex
+                        alignItems="center"
+                        gap={{ base: 2, md: 3 }}
+                        minW="0"
+                        flex="1"
+                      >
                         <Box
                           height={{ base: '32px', md: '36px' }}
                           width={{ base: '32px', md: '36px' }}
@@ -357,8 +390,18 @@ export default function AdminDashboard() {
                             alignItems="center"
                             justifyContent="center"
                           >
-                            <Box width={{ base: '18px', md: '24px' }} height={{ base: '18px', md: '24px' }} display="flex" alignItems="center" justifyContent="center">
-                              <FiClock size={24} color="#3182CE" style={{ width: '100%', height: '100%' }} />
+                            <Box
+                              width={{ base: '18px', md: '24px' }}
+                              height={{ base: '18px', md: '24px' }}
+                              display="flex"
+                              alignItems="center"
+                              justifyContent="center"
+                            >
+                              <FiClock
+                                size={24}
+                                color="#3182CE"
+                                style={{ width: '100%', height: '100%' }}
+                              />
                             </Box>
                           </Avatar.Root>
                         </Box>
@@ -393,7 +436,13 @@ export default function AdminDashboard() {
                 </Card>
 
                 <Card width="full" height="100%">
-                  <VStack align="stretch" gap={{ base: 3, md: 4 }} width="100%" height="100%" p={{ base: 3, md: 4 }}>
+                  <VStack
+                    align="stretch"
+                    gap={{ base: 3, md: 4 }}
+                    width="100%"
+                    height="100%"
+                    p={{ base: 3, md: 4 }}
+                  >
                     <Flex
                       alignItems="center"
                       justifyContent="space-between"
@@ -401,7 +450,12 @@ export default function AdminDashboard() {
                       gap="2"
                       flexWrap="nowrap"
                     >
-                      <Flex alignItems="center" gap={{ base: 2, md: 3 }} minW="0" flex="1">
+                      <Flex
+                        alignItems="center"
+                        gap={{ base: 2, md: 3 }}
+                        minW="0"
+                        flex="1"
+                      >
                         <Box
                           height={{ base: '32px', md: '36px' }}
                           width={{ base: '32px', md: '36px' }}
@@ -415,8 +469,19 @@ export default function AdminDashboard() {
                             alignItems="center"
                             justifyContent="center"
                           >
-                            <Box width={{ base: '18px', md: '24px' }} height={{ base: '18px', md: '24px' }} display="flex" alignItems="center" justifyContent="center">
-                              <WarningIcon color="#F05423" height="24px" width="24px" style={{ maxWidth: '100%', maxHeight: '100%' }} />
+                            <Box
+                              width={{ base: '18px', md: '24px' }}
+                              height={{ base: '18px', md: '24px' }}
+                              display="flex"
+                              alignItems="center"
+                              justifyContent="center"
+                            >
+                              <WarningIcon
+                                color="#F05423"
+                                height="24px"
+                                width="24px"
+                                style={{ maxWidth: '100%', maxHeight: '100%' }}
+                              />
                             </Box>
                           </Avatar.Root>
                         </Box>
@@ -451,7 +516,13 @@ export default function AdminDashboard() {
                 </Card>
 
                 <Card width="full" height="100%">
-                  <VStack align="stretch" gap={{ base: 3, md: 4 }} width="100%" height="100%" p={{ base: 3, md: 4 }}>
+                  <VStack
+                    align="stretch"
+                    gap={{ base: 3, md: 4 }}
+                    width="100%"
+                    height="100%"
+                    p={{ base: 3, md: 4 }}
+                  >
                     <Flex
                       alignItems="center"
                       justifyContent="space-between"
@@ -459,7 +530,12 @@ export default function AdminDashboard() {
                       gap="2"
                       flexWrap="nowrap"
                     >
-                      <Flex alignItems="center" gap={{ base: 2, md: 3 }} minW="0" flex="1">
+                      <Flex
+                        alignItems="center"
+                        gap={{ base: 2, md: 3 }}
+                        minW="0"
+                        flex="1"
+                      >
                         <Box
                           height={{ base: '32px', md: '36px' }}
                           width={{ base: '32px', md: '36px' }}
@@ -473,8 +549,18 @@ export default function AdminDashboard() {
                             alignItems="center"
                             justifyContent="center"
                           >
-                            <Box width={{ base: '18px', md: '24px' }} height={{ base: '18px', md: '24px' }} display="flex" alignItems="center" justifyContent="center">
-                              <FiCheckCircle size={24} color="#38A169" style={{ width: '100%', height: '100%' }} />
+                            <Box
+                              width={{ base: '18px', md: '24px' }}
+                              height={{ base: '18px', md: '24px' }}
+                              display="flex"
+                              alignItems="center"
+                              justifyContent="center"
+                            >
+                              <FiCheckCircle
+                                size={24}
+                                color="#38A169"
+                                style={{ width: '100%', height: '100%' }}
+                              />
                             </Box>
                           </Avatar.Root>
                         </Box>
@@ -509,7 +595,13 @@ export default function AdminDashboard() {
                 </Card>
 
                 <Card width="full" height="100%">
-                  <VStack align="stretch" gap={{ base: 3, md: 4 }} width="100%" height="100%" p={{ base: 3, md: 4 }}>
+                  <VStack
+                    align="stretch"
+                    gap={{ base: 3, md: 4 }}
+                    width="100%"
+                    height="100%"
+                    p={{ base: 3, md: 4 }}
+                  >
                     <Flex
                       alignItems="center"
                       justifyContent="space-between"
@@ -517,7 +609,12 @@ export default function AdminDashboard() {
                       gap="2"
                       flexWrap="nowrap"
                     >
-                      <Flex alignItems="center" gap={{ base: 2, md: 3 }} minW="0" flex="1">
+                      <Flex
+                        alignItems="center"
+                        gap={{ base: 2, md: 3 }}
+                        minW="0"
+                        flex="1"
+                      >
                         <Box
                           height={{ base: '32px', md: '36px' }}
                           width={{ base: '32px', md: '36px' }}
@@ -531,8 +628,19 @@ export default function AdminDashboard() {
                             alignItems="center"
                             justifyContent="center"
                           >
-                            <Box width={{ base: '18px', md: '24px' }} height={{ base: '18px', md: '24px' }} display="flex" alignItems="center" justifyContent="center">
-                              <DocumentIcon color="#F05423" height="24px" width="24px" style={{ maxWidth: '100%', maxHeight: '100%' }} />
+                            <Box
+                              width={{ base: '18px', md: '24px' }}
+                              height={{ base: '18px', md: '24px' }}
+                              display="flex"
+                              alignItems="center"
+                              justifyContent="center"
+                            >
+                              <DocumentIcon
+                                color="#F05423"
+                                height="24px"
+                                width="24px"
+                                style={{ maxWidth: '100%', maxHeight: '100%' }}
+                              />
                             </Box>
                           </Avatar.Root>
                         </Box>
@@ -567,7 +675,13 @@ export default function AdminDashboard() {
                 </Card>
 
                 <Card width="full" height="100%">
-                  <VStack align="stretch" gap={{ base: 3, md: 4 }} width="100%" height="100%" p={{ base: 3, md: 4 }}>
+                  <VStack
+                    align="stretch"
+                    gap={{ base: 3, md: 4 }}
+                    width="100%"
+                    height="100%"
+                    p={{ base: 3, md: 4 }}
+                  >
                     <Flex
                       alignItems="center"
                       justifyContent="space-between"
@@ -575,7 +689,12 @@ export default function AdminDashboard() {
                       gap="2"
                       flexWrap="nowrap"
                     >
-                      <Flex alignItems="center" gap={{ base: 2, md: 3 }} minW="0" flex="1">
+                      <Flex
+                        alignItems="center"
+                        gap={{ base: 2, md: 3 }}
+                        minW="0"
+                        flex="1"
+                      >
                         <Box
                           height={{ base: '32px', md: '36px' }}
                           width={{ base: '32px', md: '36px' }}
@@ -589,8 +708,18 @@ export default function AdminDashboard() {
                             alignItems="center"
                             justifyContent="center"
                           >
-                            <Box width={{ base: '18px', md: '24px' }} height={{ base: '18px', md: '24px' }} display="flex" alignItems="center" justifyContent="center">
-                              <FiXCircle size={24} color="#E53E3E" style={{ width: '100%', height: '100%' }} />
+                            <Box
+                              width={{ base: '18px', md: '24px' }}
+                              height={{ base: '18px', md: '24px' }}
+                              display="flex"
+                              alignItems="center"
+                              justifyContent="center"
+                            >
+                              <FiXCircle
+                                size={24}
+                                color="#E53E3E"
+                                style={{ width: '100%', height: '100%' }}
+                              />
                             </Box>
                           </Avatar.Root>
                         </Box>
@@ -630,7 +759,13 @@ export default function AdminDashboard() {
             <Box width="full">
               <SimpleGrid columns={{ base: 1, sm: 2, md: 2, lg: 4 }} gap="4" width="full">
                 <Card width="full" height="100%">
-                  <VStack align="stretch" gap={{ base: 3, md: 4 }} width="100%" height="100%" p={{ base: 3, md: 4 }}>
+                  <VStack
+                    align="stretch"
+                    gap={{ base: 3, md: 4 }}
+                    width="100%"
+                    height="100%"
+                    p={{ base: 3, md: 4 }}
+                  >
                     <Flex
                       alignItems="center"
                       justifyContent="space-between"
@@ -638,7 +773,12 @@ export default function AdminDashboard() {
                       gap="2"
                       flexWrap="nowrap"
                     >
-                      <Flex alignItems="center" gap={{ base: 2, md: 3 }} minW="0" flex="1">
+                      <Flex
+                        alignItems="center"
+                        gap={{ base: 2, md: 3 }}
+                        minW="0"
+                        flex="1"
+                      >
                         <Box
                           height={{ base: '32px', md: '36px' }}
                           width={{ base: '32px', md: '36px' }}
@@ -693,7 +833,13 @@ export default function AdminDashboard() {
                 </Card>
 
                 <Card width="full" height="100%">
-                  <VStack align="stretch" gap={{ base: 3, md: 4 }} width="100%" height="100%" p={{ base: 3, md: 4 }}>
+                  <VStack
+                    align="stretch"
+                    gap={{ base: 3, md: 4 }}
+                    width="100%"
+                    height="100%"
+                    p={{ base: 3, md: 4 }}
+                  >
                     <Flex
                       alignItems="center"
                       justifyContent="space-between"
@@ -701,7 +847,12 @@ export default function AdminDashboard() {
                       gap="2"
                       flexWrap="nowrap"
                     >
-                      <Flex alignItems="center" gap={{ base: 2, md: 3 }} minW="0" flex="1">
+                      <Flex
+                        alignItems="center"
+                        gap={{ base: 2, md: 3 }}
+                        minW="0"
+                        flex="1"
+                      >
                         <Box
                           height={{ base: '32px', md: '36px' }}
                           width={{ base: '32px', md: '36px' }}
@@ -756,7 +907,13 @@ export default function AdminDashboard() {
                 </Card>
 
                 <Card width="full" height="100%">
-                  <VStack align="stretch" gap={{ base: 3, md: 4 }} width="100%" height="100%" p={{ base: 3, md: 4 }}>
+                  <VStack
+                    align="stretch"
+                    gap={{ base: 3, md: 4 }}
+                    width="100%"
+                    height="100%"
+                    p={{ base: 3, md: 4 }}
+                  >
                     <Flex
                       alignItems="center"
                       justifyContent="space-between"
@@ -764,7 +921,12 @@ export default function AdminDashboard() {
                       gap="2"
                       flexWrap="nowrap"
                     >
-                      <Flex alignItems="center" gap={{ base: 2, md: 3 }} minW="0" flex="1">
+                      <Flex
+                        alignItems="center"
+                        gap={{ base: 2, md: 3 }}
+                        minW="0"
+                        flex="1"
+                      >
                         <Box
                           height={{ base: '32px', md: '36px' }}
                           width={{ base: '32px', md: '36px' }}
@@ -840,8 +1002,8 @@ export default function AdminDashboard() {
                             }}
                           >
                             {fullDashboard.cases.newCasesGrowthPercentage >= 0 ? '+' : ''}
-                            {fullDashboard.cases.newCasesGrowthPercentage.toFixed(1)}% vs last
-                            month
+                            {fullDashboard.cases.newCasesGrowthPercentage.toFixed(1)}% vs
+                            last month
                           </Typography>
                         </HStack>
                       )}
@@ -850,7 +1012,13 @@ export default function AdminDashboard() {
                 </Card>
 
                 <Card width="full" height="100%">
-                  <VStack align="stretch" gap={{ base: 3, md: 4 }} width="100%" height="100%" p={{ base: 3, md: 4 }}>
+                  <VStack
+                    align="stretch"
+                    gap={{ base: 3, md: 4 }}
+                    width="100%"
+                    height="100%"
+                    p={{ base: 3, md: 4 }}
+                  >
                     <Flex
                       alignItems="center"
                       justifyContent="space-between"
@@ -858,7 +1026,12 @@ export default function AdminDashboard() {
                       gap="2"
                       flexWrap="nowrap"
                     >
-                      <Flex alignItems="center" gap={{ base: 2, md: 3 }} minW="0" flex="1">
+                      <Flex
+                        alignItems="center"
+                        gap={{ base: 2, md: 3 }}
+                        minW="0"
+                        flex="1"
+                      >
                         <Box
                           height={{ base: '32px', md: '36px' }}
                           width={{ base: '32px', md: '36px' }}

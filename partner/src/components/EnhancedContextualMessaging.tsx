@@ -595,7 +595,10 @@ export function EnhancedContextualMessaging({
                           maxW="65%"
                           minW="120px"
                           p="3"
-                          bg={isFromCurrentUser ? '#00A5A3' : 'white'}
+                          style={{
+                            backgroundColor: isFromCurrentUser ? '#00A5A3' : '#FFFFFF',
+                            color: isFromCurrentUser ? '#FFFFFF' : '#1F2937',
+                          }}
                           borderRadius="12px"
                           borderTopLeftRadius={!isFromCurrentUser ? '4px' : '12px'}
                           borderTopRightRadius={isFromCurrentUser ? '4px' : '12px'}
@@ -604,61 +607,91 @@ export function EnhancedContextualMessaging({
                         >
                           {/* Header: Sender + Time + Status */}
                           <Flex justify="space-between" align="center" mb="1.5" gap="3">
-                            <Typography
+                            <Box
+                              as="span"
                               fontSize="xs"
                               fontWeight="semibold"
-                              color={isFromCurrentUser ? 'white' : '#1F2937'}
+                              style={{ color: isFromCurrentUser ? '#FFFFFF' : '#1F2937' }}
                             >
                               {message.senderName || 'User'}
-                            </Typography>
+                            </Box>
                             <HStack gap="2" align="center">
-                              <Typography
+                              <Box
+                                as="span"
                                 fontSize="2xs"
-                                color={isFromCurrentUser ? 'rgba(255,255,255,0.75)' : '#9CA3AF'}
+                                style={{ color: isFromCurrentUser ? 'rgba(255,255,255,0.75)' : '#9CA3AF' }}
                               >
                                 {(() => {
                                   try {
+                                    if (!message.timestamp) return 'Just now';
                                     const date = new Date(message.timestamp);
-                                    if (isNaN(date.getTime())) return 'Just now';
+                                    if (isNaN(date.getTime())) {
+                                      console.warn('[EnhancedContextualMessaging] Invalid timestamp:', message.timestamp);
+                                      return 'Just now';
+                                    }
+                                    
+                                    const now = new Date();
+                                    const diffMs = now.getTime() - date.getTime();
+                                    const diffMins = Math.floor(diffMs / 60000);
+                                    const diffHours = Math.floor(diffMs / 3600000);
+                                    
+                                    // Show relative time for recent messages
+                                    if (diffMins < 1) return 'Just now';
+                                    if (diffMins < 60) return `${diffMins}m ago`;
+                                    if (diffHours < 24) return `${diffHours}h ago`;
+                                    
+                                    // Show time with date context for older messages
+                                    const isToday = date.toDateString() === now.toDateString();
+                                    const isYesterday = new Date(now.getTime() - 86400000).toDateString() === date.toDateString();
+                                    
+                                    if (isToday) {
+                                      return date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+                                    }
+                                    if (isYesterday) {
+                                      return 'Yesterday ' + date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+                                    }
                                     return date.toLocaleString('en-US', {
                                       month: 'short',
                                       day: 'numeric',
                                       hour: 'numeric',
                                       minute: '2-digit',
                                     });
-                                  } catch {
+                                  } catch (e) {
+                                    console.warn('[EnhancedContextualMessaging] Error parsing timestamp:', message.timestamp, e);
                                     return 'Just now';
                                   }
                                 })()}
-                              </Typography>
+                              </Box>
                               <Box
                                 px="1.5"
                                 py="0.5"
                                 borderRadius="4px"
-                                bg={isFromCurrentUser ? 'rgba(255,255,255,0.2)' : '#F3F4F6'}
+                                style={{ backgroundColor: isFromCurrentUser ? 'rgba(255,255,255,0.2)' : '#F3F4F6' }}
                               >
-                                <Typography
+                                <Box
+                                  as="span"
                                   fontSize="2xs"
                                   fontWeight="medium"
-                                  color={isFromCurrentUser ? 'white' : '#6B7280'}
+                                  style={{ color: isFromCurrentUser ? '#FFFFFF' : '#6B7280' }}
                                 >
                                   {message.isRead ? 'Read' : 'Sent'}
-                                </Typography>
+                                </Box>
                               </Box>
                             </HStack>
                           </Flex>
 
                           {/* Message Content */}
                           {hasContent && (
-                            <Typography
+                            <Box
+                              as="p"
                               fontSize="sm"
                               lineHeight="1.5"
-                              color={isFromCurrentUser ? 'white' : '#374151'}
                               whiteSpace="pre-wrap"
                               wordBreak="break-word"
+                              style={{ color: isFromCurrentUser ? '#FFFFFF' : '#374151', margin: 0 }}
                             >
                               {message.content}
-                            </Typography>
+                            </Box>
                           )}
 
                           {/* Actions Row */}
@@ -675,12 +708,11 @@ export function EnhancedContextualMessaging({
                               alignItems="center"
                               gap="1"
                               fontSize="xs"
-                              color={isFromCurrentUser ? 'rgba(255,255,255,0.8)' : '#6B7280'}
                               cursor="pointer"
-                              _hover={{ color: isFromCurrentUser ? 'white' : '#374151' }}
+                              style={{ color: isFromCurrentUser ? '#FFFFFF' : '#6B7280' }}
                               onClick={() => setReplyToMessage(message)}
                             >
-                              <Icon as={FiCornerUpLeft} boxSize="3" />
+                              <Icon as={FiCornerUpLeft} boxSize="3" style={{ color: 'inherit' }} />
                               Reply
                             </Box>
                             <Box
@@ -689,12 +721,11 @@ export function EnhancedContextualMessaging({
                               alignItems="center"
                               gap="1"
                               fontSize="xs"
-                              color={isFromCurrentUser ? 'rgba(255,255,255,0.8)' : (message.isStarred ? '#F59E0B' : '#6B7280')}
                               cursor="pointer"
-                              _hover={{ color: isFromCurrentUser ? 'white' : '#F59E0B' }}
+                              style={{ color: isFromCurrentUser ? '#FFFFFF' : (message.isStarred ? '#F59E0B' : '#6B7280') }}
                               onClick={() => onStarMessage(message.id)}
                             >
-                              <Icon as={FiStar} boxSize="3" />
+                              <Icon as={FiStar} boxSize="3" style={{ color: 'inherit' }} />
                               Star
                             </Box>
                             <Box
@@ -703,11 +734,10 @@ export function EnhancedContextualMessaging({
                               alignItems="center"
                               gap="1"
                               fontSize="xs"
-                              color={isFromCurrentUser ? 'rgba(255,255,255,0.8)' : '#6B7280'}
                               cursor="pointer"
-                              _hover={{ color: isFromCurrentUser ? 'white' : '#374151' }}
+                              style={{ color: isFromCurrentUser ? '#FFFFFF' : '#6B7280' }}
                             >
-                              <Icon as={FiCornerUpRight} boxSize="3" />
+                              <Icon as={FiCornerUpRight} boxSize="3" style={{ color: 'inherit' }} />
                               Forward
                             </Box>
                           </Flex>

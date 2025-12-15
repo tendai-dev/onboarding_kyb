@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test NextAuth Keycloak</title>
+</head>
+<body>
+    <h1>NextAuth Keycloak Test</h1>
+    <button onclick="testLogin()">Test Login</button>
+    <button onclick="checkSession()">Check Session</button>
+    <button onclick="testLogout()">Test Logout</button>
+    <pre id="output"></pre>
+
+    <script>
+        const output = document.getElementById('output');
+
+        async function testLogin() {
+            output.textContent = 'Redirecting to login...';
+            window.location.href = '/api/auth/signin/keycloak?callbackUrl=/partner/dashboard';
+        }
+
+        async function checkSession() {
+            try {
+                const res = await fetch('/api/auth/session');
+                const data = await res.json();
+                output.textContent = JSON.stringify(data, null, 2);
+            } catch (error) {
+                output.textContent = 'Error: ' + error.message;
+            }
+        }
+
+        async function testLogout() {
+            try {
+                const res = await fetch('/api/auth/signout', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+                output.textContent = 'Logged out. Response: ' + res.status;
+                setTimeout(() => window.location.reload(), 1000);
+            } catch (error) {
+                output.textContent = 'Error: ' + error.message;
+            }
+        }
+
+        // Auto-check session on load
+        checkSession();
+    </script>
+</body>
+</html>

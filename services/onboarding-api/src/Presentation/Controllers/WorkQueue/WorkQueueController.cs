@@ -434,11 +434,13 @@ public class WorkQueueController : ControllerBase
     
     /// <summary>
     /// Create work item for a case (internal use - called automatically when case is submitted)
+    /// SECURITY: Requires authentication even for internal use
     /// </summary>
     [HttpPost("create")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    [Microsoft.AspNetCore.Authorization.AllowAnonymous]
+    [Microsoft.AspNetCore.Authorization.Authorize] // SECURITY FIX: Require authentication
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     public async Task<IActionResult> CreateWorkItem([FromBody] CreateWorkItemRequest request)
     {
         var command = new CreateWorkItemCommand(

@@ -24,6 +24,7 @@ import {
   FiEdit3,
   FiMessageSquare,
   FiDownload,
+  FiEye,
 } from 'react-icons/fi';
 import { motion } from 'framer-motion';
 import Link from 'next/link';
@@ -171,6 +172,19 @@ export default function AdminApplicationDetailsPage() {
 
   // Document viewer state
   const [documentViewerOpen, setDocumentViewerOpen] = useState(false);
+
+  // Backend data state for sidebar
+  const [documentsCount, setDocumentsCount] = useState<number>(0);
+  const [auditLogs, setAuditLogs] = useState<
+    Array<{
+      id: string;
+      action: string;
+      performedBy: string;
+      timestamp: string;
+      details?: string;
+    }>
+  >([]);
+  const [loadingAuditLogs, setLoadingAuditLogs] = useState(false);
   const [viewingDocumentUrl, setViewingDocumentUrl] = useState<string | null>(null);
   const [viewingDocumentName, setViewingDocumentName] = useState('');
   const [viewingDocumentType, setViewingDocumentType] = useState<string | undefined>(
@@ -644,7 +658,12 @@ export default function AdminApplicationDetailsPage() {
       setError(null);
 
       // Validate applicationId - check for undefined, null, or empty string
-      if (!applicationId || applicationId.trim() === '' || applicationId === 'undefined' || applicationId === 'null') {
+      if (
+        !applicationId ||
+        applicationId.trim() === '' ||
+        applicationId === 'undefined' ||
+        applicationId === 'null'
+      ) {
         logger.warn('Invalid application ID in URL, redirecting to applications list', {
           extra: { applicationId },
         });
@@ -848,6 +867,66 @@ export default function AdminApplicationDetailsPage() {
     loadApplication();
   }, [loadApplication]);
 
+  // Fetch documents count for this application
+  const loadDocumentsCount = useCallback(async () => {
+    if (!applicationId) return;
+    try {
+      const response = await fetch(`/api/proxy/api/v1/documents/case/${applicationId}`);
+      if (response.ok) {
+        const documents = await response.json();
+        if (Array.isArray(documents)) {
+          setDocumentsCount(documents.length);
+        }
+      }
+    } catch (err) {
+      logger.warn('Failed to fetch documents count', {
+        tags: { warning_type: 'documents_count_error' },
+        extra: { error: err },
+      });
+    }
+  }, [applicationId]);
+
+  // Fetch audit logs for this application
+  const loadAuditLogs = useCallback(async () => {
+    if (!applicationId) return;
+    setLoadingAuditLogs(true);
+    try {
+      const response = await fetch(`/api/audit-logs/case/${applicationId}?take=10`);
+      if (response.ok) {
+        const data = await response.json();
+        const logs = data.items || data || [];
+        if (Array.isArray(logs)) {
+          setAuditLogs(
+            logs.map((log: Record<string, unknown>) => ({
+              id: String(log.id || log.auditLogId || ''),
+              action: String(log.action || log.eventType || log.actionType || 'Activity'),
+              performedBy: String(
+                log.performedBy || log.userId || log.userName || 'System'
+              ),
+              timestamp: String(log.timestamp || log.createdAt || log.occurredAt || ''),
+              details: log.details ? String(log.details) : undefined,
+            }))
+          );
+        }
+      }
+    } catch (err) {
+      logger.warn('Failed to fetch audit logs', {
+        tags: { warning_type: 'audit_logs_error' },
+        extra: { error: err },
+      });
+    } finally {
+      setLoadingAuditLogs(false);
+    }
+  }, [applicationId]);
+
+  // Load sidebar data when application is loaded
+  useEffect(() => {
+    if (application) {
+      loadDocumentsCount();
+      loadAuditLogs();
+    }
+  }, [application, loadDocumentsCount, loadAuditLogs]);
+
   const loadEntitySchema = async (
     entityTypeCode: string,
     applicationData: Record<string, unknown>,
@@ -939,10 +1018,82 @@ export default function AdminApplicationDetailsPage() {
       // Reload application to get updated data
       await loadApplication();
 
+      // Refresh audit logs to show the status change
+      await loadAuditLogs();
+
       // Close modal and show success
       setIsStatusModalOpen(false);
       setTempStatusUpdate('');
       setTempComment('');
+
+      // Send email notification to partner (non-blocking)
+      try {
+        const { sendStatusUpdateEmail, sendApprovalEmail, sendRejectionEmail } = await import('../../../lib/notificationService');
+        
+        // Get recipient email from application
+        const recipientEmail = application.contactInfo?.email;
+        const recipientName = application.contactInfo?.primaryContact || application.legalName || 'Valued Partner';
+        const caseNumber = application.id;
+        const applicationName = application.legalName;
+
+        // Get admin name from session
+        let adminName: string | undefined;
+        try {
+          const sessionResponse = await fetch('/api/auth/session');
+          if (sessionResponse.ok) {
+            const session = await sessionResponse.json();
+            adminName = session?.user?.name || session?.user?.email?.split('@')[0] || 'Support Team';
+          }
+        } catch (error) {
+          console.warn('Failed to get admin name:', error);
+        }
+
+        if (recipientEmail) {
+          // Send appropriate email based on status
+          if (tempStatusUpdate === 'APPROVED' || tempStatusUpdate === 'COMPLETE') {
+            sendApprovalEmail({
+              to: recipientEmail,
+              recipientName: recipientName,
+              caseId: application.id,
+              caseNumber: caseNumber,
+              message: tempComment || undefined,
+              adminName: adminName,
+              link: `https://partner.mukuru.com/dashboard`,
+            }).catch((error) => {
+              console.warn('Failed to send approval email:', error);
+            });
+          } else if (tempStatusUpdate === 'DECLINED' || tempStatusUpdate === 'REJECTED') {
+            sendRejectionEmail({
+              to: recipientEmail,
+              recipientName: recipientName,
+              caseId: application.id,
+              caseNumber: caseNumber,
+              reason: tempComment || undefined,
+              adminName: adminName,
+              link: `https://partner.mukuru.com/dashboard`,
+            }).catch((error) => {
+              console.warn('Failed to send rejection email:', error);
+            });
+          } else {
+            // Send status update email for other status changes
+            sendStatusUpdateEmail({
+              to: recipientEmail,
+              recipientName: recipientName,
+              caseId: application.id,
+              caseNumber: caseNumber,
+              status: tempStatusUpdate,
+              message: tempComment || `Your application status has been updated to ${tempStatusUpdate}.`,
+              adminName: adminName,
+              link: `https://partner.mukuru.com/dashboard`,
+            }).catch((error) => {
+              console.warn('Failed to send status update email:', error);
+            });
+          }
+        }
+      } catch (error) {
+        // Log error but don't block user flow
+        console.warn('Error sending status update email:', error);
+      }
 
       await SweetAlert.success(
         'Status Updated',
@@ -980,6 +1131,9 @@ export default function AdminApplicationDetailsPage() {
       if (response.ok) {
         // Update local comments
         setAdminComments(tempComment);
+
+        // Refresh audit logs to show the new comment
+        await loadAuditLogs();
 
         // Close modal and show success
         setIsCommentModalOpen(false);
@@ -1157,11 +1311,7 @@ export default function AdminApplicationDetailsPage() {
               <Spinner size="lg" color="mukuru.buttons.primary" />
             </Box>
             <VStack gap="8px" align="center">
-              <Typography
-                color="mukuru.text.primary"
-                fontSize="18px"
-                fontWeight="700"
-              >
+              <Typography color="mukuru.text.primary" fontSize="18px" fontWeight="700">
                 Loading Application
               </Typography>
               <Typography
@@ -1248,20 +1398,40 @@ export default function AdminApplicationDetailsPage() {
           zIndex="10"
         >
           {/* Breadcrumb Row */}
-          <Box px="32px" py="12px" borderBottom="1px solid" borderColor="mukuru.grey.light" bg="#FAFBFC">
+          <Box
+            px="32px"
+            py="12px"
+            borderBottom="1px solid"
+            borderColor="mukuru.grey.light"
+            bg="#FAFBFC"
+          >
             <HStack gap="8px" align="center">
               <Link href="/work-queue">
-                <Typography fontSize="13px" color="mukuru.grey.medium" _hover={{ color: 'mukuru.buttons.primary' }} cursor="pointer">
+                <Typography
+                  fontSize="13px"
+                  color="mukuru.grey.medium"
+                  _hover={{ color: 'mukuru.buttons.primary' }}
+                  cursor="pointer"
+                >
                   Work Queue
                 </Typography>
               </Link>
-              <Typography fontSize="13px" color="mukuru.grey.medium">/</Typography>
+              <Typography fontSize="13px" color="mukuru.grey.medium">
+                /
+              </Typography>
               <Link href="/applications">
-                <Typography fontSize="13px" color="mukuru.grey.medium" _hover={{ color: 'mukuru.buttons.primary' }} cursor="pointer">
+                <Typography
+                  fontSize="13px"
+                  color="mukuru.grey.medium"
+                  _hover={{ color: 'mukuru.buttons.primary' }}
+                  cursor="pointer"
+                >
                   Applications
                 </Typography>
               </Link>
-              <Typography fontSize="13px" color="mukuru.grey.medium">/</Typography>
+              <Typography fontSize="13px" color="mukuru.grey.medium">
+                /
+              </Typography>
               <Typography fontSize="13px" color="mukuru.text.primary" fontWeight="500">
                 {application.legalName}
               </Typography>
@@ -1269,8 +1439,8 @@ export default function AdminApplicationDetailsPage() {
           </Box>
 
           {/* Top Header Row */}
-          <Flex 
-            justify="space-between" 
+          <Flex
+            justify="space-between"
             align="center"
             px="32px"
             py="16px"
@@ -1288,7 +1458,11 @@ export default function AdminApplicationDetailsPage() {
               </Box>
               <VStack align="start" gap="2px">
                 <HStack gap="12px" align="center">
-                  <Typography fontSize="20px" fontWeight="700" color="mukuru.text.primary">
+                  <Typography
+                    fontSize="20px"
+                    fontWeight="700"
+                    color="mukuru.text.primary"
+                  >
                     {application.legalName}
                   </Typography>
                   {(() => {
@@ -1296,25 +1470,61 @@ export default function AdminApplicationDetailsPage() {
                     const getInlineStatusStyles = () => {
                       switch (statusValue) {
                         case 'SUBMITTED':
-                          return { bg: '#DBEAFE', color: '#1D4ED8', borderColor: '#93C5FD' };
+                          return {
+                            bg: '#DBEAFE',
+                            color: '#1D4ED8',
+                            borderColor: '#93C5FD',
+                          };
                         case 'IN PROGRESS':
-                          return { bg: '#FEF3C7', color: '#D97706', borderColor: '#FCD34D' };
+                          return {
+                            bg: '#FEF3C7',
+                            color: '#D97706',
+                            borderColor: '#FCD34D',
+                          };
                         case 'RISK REVIEW':
-                          return { bg: '#FEE2E2', color: '#DC2626', borderColor: '#FCA5A5' };
+                          return {
+                            bg: '#FEE2E2',
+                            color: '#DC2626',
+                            borderColor: '#FCA5A5',
+                          };
                         case 'COMPLETE':
                         case 'APPROVED':
-                          return { bg: '#D1FAE5', color: '#059669', borderColor: '#6EE7B7' };
+                          return {
+                            bg: '#D1FAE5',
+                            color: '#059669',
+                            borderColor: '#6EE7B7',
+                          };
                         case 'DECLINED':
                         case 'REJECTED':
-                          return { bg: '#FEE2E2', color: '#DC2626', borderColor: '#FCA5A5' };
+                          return {
+                            bg: '#FEE2E2',
+                            color: '#DC2626',
+                            borderColor: '#FCA5A5',
+                          };
                         default:
-                          return { bg: '#F1F5F9', color: '#475569', borderColor: '#CBD5E1' };
+                          return {
+                            bg: '#F1F5F9',
+                            color: '#475569',
+                            borderColor: '#CBD5E1',
+                          };
                       }
                     };
                     const s = getInlineStatusStyles();
                     return (
-                      <Box px="12px" py="4px" borderRadius="full" bg={s.bg} border="1px solid" borderColor={s.borderColor}>
-                        <Typography fontSize="11px" fontWeight="600" color={s.color} letterSpacing="0.5px">
+                      <Box
+                        px="12px"
+                        py="4px"
+                        borderRadius="full"
+                        bg={s.bg}
+                        border="1px solid"
+                        borderColor={s.borderColor}
+                      >
+                        <Typography
+                          fontSize="11px"
+                          fontWeight="600"
+                          color={s.color}
+                          letterSpacing="0.5px"
+                        >
                           {statusValue}
                         </Typography>
                       </Box>
@@ -1325,11 +1535,15 @@ export default function AdminApplicationDetailsPage() {
                   <Typography color="mukuru.grey.medium" fontSize="13px">
                     {formatEntityType(application.entityType)}
                   </Typography>
-                  <Typography color="mukuru.grey.light" fontSize="12px">•</Typography>
+                  <Typography color="mukuru.grey.light" fontSize="12px">
+                    •
+                  </Typography>
                   <Typography color="mukuru.grey.medium" fontSize="13px">
                     {formatCountryName(application.country)}
                   </Typography>
-                  <Typography color="mukuru.grey.light" fontSize="12px">•</Typography>
+                  <Typography color="mukuru.grey.light" fontSize="12px">
+                    •
+                  </Typography>
                   <Typography color="mukuru.grey.medium" fontSize="13px">
                     Submitted {formatRelativeTime(new Date(application.created))}
                   </Typography>
@@ -1337,8 +1551,8 @@ export default function AdminApplicationDetailsPage() {
               </VStack>
             </HStack>
             <HStack gap="10px" align="center">
-              <Button 
-                variant="secondary" 
+              <Button
+                variant="secondary"
                 size="sm"
                 onClick={() => setIsStatusModalOpen(true)}
               >
@@ -1347,8 +1561,8 @@ export default function AdminApplicationDetailsPage() {
                 </IconWrapper>
                 Update Status
               </Button>
-              <Button 
-                variant="secondary" 
+              <Button
+                variant="secondary"
                 size="sm"
                 onClick={() => setIsCommentModalOpen(true)}
               >
@@ -1375,41 +1589,65 @@ export default function AdminApplicationDetailsPage() {
               {adminSteps.map((step, index) => (
                 <React.Fragment key={step.id}>
                   {/* Step Circle */}
-                  <VStack gap="8px" align="center" cursor="pointer" onClick={() => setCurrentStep(step.id)}>
+                  <VStack
+                    gap="8px"
+                    align="center"
+                    cursor="pointer"
+                    onClick={() => setCurrentStep(step.id)}
+                  >
                     <Box
                       w="44px"
                       h="44px"
                       borderRadius="full"
                       bg={currentStep >= step.id ? 'mukuru.buttons.primary' : 'white'}
                       border="2px solid"
-                      borderColor={currentStep >= step.id ? 'mukuru.buttons.primary' : 'mukuru.grey.light'}
+                      borderColor={
+                        currentStep >= step.id
+                          ? 'mukuru.buttons.primary'
+                          : 'mukuru.grey.light'
+                      }
                       display="flex"
                       alignItems="center"
                       justifyContent="center"
                       transition="all 0.2s"
                       _hover={{ transform: 'scale(1.05)' }}
-                      boxShadow={currentStep === step.id ? '0 4px 12px rgba(240, 84, 35, 0.3)' : 'none'}
+                      boxShadow={
+                        currentStep === step.id
+                          ? '0 4px 12px rgba(240, 84, 35, 0.3)'
+                          : 'none'
+                      }
                     >
-                      <step.icon size={18} color={currentStep >= step.id ? 'white' : '#94A3B8'} />
+                      <step.icon
+                        size={18}
+                        color={currentStep >= step.id ? 'white' : '#94A3B8'}
+                      />
                     </Box>
                     <VStack gap="0" align="center">
-                      <Typography 
-                        fontSize="12px" 
-                        fontWeight={currentStep === step.id ? '600' : '500'} 
-                        color={currentStep === step.id ? 'mukuru.text.primary' : 'mukuru.grey.medium'}
+                      <Typography
+                        fontSize="12px"
+                        fontWeight={currentStep === step.id ? '600' : '500'}
+                        color={
+                          currentStep === step.id
+                            ? 'mukuru.text.primary'
+                            : 'mukuru.grey.medium'
+                        }
                         textAlign="center"
                       >
                         {step.title}
                       </Typography>
                     </VStack>
                   </VStack>
-                  
+
                   {/* Connector Line */}
                   {index < adminSteps.length - 1 && (
                     <Box
                       flex="1"
                       h="2px"
-                      bg={currentStep > step.id ? 'mukuru.buttons.primary' : 'mukuru.grey.light'}
+                      bg={
+                        currentStep > step.id
+                          ? 'mukuru.buttons.primary'
+                          : 'mukuru.grey.light'
+                      }
                       mx="8px"
                       mt="-24px"
                       transition="background 0.2s"
@@ -1432,739 +1670,992 @@ export default function AdminApplicationDetailsPage() {
               transition={{ duration: 0.3 }}
             >
               {(() => {
-              // Get the current step's section from the schema
-              const currentStepData = adminSteps.find((step) => step.id === currentStep);
-
-              // If schema is loading, show loading state
-              if (schemaLoading) {
-                return (
-                  <VStack gap="6" align="stretch" w="full">
-                    <Card
-                      bg={cardBg}
-                      borderRadius="xl"
-                      border="1px"
-                      borderColor="mukuru.grey.light"
-                      p={{ base: '6', md: '10' }}
-                      boxShadow="lg"
-                      w="full"
-                    >
-                      <VStack gap="6" align="center" py="12" w="full">
-                        <Box
-                          p="4"
-                          borderRadius="xl"
-                          bg="mukuru.state.hover.card"
-                          display="flex"
-                          alignItems="center"
-                          justifyContent="center"
-                          boxShadow="md"
-                          animation="pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite"
-                        >
-                          <IconWrapper>
-                            <FiFileText size={28} color="mukuru.primary" />
-                          </IconWrapper>
-                        </Box>
-                        <VStack gap="2" align="center" w="full" maxW="400px">
-                          <Typography
-                            fontSize="lg"
-                            color="mukuru.text.primary"
-                            fontWeight="700"
-                            textAlign="center"
-                            letterSpacing="-0.01em"
-                          >
-                            Loading Application Data
-                          </Typography>
-                          <Typography
-                            fontSize="sm"
-                            color="mukuru.grey.mediumDark"
-                            fontWeight="500"
-                            textAlign="center"
-                          >
-                            Fetching entity schema and configuration from database...
-                          </Typography>
-                        </VStack>
-                        <Progress.Root
-                          value={undefined}
-                          size="lg"
-                          colorScheme="orange"
-                          w="full"
-                          maxW="400px"
-                        >
-                          <Progress.Track>
-                            <Progress.Range />
-                          </Progress.Track>
-                        </Progress.Root>
-                      </VStack>
-                    </Card>
-                  </VStack>
+                // Get the current step's section from the schema
+                const currentStepData = adminSteps.find(
+                  (step) => step.id === currentStep
                 );
-              }
 
-              // Get overview fields from entity schema or use defaults
-              const getOverviewFields = () => {
-                // If we have entity schema, get fields from the Overview section
-                if (
-                  entitySchema &&
-                  entitySchema.sections &&
-                  entitySchema.sections.length > 0
-                ) {
-                  const overviewSection = entitySchema.sections.find(
-                    (section) =>
-                      section.title.toLowerCase().includes('overview') ||
-                      section.id === 'section-0' ||
-                      section.order === 0
+                // If schema is loading, show loading state
+                if (schemaLoading) {
+                  return (
+                    <VStack gap="6" align="stretch" w="full">
+                      <Card
+                        bg={cardBg}
+                        borderRadius="xl"
+                        border="1px"
+                        borderColor="mukuru.grey.light"
+                        p={{ base: '6', md: '10' }}
+                        boxShadow="lg"
+                        w="full"
+                      >
+                        <VStack gap="6" align="center" py="12" w="full">
+                          <Box
+                            p="4"
+                            borderRadius="xl"
+                            bg="mukuru.state.hover.card"
+                            display="flex"
+                            alignItems="center"
+                            justifyContent="center"
+                            boxShadow="md"
+                            animation="pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite"
+                          >
+                            <IconWrapper>
+                              <FiFileText size={28} color="mukuru.primary" />
+                            </IconWrapper>
+                          </Box>
+                          <VStack gap="2" align="center" w="full" maxW="400px">
+                            <Typography
+                              fontSize="lg"
+                              color="mukuru.text.primary"
+                              fontWeight="700"
+                              textAlign="center"
+                              letterSpacing="-0.01em"
+                            >
+                              Loading Application Data
+                            </Typography>
+                            <Typography
+                              fontSize="sm"
+                              color="mukuru.grey.mediumDark"
+                              fontWeight="500"
+                              textAlign="center"
+                            >
+                              Fetching entity schema and configuration from database...
+                            </Typography>
+                          </VStack>
+                          <Progress.Root
+                            value={undefined}
+                            size="lg"
+                            colorScheme="orange"
+                            w="full"
+                            maxW="400px"
+                          >
+                            <Progress.Track>
+                              <Progress.Range />
+                            </Progress.Track>
+                          </Progress.Root>
+                        </VStack>
+                      </Card>
+                    </VStack>
                   );
-
-                  if (overviewSection && overviewSection.fields.length > 0) {
-                    return overviewSection.fields.map((field) => ({
-                      label: field.label,
-                      value: field.value,
-                      code: field.code,
-                      type: field.type,
-                    }));
-                  }
                 }
 
-                // Fallback to default fields
-                return [
-                  {
-                    label: 'Legal Name',
-                    value: application.legalName,
-                    code: 'legalName',
-                    type: 'Text',
-                  },
-                  {
-                    label: 'Entity Type',
-                    value: formatEntityType(application.entityType),
-                    code: 'entityType',
-                    type: 'Text',
-                  },
-                  {
-                    label: 'Country',
-                    value: formatCountryName(application.country),
-                    code: 'country',
-                    type: 'Text',
-                  },
-                  {
-                    label: 'Status',
-                    value: application.status,
-                    code: 'status',
-                    type: 'Status',
-                  },
-                  {
-                    label: 'Submitted Date',
-                    value: formatDateShort(application.created),
-                    code: 'submittedDate',
-                    type: 'Date',
-                  },
-                  {
-                    label: 'Last Updated',
-                    value: formatDateShort(application.updated),
-                    code: 'lastUpdated',
-                    type: 'Date',
-                  },
-                ];
-              };
+                // Get overview fields from entity schema or use defaults
+                const getOverviewFields = () => {
+                  // If we have entity schema, get fields from the Overview section
+                  if (
+                    entitySchema &&
+                    entitySchema.sections &&
+                    entitySchema.sections.length > 0
+                  ) {
+                    const overviewSection = entitySchema.sections.find(
+                      (section) =>
+                        section.title.toLowerCase().includes('overview') ||
+                        section.id === 'section-0' ||
+                        section.order === 0
+                    );
 
-              const overviewFields = getOverviewFields();
+                    if (overviewSection && overviewSection.fields.length > 0) {
+                      return overviewSection.fields.map((field) => ({
+                        label: field.label,
+                        value: field.value,
+                        code: field.code,
+                        type: field.type,
+                      }));
+                    }
+                  }
 
-              // Get icon for field type
-              const getFieldIcon = (code: string, type: string) => {
-                const codeUpper = code.toUpperCase();
-                if (codeUpper.includes('NAME') || codeUpper.includes('LEGAL'))
+                  // Fallback to default fields
+                  return [
+                    {
+                      label: 'Legal Name',
+                      value: application.legalName,
+                      code: 'legalName',
+                      type: 'Text',
+                    },
+                    {
+                      label: 'Entity Type',
+                      value: formatEntityType(application.entityType),
+                      code: 'entityType',
+                      type: 'Text',
+                    },
+                    {
+                      label: 'Country',
+                      value: formatCountryName(application.country),
+                      code: 'country',
+                      type: 'Text',
+                    },
+                    {
+                      label: 'Status',
+                      value: application.status,
+                      code: 'status',
+                      type: 'Status',
+                    },
+                    {
+                      label: 'Submitted Date',
+                      value: formatDateShort(application.created),
+                      code: 'submittedDate',
+                      type: 'Date',
+                    },
+                    {
+                      label: 'Last Updated',
+                      value: formatDateShort(application.updated),
+                      code: 'lastUpdated',
+                      type: 'Date',
+                    },
+                  ];
+                };
+
+                const overviewFields = getOverviewFields();
+
+                // Get icon for field type
+                const getFieldIcon = (code: string, type: string) => {
+                  const codeUpper = code.toUpperCase();
+                  if (codeUpper.includes('NAME') || codeUpper.includes('LEGAL'))
+                    return FiFileText;
+                  if (codeUpper.includes('TYPE') || codeUpper.includes('ENTITY'))
+                    return FiUsers;
+                  if (codeUpper.includes('COUNTRY') || codeUpper.includes('ADDRESS'))
+                    return FiHome;
+                  if (codeUpper.includes('STATUS')) return FiCheckSquare;
+                  if (
+                    codeUpper.includes('DATE') ||
+                    codeUpper.includes('CREATED') ||
+                    codeUpper.includes('UPDATED')
+                  )
+                    return FiFileText;
+                  if (codeUpper.includes('EMAIL')) return FiMessageSquare;
+                  if (codeUpper.includes('PHONE')) return FiMessageSquare;
                   return FiFileText;
-                if (codeUpper.includes('TYPE') || codeUpper.includes('ENTITY'))
-                  return FiUsers;
-                if (codeUpper.includes('COUNTRY') || codeUpper.includes('ADDRESS'))
-                  return FiHome;
-                if (codeUpper.includes('STATUS')) return FiCheckSquare;
-                if (
-                  codeUpper.includes('DATE') ||
-                  codeUpper.includes('CREATED') ||
-                  codeUpper.includes('UPDATED')
-                )
-                  return FiFileText;
-                if (codeUpper.includes('EMAIL')) return FiMessageSquare;
-                if (codeUpper.includes('PHONE')) return FiMessageSquare;
-                return FiFileText;
-              };
+                };
 
-              // Format field value for display
-              const formatFieldValue = (
-                value: unknown,
-                type: string,
-                code: string
-              ): React.ReactNode => {
-                if (value === null || value === undefined || value === '') {
+                // Format field value for display
+                const formatFieldValue = (
+                  value: unknown,
+                  type: string,
+                  code: string
+                ): React.ReactNode => {
+                  if (value === null || value === undefined || value === '') {
+                    return (
+                      <Typography
+                        fontSize="sm"
+                        fontWeight="medium"
+                        color={placeholderTextColor}
+                        textAlign="right"
+                      >
+                        Not provided
+                      </Typography>
+                    );
+                  }
+
+                  if (code === 'status') {
+                    const statusValue = String(value).toUpperCase();
+                    const getStatusStyles = () => {
+                      switch (statusValue) {
+                        case 'SUBMITTED':
+                          return {
+                            bg: '#DBEAFE',
+                            color: '#1D4ED8',
+                            borderColor: '#93C5FD',
+                          };
+                        case 'IN PROGRESS':
+                          return {
+                            bg: '#FEF3C7',
+                            color: '#D97706',
+                            borderColor: '#FCD34D',
+                          };
+                        case 'RISK REVIEW':
+                          return {
+                            bg: '#FEE2E2',
+                            color: '#DC2626',
+                            borderColor: '#FCA5A5',
+                          };
+                        case 'COMPLETE':
+                        case 'APPROVED':
+                          return {
+                            bg: '#D1FAE5',
+                            color: '#059669',
+                            borderColor: '#6EE7B7',
+                          };
+                        case 'DECLINED':
+                        case 'REJECTED':
+                          return {
+                            bg: '#FEE2E2',
+                            color: '#DC2626',
+                            borderColor: '#FCA5A5',
+                          };
+                        default:
+                          return {
+                            bg: '#F1F5F9',
+                            color: '#475569',
+                            borderColor: '#CBD5E1',
+                          };
+                      }
+                    };
+                    const styles = getStatusStyles();
+                    return (
+                      <Box
+                        px="14px"
+                        py="6px"
+                        borderRadius="full"
+                        bg={styles.bg}
+                        border="1px solid"
+                        borderColor={styles.borderColor}
+                        display="inline-flex"
+                        alignItems="center"
+                        justifyContent="center"
+                      >
+                        <Typography
+                          fontSize="12px"
+                          fontWeight="600"
+                          color={styles.color}
+                          letterSpacing="0.5px"
+                        >
+                          {statusValue}
+                        </Typography>
+                      </Box>
+                    );
+                  }
+
+                  if (type === 'Date' || code.includes('Date')) {
+                    try {
+                      const date =
+                        typeof value === 'string' ? new Date(value) : (value as Date);
+                      if (!isNaN(date.getTime())) {
+                        return (
+                          <VStack align="end" gap="0.5">
+                            <Typography
+                              fontSize="sm"
+                              fontWeight="medium"
+                              color={textColor}
+                              textAlign="right"
+                            >
+                              {formatDateShort(date)}
+                            </Typography>
+                            <Typography
+                              fontSize="xs"
+                              color={placeholderTextColor}
+                              textAlign="right"
+                            >
+                              {formatRelativeTime(date)}
+                            </Typography>
+                          </VStack>
+                        );
+                      }
+                    } catch {
+                      // Invalid date, fall through
+                    }
+                  }
+
+                  // Handle File types - render clickable document links
+                  // ONLY treat as document if field type is File OR field code indicates it's a document
+                  // Don't be too aggressive - regular text fields should not be treated as documents
+                  const isFileType = type === 'File' || type === 'file' || 
+                    code.toLowerCase().includes('document') || 
+                    code.toLowerCase().includes('file');
+                  
+                  // Only process as document if it's actually a file type field AND value contains document data
+                  if (isFileType && typeof value === 'string' && (value.includes('fileName') || value.startsWith('{'))) {
+                    // Try to detect and parse JSON even if it's truncated or malformed
+                    let fileData: Record<string, unknown> | null = null;
+                    let displayFileName = '';
+                    
+                    try {
+                      // Try to parse complete JSON
+                      fileData = JSON.parse(value) as Record<string, unknown>;
+                      displayFileName = fileData?.fileName ? String(fileData.fileName) : '';
+                    } catch {
+                      // JSON might be truncated or malformed - try to extract fileName manually
+                      // Try with quotes (handles both complete and truncated strings)
+                      const fileNameMatch = value.match(/"fileName"\s*:\s*"([^"]*)/);
+                      if (fileNameMatch && fileNameMatch[1]) {
+                        displayFileName = fileNameMatch[1];
+                        fileData = { fileName: displayFileName };
+                      } else {
+                        // Try without quotes (handles truncated strings without closing quote)
+                        const fileNameMatch2 = value.match(/fileName["\s]*:["\s]*([^,}\s"]+)/);
+                        if (fileNameMatch2 && fileNameMatch2[1]) {
+                          displayFileName = fileNameMatch2[1].trim();
+                          fileData = { fileName: displayFileName };
+                        } else {
+                          // Try to extract anything after fileName: (handles very truncated JSON)
+                          const fileNameMatch3 = value.match(/fileName["\s]*:["\s]*([^,}\s"]*)/);
+                          if (fileNameMatch3 && fileNameMatch3[1] && fileNameMatch3[1].trim()) {
+                            displayFileName = fileNameMatch3[1].trim();
+                            fileData = { fileName: displayFileName };
+                          } else if (value.includes('fileName')) {
+                            // Last resort: extract the part after fileName: up to the end or next special char
+                            const afterColon = value.split(/fileName["\s]*:["\s]*/)[1];
+                            if (afterColon) {
+                              // Extract up to comma, closing brace, or end of string
+                              const extracted = afterColon.split(/[,}\s]/)[0].replace(/^["']|["']$/g, '');
+                              if (extracted) {
+                                displayFileName = extracted;
+                                fileData = { fileName: displayFileName };
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                    
+                    // Only render as document if we successfully extracted file data
+                    if (fileData && displayFileName) {
+                      const fileName = displayFileName;
+                      const fileSize = fileData.fileSize ? Number(fileData.fileSize) : null;
+                      
+                      return (
+                        <Box
+                          p="3"
+                          borderRadius="md"
+                          border="1px solid"
+                          borderColor="orange.200"
+                          bg="orange.50"
+                          _hover={{
+                            borderColor: 'orange.300',
+                            bg: 'orange.100',
+                            boxShadow: 'sm',
+                          }}
+                          transition="all 0.2s"
+                          cursor="pointer"
+                          onClick={() => handleDocumentView(fileData as Record<string, unknown>)}
+                          maxW="100%"
+                        >
+                          <HStack gap="3" justify="space-between" align="center">
+                            <HStack gap="2" flex="1" minW="0">
+                              <Box
+                                color="orange.600"
+                                flexShrink={0}
+                                display="flex"
+                                alignItems="center"
+                              >
+                                <FiFileText size={18} />
+                              </Box>
+                              <Box flex="1" minW="0">
+                                <Typography
+                                  fontSize="sm"
+                                  fontWeight="medium"
+                                  color="orange.700"
+                                  title={fileName}
+                                  style={{
+                                    overflow: 'hidden',
+                                    textOverflow: 'ellipsis',
+                                    whiteSpace: 'nowrap',
+                                  }}
+                                >
+                                  {fileName}
+                                </Typography>
+                                {fileSize && fileSize > 0 && (
+                                  <Typography fontSize="xs" color="orange.600" mt="1">
+                                    {(fileSize / 1024 / 1024).toFixed(2)} MB
+                                  </Typography>
+                                )}
+                              </Box>
+                            </HStack>
+                            <Button
+                              variant="secondary"
+                              size="sm"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleDocumentView(fileData as Record<string, unknown>);
+                              }}
+                              leftIcon={<FiEye size={14} />}
+                              flexShrink={0}
+                              bg="white"
+                              _hover={{ bg: 'orange.50' }}
+                              borderColor="orange.300"
+                              style={{ color: '#c2410c' }}
+                            >
+                              View
+                            </Button>
+                          </HStack>
+                        </Box>
+                      );
+                    }
+                  } else if (isFileType && typeof value === 'object' && value !== null) {
+                    // Handle object file data
+                    const fileData = value as Record<string, unknown>;
+                    const displayFileName = fileData?.fileName ? String(fileData.fileName) : '';
+                    
+                    if (displayFileName) {
+                      const fileSize = fileData.fileSize ? Number(fileData.fileSize) : null;
+                      
+                      return (
+                        <Box
+                          p="3"
+                          borderRadius="md"
+                          border="1px solid"
+                          borderColor="orange.200"
+                          bg="orange.50"
+                          _hover={{
+                            borderColor: 'orange.300',
+                            bg: 'orange.100',
+                            boxShadow: 'sm',
+                          }}
+                          transition="all 0.2s"
+                          cursor="pointer"
+                          onClick={() => handleDocumentView(fileData)}
+                          maxW="100%"
+                        >
+                          <HStack gap="3" justify="space-between" align="center">
+                            <HStack gap="2" flex="1" minW="0">
+                              <Box
+                                color="orange.600"
+                                flexShrink={0}
+                                display="flex"
+                                alignItems="center"
+                              >
+                                <FiFileText size={18} />
+                              </Box>
+                              <Box flex="1" minW="0">
+                                <Typography
+                                  fontSize="sm"
+                                  fontWeight="medium"
+                                  color="orange.700"
+                                  title={displayFileName}
+                                  style={{
+                                    overflow: 'hidden',
+                                    textOverflow: 'ellipsis',
+                                    whiteSpace: 'nowrap',
+                                  }}
+                                >
+                                  {displayFileName}
+                                </Typography>
+                                {fileSize && fileSize > 0 && (
+                                  <Typography fontSize="xs" color="orange.600" mt="1">
+                                    {(fileSize / 1024 / 1024).toFixed(2)} MB
+                                  </Typography>
+                                )}
+                              </Box>
+                            </HStack>
+                            <Button
+                              variant="secondary"
+                              size="sm"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleDocumentView(fileData);
+                              }}
+                              leftIcon={<FiEye size={14} />}
+                              flexShrink={0}
+                              bg="white"
+                              _hover={{ bg: 'orange.50' }}
+                              borderColor="orange.300"
+                              style={{ color: '#c2410c' }}
+                            >
+                              View
+                            </Button>
+                          </HStack>
+                        </Box>
+                      );
+                    }
+                  }
+                  // End of file type handling - if we get here, it's not a document or couldn't parse it
+
                   return (
                     <Typography
                       fontSize="sm"
                       fontWeight="medium"
-                      color={placeholderTextColor}
+                      color={textColor}
                       textAlign="right"
+                      wordBreak="break-word"
                     >
-                      Not provided
+                      {String(value)}
                     </Typography>
                   );
-                }
+                };
 
-                if (code === 'status') {
-                  const statusValue = String(value).toUpperCase();
-                  const getStatusStyles = () => {
-                    switch (statusValue) {
-                      case 'SUBMITTED':
-                        return { bg: '#DBEAFE', color: '#1D4ED8', borderColor: '#93C5FD' };
-                      case 'IN PROGRESS':
-                        return { bg: '#FEF3C7', color: '#D97706', borderColor: '#FCD34D' };
-                      case 'RISK REVIEW':
-                        return { bg: '#FEE2E2', color: '#DC2626', borderColor: '#FCA5A5' };
-                      case 'COMPLETE':
-                      case 'APPROVED':
-                        return { bg: '#D1FAE5', color: '#059669', borderColor: '#6EE7B7' };
-                      case 'DECLINED':
-                      case 'REJECTED':
-                        return { bg: '#FEE2E2', color: '#DC2626', borderColor: '#FCA5A5' };
-                      default:
-                        return { bg: '#F1F5F9', color: '#475569', borderColor: '#CBD5E1' };
-                    }
-                  };
-                  const styles = getStatusStyles();
+                // If no schema available or on first step, show Application Overview using profile card style
+                if (
+                  !entitySchema ||
+                  !entitySchema.sections ||
+                  entitySchema.sections.length === 0 ||
+                  currentStep === 1
+                ) {
                   return (
                     <Box
-                      px="14px"
-                      py="6px"
-                      borderRadius="full"
-                      bg={styles.bg}
+                      bg="white"
+                      borderRadius="16px"
                       border="1px solid"
-                      borderColor={styles.borderColor}
-                      display="inline-flex"
-                      alignItems="center"
-                      justifyContent="center"
-                    >
-                      <Typography
-                        fontSize="12px"
-                        fontWeight="600"
-                        color={styles.color}
-                        letterSpacing="0.5px"
-                      >
-                        {statusValue}
-                      </Typography>
-                    </Box>
-                  );
-                }
-
-                if (type === 'Date' || code.includes('Date')) {
-                  try {
-                    const date =
-                      typeof value === 'string' ? new Date(value) : (value as Date);
-                    if (!isNaN(date.getTime())) {
-                      return (
-                        <VStack align="end" gap="0.5">
-                          <Typography
-                            fontSize="sm"
-                            fontWeight="medium"
-                            color={textColor}
-                            textAlign="right"
-                          >
-                            {formatDateShort(date)}
-                          </Typography>
-                          <Typography
-                            fontSize="xs"
-                            color={placeholderTextColor}
-                            textAlign="right"
-                          >
-                            {formatRelativeTime(date)}
-                          </Typography>
-                        </VStack>
-                      );
-                    }
-                  } catch {
-                    // Invalid date, fall through
-                  }
-                }
-
-                return (
-                  <Typography
-                    fontSize="sm"
-                    fontWeight="medium"
-                    color={textColor}
-                    textAlign="right"
-                    wordBreak="break-word"
-                  >
-                    {String(value)}
-                  </Typography>
-                );
-              };
-
-              // If no schema available or on first step, show Application Overview using profile card style
-              if (
-                !entitySchema ||
-                !entitySchema.sections ||
-                entitySchema.sections.length === 0 ||
-                currentStep === 1
-              ) {
-                return (
-                  <Box
-                    bg="white"
-                    borderRadius="16px"
-                    border="1px solid"
-                    borderColor="mukuru.grey.light"
-                    overflow="hidden"
-                    boxShadow="0 2px 8px rgba(0, 0, 0, 0.04)"
-                  >
-                    {/* Card Header */}
-                    <Box
-                      p="16px 20px"
-                      borderBottom="1px solid"
                       borderColor="mukuru.grey.light"
-                      bg="#FAFBFC"
-                    >
-                      <Typography fontSize="15px" fontWeight="600" color="mukuru.text.primary">
-                        Application Overview
-                      </Typography>
-                    </Box>
-
-                    {/* Card Body */}
-                    <Box bg="white">
-                      {overviewFields.map((field, index) => (
-                        <Box
-                          key={field.code || index}
-                          px="20px"
-                          py="14px"
-                          borderBottom={index < overviewFields.length - 1 ? '1px solid' : 'none'}
-                          borderColor="mukuru.grey.light"
-                          _hover={{ bg: '#FAFBFC' }}
-                          transition="background 0.15s"
-                        >
-                          <Flex justify="space-between" align="center" gap="16px">
-                            <HStack gap="12px" flex="1" minW="0">
-                              <Box
-                                p="8px"
-                                borderRadius="8px"
-                                bg="#F1F5F9"
-                                flexShrink={0}
-                              >
-                                {React.createElement(
-                                  getFieldIcon(field.code, field.type),
-                                  { size: 16, color: '#64748B' }
-                                )}
-                              </Box>
-                              <Typography
-                                fontSize="13px"
-                                fontWeight="500"
-                                color="mukuru.grey.mediumDark"
-                              >
-                                {field.label}
-                              </Typography>
-                            </HStack>
-                            <Box flexShrink={0} textAlign="right">
-                              {formatFieldValue(field.value, field.type, field.code)}
-                            </Box>
-                          </Flex>
-                        </Box>
-                      ))}
-                    </Box>
-                  </Box>
-                );
-              }
-
-              if (!currentStepData) {
-                return (
-                  <VStack gap="6" align="stretch" w="full">
-                    <Card
-                      bg={cardBg}
-                      borderRadius="xl"
-                      border="1px"
-                      borderColor="mukuru.text.alert"
-                      p="6"
-                      boxShadow="md"
-                      w="full"
-                    >
-                      <AlertBar
-                        status="warning"
-                        title="Step Not Found"
-                        description={`Step ${currentStep} could not be found in the schema.`}
-                      />
-                    </Card>
-                  </VStack>
-                );
-              }
-
-              // Find the section that matches this step
-              // Use sectionId if available, otherwise match by title and order
-              // At this point, entitySchema is guaranteed to be non-null due to the check above
-              if (!entitySchema || !entitySchema.sections) {
-                return null;
-              }
-
-              const currentStepDataTyped = currentStepData as {
-                sectionId?: string;
-                sectionOrder?: number;
-                title?: string;
-              };
-              const currentSection =
-                entitySchema.sections.find(
-                  (section) =>
-                    currentStepDataTyped.sectionId === section.id ||
-                    (section.title === currentStepDataTyped.title &&
-                      currentStepDataTyped.sectionOrder === section.order)
-                ) ||
-                entitySchema.sections.find(
-                  (section) => section.title === currentStepDataTyped.title
-                ) ||
-                entitySchema.sections[currentStep - 1]; // Fallback to index-based
-
-              if (!currentSection) {
-                return (
-                  <VStack gap="6" align="stretch" w="full">
-                    <Card
-                      bg={cardBg}
-                      borderRadius="xl"
-                      border="1px"
-                      borderColor="mukuru.text.alert"
-                      p="6"
-                      boxShadow="md"
-                      w="full"
-                    >
-                      <AlertBar
-                        status="warning"
-                        title="Section Not Found"
-                        description={`The section for step "${currentStepData.title}" could not be found in the schema.`}
-                      />
-                    </Card>
-                  </VStack>
-                );
-              }
-
-              // Render the section dynamically
-              return (
-                <VStack gap="6" align="stretch" w="full">
-                  {schemaLoading ? (
-                    <Card
-                      bg={cardBg}
-                      borderRadius="xl"
-                      border="1px"
-                      borderColor="mukuru.grey.light"
-                      p="6"
-                      boxShadow="md"
-                      w="full"
-                    >
-                      <VStack gap="4" align="center" py="8" w="full">
-                        <Box
-                          p="3"
-                          borderRadius="lg"
-                          bg="mukuru.state.hover.card"
-                          display="flex"
-                          alignItems="center"
-                          justifyContent="center"
-                        >
-                          <IconWrapper>
-                            <FiFileText size={24} color="mukuru.primary" />
-                          </IconWrapper>
-                        </Box>
-                        <Typography
-                          fontSize="md"
-                          color="mukuru.text.primary"
-                          fontWeight="600"
-                          textAlign="center"
-                        >
-                          Loading entity schema from database...
-                        </Typography>
-                        <Progress.Root
-                          value={undefined}
-                          size="md"
-                          colorScheme="orange"
-                          w="full"
-                          maxW="300px"
-                        >
-                          <Progress.Track>
-                            <Progress.Range />
-                          </Progress.Track>
-                        </Progress.Root>
-                      </VStack>
-                    </Card>
-                  ) : (
-                    <Card
-                      bg={cardBg}
-                      width="full"
-                      height="full"
-                      display="flex"
-                      flexDirection="column"
+                      overflow="hidden"
+                      boxShadow="0 2px 8px rgba(0, 0, 0, 0.04)"
                     >
                       {/* Card Header */}
                       <Box
-                        p="6"
-                        borderBottom="1px"
-                        borderColor={borderColor}
-                        width="full"
+                        p="16px 20px"
+                        borderBottom="1px solid"
+                        borderColor="mukuru.grey.light"
+                        bg="#FAFBFC"
                       >
-                        <Typography fontSize="2xl" fontWeight="bold" color={textColor}>
-                          {currentSection.title}
+                        <Typography
+                          fontSize="15px"
+                          fontWeight="600"
+                          color="mukuru.text.primary"
+                        >
+                          Application Overview
                         </Typography>
-                        {currentSection.description && (
-                          <Typography
-                            fontSize="sm"
-                            color={mutedTextColor}
-                            mt="2"
-                            fontWeight="normal"
-                          >
-                            {currentSection.description}
-                          </Typography>
-                        )}
                       </Box>
 
                       {/* Card Body */}
-                      <Box
-                        p="6"
-                        width="full"
-                        flex="1"
-                        display="flex"
-                        flexDirection="column"
-                        justifyContent="center"
-                      >
-                        <VStack align="stretch" gap="4" width="full">
-                          {currentSection.fields.map((field, index) => {
-                            // Get icon for field
-                            const fieldIcon = getFieldIcon(field.code, field.type);
-
-                            // Format field value
-                            const fieldValue = formatFieldValue(
-                              field.value,
-                              field.type,
-                              field.code
-                            );
-
-                            return (
-                              <React.Fragment key={field.code || index}>
-                                <Flex
-                                  justify="space-between"
-                                  align="center"
-                                  width="full"
-                                  gap="4"
-                                  py="2"
-                                >
-                                  <Flex gap="3" align="center" flex="1" minW="0">
-                                    <IconWrapper flexShrink={0}>
-                                      {React.createElement(fieldIcon, {
-                                        size: 16,
-                                        color: iconColor,
-                                      })}
-                                    </IconWrapper>
-                                    <Typography
-                                      fontSize="sm"
-                                      color={mutedTextColor}
-                                      flexShrink={0}
-                                    >
-                                      {field.label}
-                                      {field.isRequired && (
-                                        <Typography
-                                          as="span"
-                                          color="mukuru.text.error"
-                                          ml="1"
-                                        >
-                                          *
-                                        </Typography>
-                                      )}
-                                    </Typography>
-                                  </Flex>
-                                  <Box flexShrink={0} maxW="60%" minW="0">
-                                    {field.type === 'File' || field.type === 'file' ? (
-                                      <DynamicFieldRenderer
-                                        field={field}
-                                        readOnly={true}
-                                        onDocumentClick={handleDocumentView}
-                                      />
-                                    ) : (
-                                      fieldValue
-                                    )}
-                                  </Box>
-                                </Flex>
-                                {index < currentSection.fields.length - 1 && (
-                                  <Box width="full" height="1px" bg={borderColor} />
-                                )}
-                              </React.Fragment>
-                            );
-                          })}
-                        </VStack>
-                      </Box>
-                    </Card>
-                  )}
-
-                  {/* Quick Actions - only show on first step */}
-                  {currentStep === 1 && (
-                    <Card
-                      bg={cardBg}
-                      borderRadius="xl"
-                      border="1px"
-                      borderColor="mukuru.grey.light"
-                      p={{ base: '5', md: '6' }}
-                      boxShadow="lg"
-                      w="full"
-                      transition="all 0.2s"
-                      _hover={{ boxShadow: 'xl' }}
-                    >
-                      <Box
-                        pb="5"
-                        mb="5"
-                        borderBottom="2px"
-                        borderColor="mukuru.grey.light"
-                      >
-                        <HStack gap="3" align="center">
+                      <Box bg="white">
+                        {overviewFields.map((field, index) => (
                           <Box
-                            p="2.5"
+                            key={field.code || index}
+                            px="20px"
+                            py="14px"
+                            borderBottom={
+                              index < overviewFields.length - 1 ? '1px solid' : 'none'
+                            }
+                            borderColor="mukuru.grey.light"
+                            _hover={{ bg: '#FAFBFC' }}
+                            transition="background 0.15s"
+                          >
+                            <Flex justify="space-between" align="center" gap="16px">
+                              <HStack gap="12px" flex="1" minW="0">
+                                <Box
+                                  p="8px"
+                                  borderRadius="8px"
+                                  bg="#F1F5F9"
+                                  flexShrink={0}
+                                >
+                                  {React.createElement(
+                                    getFieldIcon(field.code, field.type),
+                                    { size: 16, color: '#64748B' }
+                                  )}
+                                </Box>
+                                <Typography
+                                  fontSize="13px"
+                                  fontWeight="500"
+                                  color="mukuru.grey.mediumDark"
+                                >
+                                  {field.label}
+                                </Typography>
+                              </HStack>
+                              <Box flexShrink={0} textAlign="right">
+                                {formatFieldValue(field.value, field.type, field.code)}
+                              </Box>
+                            </Flex>
+                          </Box>
+                        ))}
+                      </Box>
+                    </Box>
+                  );
+                }
+
+                if (!currentStepData) {
+                  return (
+                    <VStack gap="6" align="stretch" w="full">
+                      <Card
+                        bg={cardBg}
+                        borderRadius="xl"
+                        border="1px"
+                        borderColor="mukuru.text.alert"
+                        p="6"
+                        boxShadow="md"
+                        w="full"
+                      >
+                        <AlertBar
+                          status="warning"
+                          title="Step Not Found"
+                          description={`Step ${currentStep} could not be found in the schema.`}
+                        />
+                      </Card>
+                    </VStack>
+                  );
+                }
+
+                // Find the section that matches this step
+                // Use sectionId if available, otherwise match by title and order
+                // At this point, entitySchema is guaranteed to be non-null due to the check above
+                if (!entitySchema || !entitySchema.sections) {
+                  return null;
+                }
+
+                const currentStepDataTyped = currentStepData as {
+                  sectionId?: string;
+                  sectionOrder?: number;
+                  title?: string;
+                };
+                const currentSection =
+                  entitySchema.sections.find(
+                    (section) =>
+                      currentStepDataTyped.sectionId === section.id ||
+                      (section.title === currentStepDataTyped.title &&
+                        currentStepDataTyped.sectionOrder === section.order)
+                  ) ||
+                  entitySchema.sections.find(
+                    (section) => section.title === currentStepDataTyped.title
+                  ) ||
+                  entitySchema.sections[currentStep - 1]; // Fallback to index-based
+
+                if (!currentSection) {
+                  return (
+                    <VStack gap="6" align="stretch" w="full">
+                      <Card
+                        bg={cardBg}
+                        borderRadius="xl"
+                        border="1px"
+                        borderColor="mukuru.text.alert"
+                        p="6"
+                        boxShadow="md"
+                        w="full"
+                      >
+                        <AlertBar
+                          status="warning"
+                          title="Section Not Found"
+                          description={`The section for step "${currentStepData.title}" could not be found in the schema.`}
+                        />
+                      </Card>
+                    </VStack>
+                  );
+                }
+
+                // Render the section dynamically
+                return (
+                  <VStack gap="6" align="stretch" w="full">
+                    {schemaLoading ? (
+                      <Card
+                        bg={cardBg}
+                        borderRadius="xl"
+                        border="1px"
+                        borderColor="mukuru.grey.light"
+                        p="6"
+                        boxShadow="md"
+                        w="full"
+                      >
+                        <VStack gap="4" align="center" py="8" w="full">
+                          <Box
+                            p="3"
                             borderRadius="lg"
                             bg="mukuru.state.hover.card"
                             display="flex"
                             alignItems="center"
                             justifyContent="center"
-                            flexShrink={0}
-                            boxShadow="sm"
                           >
                             <IconWrapper>
-                              <FiCheckSquare size={20} color="mukuru.primary" />
+                              <FiFileText size={24} color="mukuru.primary" />
                             </IconWrapper>
                           </Box>
-                          <VStack align="start" gap="0.5">
-                            <Typography
-                              fontSize="lg"
-                              fontWeight="700"
-                              color="mukuru.text.primary"
-                              letterSpacing="-0.01em"
-                              lineHeight="1.3"
-                            >
-                              Quick Actions
-                            </Typography>
-                            <Typography
-                              fontSize="xs"
-                              color="mukuru.grey.mediumDark"
-                              fontWeight="500"
-                            >
-                              Manage application status and add notes
-                            </Typography>
-                          </VStack>
-                        </HStack>
-                      </Box>
-                      <Box pt="2">
-                        <HStack
-                          gap="3"
-                          wrap="wrap"
-                          align="center"
-                          justify={{ base: 'stretch', md: 'flex-start' }}
-                        >
-                          <Button
-                            variant="primary"
-                            onClick={() => setIsStatusModalOpen(true)}
-                            size="md"
-                            aria-label="Update application status"
+                          <Typography
+                            fontSize="md"
+                            color="mukuru.text.primary"
+                            fontWeight="600"
+                            textAlign="center"
                           >
-                            <IconWrapper>
-                              <FiEdit3 size={16} />
-                            </IconWrapper>
-                            Update Status
-                          </Button>
-                          <Button
-                            variant="secondary"
-                            onClick={() => setIsCommentModalOpen(true)}
+                            Loading entity schema from database...
+                          </Typography>
+                          <Progress.Root
+                            value={undefined}
                             size="md"
-                            aria-label="Add comment to application"
+                            colorScheme="orange"
+                            w="full"
+                            maxW="300px"
                           >
-                            <IconWrapper>
-                              <FiMessageSquare size={16} />
-                            </IconWrapper>
-                            Add Comment
-                          </Button>
-                          <Button
-                            variant="secondary"
-                            onClick={handleExportData}
-                            disabled={isExporting}
-                            size="md"
-                            aria-label="Export application data"
-                          >
-                            <IconWrapper>
-                              <FiDownload size={16} />
-                            </IconWrapper>
-                            {isExporting ? 'Exporting...' : 'Export Data'}
-                          </Button>
-                        </HStack>
-                      </Box>
-                    </Card>
-                  )}
-                </VStack>
-              );
-            })()}
-          </MotionBox>
-
-          {/* Navigation Footer */}
-          <Box
-            mt="16px"
-            p="16px 20px"
-            bg="white"
-            borderRadius="16px"
-            border="1px solid"
-            borderColor="mukuru.grey.light"
-            boxShadow="0 2px 8px rgba(0, 0, 0, 0.04)"
-          >
-            <Flex justify="space-between" align="center">
-              {/* Previous Button */}
-              <Button
-                variant="secondary"
-                onClick={() => setCurrentStep(Math.max(1, currentStep - 1))}
-                disabled={currentStep === 1}
-                size="sm"
-              >
-                <IconWrapper>
-                  <FiArrowLeft size={16} />
-                </IconWrapper>
-                Previous
-              </Button>
-
-              {/* Step Indicators */}
-              <HStack gap="8px" align="center">
-                {adminSteps.map((step) => (
-                  <Box
-                    key={step.id}
-                    w="36px"
-                    h="36px"
-                    borderRadius="full"
-                    bg={currentStep === step.id ? 'mukuru.buttons.primary' : currentStep > step.id ? '#D1FAE5' : 'white'}
-                    border="2px solid"
-                    borderColor={currentStep === step.id ? 'mukuru.buttons.primary' : currentStep > step.id ? '#059669' : 'mukuru.grey.light'}
-                    display="flex"
-                    alignItems="center"
-                    justifyContent="center"
-                    cursor="pointer"
-                    onClick={() => setCurrentStep(step.id)}
-                    transition="all 0.2s"
-                    _hover={{ transform: 'scale(1.1)' }}
-                  >
-                    {currentStep > step.id ? (
-                      <FiCheckSquare size={14} color="#059669" />
+                            <Progress.Track>
+                              <Progress.Range />
+                            </Progress.Track>
+                          </Progress.Root>
+                        </VStack>
+                      </Card>
                     ) : (
-                      <Typography 
-                        fontSize="13px" 
-                        fontWeight="600" 
-                        color={currentStep === step.id ? 'white' : 'mukuru.grey.medium'}
+                      <Card
+                        bg={cardBg}
+                        width="full"
+                        height="full"
+                        display="flex"
+                        flexDirection="column"
                       >
-                        {step.id}
-                      </Typography>
-                    )}
-                  </Box>
-                ))}
-              </HStack>
+                        {/* Card Header */}
+                        <Box
+                          p="6"
+                          borderBottom="1px"
+                          borderColor={borderColor}
+                          width="full"
+                        >
+                          <Typography fontSize="2xl" fontWeight="bold" color={textColor}>
+                            {currentSection.title}
+                          </Typography>
+                          {currentSection.description && (
+                            <Typography
+                              fontSize="sm"
+                              color={mutedTextColor}
+                              mt="2"
+                              fontWeight="normal"
+                            >
+                              {currentSection.description}
+                            </Typography>
+                          )}
+                        </Box>
 
-              {/* Next Button */}
-              <Button
-                variant="primary"
-                onClick={() => setCurrentStep(Math.min(adminSteps.length, currentStep + 1))}
-                disabled={currentStep === adminSteps.length}
-                size="sm"
-              >
-                Next
-                <IconWrapper>
-                  <FiArrowRight size={16} />
-                </IconWrapper>
-              </Button>
-            </Flex>
-          </Box>
+                        {/* Card Body */}
+                        <Box
+                          p="6"
+                          width="full"
+                          flex="1"
+                          display="flex"
+                          flexDirection="column"
+                          justifyContent="center"
+                        >
+                          <VStack align="stretch" gap="4" width="full">
+                            {currentSection.fields.map((field, index) => {
+                              // Get icon for field
+                              const fieldIcon = getFieldIcon(field.code, field.type);
+
+                              // Format field value
+                              const fieldValue = formatFieldValue(
+                                field.value,
+                                field.type,
+                                field.code
+                              );
+
+                              return (
+                                <React.Fragment key={field.code || index}>
+                                  <Flex
+                                    justify="space-between"
+                                    align="center"
+                                    width="full"
+                                    gap="4"
+                                    py="2"
+                                  >
+                                    <Flex gap="3" align="center" flex="1" minW="0">
+                                      <IconWrapper flexShrink={0}>
+                                        {React.createElement(fieldIcon, {
+                                          size: 16,
+                                          color: iconColor,
+                                        })}
+                                      </IconWrapper>
+                                      <Typography
+                                        fontSize="sm"
+                                        color={mutedTextColor}
+                                        flexShrink={0}
+                                      >
+                                        {field.label}
+                                        {field.isRequired && (
+                                          <Typography
+                                            as="span"
+                                            color="mukuru.text.error"
+                                            ml="1"
+                                          >
+                                            *
+                                          </Typography>
+                                        )}
+                                      </Typography>
+                                    </Flex>
+                                    <Box flexShrink={0} maxW="60%" minW="0">
+                                      {field.type === 'File' || field.type === 'file' || 
+                                       field.code.toLowerCase().includes('document') ||
+                                       field.code.toLowerCase().includes('_documents') ||
+                                       (typeof field.value === 'string' && (field.value.includes('"fileName"') || field.value.includes('fileName'))) ? (
+                                        <DynamicFieldRenderer
+                                          field={{...field, type: 'File'}}
+                                          readOnly={true}
+                                          onDocumentClick={handleDocumentView}
+                                        />
+                                      ) : (
+                                        fieldValue
+                                      )}
+                                    </Box>
+                                  </Flex>
+                                  {index < currentSection.fields.length - 1 && (
+                                    <Box width="full" height="1px" bg={borderColor} />
+                                  )}
+                                </React.Fragment>
+                              );
+                            })}
+                          </VStack>
+                        </Box>
+                      </Card>
+                    )}
+
+                    {/* Quick Actions - only show on first step */}
+                    {currentStep === 1 && (
+                      <Card
+                        bg={cardBg}
+                        borderRadius="xl"
+                        border="1px"
+                        borderColor="mukuru.grey.light"
+                        p={{ base: '5', md: '6' }}
+                        boxShadow="lg"
+                        w="full"
+                        transition="all 0.2s"
+                        _hover={{ boxShadow: 'xl' }}
+                      >
+                        <Box
+                          pb="5"
+                          mb="5"
+                          borderBottom="2px"
+                          borderColor="mukuru.grey.light"
+                        >
+                          <HStack gap="3" align="center">
+                            <Box
+                              p="2.5"
+                              borderRadius="lg"
+                              bg="mukuru.state.hover.card"
+                              display="flex"
+                              alignItems="center"
+                              justifyContent="center"
+                              flexShrink={0}
+                              boxShadow="sm"
+                            >
+                              <IconWrapper>
+                                <FiCheckSquare size={20} color="mukuru.primary" />
+                              </IconWrapper>
+                            </Box>
+                            <VStack align="start" gap="0.5">
+                              <Typography
+                                fontSize="lg"
+                                fontWeight="700"
+                                color="mukuru.text.primary"
+                                letterSpacing="-0.01em"
+                                lineHeight="1.3"
+                              >
+                                Quick Actions
+                              </Typography>
+                              <Typography
+                                fontSize="xs"
+                                color="mukuru.grey.mediumDark"
+                                fontWeight="500"
+                              >
+                                Manage application status and add notes
+                              </Typography>
+                            </VStack>
+                          </HStack>
+                        </Box>
+                        <Box pt="2">
+                          <HStack
+                            gap="3"
+                            wrap="wrap"
+                            align="center"
+                            justify={{ base: 'stretch', md: 'flex-start' }}
+                          >
+                            <Button
+                              variant="primary"
+                              onClick={() => setIsStatusModalOpen(true)}
+                              size="md"
+                              aria-label="Update application status"
+                            >
+                              <IconWrapper>
+                                <FiEdit3 size={16} />
+                              </IconWrapper>
+                              Update Status
+                            </Button>
+                            <Button
+                              variant="secondary"
+                              onClick={() => setIsCommentModalOpen(true)}
+                              size="md"
+                              aria-label="Add comment to application"
+                            >
+                              <IconWrapper>
+                                <FiMessageSquare size={16} />
+                              </IconWrapper>
+                              Add Comment
+                            </Button>
+                            <Button
+                              variant="secondary"
+                              onClick={handleExportData}
+                              disabled={isExporting}
+                              size="md"
+                              aria-label="Export application data"
+                            >
+                              <IconWrapper>
+                                <FiDownload size={16} />
+                              </IconWrapper>
+                              {isExporting ? 'Exporting...' : 'Export Data'}
+                            </Button>
+                          </HStack>
+                        </Box>
+                      </Card>
+                    )}
+                  </VStack>
+                );
+              })()}
+            </MotionBox>
+
+            {/* Navigation Footer */}
+            <Box
+              mt="16px"
+              p="16px 20px"
+              bg="white"
+              borderRadius="16px"
+              border="1px solid"
+              borderColor="mukuru.grey.light"
+              boxShadow="0 2px 8px rgba(0, 0, 0, 0.04)"
+            >
+              <Flex justify="space-between" align="center">
+                {/* Previous Button */}
+                <Button
+                  variant="secondary"
+                  onClick={() => setCurrentStep(Math.max(1, currentStep - 1))}
+                  disabled={currentStep === 1}
+                  size="sm"
+                >
+                  <IconWrapper>
+                    <FiArrowLeft size={16} />
+                  </IconWrapper>
+                  Previous
+                </Button>
+
+                {/* Step Indicators */}
+                <HStack gap="8px" align="center">
+                  {adminSteps.map((step) => (
+                    <Box
+                      key={step.id}
+                      w="36px"
+                      h="36px"
+                      borderRadius="full"
+                      bg={
+                        currentStep === step.id
+                          ? 'mukuru.buttons.primary'
+                          : currentStep > step.id
+                            ? '#D1FAE5'
+                            : 'white'
+                      }
+                      border="2px solid"
+                      borderColor={
+                        currentStep === step.id
+                          ? 'mukuru.buttons.primary'
+                          : currentStep > step.id
+                            ? '#059669'
+                            : 'mukuru.grey.light'
+                      }
+                      display="flex"
+                      alignItems="center"
+                      justifyContent="center"
+                      cursor="pointer"
+                      onClick={() => setCurrentStep(step.id)}
+                      transition="all 0.2s"
+                      _hover={{ transform: 'scale(1.1)' }}
+                    >
+                      {currentStep > step.id ? (
+                        <FiCheckSquare size={14} color="#059669" />
+                      ) : (
+                        <Typography
+                          fontSize="13px"
+                          fontWeight="600"
+                          color={currentStep === step.id ? 'white' : 'mukuru.grey.medium'}
+                        >
+                          {step.id}
+                        </Typography>
+                      )}
+                    </Box>
+                  ))}
+                </HStack>
+
+                {/* Next Button */}
+                <Button
+                  variant="primary"
+                  onClick={() =>
+                    setCurrentStep(Math.min(adminSteps.length, currentStep + 1))
+                  }
+                  disabled={currentStep === adminSteps.length}
+                  size="sm"
+                >
+                  Next
+                  <IconWrapper>
+                    <FiArrowRight size={16} />
+                  </IconWrapper>
+                </Button>
+              </Flex>
+            </Box>
           </Box>
 
           {/* Right Sidebar - Summary */}
@@ -2180,31 +2671,64 @@ export default function AdminApplicationDetailsPage() {
                 w="full"
                 boxShadow="0 2px 8px rgba(0, 0, 0, 0.04)"
               >
-                <Box p="16px" borderBottom="1px solid" borderColor="mukuru.grey.light" bg="#FAFBFC">
-                  <Typography fontSize="14px" fontWeight="600" color="mukuru.text.primary">
+                <Box
+                  p="16px"
+                  borderBottom="1px solid"
+                  borderColor="mukuru.grey.light"
+                  bg="#FAFBFC"
+                >
+                  <Typography
+                    fontSize="14px"
+                    fontWeight="600"
+                    color="mukuru.text.primary"
+                  >
                     Quick Summary
                   </Typography>
                 </Box>
                 <VStack gap="0" align="stretch">
-                  <Flex p="14px 16px" justify="space-between" align="center" borderBottom="1px solid" borderColor="mukuru.grey.light">
+                  <Flex
+                    p="14px 16px"
+                    justify="space-between"
+                    align="center"
+                    borderBottom="1px solid"
+                    borderColor="mukuru.grey.light"
+                  >
                     <HStack gap="10px">
                       <Box p="8px" borderRadius="8px" bg="#DBEAFE">
                         <FiFileText size={14} color="#1D4ED8" />
                       </Box>
-                      <Typography fontSize="13px" color="mukuru.grey.mediumDark">Documents</Typography>
+                      <Typography fontSize="13px" color="mukuru.grey.mediumDark">
+                        Documents
+                      </Typography>
                     </HStack>
-                    <Typography fontSize="14px" fontWeight="600" color="mukuru.text.primary">
-                      {application.documents?.length || 0}
+                    <Typography
+                      fontSize="14px"
+                      fontWeight="600"
+                      color="mukuru.text.primary"
+                    >
+                      {documentsCount}
                     </Typography>
                   </Flex>
-                  <Flex p="14px 16px" justify="space-between" align="center" borderBottom="1px solid" borderColor="mukuru.grey.light">
+                  <Flex
+                    p="14px 16px"
+                    justify="space-between"
+                    align="center"
+                    borderBottom="1px solid"
+                    borderColor="mukuru.grey.light"
+                  >
                     <HStack gap="10px">
                       <Box p="8px" borderRadius="8px" bg="#FEF3C7">
                         <FiCheckSquare size={14} color="#D97706" />
                       </Box>
-                      <Typography fontSize="13px" color="mukuru.grey.mediumDark">Risk Score</Typography>
+                      <Typography fontSize="13px" color="mukuru.grey.mediumDark">
+                        Risk Score
+                      </Typography>
                     </HStack>
-                    <Typography fontSize="14px" fontWeight="600" color="mukuru.text.primary">
+                    <Typography
+                      fontSize="14px"
+                      fontWeight="600"
+                      color="mukuru.text.primary"
+                    >
                       {application.riskScore || 'N/A'}
                     </Typography>
                   </Flex>
@@ -2213,9 +2737,15 @@ export default function AdminApplicationDetailsPage() {
                       <Box p="8px" borderRadius="8px" bg="#D1FAE5">
                         <FiUsers size={14} color="#059669" />
                       </Box>
-                      <Typography fontSize="13px" color="mukuru.grey.mediumDark">Sections</Typography>
+                      <Typography fontSize="13px" color="mukuru.grey.mediumDark">
+                        Sections
+                      </Typography>
                     </HStack>
-                    <Typography fontSize="14px" fontWeight="600" color="mukuru.text.primary">
+                    <Typography
+                      fontSize="14px"
+                      fontWeight="600"
+                      color="mukuru.text.primary"
+                    >
                       {adminSteps.length}
                     </Typography>
                   </Flex>
@@ -2232,22 +2762,53 @@ export default function AdminApplicationDetailsPage() {
                 w="full"
                 boxShadow="0 2px 8px rgba(0, 0, 0, 0.04)"
               >
-                <Box p="16px" borderBottom="1px solid" borderColor="mukuru.grey.light" bg="#FAFBFC">
-                  <Typography fontSize="14px" fontWeight="600" color="mukuru.text.primary">
+                <Box
+                  p="16px"
+                  borderBottom="1px solid"
+                  borderColor="mukuru.grey.light"
+                  bg="#FAFBFC"
+                >
+                  <Typography
+                    fontSize="14px"
+                    fontWeight="600"
+                    color="mukuru.text.primary"
+                  >
                     Quick Actions
                   </Typography>
                 </Box>
                 <VStack gap="8px" p="16px" align="stretch">
-                  <Button variant="primary" size="sm" w="full" onClick={() => setIsStatusModalOpen(true)}>
-                    <IconWrapper><FiEdit3 size={14} /></IconWrapper>
+                  <Button
+                    variant="primary"
+                    size="sm"
+                    w="full"
+                    onClick={() => setIsStatusModalOpen(true)}
+                  >
+                    <IconWrapper>
+                      <FiEdit3 size={14} />
+                    </IconWrapper>
                     Update Status
                   </Button>
-                  <Button variant="secondary" size="sm" w="full" onClick={() => setIsCommentModalOpen(true)}>
-                    <IconWrapper><FiMessageSquare size={14} /></IconWrapper>
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    w="full"
+                    onClick={() => setIsCommentModalOpen(true)}
+                  >
+                    <IconWrapper>
+                      <FiMessageSquare size={14} />
+                    </IconWrapper>
                     Add Comment
                   </Button>
-                  <Button variant="secondary" size="sm" w="full" onClick={handleExportData} disabled={isExporting}>
-                    <IconWrapper><FiDownload size={14} /></IconWrapper>
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    w="full"
+                    onClick={handleExportData}
+                    disabled={isExporting}
+                  >
+                    <IconWrapper>
+                      <FiDownload size={14} />
+                    </IconWrapper>
                     {isExporting ? 'Exporting...' : 'Export Data'}
                   </Button>
                 </VStack>
@@ -2263,35 +2824,106 @@ export default function AdminApplicationDetailsPage() {
                 w="full"
                 boxShadow="0 2px 8px rgba(0, 0, 0, 0.04)"
               >
-                <Box p="16px" borderBottom="1px solid" borderColor="mukuru.grey.light" bg="#FAFBFC">
-                  <Typography fontSize="14px" fontWeight="600" color="mukuru.text.primary">
+                <Box
+                  p="16px"
+                  borderBottom="1px solid"
+                  borderColor="mukuru.grey.light"
+                  bg="#FAFBFC"
+                >
+                  <Typography
+                    fontSize="14px"
+                    fontWeight="600"
+                    color="mukuru.text.primary"
+                  >
                     Activity Timeline
                   </Typography>
                 </Box>
                 <VStack gap="0" align="stretch" p="16px">
-                  <HStack gap="12px" align="start">
-                    <Box w="8px" h="8px" borderRadius="full" bg="mukuru.buttons.primary" mt="6px" />
-                    <VStack align="start" gap="2px" flex="1">
-                      <Typography fontSize="13px" fontWeight="500" color="mukuru.text.primary">
-                        Application Submitted
-                      </Typography>
+                  {loadingAuditLogs ? (
+                    <HStack gap="12px" align="center" justify="center" py="8px">
+                      <Spinner size="sm" color="mukuru.buttons.primary" />
                       <Typography fontSize="12px" color="mukuru.grey.medium">
-                        {formatDateShort(new Date(application.created))}
+                        Loading...
                       </Typography>
-                    </VStack>
-                  </HStack>
-                  {application.updated !== application.created && (
-                    <HStack gap="12px" align="start" mt="12px">
-                      <Box w="8px" h="8px" borderRadius="full" bg="#10B981" mt="6px" />
-                      <VStack align="start" gap="2px" flex="1">
-                        <Typography fontSize="13px" fontWeight="500" color="mukuru.text.primary">
-                          Last Updated
-                        </Typography>
-                        <Typography fontSize="12px" color="mukuru.grey.medium">
-                          {formatDateShort(new Date(application.updated))}
-                        </Typography>
-                      </VStack>
                     </HStack>
+                  ) : auditLogs.length > 0 ? (
+                    auditLogs.slice(0, 5).map((log, index) => (
+                      <HStack
+                        key={log.id || index}
+                        gap="12px"
+                        align="start"
+                        mt={index > 0 ? '12px' : '0'}
+                      >
+                        <Box
+                          w="8px"
+                          h="8px"
+                          borderRadius="full"
+                          bg={index === 0 ? 'mukuru.buttons.primary' : '#10B981'}
+                          mt="6px"
+                        />
+                        <VStack align="start" gap="2px" flex="1">
+                          <Typography
+                            fontSize="13px"
+                            fontWeight="500"
+                            color="mukuru.text.primary"
+                          >
+                            {log.action}
+                          </Typography>
+                          <Typography fontSize="12px" color="mukuru.grey.medium">
+                            {log.timestamp
+                              ? formatDateShort(new Date(log.timestamp))
+                              : 'Unknown date'}
+                          </Typography>
+                        </VStack>
+                      </HStack>
+                    ))
+                  ) : (
+                    <>
+                      <HStack gap="12px" align="start">
+                        <Box
+                          w="8px"
+                          h="8px"
+                          borderRadius="full"
+                          bg="mukuru.buttons.primary"
+                          mt="6px"
+                        />
+                        <VStack align="start" gap="2px" flex="1">
+                          <Typography
+                            fontSize="13px"
+                            fontWeight="500"
+                            color="mukuru.text.primary"
+                          >
+                            Application Submitted
+                          </Typography>
+                          <Typography fontSize="12px" color="mukuru.grey.medium">
+                            {formatDateShort(new Date(application.created))}
+                          </Typography>
+                        </VStack>
+                      </HStack>
+                      {application.updated !== application.created && (
+                        <HStack gap="12px" align="start" mt="12px">
+                          <Box
+                            w="8px"
+                            h="8px"
+                            borderRadius="full"
+                            bg="#10B981"
+                            mt="6px"
+                          />
+                          <VStack align="start" gap="2px" flex="1">
+                            <Typography
+                              fontSize="13px"
+                              fontWeight="500"
+                              color="mukuru.text.primary"
+                            >
+                              Last Updated
+                            </Typography>
+                            <Typography fontSize="12px" color="mukuru.grey.medium">
+                              {formatDateShort(new Date(application.updated))}
+                            </Typography>
+                          </VStack>
+                        </HStack>
+                      )}
+                    </>
                   )}
                 </VStack>
               </Box>

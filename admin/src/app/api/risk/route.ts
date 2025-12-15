@@ -69,10 +69,7 @@ export async function GET(request: NextRequest) {
         errorText = await response.text().catch(() => `HTTP ${response.status}`);
       }
 
-      return NextResponse.json(
-        { error: errorText },
-        { status: response.status }
-      );
+      return NextResponse.json({ error: errorText }, { status: response.status });
     }
 
     const data = await response.json();
@@ -137,10 +134,7 @@ export async function POST(request: NextRequest) {
         errorText = await response.text().catch(() => `HTTP ${response.status}`);
       }
 
-      return NextResponse.json(
-        { error: errorText },
-        { status: response.status }
-      );
+      return NextResponse.json({ error: errorText }, { status: response.status });
     }
 
     const data = await response.json();
@@ -154,4 +148,3 @@ export async function POST(request: NextRequest) {
     );
   }
 }
-

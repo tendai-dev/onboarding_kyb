@@ -185,20 +185,32 @@ export async function fetchEntitySchema(
 
       // Process each wizard step
       // For review, show ALL steps (not just active ones) so reviewers can see everything
-      const sortedWizardSteps = [...wizardConfiguration.steps]
-        .sort((a, b) => a.stepNumber - b.stepNumber);
+      const sortedWizardSteps = [...wizardConfiguration.steps].sort(
+        (a, b) => a.stepNumber - b.stepNumber
+      );
 
       if (typeof window !== 'undefined' && process.env.NODE_ENV === 'development') {
-        console.log(`[Schema Renderer] 🔍 DEBUG: Processing ${sortedWizardSteps.length} wizard steps (all steps for review)`);
-        console.log(`[Schema Renderer] 🔍 DEBUG: Entity type has ${entityType.requirements.length} requirements`);
+        console.log(
+          `[Schema Renderer] 🔍 DEBUG: Processing ${sortedWizardSteps.length} wizard steps (all steps for review)`
+        );
+        console.log(
+          `[Schema Renderer] 🔍 DEBUG: Entity type has ${entityType.requirements.length} requirements`
+        );
       }
-      if (entityType.requirements.length > 0 && typeof window !== 'undefined' && process.env.NODE_ENV === 'development') {
+      if (
+        entityType.requirements.length > 0 &&
+        typeof window !== 'undefined' &&
+        process.env.NODE_ENV === 'development'
+      ) {
         const firstReq = entityType.requirements[0] as any;
         console.log(`[Schema Renderer] 🔍 DEBUG: First requirement structure:`, {
           keys: Object.keys(firstReq),
           hasRequirement: !!firstReq.requirement,
           requirementType: firstReq.requirement?.type || firstReq.type,
-          requirementDisplayName: firstReq.requirement?.displayName || firstReq.displayName || firstReq.display_name,
+          requirementDisplayName:
+            firstReq.requirement?.displayName ||
+            firstReq.displayName ||
+            firstReq.display_name,
           requirementCode: firstReq.requirement?.code || firstReq.code,
           fullObject: firstReq,
         });
@@ -208,21 +220,39 @@ export async function fetchEntitySchema(
         // Find requirements that match this step's requirement types
         const stepRequirements: EntityTypeRequirement[] = [];
 
-        console.info(`[Schema Renderer] Processing wizard step: "${wizardStep.title}" (ID: ${wizardStep.id})`);
-        console.info(`[Schema Renderer] Wizard step requirement types:`, wizardStep.requirementTypes);
-        console.info(`[Schema Renderer] Total entity requirements to check:`, entityType.requirements.length);
+        console.info(
+          `[Schema Renderer] Processing wizard step: "${wizardStep.title}" (ID: ${wizardStep.id})`
+        );
+        console.info(
+          `[Schema Renderer] Wizard step requirement types:`,
+          wizardStep.requirementTypes
+        );
+        console.info(
+          `[Schema Renderer] Total entity requirements to check:`,
+          entityType.requirements.length
+        );
 
         for (const entityTypeReq of entityType.requirements) {
           // Handle both nested (requirement.requirement) and flat (requirement has properties directly) structures
           const requirement = (entityTypeReq as any).requirement || entityTypeReq;
-          
-          if (!requirement || (!requirement.type && !requirement.displayName && !requirement.code)) {
-            console.error(`[Schema Renderer] ⚠️⚠️⚠️ Entity requirement has no valid requirement data:`, entityTypeReq);
+
+          if (
+            !requirement ||
+            (!requirement.type && !requirement.displayName && !requirement.code)
+          ) {
+            console.error(
+              `[Schema Renderer] ⚠️⚠️⚠️ Entity requirement has no valid requirement data:`,
+              entityTypeReq
+            );
             continue;
           }
 
           // Normalize displayName (handle both camelCase and snake_case)
-          const displayName = requirement.displayName || requirement.display_name || requirement.DisplayName || '';
+          const displayName =
+            requirement.displayName ||
+            requirement.display_name ||
+            requirement.DisplayName ||
+            '';
           const code = requirement.code || requirement.Code || '';
           const typeValue = requirement.type || requirement.Type || '';
 
@@ -234,20 +264,29 @@ export async function fetchEntitySchema(
             // Normalize the type value for case-insensitive matching
             const normalizedType = typeValue.trim();
             const lowerType = normalizedType.toLowerCase();
-            
+
             // First, try case-insensitive partial match for common patterns (before exact match)
             // This ensures "DOCUMENTATION" is correctly identified as Document type
             if (lowerType.includes('document') || lowerType === 'documentation') {
               reqType = RequirementType.Document;
-            } else if (lowerType.includes('identity') || lowerType.includes('proofofidentity')) {
+            } else if (
+              lowerType.includes('identity') ||
+              lowerType.includes('proofofidentity')
+            ) {
               reqType = RequirementType.ProofOfIdentity;
-            } else if (lowerType.includes('address') || lowerType.includes('proofofaddress')) {
+            } else if (
+              lowerType.includes('address') ||
+              lowerType.includes('proofofaddress')
+            ) {
               reqType = RequirementType.ProofOfAddress;
             } else if (lowerType.includes('ownership')) {
               reqType = RequirementType.OwnershipStructure;
             } else if (lowerType.includes('director') || lowerType.includes('board')) {
               reqType = RequirementType.BoardDirectors;
-            } else if (lowerType.includes('signatory') || lowerType.includes('authorized')) {
+            } else if (
+              lowerType.includes('signatory') ||
+              lowerType.includes('authorized')
+            ) {
               reqType = RequirementType.AuthorizedSignatories;
             } else {
               // Try exact match in typeMap
@@ -277,16 +316,25 @@ export async function fetchEntitySchema(
                 '7': RequirementType.AuthorizedSignatories,
               };
               // Try exact match
-              reqType = typeMap[normalizedType] || typeMap[normalizedType.toLowerCase()] || typeMap[normalizedType.toUpperCase()] || RequirementType.Information;
+              reqType =
+                typeMap[normalizedType] ||
+                typeMap[normalizedType.toLowerCase()] ||
+                typeMap[normalizedType.toUpperCase()] ||
+                RequirementType.Information;
             }
           } else {
             reqType = RequirementType.Information;
           }
-          
+
           // Log the type mapping for debugging (only in development)
-          const mappedTypeName = Object.keys(RequirementType).find(key => RequirementType[key as keyof typeof RequirementType] === reqType) || 'Unknown';
+          const mappedTypeName =
+            Object.keys(RequirementType).find(
+              (key) => RequirementType[key as keyof typeof RequirementType] === reqType
+            ) || 'Unknown';
           if (typeof window !== 'undefined' && process.env.NODE_ENV === 'development') {
-            console.log(`[Schema Renderer] 🔍 Type mapping: "${typeValue}" -> ${mappedTypeName}/${reqType}`);
+            console.log(
+              `[Schema Renderer] 🔍 Type mapping: "${typeValue}" -> ${mappedTypeName}/${reqType}`
+            );
           }
 
           // Check if this requirement type matches the wizard step's requirement types
@@ -299,29 +347,40 @@ export async function fetchEntitySchema(
             const rtLower = String(rt).toLowerCase().trim();
             const rtString = String(rt).trim();
             const rtUpper = String(rt).toUpperCase().trim();
-            
+
             // Convert wizard step requirement type to numeric if it's a string name
             let rtNumeric: number | null = null;
             if (rtUpper === 'INFORMATION' || rtLower === 'information') {
               rtNumeric = RequirementType.Information;
-            } else if (rtUpper === 'DOCUMENT' || rtLower === 'document' || rtUpper === 'DOCUMENTATION' || rtLower === 'documentation') {
+            } else if (
+              rtUpper === 'DOCUMENT' ||
+              rtLower === 'document' ||
+              rtUpper === 'DOCUMENTATION' ||
+              rtLower === 'documentation'
+            ) {
               rtNumeric = RequirementType.Document;
             } else if (rtUpper === 'PROOFOFIDENTITY' || rtLower === 'proofofidentity') {
               rtNumeric = RequirementType.ProofOfIdentity;
             } else if (rtUpper === 'PROOFOFADDRESS' || rtLower === 'proofofaddress') {
               rtNumeric = RequirementType.ProofOfAddress;
-            } else if (rtUpper === 'OWNERSHIPSTRUCTURE' || rtLower === 'ownershipstructure') {
+            } else if (
+              rtUpper === 'OWNERSHIPSTRUCTURE' ||
+              rtLower === 'ownershipstructure'
+            ) {
               rtNumeric = RequirementType.OwnershipStructure;
             } else if (rtUpper === 'BOARDDIRECTORS' || rtLower === 'boarddirectors') {
               rtNumeric = RequirementType.BoardDirectors;
-            } else if (rtUpper === 'AUTHORIZEDSIGNATORIES' || rtLower === 'authorizedsignatories') {
+            } else if (
+              rtUpper === 'AUTHORIZEDSIGNATORIES' ||
+              rtLower === 'authorizedsignatories'
+            ) {
               rtNumeric = RequirementType.AuthorizedSignatories;
             } else if (!isNaN(Number(rtString))) {
               rtNumeric = Number(rtString);
             }
-            
+
             // Try multiple matching strategies - prioritize numeric comparison for accuracy
-            const match = (
+            const match =
               // Numeric value matches (most reliable)
               (rtNumeric !== null && rtNumeric === reqType) ||
               rtString === String(reqType) ||
@@ -331,35 +390,53 @@ export async function fetchEntitySchema(
               // Case-insensitive string matches
               rtLower === reqTypeNameLower ||
               // Special handling for DOCUMENTATION/Document variations
-              (reqType === RequirementType.Document && (rtUpper === 'DOCUMENTATION' || rtLower === 'documentation' || rtLower === 'document' || rtUpper === 'DOCUMENT')) ||
-              (reqType === RequirementType.Information && (rtUpper === 'INFORMATION' || rtLower === 'information')) ||
+              (reqType === RequirementType.Document &&
+                (rtUpper === 'DOCUMENTATION' ||
+                  rtLower === 'documentation' ||
+                  rtLower === 'document' ||
+                  rtUpper === 'DOCUMENT')) ||
+              (reqType === RequirementType.Information &&
+                (rtUpper === 'INFORMATION' || rtLower === 'information')) ||
               // Handle underscores and dashes
               rtLower.replace(/[_-]/g, '') === reqTypeNameLower.replace(/[_-]/g, '') ||
               // Enum value matches
-              rt === String(RequirementType[reqType as unknown as keyof typeof RequirementType] || '')
-            );
-            
+              rt ===
+                String(
+                  RequirementType[reqType as unknown as keyof typeof RequirementType] ||
+                    ''
+                );
+
             return match;
           });
 
           if (matches) {
             if (typeof window !== 'undefined' && process.env.NODE_ENV === 'development') {
-              console.log(`[Schema Renderer] ✅ MATCHED requirement "${displayName}" (type: ${reqTypeName}/${reqType}, code: ${code}) to wizard step "${wizardStep.title}"`);
+              console.log(
+                `[Schema Renderer] ✅ MATCHED requirement "${displayName}" (type: ${reqTypeName}/${reqType}, code: ${code}) to wizard step "${wizardStep.title}"`
+              );
             }
             stepRequirements.push(entityTypeReq);
           } else {
             // Only log no-match in development to reduce console noise
             if (typeof window !== 'undefined' && process.env.NODE_ENV === 'development') {
-              console.debug(`[Schema Renderer] ❌ NO MATCH - Requirement "${displayName}" (type: ${reqTypeName}/${reqType}, code: ${code}) did NOT match wizard step "${wizardStep.title}" requirement types:`, JSON.stringify(wizardStep.requirementTypes, null, 2));
+              console.debug(
+                `[Schema Renderer] ❌ NO MATCH - Requirement "${displayName}" (type: ${reqTypeName}/${reqType}, code: ${code}) did NOT match wizard step "${wizardStep.title}" requirement types:`,
+                JSON.stringify(wizardStep.requirementTypes, null, 2)
+              );
             }
           }
         }
 
         if (typeof window !== 'undefined' && process.env.NODE_ENV === 'development') {
-          console.log(`[Schema Renderer] 📊 SUMMARY for wizard step "${wizardStep.title}": Found ${stepRequirements.length} matching requirements out of ${entityType.requirements.length} total`);
+          console.log(
+            `[Schema Renderer] 📊 SUMMARY for wizard step "${wizardStep.title}": Found ${stepRequirements.length} matching requirements out of ${entityType.requirements.length} total`
+          );
         }
         if (stepRequirements.length === 0) {
-          console.warn(`[Schema Renderer] ⚠️ NO REQUIREMENTS MATCHED for wizard step "${wizardStep.title}". Wizard step expects:`, JSON.stringify(wizardStep.requirementTypes, null, 2));
+          console.warn(
+            `[Schema Renderer] ⚠️ NO REQUIREMENTS MATCHED for wizard step "${wizardStep.title}". Wizard step expects:`,
+            JSON.stringify(wizardStep.requirementTypes, null, 2)
+          );
         }
 
         // Create section from wizard step
@@ -379,10 +456,22 @@ export async function fetchEntitySchema(
 
           // Normalize property names
           const reqCode = requirement.code || requirement.Code || '';
-          const reqDisplayName = requirement.displayName || requirement.display_name || requirement.DisplayName || '';
-          const reqFieldType = requirement.fieldType || requirement.field_type || requirement.FieldType || 'text';
-          const reqHelpText = requirement.helpText || requirement.help_text || requirement.HelpText || '';
-          const reqValidationRules = requirement.validationRules || requirement.validation_rules || requirement.ValidationRules;
+          const reqDisplayName =
+            requirement.displayName ||
+            requirement.display_name ||
+            requirement.DisplayName ||
+            '';
+          const reqFieldType =
+            requirement.fieldType ||
+            requirement.field_type ||
+            requirement.FieldType ||
+            'text';
+          const reqHelpText =
+            requirement.helpText || requirement.help_text || requirement.HelpText || '';
+          const reqValidationRules =
+            requirement.validationRules ||
+            requirement.validation_rules ||
+            requirement.ValidationRules;
 
           const fieldValue = mapRequirementCodeToValue(reqCode, applicationData);
 
@@ -393,15 +482,30 @@ export async function fetchEntitySchema(
             value: fieldValue,
             placeholder: reqHelpText,
             helpText: reqHelpText,
-            isRequired: entityTypeReq.isRequired !== undefined ? entityTypeReq.isRequired : (entityTypeReq as any).is_required !== undefined ? (entityTypeReq as any).is_required : false,
+            isRequired:
+              entityTypeReq.isRequired !== undefined
+                ? entityTypeReq.isRequired
+                : (entityTypeReq as any).is_required !== undefined
+                  ? (entityTypeReq as any).is_required
+                  : false,
             validationRules: reqValidationRules
-              ? (typeof reqValidationRules === 'string' ? JSON.parse(reqValidationRules) : reqValidationRules)
+              ? typeof reqValidationRules === 'string'
+                ? JSON.parse(reqValidationRules)
+                : reqValidationRules
               : undefined,
             options: requirement.options?.map((opt: any) => ({
               value: opt.value || opt.Value,
-              label: opt.displayText || opt.display_text || opt.DisplayText || opt.label || opt.Label,
+              label:
+                opt.displayText ||
+                opt.display_text ||
+                opt.DisplayText ||
+                opt.label ||
+                opt.Label,
             })),
-            order: entityTypeReq.displayOrder !== undefined ? entityTypeReq.displayOrder : (entityTypeReq as any).display_order || 0,
+            order:
+              entityTypeReq.displayOrder !== undefined
+                ? entityTypeReq.displayOrder
+                : (entityTypeReq as any).display_order || 0,
           };
 
           section.fields.push(field);
@@ -413,8 +517,10 @@ export async function fetchEntitySchema(
         // Always add section, even if empty (for review purposes, we want to show all wizard steps)
         // The UI will handle displaying "No requirements" message
         sections.push(section);
-        
-        console.info(`[Schema Renderer] Created section for wizard step "${section.title}": ${section.fields.length} fields`);
+
+        console.info(
+          `[Schema Renderer] Created section for wizard step "${section.title}": ${section.fields.length} fields`
+        );
       }
     } else {
       // Fallback to requirement type grouping (original behavior)
@@ -557,8 +663,13 @@ function mapRequirementCodeToValue(
 
   // Debug logging
   if (typeof window !== 'undefined' && process.env.NODE_ENV === 'development') {
-    console.log(`[Map Requirement] Looking for code: "${requirementCode}" (normalized: "${_code}")`);
-    console.log(`[Map Requirement] Application data keys:`, Object.keys(applicationData).slice(0, 20));
+    console.log(
+      `[Map Requirement] Looking for code: "${requirementCode}" (normalized: "${_code}")`
+    );
+    console.log(
+      `[Map Requirement] Application data keys:`,
+      Object.keys(applicationData).slice(0, 20)
+    );
     console.log(`[Map Requirement] Metadata keys:`, Object.keys(metadata).slice(0, 20));
     console.log(`[Map Requirement] Sample metadata values:`, {
       businessLegalName: applicationData.businessLegalName,
@@ -758,7 +869,10 @@ function mapRequirementCodeToValue(
     const mappedValue = mapping[_code](applicationData);
     if (mappedValue && mappedValue !== '') {
       if (typeof window !== 'undefined' && process.env.NODE_ENV === 'development') {
-        console.log(`[Map Requirement] ✅ Found via mapping for "${requirementCode}":`, mappedValue);
+        console.log(
+          `[Map Requirement] ✅ Found via mapping for "${requirementCode}":`,
+          mappedValue
+        );
       }
       return mappedValue;
     }
@@ -770,9 +884,17 @@ function mapRequirementCodeToValue(
       key.toUpperCase() === _code ||
       key.toUpperCase().replace(/_/g, '') === _code.replace(/_/g, '')
   );
-  if (metadataKey && metadata[metadataKey] !== null && metadata[metadataKey] !== undefined && metadata[metadataKey] !== '') {
+  if (
+    metadataKey &&
+    metadata[metadataKey] !== null &&
+    metadata[metadataKey] !== undefined &&
+    metadata[metadataKey] !== ''
+  ) {
     if (typeof window !== 'undefined' && process.env.NODE_ENV === 'development') {
-      console.log(`[Map Requirement] ✅ Found in metadata by exact match for "${requirementCode}":`, metadata[metadataKey]);
+      console.log(
+        `[Map Requirement] ✅ Found in metadata by exact match for "${requirementCode}":`,
+        metadata[metadataKey]
+      );
     }
     return metadata[metadataKey];
   }
@@ -785,20 +907,37 @@ function mapRequirementCodeToValue(
       index === 0 ? word : word.charAt(0).toUpperCase() + word.slice(1)
     )
     .join('');
-  if (metadata[camelCaseKey] !== null && metadata[camelCaseKey] !== undefined && metadata[camelCaseKey] !== '') {
+  if (
+    metadata[camelCaseKey] !== null &&
+    metadata[camelCaseKey] !== undefined &&
+    metadata[camelCaseKey] !== ''
+  ) {
     if (typeof window !== 'undefined' && process.env.NODE_ENV === 'development') {
-      console.log(`[Map Requirement] ✅ Found in metadata by camelCase for "${requirementCode}":`, metadata[camelCaseKey]);
+      console.log(
+        `[Map Requirement] ✅ Found in metadata by camelCase for "${requirementCode}":`,
+        metadata[camelCaseKey]
+      );
     }
     return metadata[camelCaseKey];
   }
 
   // Fallback 3: try direct access in applicationData (case-insensitive)
   const appDataKey = Object.keys(applicationData).find(
-    (key) => key.toUpperCase() === _code || key.toUpperCase().replace(/_/g, '') === _code.replace(/_/g, '')
+    (key) =>
+      key.toUpperCase() === _code ||
+      key.toUpperCase().replace(/_/g, '') === _code.replace(/_/g, '')
   );
-  if (appDataKey && applicationData[appDataKey] !== null && applicationData[appDataKey] !== undefined && applicationData[appDataKey] !== '') {
+  if (
+    appDataKey &&
+    applicationData[appDataKey] !== null &&
+    applicationData[appDataKey] !== undefined &&
+    applicationData[appDataKey] !== ''
+  ) {
     if (typeof window !== 'undefined' && process.env.NODE_ENV === 'development') {
-      console.log(`[Map Requirement] ✅ Found in applicationData for "${requirementCode}":`, applicationData[appDataKey]);
+      console.log(
+        `[Map Requirement] ✅ Found in applicationData for "${requirementCode}":`,
+        applicationData[appDataKey]
+      );
     }
     return applicationData[appDataKey];
   }
@@ -807,17 +946,30 @@ function mapRequirementCodeToValue(
   const partialMatch = Object.keys(metadata).find(
     (key) => key.toUpperCase().includes(_code) || _code.includes(key.toUpperCase())
   );
-  if (partialMatch && metadata[partialMatch] !== null && metadata[partialMatch] !== undefined && metadata[partialMatch] !== '') {
+  if (
+    partialMatch &&
+    metadata[partialMatch] !== null &&
+    metadata[partialMatch] !== undefined &&
+    metadata[partialMatch] !== ''
+  ) {
     if (typeof window !== 'undefined' && process.env.NODE_ENV === 'development') {
-      console.log(`[Map Requirement] ✅ Found in metadata by partial match for "${requirementCode}":`, metadata[partialMatch]);
+      console.log(
+        `[Map Requirement] ✅ Found in metadata by partial match for "${requirementCode}":`,
+        metadata[partialMatch]
+      );
     }
     return metadata[partialMatch];
   }
 
   if (typeof window !== 'undefined' && process.env.NODE_ENV === 'development') {
-    console.warn(`[Map Requirement] ❌ No value found for requirement code: "${requirementCode}" (normalized: "${_code}")`);
+    console.warn(
+      `[Map Requirement] ❌ No value found for requirement code: "${requirementCode}" (normalized: "${_code}")`
+    );
     console.warn(`[Map Requirement] Available metadata keys:`, Object.keys(metadata));
-    console.warn(`[Map Requirement] Available applicationData keys:`, Object.keys(applicationData).slice(0, 30));
+    console.warn(
+      `[Map Requirement] Available applicationData keys:`,
+      Object.keys(applicationData).slice(0, 30)
+    );
   }
 
   return '';

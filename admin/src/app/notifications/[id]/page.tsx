@@ -1,12 +1,6 @@
 'use client';
 
-import {
-  Box,
-  VStack,
-  HStack,
-  Flex,
-  Spinner,
-} from '@chakra-ui/react';
+import { Box, VStack, HStack, Flex, Spinner } from '@chakra-ui/react';
 import {
   Typography,
   Button,
@@ -22,7 +16,17 @@ import { useState, useEffect, use } from 'react';
 import { useRouter } from 'next/navigation';
 import AdminSidebar from '../../../components/AdminSidebar';
 import { useSidebar } from '../../../contexts/SidebarContext';
-import { FiBell, FiMail, FiZap, FiClock, FiUsers, FiFileText, FiArrowLeft, FiSave, FiMessageSquare } from 'react-icons/fi';
+import {
+  FiBell,
+  FiMail,
+  FiZap,
+  FiClock,
+  FiUsers,
+  FiFileText,
+  FiArrowLeft,
+  FiSave,
+  FiMessageSquare,
+} from 'react-icons/fi';
 
 interface Notification {
   id: string;
@@ -99,7 +103,11 @@ const mockNotifications: Notification[] = [
   },
 ];
 
-export default function NotificationDetailPage({ params }: { params: Promise<{ id: string }> }) {
+export default function NotificationDetailPage({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}) {
   const { condensed } = useSidebar();
   const router = useRouter();
   const resolvedParams = use(params);
@@ -113,7 +121,7 @@ export default function NotificationDetailPage({ params }: { params: Promise<{ i
   useEffect(() => {
     // Simulate API call
     setTimeout(() => {
-      const found = mockNotifications.find(n => n.id === notificationId);
+      const found = mockNotifications.find((n) => n.id === notificationId);
       setNotification(found || null);
       setEditedNotification(found || null);
       setLoading(false);
@@ -122,19 +130,27 @@ export default function NotificationDetailPage({ params }: { params: Promise<{ i
 
   const getTypeIcon = (type: string) => {
     switch (type) {
-      case 'EMAIL': return <FiMail size={20} />;
-      case 'SYSTEM': return <FiBell size={20} />;
-      case 'SMS': return <FiMessageSquare size={20} />;
-      default: return <FiBell size={20} />;
+      case 'EMAIL':
+        return <FiMail size={20} />;
+      case 'SYSTEM':
+        return <FiBell size={20} />;
+      case 'SMS':
+        return <FiMessageSquare size={20} />;
+      default:
+        return <FiBell size={20} />;
     }
   };
 
   const getTypeColor = (type: string) => {
     switch (type) {
-      case 'EMAIL': return { bg: '#DBEAFE', color: '#2563EB' };
-      case 'SYSTEM': return { bg: '#D1FAE5', color: '#059669' };
-      case 'SMS': return { bg: '#FEF3C7', color: '#D97706' };
-      default: return { bg: '#E5E7EB', color: '#6B7280' };
+      case 'EMAIL':
+        return { bg: '#DBEAFE', color: '#2563EB' };
+      case 'SYSTEM':
+        return { bg: '#D1FAE5', color: '#059669' };
+      case 'SMS':
+        return { bg: '#FEF3C7', color: '#D97706' };
+      default:
+        return { bg: '#E5E7EB', color: '#6B7280' };
     }
   };
 
@@ -172,7 +188,9 @@ export default function NotificationDetailPage({ params }: { params: Promise<{ i
           <Flex justify="center" align="center" h="100vh">
             <VStack gap="16px">
               <Spinner size="lg" color="orange.500" />
-              <Typography color="#64748B" fontSize="14px">Loading notification...</Typography>
+              <Typography color="#64748B" fontSize="14px">
+                Loading notification...
+              </Typography>
             </VStack>
           </Flex>
         </Box>
@@ -224,11 +242,11 @@ export default function NotificationDetailPage({ params }: { params: Promise<{ i
         transition="margin-left 0.3s ease"
       >
         {/* Page Header */}
-        <Box 
-          px="32px" 
-          py="24px" 
-          bg="white" 
-          borderBottom="1px solid" 
+        <Box
+          px="32px"
+          py="24px"
+          bg="white"
+          borderBottom="1px solid"
           borderColor="#E2E8F0"
           position="sticky"
           top="0"
@@ -248,18 +266,17 @@ export default function NotificationDetailPage({ params }: { params: Promise<{ i
               >
                 <FiArrowLeft size={18} color="#64748B" />
               </Box>
-              <Box 
-                p="12px" 
-                bg={typeColors.bg}
-                borderRadius="12px"
-              >
-                <Box color={typeColors.color}>
-                  {getTypeIcon(notification.type)}
-                </Box>
+              <Box p="12px" bg={typeColors.bg} borderRadius="12px">
+                <Box color={typeColors.color}>{getTypeIcon(notification.type)}</Box>
               </Box>
               <VStack align="start" gap="2px">
                 <HStack gap="8px">
-                  <Typography fontSize="24px" fontWeight="700" color="#1E293B" lineHeight="1.2">
+                  <Typography
+                    fontSize="24px"
+                    fontWeight="700"
+                    color="#1E293B"
+                    lineHeight="1.2"
+                  >
                     {notification.name}
                   </Typography>
                   <Tag variant={notification.isActive ? 'success' : 'inactive'}>
@@ -290,7 +307,11 @@ export default function NotificationDetailPage({ params }: { params: Promise<{ i
                 </>
               ) : (
                 <>
-                  <Button variant="secondary" size="sm" onClick={() => setIsEditing(true)}>
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    onClick={() => setIsEditing(true)}
+                  >
                     <IconWrapper>
                       <EditIcon width="14" height="14" />
                     </IconWrapper>
@@ -328,14 +349,21 @@ export default function NotificationDetailPage({ params }: { params: Promise<{ i
                   </Box>
                   <Flex>
                     <Box flex="1" p="20px" borderRight="1px solid #F1F5F9">
-                      <Typography fontSize="11px" color="#94A3B8" mb="8px" fontWeight="600" textTransform="uppercase" letterSpacing="0.5px">
+                      <Typography
+                        fontSize="11px"
+                        color="#94A3B8"
+                        mb="8px"
+                        fontWeight="600"
+                        textTransform="uppercase"
+                        letterSpacing="0.5px"
+                      >
                         Type
                       </Typography>
-                      <Box 
+                      <Box
                         display="inline-block"
-                        px="12px" 
-                        py="6px" 
-                        bg="#DBEAFE" 
+                        px="12px"
+                        py="6px"
+                        bg="#DBEAFE"
                         borderRadius="6px"
                       >
                         <Typography fontSize="13px" fontWeight="600" color="#2563EB">
@@ -344,32 +372,58 @@ export default function NotificationDetailPage({ params }: { params: Promise<{ i
                       </Box>
                     </Box>
                     <Box flex="1" p="20px" borderRight="1px solid #F1F5F9">
-                      <Typography fontSize="11px" color="#94A3B8" mb="8px" fontWeight="600" textTransform="uppercase" letterSpacing="0.5px">
+                      <Typography
+                        fontSize="11px"
+                        color="#94A3B8"
+                        mb="8px"
+                        fontWeight="600"
+                        textTransform="uppercase"
+                        letterSpacing="0.5px"
+                      >
                         Frequency
                       </Typography>
-                      <Box 
+                      <Box
                         display="inline-block"
-                        px="12px" 
-                        py="6px" 
-                        bg={notification.frequency === 'IMMEDIATE' ? '#FEE2E2' : notification.frequency === 'DAILY' ? '#FEF3C7' : '#E0E7FF'}
+                        px="12px"
+                        py="6px"
+                        bg={
+                          notification.frequency === 'IMMEDIATE'
+                            ? '#FEE2E2'
+                            : notification.frequency === 'DAILY'
+                              ? '#FEF3C7'
+                              : '#E0E7FF'
+                        }
                         borderRadius="6px"
                       >
-                        <Typography 
-                          fontSize="13px" 
-                          fontWeight="600" 
-                          color={notification.frequency === 'IMMEDIATE' ? '#DC2626' : notification.frequency === 'DAILY' ? '#D97706' : '#4F46E5'}
+                        <Typography
+                          fontSize="13px"
+                          fontWeight="600"
+                          color={
+                            notification.frequency === 'IMMEDIATE'
+                              ? '#DC2626'
+                              : notification.frequency === 'DAILY'
+                                ? '#D97706'
+                                : '#4F46E5'
+                          }
                         >
                           {notification.frequency}
                         </Typography>
                       </Box>
                     </Box>
                     <Box flex="1" p="20px">
-                      <Typography fontSize="11px" color="#94A3B8" mb="8px" fontWeight="600" textTransform="uppercase" letterSpacing="0.5px">
+                      <Typography
+                        fontSize="11px"
+                        color="#94A3B8"
+                        mb="8px"
+                        fontWeight="600"
+                        textTransform="uppercase"
+                        letterSpacing="0.5px"
+                      >
                         Last Sent
                       </Typography>
                       <Typography fontSize="14px" color="#1E293B" fontWeight="500">
-                        {notification.lastSent 
-                          ? new Date(notification.lastSent).toLocaleDateString() 
+                        {notification.lastSent
+                          ? new Date(notification.lastSent).toLocaleDateString()
                           : 'Never'}
                       </Typography>
                     </Box>
@@ -383,7 +437,12 @@ export default function NotificationDetailPage({ params }: { params: Promise<{ i
                   border="1px solid #E2E8F0"
                   overflow="hidden"
                 >
-                  <Flex p="20px" borderBottom="1px solid #F1F5F9" align="center" gap="12px">
+                  <Flex
+                    p="20px"
+                    borderBottom="1px solid #F1F5F9"
+                    align="center"
+                    gap="12px"
+                  >
                     <Box p="10px" borderRadius="10px" bg="#FEF3C7">
                       <FiZap size={18} color="#D97706" />
                     </Box>
@@ -392,7 +451,12 @@ export default function NotificationDetailPage({ params }: { params: Promise<{ i
                     </Typography>
                   </Flex>
                   <Box p="20px">
-                    <Box p="16px" bg="#F8FAFC" borderRadius="10px" border="1px solid #E2E8F0">
+                    <Box
+                      p="16px"
+                      bg="#F8FAFC"
+                      borderRadius="10px"
+                      border="1px solid #E2E8F0"
+                    >
                       <Typography fontSize="14px" color="#1E293B" lineHeight="1.7">
                         {notification.trigger}
                       </Typography>
@@ -407,7 +471,12 @@ export default function NotificationDetailPage({ params }: { params: Promise<{ i
                   border="1px solid #E2E8F0"
                   overflow="hidden"
                 >
-                  <Flex p="20px" borderBottom="1px solid #F1F5F9" align="center" gap="12px">
+                  <Flex
+                    p="20px"
+                    borderBottom="1px solid #F1F5F9"
+                    align="center"
+                    gap="12px"
+                  >
                     <Box p="10px" borderRadius="10px" bg="#DBEAFE">
                       <FiMail size={18} color="#2563EB" />
                     </Box>
@@ -416,8 +485,19 @@ export default function NotificationDetailPage({ params }: { params: Promise<{ i
                     </Typography>
                   </Flex>
                   <Box p="20px">
-                    <Box p="16px" bg="#F1F5F9" borderRadius="10px" border="1px solid #E2E8F0">
-                      <Typography fontSize="13px" color="#475569" fontFamily="mono" whiteSpace="pre-wrap" lineHeight="1.6">
+                    <Box
+                      p="16px"
+                      bg="#F1F5F9"
+                      borderRadius="10px"
+                      border="1px solid #E2E8F0"
+                    >
+                      <Typography
+                        fontSize="13px"
+                        color="#475569"
+                        fontFamily="mono"
+                        whiteSpace="pre-wrap"
+                        lineHeight="1.6"
+                      >
                         {notification.template}
                       </Typography>
                     </Box>
@@ -431,7 +511,12 @@ export default function NotificationDetailPage({ params }: { params: Promise<{ i
                   border="1px solid #E2E8F0"
                   overflow="hidden"
                 >
-                  <Flex p="20px" borderBottom="1px solid #F1F5F9" align="center" gap="12px">
+                  <Flex
+                    p="20px"
+                    borderBottom="1px solid #F1F5F9"
+                    align="center"
+                    gap="12px"
+                  >
                     <Box p="10px" borderRadius="10px" bg="#D1FAE5">
                       <FiUsers size={18} color="#059669" />
                     </Box>
@@ -442,11 +527,11 @@ export default function NotificationDetailPage({ params }: { params: Promise<{ i
                   <Box p="20px">
                     <VStack gap="10px" align="stretch">
                       {notification.recipients.map((recipient, index) => (
-                        <Box 
-                          key={index} 
-                          p="14px" 
-                          bg="#F8FAFC" 
-                          borderRadius="10px" 
+                        <Box
+                          key={index}
+                          p="14px"
+                          bg="#F8FAFC"
+                          borderRadius="10px"
                           border="1px solid #E2E8F0"
                         >
                           <HStack gap="10px">
@@ -528,44 +613,76 @@ export default function NotificationDetailPage({ params }: { params: Promise<{ i
                     </Typography>
                   </Box>
                   <Box p="0">
-                    <Flex justify="space-between" p="14px 16px" borderBottom="1px solid #F1F5F9">
-                      <Typography fontSize="13px" color="#64748B">ID</Typography>
-                      <Typography fontSize="12px" color="#1E293B" fontFamily="mono" fontWeight="500">
+                    <Flex
+                      justify="space-between"
+                      p="14px 16px"
+                      borderBottom="1px solid #F1F5F9"
+                    >
+                      <Typography fontSize="13px" color="#64748B">
+                        ID
+                      </Typography>
+                      <Typography
+                        fontSize="12px"
+                        color="#1E293B"
+                        fontFamily="mono"
+                        fontWeight="500"
+                      >
                         {notification.id}
                       </Typography>
                     </Flex>
-                    <Flex justify="space-between" p="14px 16px" borderBottom="1px solid #F1F5F9">
-                      <Typography fontSize="13px" color="#64748B">Type</Typography>
-                      <Box 
-                        px="8px" 
-                        py="2px" 
-                        bg="#DBEAFE" 
-                        borderRadius="4px"
-                      >
+                    <Flex
+                      justify="space-between"
+                      p="14px 16px"
+                      borderBottom="1px solid #F1F5F9"
+                    >
+                      <Typography fontSize="13px" color="#64748B">
+                        Type
+                      </Typography>
+                      <Box px="8px" py="2px" bg="#DBEAFE" borderRadius="4px">
                         <Typography fontSize="11px" fontWeight="600" color="#2563EB">
                           {notification.type}
                         </Typography>
                       </Box>
                     </Flex>
-                    <Flex justify="space-between" p="14px 16px" borderBottom="1px solid #F1F5F9">
-                      <Typography fontSize="13px" color="#64748B">Frequency</Typography>
-                      <Box 
-                        px="8px" 
-                        py="2px" 
-                        bg={notification.frequency === 'IMMEDIATE' ? '#FEE2E2' : notification.frequency === 'DAILY' ? '#FEF3C7' : '#E0E7FF'}
+                    <Flex
+                      justify="space-between"
+                      p="14px 16px"
+                      borderBottom="1px solid #F1F5F9"
+                    >
+                      <Typography fontSize="13px" color="#64748B">
+                        Frequency
+                      </Typography>
+                      <Box
+                        px="8px"
+                        py="2px"
+                        bg={
+                          notification.frequency === 'IMMEDIATE'
+                            ? '#FEE2E2'
+                            : notification.frequency === 'DAILY'
+                              ? '#FEF3C7'
+                              : '#E0E7FF'
+                        }
                         borderRadius="4px"
                       >
-                        <Typography 
-                          fontSize="11px" 
-                          fontWeight="600" 
-                          color={notification.frequency === 'IMMEDIATE' ? '#DC2626' : notification.frequency === 'DAILY' ? '#D97706' : '#4F46E5'}
+                        <Typography
+                          fontSize="11px"
+                          fontWeight="600"
+                          color={
+                            notification.frequency === 'IMMEDIATE'
+                              ? '#DC2626'
+                              : notification.frequency === 'DAILY'
+                                ? '#D97706'
+                                : '#4F46E5'
+                          }
                         >
                           {notification.frequency}
                         </Typography>
                       </Box>
                     </Flex>
                     <Flex justify="space-between" p="14px 16px">
-                      <Typography fontSize="13px" color="#64748B">Recipients</Typography>
+                      <Typography fontSize="13px" color="#64748B">
+                        Recipients
+                      </Typography>
                       <Typography fontSize="13px" color="#1E293B" fontWeight="600">
                         {notification.recipients.length}
                       </Typography>

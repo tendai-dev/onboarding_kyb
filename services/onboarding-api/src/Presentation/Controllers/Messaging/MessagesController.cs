@@ -49,6 +49,13 @@ public class MessagesController : ControllerBase
             a.Description
         ));
         
+        // Get user email for SignalR broadcasting
+        var currentUserEmail = HttpContext.Request.Headers.TryGetValue("X-User-Email", out var headerEmail)
+            ? headerEmail.ToString()
+            : User.FindFirst("email")?.Value ??
+              User.FindFirst("preferred_username")?.Value ??
+              User.FindFirst(ClaimTypes.Email)?.Value;
+
         var command = new SendMessageCommand(
             request.ApplicationId,
             currentUserId,
@@ -57,7 +64,8 @@ public class MessagesController : ControllerBase
             request.Content,
             request.ReceiverId,
             request.ReplyToMessageId,
-            attachments
+            attachments,
+            currentUserEmail
         );
         
         var result = await _mediator.Send(command);
@@ -212,6 +220,59 @@ public class MessagesController : ControllerBase
     }
     
     /// <summary>
+    /// Archive or unarchive a thread
+    /// </summary>
+    [HttpPut("threads/{threadId}/archive")]
+    [ProducesResponseType(typeof(ArchiveThreadResult), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> ArchiveThread(Guid threadId, [FromBody] ArchiveThreadRequest request)
+    {
+        var currentUserId = GetCurrentUserId();
+        
+        var command = new ArchiveThreadCommand(threadId, currentUserId, request.Archive);
+        var result = await _mediator.Send(command);
+        
+        if (!result.Success)
+            return BadRequest(new { message = result.ErrorMessage });
+        
+        return Ok(new { success = true, isArchived = result.IsArchived });
+    }
+    
+    /// <summary>
+    /// Forward a message to another application thread
+    /// </summary>
+    [HttpPost("{messageId}/forward")]
+    [ProducesResponseType(typeof(ForwardMessageResult), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> ForwardMessage(Guid messageId, [FromBody] ForwardMessageRequest request)
+    {
+        var currentUserId = GetCurrentUserId();
+        var currentUserName = GetCurrentUserName();
+        var currentUserRole = GetCurrentUserRole();
+        
+        _logger.LogInformation(
+            "User {UserId} forwarding message {MessageId} to application {ApplicationId}",
+            currentUserId, messageId, request.ToApplicationId);
+        
+        var command = new ForwardMessageCommand(
+            messageId,
+            currentUserId,
+            currentUserName,
+            currentUserRole,
+            request.ToApplicationId,
+            request.ToReceiverId,
+            request.AdditionalContent
+        );
+        
+        var result = await _mediator.Send(command);
+        
+        if (!result.Success)
+            return BadRequest(new { message = result.ErrorMessage });
+        
+        return Ok(result);
+    }
+    
+    /// <summary>
     /// Diagnostic endpoint to check user identity (for debugging)
     /// </summary>
     [HttpGet("diagnostic/identity")]
@@ -317,16 +378,52 @@ public class MessagesController : ControllerBase
     
     private string GetCurrentUserName()
     {
-        var name = User.FindFirst("name")?.Value ?? 
-                   User.FindFirst("preferred_username")?.Value;
-        
-        if (!string.IsNullOrEmpty(name))
-            return name;
-        
+        // Priority 1: Check X-User-Name header (frontend sends this)
         if (HttpContext.Request.Headers.TryGetValue("X-User-Name", out var headerName))
-            return headerName.ToString();
+        {
+            var name = headerName.ToString().Trim();
+            if (!string.IsNullOrWhiteSpace(name))
+            {
+                _logger.LogDebug("Using X-User-Name header: {Name}", name);
+                return name;
+            }
+        }
         
-        return "Unknown User";
+        // Priority 2: Try to get from JWT claims
+        var nameFromClaims = User.FindFirst("name")?.Value ?? 
+                   User.FindFirst("preferred_username")?.Value ??
+                   User.FindFirst("given_name")?.Value;
+        
+        if (!string.IsNullOrWhiteSpace(nameFromClaims))
+        {
+            _logger.LogDebug("Using name from JWT claims: {Name}", nameFromClaims);
+            return nameFromClaims;
+        }
+        
+        // Priority 3: Try to extract name from email
+        var email = User.FindFirst("email")?.Value ??
+                   User.FindFirst("preferred_username")?.Value ??
+                   User.FindFirst(ClaimTypes.Email)?.Value;
+        
+        if (!string.IsNullOrWhiteSpace(email) && email.Contains("@"))
+        {
+            // Extract name from email (e.g., "john.doe@example.com" -> "John Doe")
+            var emailParts = email.Split('@')[0];
+            var nameParts = emailParts.Split('.');
+            var formattedName = string.Join(" ", nameParts.Select(part => 
+                part.Length > 0 ? char.ToUpper(part[0]) + part.Substring(1).ToLower() : part
+            ));
+            _logger.LogDebug("Generated name from email: {Name}", formattedName);
+            return formattedName;
+        }
+        
+        // Last resort: Use role-based default
+        var role = GetCurrentUserRole();
+        var defaultName = role == UserRole.Admin || role == UserRole.ComplianceManager 
+            ? "Admin" 
+            : "Partner";
+        _logger.LogWarning("Could not determine user name, using default: {Name}", defaultName);
+        return defaultName;
     }
     
     private UserRole GetCurrentUserRole()
@@ -388,5 +485,17 @@ public record DiagnosticIdentityResponse
     public string? EmailFromHeader { get; init; }
     public string? EmailFromClaims { get; init; }
     public bool HasJwtToken { get; init; }
+}
+
+public record ArchiveThreadRequest
+{
+    public bool Archive { get; init; }
+}
+
+public record ForwardMessageRequest
+{
+    public Guid ToApplicationId { get; init; }
+    public Guid? ToReceiverId { get; init; }
+    public string? AdditionalContent { get; init; }
 }
 

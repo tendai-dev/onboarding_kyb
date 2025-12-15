@@ -42,7 +42,17 @@ export function DocumentViewer({
   }, [isOpen, documentUrl]);
 
   const isImageFile = (fileName: string): boolean => {
-    const imageExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp', '.svg', '.tiff', '.tif'];
+    const imageExtensions = [
+      '.jpg',
+      '.jpeg',
+      '.png',
+      '.gif',
+      '.bmp',
+      '.webp',
+      '.svg',
+      '.tiff',
+      '.tif',
+    ];
     const ext = fileName.toLowerCase().substring(fileName.lastIndexOf('.'));
     return imageExtensions.includes(ext);
   };
@@ -84,7 +94,7 @@ export function DocumentViewer({
         zIndex={9998}
         onClick={onClose}
       />
-      
+
       {/* Modal */}
       <Box
         position="fixed"
@@ -104,24 +114,19 @@ export function DocumentViewer({
         flexDirection="column"
       >
         {/* Header */}
-        <Box
-          p="20px 24px"
-          borderBottom="1px solid"
-          borderColor="#E9E9EA"
-          bg="#FAFBFC"
-        >
+        <Box p="20px 24px" borderBottom="1px solid" borderColor="#E9E9EA" bg="#FAFBFC">
           <Flex justify="space-between" align="flex-start" gap="16px">
             {/* File Info */}
             <VStack align="start" gap="4px" flex="1" minW="0">
-              <Typography 
-                fontSize="16px" 
-                fontWeight="600" 
+              <Typography
+                fontSize="16px"
+                fontWeight="600"
                 color="#373A36"
-                style={{ 
-                  overflow: 'hidden', 
-                  textOverflow: 'ellipsis', 
+                style={{
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
                   whiteSpace: 'nowrap',
-                  maxWidth: '100%'
+                  maxWidth: '100%',
                 }}
               >
                 {fileName}
@@ -141,7 +146,7 @@ export function DocumentViewer({
                 )}
               </HStack>
             </VStack>
-            
+
             {/* Action Buttons */}
             <HStack gap="8px" flexShrink={0}>
               {onDownload && (
@@ -153,7 +158,9 @@ export function DocumentViewer({
                 >
                   <HStack gap="6px">
                     <FiDownload size={14} />
-                    <Typography fontSize="13px" fontWeight="500" color="#373A36">Download</Typography>
+                    <Typography fontSize="13px" fontWeight="500" color="#373A36">
+                      Download
+                    </Typography>
                   </HStack>
                 </Button>
               )}
@@ -183,12 +190,21 @@ export function DocumentViewer({
             <Flex justify="center" align="center" minH="300px">
               <VStack gap="16px">
                 <Spinner size="lg" color="#F05423" />
-                <Typography fontSize="14px" color="#64748B">Loading document...</Typography>
+                <Typography fontSize="14px" color="#64748B">
+                  Loading document...
+                </Typography>
               </VStack>
             </Flex>
           ) : documentUrl ? (
             isImageFile(fileName) ? (
-              <Box p="24px" display="flex" justifyContent="center" alignItems="center" h="100%" minH="calc(92vh - 140px)">
+              <Box
+                p="24px"
+                display="flex"
+                justifyContent="center"
+                alignItems="center"
+                h="100%"
+                minH="calc(92vh - 140px)"
+              >
                 <Image
                   src={documentUrl}
                   alt={fileName}
@@ -217,7 +233,10 @@ export function DocumentViewer({
                   }}
                   title={fileName}
                   onLoad={() => setLoading(false)}
-                  onError={() => { setLoading(false); setIframeFailed(true); }}
+                  onError={() => {
+                    setLoading(false);
+                    setIframeFailed(true);
+                  }}
                 />
                 {loading && (
                   <Flex
@@ -234,7 +253,9 @@ export function DocumentViewer({
                   >
                     <VStack gap="12px">
                       <Spinner size="lg" color="#F05423" />
-                      <Typography fontSize="13px" color="#64748B">Loading PDF...</Typography>
+                      <Typography fontSize="13px" color="#64748B">
+                        Loading PDF...
+                      </Typography>
                     </VStack>
                   </Flex>
                 )}
@@ -255,33 +276,39 @@ export function DocumentViewer({
                   >
                     <FiFile size={32} color="#F05423" />
                   </Box>
-                  
+
                   {/* File Info */}
                   <VStack gap="12px" align="center">
-                    <Typography 
-                      fontSize="15px" 
-                      fontWeight="600" 
+                    <Typography
+                      fontSize="15px"
+                      fontWeight="600"
                       color="#373A36"
                       textAlign="center"
                       style={{ wordBreak: 'break-word', maxWidth: '100%' }}
                     >
                       {fileName}
                     </Typography>
-                    
+
                     {/* File type badge */}
                     <Box px="12px" py="4px" bg="#F1F5F9" borderRadius="6px">
                       <Typography fontSize="12px" fontWeight="500" color="#64748B">
-                        {fileName.substring(fileName.lastIndexOf('.') + 1).toUpperCase()} Document
+                        {fileName.substring(fileName.lastIndexOf('.') + 1).toUpperCase()}{' '}
+                        Document
                       </Typography>
                     </Box>
-                    
-                    <Typography fontSize="13px" color="#64748B" textAlign="center" lineHeight="1.6">
+
+                    <Typography
+                      fontSize="13px"
+                      color="#64748B"
+                      textAlign="center"
+                      lineHeight="1.6"
+                    >
                       This file type cannot be previewed in the browser.
                       <br />
                       Download the file to open it in the appropriate application.
                     </Typography>
                   </VStack>
-                  
+
                   {/* Download Button */}
                   <Button
                     variant="primary"
@@ -294,7 +321,9 @@ export function DocumentViewer({
                   >
                     <HStack gap="8px">
                       <FiDownload size={16} />
-                      <Typography fontSize="14px" fontWeight="500" color="white">Download File</Typography>
+                      <Typography fontSize="14px" fontWeight="500" color="white">
+                        Download File
+                      </Typography>
                     </HStack>
                   </Button>
                 </VStack>
@@ -302,7 +331,9 @@ export function DocumentViewer({
             )
           ) : (
             <Flex justify="center" align="center" minH="300px">
-              <Typography fontSize="14px" color="#64748B">Document not available</Typography>
+              <Typography fontSize="14px" color="#64748B">
+                Document not available
+              </Typography>
             </Flex>
           )}
         </Box>

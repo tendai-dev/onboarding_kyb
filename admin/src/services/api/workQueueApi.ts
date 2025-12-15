@@ -40,7 +40,7 @@ export async function getWorkItems(
   }
 
   const url = `${API_BASE_URL}/api/workqueue?${params.toString()}`;
-  
+
   if (process.env.NODE_ENV === 'development') {
     console.log('[WorkQueue API] Fetching work items:', { url, filters });
   }
@@ -89,12 +89,16 @@ export async function getWorkItems(
   const items = (data.Items || data.items || data.data || []).map((item: any) => ({
     id: item.id || item.Id || item.work_item_id,
     workItemId: item.id || item.Id || item.workItemId || item.work_item_id, // Backend returns 'id' as the work item ID
-    workItemNumber: item.workItemNumber || item.work_item_number || item.WorkItemNumber || '',
+    workItemNumber:
+      item.workItemNumber || item.work_item_number || item.WorkItemNumber || '',
     applicationId: item.applicationId || item.application_id || item.ApplicationId,
     applicantName: item.applicantName || item.applicant_name || item.ApplicantName || '',
     businessName: item.businessName || item.business_name || item.BusinessName,
     entityType: item.entityType || item.entity_type || item.EntityType || '',
-    entityTypeDisplayName: item.entityTypeDisplayName || item.entity_type_display_name || item.EntityTypeDisplayName,
+    entityTypeDisplayName:
+      item.entityTypeDisplayName ||
+      item.entity_type_display_name ||
+      item.EntityTypeDisplayName,
     country: item.country || item.Country || '',
     status: item.status || item.Status || '',
     priority: item.priority || item.Priority || '',
@@ -102,15 +106,19 @@ export async function getWorkItems(
     assignedTo: item.assignedTo || item.assigned_to || item.AssignedTo,
     assignedToName: item.assignedToName || item.assigned_to_name || item.AssignedToName,
     assignedAt: item.assignedAt || item.assigned_at || item.AssignedAt,
-    requiresApproval: item.requiresApproval ?? item.requires_approval ?? item.RequiresApproval ?? false,
+    requiresApproval:
+      item.requiresApproval ?? item.requires_approval ?? item.RequiresApproval ?? false,
     approvedBy: item.approvedBy || item.approved_by || item.ApprovedBy,
     approvedByName: item.approvedByName || item.approved_by_name || item.ApprovedByName,
     approvedAt: item.approvedAt || item.approved_at || item.ApprovedAt,
     approvalNotes: item.approvalNotes || item.approval_notes || item.ApprovalNotes,
-    rejectionReason: item.rejectionReason || item.rejection_reason || item.RejectionReason,
+    rejectionReason:
+      item.rejectionReason || item.rejection_reason || item.RejectionReason,
     rejectedAt: item.rejectedAt || item.rejected_at || item.RejectedAt,
-    nextRefreshDate: item.nextRefreshDate || item.next_refresh_date || item.NextRefreshDate,
-    lastRefreshedAt: item.lastRefreshedAt || item.last_refreshed_at || item.LastRefreshedAt,
+    nextRefreshDate:
+      item.nextRefreshDate || item.next_refresh_date || item.NextRefreshDate,
+    lastRefreshedAt:
+      item.lastRefreshedAt || item.last_refreshed_at || item.LastRefreshedAt,
     refreshCount: item.refreshCount ?? item.refresh_count ?? item.RefreshCount ?? 0,
     dueDate: item.dueDate || item.due_date || item.DueDate,
     isOverdue: item.isOverdue ?? item.is_overdue ?? item.IsOverdue ?? false,
@@ -166,41 +174,68 @@ export async function getWorkItemById(id: string): Promise<WorkItemDto> {
   }
 
   const data = await response.json();
-  
+
   // Handle both direct DTO response and wrapped response
   let workItem = data;
   if (data.workItem || data.item) {
     workItem = data.workItem || data.item;
   }
-  
+
   // Backend returns snake_case, map to camelCase for frontend
   if (workItem && (workItem.id || workItem.workItemId || workItem.application_id)) {
     return {
       id: workItem.id || workItem.Id || workItem.work_item_id,
-      workItemId: workItem.id || workItem.Id || workItem.workItemId || workItem.work_item_id,
-      workItemNumber: workItem.workItemNumber || workItem.work_item_number || workItem.WorkItemNumber || '',
-      applicationId: workItem.applicationId || workItem.application_id || workItem.ApplicationId,
-      applicantName: workItem.applicantName || workItem.applicant_name || workItem.ApplicantName || '',
-      businessName: workItem.businessName || workItem.business_name || workItem.BusinessName,
-      entityType: workItem.entityType || workItem.entity_type || workItem.EntityType || '',
-      entityTypeDisplayName: workItem.entityTypeDisplayName || workItem.entity_type_display_name || workItem.EntityTypeDisplayName,
+      workItemId:
+        workItem.id || workItem.Id || workItem.workItemId || workItem.work_item_id,
+      workItemNumber:
+        workItem.workItemNumber ||
+        workItem.work_item_number ||
+        workItem.WorkItemNumber ||
+        '',
+      applicationId:
+        workItem.applicationId || workItem.application_id || workItem.ApplicationId,
+      applicantName:
+        workItem.applicantName || workItem.applicant_name || workItem.ApplicantName || '',
+      businessName:
+        workItem.businessName || workItem.business_name || workItem.BusinessName,
+      entityType:
+        workItem.entityType || workItem.entity_type || workItem.EntityType || '',
+      entityTypeDisplayName:
+        workItem.entityTypeDisplayName ||
+        workItem.entity_type_display_name ||
+        workItem.EntityTypeDisplayName,
       country: workItem.country || workItem.Country || '',
       status: workItem.status || workItem.Status || '',
       priority: workItem.priority || workItem.Priority || '',
       riskLevel: workItem.riskLevel || workItem.risk_level || workItem.RiskLevel || '',
       assignedTo: workItem.assignedTo || workItem.assigned_to || workItem.AssignedTo,
-      assignedToName: workItem.assignedToName || workItem.assigned_to_name || workItem.AssignedToName,
+      assignedToName:
+        workItem.assignedToName || workItem.assigned_to_name || workItem.AssignedToName,
       assignedAt: workItem.assignedAt || workItem.assigned_at || workItem.AssignedAt,
-      requiresApproval: workItem.requiresApproval ?? workItem.requires_approval ?? workItem.RequiresApproval ?? false,
+      requiresApproval:
+        workItem.requiresApproval ??
+        workItem.requires_approval ??
+        workItem.RequiresApproval ??
+        false,
       approvedBy: workItem.approvedBy || workItem.approved_by || workItem.ApprovedBy,
-      approvedByName: workItem.approvedByName || workItem.approved_by_name || workItem.ApprovedByName,
+      approvedByName:
+        workItem.approvedByName || workItem.approved_by_name || workItem.ApprovedByName,
       approvedAt: workItem.approvedAt || workItem.approved_at || workItem.ApprovedAt,
-      approvalNotes: workItem.approvalNotes || workItem.approval_notes || workItem.ApprovalNotes,
-      rejectionReason: workItem.rejectionReason || workItem.rejection_reason || workItem.RejectionReason,
+      approvalNotes:
+        workItem.approvalNotes || workItem.approval_notes || workItem.ApprovalNotes,
+      rejectionReason:
+        workItem.rejectionReason || workItem.rejection_reason || workItem.RejectionReason,
       rejectedAt: workItem.rejectedAt || workItem.rejected_at || workItem.RejectedAt,
-      nextRefreshDate: workItem.nextRefreshDate || workItem.next_refresh_date || workItem.NextRefreshDate,
-      lastRefreshedAt: workItem.lastRefreshedAt || workItem.last_refreshed_at || workItem.LastRefreshedAt,
-      refreshCount: workItem.refreshCount ?? workItem.refresh_count ?? workItem.RefreshCount ?? 0,
+      nextRefreshDate:
+        workItem.nextRefreshDate ||
+        workItem.next_refresh_date ||
+        workItem.NextRefreshDate,
+      lastRefreshedAt:
+        workItem.lastRefreshedAt ||
+        workItem.last_refreshed_at ||
+        workItem.LastRefreshedAt,
+      refreshCount:
+        workItem.refreshCount ?? workItem.refresh_count ?? workItem.RefreshCount ?? 0,
       dueDate: workItem.dueDate || workItem.due_date || workItem.DueDate,
       isOverdue: workItem.isOverdue ?? workItem.is_overdue ?? workItem.IsOverdue ?? false,
       createdAt: workItem.createdAt || workItem.created_at || workItem.CreatedAt,
@@ -209,25 +244,30 @@ export async function getWorkItemById(id: string): Promise<WorkItemDto> {
       updatedBy: workItem.updatedBy || workItem.updated_by || workItem.UpdatedBy,
     };
   }
-  
+
   throw new Error('Invalid work item response format');
 }
 
 /**
  * Get work item by application ID
  */
-export async function getWorkItemByApplicationId(applicationId: string): Promise<WorkItemDto> {
+export async function getWorkItemByApplicationId(
+  applicationId: string
+): Promise<WorkItemDto> {
   if (!applicationId) {
     throw new Error('Application ID is required');
   }
 
-  const response = await fetch(`${API_BASE_URL}/api/workqueue/by-application/${applicationId}`, {
-    method: 'GET',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    cache: 'no-store',
-  });
+  const response = await fetch(
+    `${API_BASE_URL}/api/workqueue/by-application/${applicationId}`,
+    {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      cache: 'no-store',
+    }
+  );
 
   if (!response.ok) {
     let errorMessage = `Failed to fetch work item by application ID: ${response.status} ${response.statusText}`;
@@ -249,41 +289,68 @@ export async function getWorkItemByApplicationId(applicationId: string): Promise
   }
 
   const data = await response.json();
-  
+
   // Handle both direct DTO response and wrapped response
   let workItem = data;
   if (data.workItem || data.item) {
     workItem = data.workItem || data.item;
   }
-  
+
   // Backend returns snake_case, map to camelCase for frontend
   if (workItem && (workItem.id || workItem.workItemId || workItem.application_id)) {
     return {
       id: workItem.id || workItem.Id || workItem.work_item_id,
-      workItemId: workItem.id || workItem.Id || workItem.workItemId || workItem.work_item_id,
-      workItemNumber: workItem.workItemNumber || workItem.work_item_number || workItem.WorkItemNumber || '',
-      applicationId: workItem.applicationId || workItem.application_id || workItem.ApplicationId,
-      applicantName: workItem.applicantName || workItem.applicant_name || workItem.ApplicantName || '',
-      businessName: workItem.businessName || workItem.business_name || workItem.BusinessName,
-      entityType: workItem.entityType || workItem.entity_type || workItem.EntityType || '',
-      entityTypeDisplayName: workItem.entityTypeDisplayName || workItem.entity_type_display_name || workItem.EntityTypeDisplayName,
+      workItemId:
+        workItem.id || workItem.Id || workItem.workItemId || workItem.work_item_id,
+      workItemNumber:
+        workItem.workItemNumber ||
+        workItem.work_item_number ||
+        workItem.WorkItemNumber ||
+        '',
+      applicationId:
+        workItem.applicationId || workItem.application_id || workItem.ApplicationId,
+      applicantName:
+        workItem.applicantName || workItem.applicant_name || workItem.ApplicantName || '',
+      businessName:
+        workItem.businessName || workItem.business_name || workItem.BusinessName,
+      entityType:
+        workItem.entityType || workItem.entity_type || workItem.EntityType || '',
+      entityTypeDisplayName:
+        workItem.entityTypeDisplayName ||
+        workItem.entity_type_display_name ||
+        workItem.EntityTypeDisplayName,
       country: workItem.country || workItem.Country || '',
       status: workItem.status || workItem.Status || '',
       priority: workItem.priority || workItem.Priority || '',
       riskLevel: workItem.riskLevel || workItem.risk_level || workItem.RiskLevel || '',
       assignedTo: workItem.assignedTo || workItem.assigned_to || workItem.AssignedTo,
-      assignedToName: workItem.assignedToName || workItem.assigned_to_name || workItem.AssignedToName,
+      assignedToName:
+        workItem.assignedToName || workItem.assigned_to_name || workItem.AssignedToName,
       assignedAt: workItem.assignedAt || workItem.assigned_at || workItem.AssignedAt,
-      requiresApproval: workItem.requiresApproval ?? workItem.requires_approval ?? workItem.RequiresApproval ?? false,
+      requiresApproval:
+        workItem.requiresApproval ??
+        workItem.requires_approval ??
+        workItem.RequiresApproval ??
+        false,
       approvedBy: workItem.approvedBy || workItem.approved_by || workItem.ApprovedBy,
-      approvedByName: workItem.approvedByName || workItem.approved_by_name || workItem.ApprovedByName,
+      approvedByName:
+        workItem.approvedByName || workItem.approved_by_name || workItem.ApprovedByName,
       approvedAt: workItem.approvedAt || workItem.approved_at || workItem.ApprovedAt,
-      approvalNotes: workItem.approvalNotes || workItem.approval_notes || workItem.ApprovalNotes,
-      rejectionReason: workItem.rejectionReason || workItem.rejection_reason || workItem.RejectionReason,
+      approvalNotes:
+        workItem.approvalNotes || workItem.approval_notes || workItem.ApprovalNotes,
+      rejectionReason:
+        workItem.rejectionReason || workItem.rejection_reason || workItem.RejectionReason,
       rejectedAt: workItem.rejectedAt || workItem.rejected_at || workItem.RejectedAt,
-      nextRefreshDate: workItem.nextRefreshDate || workItem.next_refresh_date || workItem.NextRefreshDate,
-      lastRefreshedAt: workItem.lastRefreshedAt || workItem.last_refreshed_at || workItem.LastRefreshedAt,
-      refreshCount: workItem.refreshCount ?? workItem.refresh_count ?? workItem.RefreshCount ?? 0,
+      nextRefreshDate:
+        workItem.nextRefreshDate ||
+        workItem.next_refresh_date ||
+        workItem.NextRefreshDate,
+      lastRefreshedAt:
+        workItem.lastRefreshedAt ||
+        workItem.last_refreshed_at ||
+        workItem.LastRefreshedAt,
+      refreshCount:
+        workItem.refreshCount ?? workItem.refresh_count ?? workItem.RefreshCount ?? 0,
       dueDate: workItem.dueDate || workItem.due_date || workItem.DueDate,
       isOverdue: workItem.isOverdue ?? workItem.is_overdue ?? workItem.IsOverdue ?? false,
       createdAt: workItem.createdAt || workItem.created_at || workItem.CreatedAt,
@@ -292,7 +359,7 @@ export async function getWorkItemByApplicationId(applicationId: string): Promise
       updatedBy: workItem.updatedBy || workItem.updated_by || workItem.UpdatedBy,
     };
   }
-  
+
   throw new Error('Invalid work item response format');
 }
 
@@ -308,13 +375,16 @@ export async function getMyWorkItems(
     pageSize: pageSize.toString(),
   });
 
-  const response = await fetch(`${API_BASE_URL}/api/workqueue/my-items?${params.toString()}`, {
-    method: 'GET',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    cache: 'no-store',
-  });
+  const response = await fetch(
+    `${API_BASE_URL}/api/workqueue/my-items?${params.toString()}`,
+    {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      cache: 'no-store',
+    }
+  );
 
   if (!response.ok) {
     throw new Error(
@@ -328,12 +398,16 @@ export async function getMyWorkItems(
   const items = (data.Items || data.items || data.data || []).map((item: any) => ({
     id: item.id || item.Id,
     workItemId: item.workItemId || item.work_item_id || item.Id,
-    workItemNumber: item.workItemNumber || item.work_item_number || item.WorkItemNumber || '',
+    workItemNumber:
+      item.workItemNumber || item.work_item_number || item.WorkItemNumber || '',
     applicationId: item.applicationId || item.application_id || item.ApplicationId,
     applicantName: item.applicantName || item.applicant_name || item.ApplicantName || '',
     businessName: item.businessName || item.business_name || item.BusinessName,
     entityType: item.entityType || item.entity_type || item.EntityType || '',
-    entityTypeDisplayName: item.entityTypeDisplayName || item.entity_type_display_name || item.EntityTypeDisplayName,
+    entityTypeDisplayName:
+      item.entityTypeDisplayName ||
+      item.entity_type_display_name ||
+      item.EntityTypeDisplayName,
     country: item.country || item.Country || '',
     status: item.status || item.Status || '',
     priority: item.priority || item.Priority || '',
@@ -341,15 +415,19 @@ export async function getMyWorkItems(
     assignedTo: item.assignedTo || item.assigned_to || item.AssignedTo,
     assignedToName: item.assignedToName || item.assigned_to_name || item.AssignedToName,
     assignedAt: item.assignedAt || item.assigned_at || item.AssignedAt,
-    requiresApproval: item.requiresApproval ?? item.requires_approval ?? item.RequiresApproval ?? false,
+    requiresApproval:
+      item.requiresApproval ?? item.requires_approval ?? item.RequiresApproval ?? false,
     approvedBy: item.approvedBy || item.approved_by || item.ApprovedBy,
     approvedByName: item.approvedByName || item.approved_by_name || item.ApprovedByName,
     approvedAt: item.approvedAt || item.approved_at || item.ApprovedAt,
     approvalNotes: item.approvalNotes || item.approval_notes || item.ApprovalNotes,
-    rejectionReason: item.rejectionReason || item.rejection_reason || item.RejectionReason,
+    rejectionReason:
+      item.rejectionReason || item.rejection_reason || item.RejectionReason,
     rejectedAt: item.rejectedAt || item.rejected_at || item.RejectedAt,
-    nextRefreshDate: item.nextRefreshDate || item.next_refresh_date || item.NextRefreshDate,
-    lastRefreshedAt: item.lastRefreshedAt || item.last_refreshed_at || item.LastRefreshedAt,
+    nextRefreshDate:
+      item.nextRefreshDate || item.next_refresh_date || item.NextRefreshDate,
+    lastRefreshedAt:
+      item.lastRefreshedAt || item.last_refreshed_at || item.LastRefreshedAt,
     refreshCount: item.refreshCount ?? item.refresh_count ?? item.RefreshCount ?? 0,
     dueDate: item.dueDate || item.due_date || item.DueDate,
     isOverdue: item.isOverdue ?? item.is_overdue ?? item.IsOverdue ?? false,
@@ -371,12 +449,15 @@ export async function getMyWorkItems(
  * Start review for a work item
  */
 export async function startReview(workItemId: string): Promise<void> {
-  const response = await fetch(`${API_BASE_URL}/api/workqueue/${workItemId}/start-review`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-  });
+  const response = await fetch(
+    `${API_BASE_URL}/api/workqueue/${workItemId}/start-review`,
+    {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    }
+  );
 
   if (!response.ok) {
     const error = await response.json().catch(() => ({ message: 'Unknown error' }));
@@ -391,13 +472,16 @@ export async function submitForApproval(
   workItemId: string,
   notes?: string
 ): Promise<void> {
-  const response = await fetch(`${API_BASE_URL}/api/workqueue/${workItemId}/submit-for-approval`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({ notes }),
-  });
+  const response = await fetch(
+    `${API_BASE_URL}/api/workqueue/${workItemId}/submit-for-approval`,
+    {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ notes }),
+    }
+  );
 
   if (!response.ok) {
     const error = await response.json().catch(() => ({ message: 'Unknown error' }));
@@ -408,10 +492,7 @@ export async function submitForApproval(
 /**
  * Approve work item
  */
-export async function approveWorkItem(
-  workItemId: string,
-  notes?: string
-): Promise<void> {
+export async function approveWorkItem(workItemId: string, notes?: string): Promise<void> {
   const response = await fetch(`${API_BASE_URL}/api/workqueue/${workItemId}/approve`, {
     method: 'POST',
     headers: {
@@ -450,10 +531,7 @@ export async function completeWorkItem(
 /**
  * Decline work item
  */
-export async function declineWorkItem(
-  workItemId: string,
-  reason: string
-): Promise<void> {
+export async function declineWorkItem(workItemId: string, reason: string): Promise<void> {
   const response = await fetch(`${API_BASE_URL}/api/workqueue/${workItemId}/decline`, {
     method: 'POST',
     headers: {
@@ -478,21 +556,23 @@ export async function assignWorkItem(
 ): Promise<void> {
   // Ensure userId is a valid GUID format (backend expects Guid type)
   // If userId is not a GUID, try to convert email to GUID or use a default
-  let validUserId = userId;
-  
+  const validUserId = userId;
+
   // Check if userId is already a valid GUID
   const guidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
   if (!guidRegex.test(userId)) {
     // If not a GUID, try to generate one from the string (for backward compatibility)
     // In production, user IDs should always be GUIDs
-    console.warn(`User ID "${userId}" is not a valid GUID format. Attempting to use as-is.`);
+    console.warn(
+      `User ID "${userId}" is not a valid GUID format. Attempting to use as-is.`
+    );
   }
 
   // Backend uses SnakeCaseLower for JSON serialization (see Program.cs)
   // Send snake_case to match the backend JSON naming policy
-  const requestBody = { 
+  const requestBody = {
     assigned_to_user_id: validUserId,
-    assigned_to_user_name: userName
+    assigned_to_user_name: userName,
   };
 
   console.log('[WorkQueue API] Assign request:', {
@@ -514,7 +594,7 @@ export async function assignWorkItem(
   if (!response.ok) {
     let errorMessage = 'Unknown error';
     let errorDetails: any = null;
-    
+
     try {
       const responseText = await response.text();
       console.error('[WorkQueue API] Error response:', {
@@ -522,17 +602,29 @@ export async function assignWorkItem(
         statusText: response.statusText,
         body: responseText,
       });
-      
+
       try {
         errorDetails = JSON.parse(responseText);
         // Extract detailed error information
         if (errorDetails.errors) {
           const errorMessages = Object.entries(errorDetails.errors)
-            .map(([key, value]: [string, any]) => `${key}: ${Array.isArray(value) ? value.join(', ') : value}`)
+            .map(
+              ([key, value]: [string, any]) =>
+                `${key}: ${Array.isArray(value) ? value.join(', ') : value}`
+            )
             .join('; ');
-          errorMessage = errorMessages || errorDetails.message || errorDetails.error || errorDetails.title || `HTTP ${response.status}`;
+          errorMessage =
+            errorMessages ||
+            errorDetails.message ||
+            errorDetails.error ||
+            errorDetails.title ||
+            `HTTP ${response.status}`;
         } else {
-          errorMessage = errorDetails.message || errorDetails.error || errorDetails.title || `HTTP ${response.status}: ${response.statusText}`;
+          errorMessage =
+            errorDetails.message ||
+            errorDetails.error ||
+            errorDetails.title ||
+            `HTTP ${response.status}: ${response.statusText}`;
         }
       } catch {
         // If not JSON, use the text as error message
@@ -542,7 +634,7 @@ export async function assignWorkItem(
       console.error('[WorkQueue API] Failed to parse error response:', e);
       errorMessage = `HTTP ${response.status}: ${response.statusText}`;
     }
-    
+
     throw new Error(errorMessage);
   }
 }
@@ -592,13 +684,15 @@ export async function addComment(
 /**
  * Get comments for work item
  */
-export async function getComments(workItemId: string): Promise<Array<{
-  id: string;
-  text: string;
-  authorId: string;
-  authorName: string;
-  createdAt: string;
-}>> {
+export async function getComments(workItemId: string): Promise<
+  Array<{
+    id: string;
+    text: string;
+    authorId: string;
+    authorName: string;
+    createdAt: string;
+  }>
+> {
   const response = await fetch(`${API_BASE_URL}/api/workqueue/${workItemId}/comments`, {
     method: 'GET',
     headers: {
@@ -620,13 +714,15 @@ export async function getComments(workItemId: string): Promise<Array<{
 /**
  * Get history for work item
  */
-export async function getHistory(workItemId: string): Promise<Array<{
-  id: string;
-  action: string;
-  performedBy: string;
-  performedAt: string;
-  status: string;
-}>> {
+export async function getHistory(workItemId: string): Promise<
+  Array<{
+    id: string;
+    action: string;
+    performedBy: string;
+    performedAt: string;
+    status: string;
+  }>
+> {
   const response = await fetch(`${API_BASE_URL}/api/workqueue/${workItemId}/history`, {
     method: 'GET',
     headers: {
@@ -636,9 +732,7 @@ export async function getHistory(workItemId: string): Promise<Array<{
   });
 
   if (!response.ok) {
-    throw new Error(
-      `Failed to fetch history: ${response.status} ${response.statusText}`
-    );
+    throw new Error(`Failed to fetch history: ${response.status} ${response.statusText}`);
   }
 
   const data = await response.json();
@@ -649,12 +743,15 @@ export async function getHistory(workItemId: string): Promise<Array<{
  * Mark work item for refresh
  */
 export async function markForRefresh(workItemId: string): Promise<void> {
-  const response = await fetch(`${API_BASE_URL}/api/workqueue/${workItemId}/mark-for-refresh`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-  });
+  const response = await fetch(
+    `${API_BASE_URL}/api/workqueue/${workItemId}/mark-for-refresh`,
+    {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    }
+  );
 
   if (!response.ok) {
     const error = await response.json().catch(() => ({ message: 'Unknown error' }));
@@ -718,8 +815,8 @@ export async function createWorkItemForCase(
     headers: {
       'Content-Type': 'application/json',
     },
-    body: JSON.stringify({ 
-      case_id: caseId,  // snake_case - what backend JSON policy expects
+    body: JSON.stringify({
+      case_id: caseId, // snake_case - what backend JSON policy expects
     }),
   });
 
@@ -732,7 +829,7 @@ export async function createWorkItemForCase(
         statusText: response.statusText,
         body: responseText,
       });
-      
+
       try {
         const errorData = JSON.parse(responseText);
         errorMessage = errorData.message || errorData.error || errorMessage;
@@ -759,13 +856,16 @@ export async function updateWorkItemPriority(
   workItemId: string,
   priority: string
 ): Promise<void> {
-  const response = await fetch(`${API_BASE_URL}/api/workqueue/${workItemId}/update-priority`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({ priority }),
-  });
+  const response = await fetch(
+    `${API_BASE_URL}/api/workqueue/${workItemId}/update-priority`,
+    {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ priority }),
+    }
+  );
 
   if (!response.ok) {
     const error = await response.json().catch(() => ({ message: 'Unknown error' }));
@@ -780,13 +880,16 @@ export async function scheduleWorkItemRefresh(
   workItemId: string,
   nextRefreshDate: string
 ): Promise<void> {
-  const response = await fetch(`${API_BASE_URL}/api/workqueue/${workItemId}/schedule-refresh`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({ nextRefreshDate }),
-  });
+  const response = await fetch(
+    `${API_BASE_URL}/api/workqueue/${workItemId}/schedule-refresh`,
+    {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ nextRefreshDate }),
+    }
+  );
 
   if (!response.ok) {
     const error = await response.json().catch(() => ({ message: 'Unknown error' }));
@@ -797,10 +900,7 @@ export async function scheduleWorkItemRefresh(
 /**
  * Cancel work item
  */
-export async function cancelWorkItem(
-  workItemId: string,
-  reason: string
-): Promise<void> {
+export async function cancelWorkItem(workItemId: string, reason: string): Promise<void> {
   const response = await fetch(`${API_BASE_URL}/api/workqueue/${workItemId}/cancel`, {
     method: 'POST',
     headers: {
@@ -836,13 +936,18 @@ export interface StepReviewStatusDto {
  * Get step review status for a work item
  * Returns empty object if no step reviews exist (404 is not an error - it means no reviews yet)
  */
-export async function getStepReviewStatus(workItemId: string): Promise<Record<string, StepReviewStatusDto>> {
-  const response = await fetch(`${API_BASE_URL}/api/workqueue/${workItemId}/step-review`, {
-    method: 'GET',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-  });
+export async function getStepReviewStatus(
+  workItemId: string
+): Promise<Record<string, StepReviewStatusDto>> {
+  const response = await fetch(
+    `${API_BASE_URL}/api/workqueue/${workItemId}/step-review`,
+    {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    }
+  );
 
   // 404 means no step reviews exist yet - this is not an error, return empty object
   if (response.status === 404) {
@@ -866,7 +971,7 @@ export async function getStepReviewStatus(workItemId: string): Promise<Record<st
         // Use default message
       }
     }
-    
+
     // Only throw for non-404 errors (404 is handled above)
     throw new Error(errorMessage);
   }
@@ -874,7 +979,7 @@ export async function getStepReviewStatus(workItemId: string): Promise<Record<st
   const data = await response.json();
   // Handle both snake_case and camelCase from backend
   const result: Record<string, StepReviewStatusDto> = {};
-  
+
   for (const [stepId, review] of Object.entries(data)) {
     const r = review as any;
     result[stepId] = {
@@ -891,7 +996,7 @@ export async function getStepReviewStatus(workItemId: string): Promise<Record<st
       notes: r.notes,
     };
   }
-  
+
   return result;
 }
 
@@ -905,21 +1010,25 @@ export async function updateStepReviewStatus(
   value: boolean,
   notes?: string
 ): Promise<void> {
-  const response = await fetch(`${API_BASE_URL}/api/workqueue/${workItemId}/step-review/${encodeURIComponent(stepId)}`, {
-    method: 'PUT',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      field,
-      value,
-      notes: notes || undefined,
-    }),
-  });
+  const response = await fetch(
+    `${API_BASE_URL}/api/workqueue/${workItemId}/step-review/${encodeURIComponent(stepId)}`,
+    {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        field,
+        value,
+        notes: notes || undefined,
+      }),
+    }
+  );
 
   if (!response.ok) {
     const error = await response.json().catch(() => ({ message: 'Unknown error' }));
-    throw new Error(error.message || `Failed to update step review status: ${response.status}`);
+    throw new Error(
+      error.message || `Failed to update step review status: ${response.status}`
+    );
   }
 }
-

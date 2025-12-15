@@ -1,7 +1,7 @@
 /**
  * SignNow API Integration Test
  * Tests the SignNow API endpoints directly
- * 
+ *
  * Usage: node scripts/test-signnow-api.mjs
  */
 
@@ -23,7 +23,7 @@ const PASSWORD = process.env.SIGNNOW_PASSWORD;
 
 async function testSignNowAPI() {
   console.log('🧪 Testing SignNow API Integration\n');
-  console.log('=' .repeat(50));
+  console.log('='.repeat(50));
 
   // Check credentials
   if (!BASIC_AUTH_TOKEN) {
@@ -47,7 +47,7 @@ async function testSignNowAPI() {
     const tokenResponse = await fetch(`${SIGNNOW_API_BASE_URL}/oauth2/token`, {
       method: 'POST',
       headers: {
-        'Authorization': `Basic ${BASIC_AUTH_TOKEN}`,
+        Authorization: `Basic ${BASIC_AUTH_TOKEN}`,
         'Content-Type': 'application/x-www-form-urlencoded',
       },
       body: `grant_type=password&username=${encodeURIComponent(USERNAME)}&password=${encodeURIComponent(PASSWORD)}`,
@@ -63,7 +63,7 @@ async function testSignNowAPI() {
 
     const tokenData = await tokenResponse.json();
     const accessToken = tokenData.access_token;
-    
+
     console.log('   ✅ Access token obtained successfully!');
     console.log(`   Token expires in: ${tokenData.expires_in} seconds`);
     console.log(`   Token type: ${tokenData.token_type}\n`);
@@ -75,7 +75,7 @@ async function testSignNowAPI() {
       const testResponse = await fetch(`${SIGNNOW_API_BASE_URL}/user`, {
         method: 'GET',
         headers: {
-          'Authorization': `Bearer ${accessToken}`,
+          Authorization: `Bearer ${accessToken}`,
           'Content-Type': 'application/json',
         },
       });
@@ -87,7 +87,9 @@ async function testSignNowAPI() {
         console.log(`   User ID: ${userData.id || 'N/A'}\n`);
       } else {
         console.log(`   ⚠️  API endpoint returned: ${testResponse.status}`);
-        console.log('   (This might be expected depending on your account permissions)\n');
+        console.log(
+          '   (This might be expected depending on your account permissions)\n'
+        );
       }
     } catch (error) {
       console.log(`   ⚠️  Could not test user endpoint: ${error.message}`);
@@ -100,7 +102,7 @@ async function testSignNowAPI() {
     console.log('   ✅ Access token: Valid');
     console.log('   ✅ API base URL: Correct\n');
 
-    console.log('=' .repeat(50));
+    console.log('='.repeat(50));
     console.log('\n✅ All Tests Passed!\n');
     console.log('📋 Integration Status:');
     console.log('   ✅ Credentials configured correctly');
@@ -113,7 +115,6 @@ async function testSignNowAPI() {
     console.log('   - PUT /api/signnow/document/:id/field - Add fields');
     console.log('   - POST /api/signnow/document/:id/invite - Send invite');
     console.log('   - GET /api/signnow/document/:id/download - Download\n');
-
   } catch (error) {
     console.error('\n❌ Test Failed!');
     console.error('Error:', error.message);
@@ -126,4 +127,3 @@ async function testSignNowAPI() {
 }
 
 testSignNowAPI();
-

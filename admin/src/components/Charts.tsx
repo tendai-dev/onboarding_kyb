@@ -241,7 +241,7 @@ export const StatusPieChart = ({
             cx="50%"
             cy="50%"
             labelLine={false}
-            label={(props: Record<string, unknown>) => {
+            label={(props: any) => {
               const name = String(props.name || '');
               const percent = typeof props.percent === 'number' ? props.percent : 0;
               return `${name} ${(percent * 100).toFixed(0)}%`;

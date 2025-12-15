@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Mvc;
 using OnboardingApi.Application.Risk.Commands;
 using OnboardingApi.Application.Risk.Queries;
 using OnboardingApi.Domain.Risk.ValueObjects;
+using EddSignatureDto = OnboardingApi.Application.Risk.Queries.EddSignatureDto;
 
 namespace OnboardingApi.Presentation.Controllers.Risk;
 
@@ -286,6 +287,42 @@ public class RiskAssessmentController : ControllerBase
     {
         return User.Identity?.Name ?? User.FindFirst("sub")?.Value ?? "system";
     }
+
+    /// <summary>
+    /// Get all signatures for a risk assessment
+    /// </summary>
+    [HttpGet("{assessmentId:guid}/signatures")]
+    [ProducesResponseType(typeof(List<EddSignatureDto>), StatusCodes.Status200OK)]
+    public async Task<IActionResult> GetSignatures(Guid assessmentId)
+    {
+        var query = new GetEddSignaturesQuery(assessmentId);
+        var result = await _mediator.Send(query);
+        return Ok(result);
+    }
+
+    /// <summary>
+    /// Create or update a signature record
+    /// </summary>
+    [HttpPost("{assessmentId:guid}/signatures")]
+    [ProducesResponseType(typeof(EddSignatureDto), StatusCodes.Status200OK)]
+    public async Task<IActionResult> UpsertSignature(
+        Guid assessmentId,
+        [FromBody] UpsertEddSignatureRequest request)
+    {
+        var command = new UpsertEddSignatureCommand(
+            assessmentId,
+            request.SignerRole,
+            request.SignerName,
+            request.SignerEmail,
+            request.SignnowDocumentId,
+            request.SignnowInviteId,
+            request.Status,
+            request.Recommendation,
+            request.Rationale);
+        
+        var result = await _mediator.Send(command);
+        return Ok(result);
+    }
 }
 
 // Request DTOs
@@ -330,5 +367,17 @@ public class SetManualRiskLevelRequest
 public class UpdateRiskAssessmentNotesRequest
 {
     public string? Notes { get; set; }
+}
+
+public class UpsertEddSignatureRequest
+{
+    public string SignerRole { get; set; } = string.Empty;
+    public string? SignerName { get; set; }
+    public string SignerEmail { get; set; } = string.Empty;
+    public string? SignnowDocumentId { get; set; }
+    public string? SignnowInviteId { get; set; }
+    public string Status { get; set; } = "pending";
+    public string? Recommendation { get; set; }
+    public string? Rationale { get; set; }
 }
 

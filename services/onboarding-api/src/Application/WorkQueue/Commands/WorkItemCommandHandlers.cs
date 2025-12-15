@@ -274,27 +274,58 @@ public class StartReviewCommandHandler : IRequestHandler<StartReviewCommand, Sta
 public class SubmitForApprovalCommandHandler : IRequestHandler<SubmitForApprovalCommand, SubmitForApprovalResult>
 {
     private readonly IWorkItemRepository _repository;
+    private readonly ILogger<SubmitForApprovalCommandHandler> _logger;
 
-    public SubmitForApprovalCommandHandler(IWorkItemRepository repository)
+    public SubmitForApprovalCommandHandler(
+        IWorkItemRepository repository,
+        ILogger<SubmitForApprovalCommandHandler> logger)
     {
         _repository = repository;
+        _logger = logger;
     }
 
     public async Task<SubmitForApprovalResult> Handle(SubmitForApprovalCommand request, CancellationToken cancellationToken)
     {
         try
         {
-            var workItem = await _repository.GetByIdAsync(request.WorkItemId, cancellationToken);
+            // Validate work item exists and is in correct status
+            var workItem = await _repository.GetByIdForUpdateAsync(request.WorkItemId, cancellationToken);
             if (workItem == null)
                 return SubmitForApprovalResult.Failed("Work item not found");
 
-            workItem.SubmitForApproval(request.SubmittedByUserId, request.Notes);
-            await _repository.UpdateAsync(workItem, cancellationToken);
-            await _repository.SaveChangesAsync(cancellationToken);
+            if (!workItem.RequiresApproval)
+                return SubmitForApprovalResult.Failed("This work item does not require approval");
+
+            if (workItem.Status != WorkItemStatus.InProgress)
+                return SubmitForApprovalResult.Failed($"Cannot submit for approval from status: {workItem.Status}");
+
+            // Use direct update to avoid concurrency issues
+            var rowsAffected = await _repository.UpdateStatusDirectlyAsync(
+                request.WorkItemId,
+                WorkItemStatus.PendingApproval,
+                request.SubmittedByUserId,
+                cancellationToken);
+
+            if (rowsAffected == 0)
+                return SubmitForApprovalResult.Failed("Work item not found or status has changed");
+
+            // Add history entry
+            var historyAction = "Submitted for approval" + (request.Notes != null ? $": {request.Notes}" : "");
+            await _repository.AddHistoryEntryAsync(
+                request.WorkItemId,
+                historyAction,
+                request.SubmittedByUserId,
+                WorkItemStatus.PendingApproval.ToString(),
+                cancellationToken);
+
+            _logger.LogInformation("Work item {WorkItemId} submitted for approval by {UserId}",
+                request.WorkItemId, request.SubmittedByUserId);
+
             return SubmitForApprovalResult.Successful();
         }
         catch (Exception ex)
         {
+            _logger.LogError(ex, "Error submitting work item {WorkItemId} for approval", request.WorkItemId);
             return SubmitForApprovalResult.Failed(ex.Message);
         }
     }
@@ -303,27 +334,65 @@ public class SubmitForApprovalCommandHandler : IRequestHandler<SubmitForApproval
 public class ApproveWorkItemCommandHandler : IRequestHandler<ApproveWorkItemCommand, ApproveWorkItemResult>
 {
     private readonly IWorkItemRepository _repository;
+    private readonly ILogger<ApproveWorkItemCommandHandler> _logger;
 
-    public ApproveWorkItemCommandHandler(IWorkItemRepository repository)
+    public ApproveWorkItemCommandHandler(
+        IWorkItemRepository repository,
+        ILogger<ApproveWorkItemCommandHandler> logger)
     {
         _repository = repository;
+        _logger = logger;
     }
 
     public async Task<ApproveWorkItemResult> Handle(ApproveWorkItemCommand request, CancellationToken cancellationToken)
     {
         try
         {
-            var workItem = await _repository.GetByIdAsync(request.WorkItemId, cancellationToken);
+            // Validate work item exists and is in correct status
+            var workItem = await _repository.GetByIdForUpdateAsync(request.WorkItemId, cancellationToken);
             if (workItem == null)
                 return ApproveWorkItemResult.Failed("Work item not found");
 
-            workItem.Approve(request.ApproverUserId, request.ApproverUserName, request.ApproverRole, request.Notes);
-            await _repository.UpdateAsync(workItem, cancellationToken);
-            await _repository.SaveChangesAsync(cancellationToken);
+            if (workItem.Status != WorkItemStatus.PendingApproval)
+                return ApproveWorkItemResult.Failed($"Cannot approve from status: {workItem.Status}");
+
+            // Check if approver has sufficient role for risk level
+            if (workItem.RiskLevel is RiskLevel.High or RiskLevel.Critical)
+            {
+                if (!request.ApproverRole.Contains("ComplianceManager", StringComparison.OrdinalIgnoreCase) &&
+                    !request.ApproverRole.Contains("Admin", StringComparison.OrdinalIgnoreCase))
+                {
+                    return ApproveWorkItemResult.Failed("High/Critical risk items require Compliance Manager approval");
+                }
+            }
+
+            // Use direct update to avoid concurrency issues
+            var rowsAffected = await _repository.ApproveDirectlyAsync(
+                request.WorkItemId,
+                request.ApproverUserId,
+                request.ApproverUserName,
+                cancellationToken);
+
+            if (rowsAffected == 0)
+                return ApproveWorkItemResult.Failed("Work item not found or status has changed");
+
+            // Add history entry
+            var historyAction = $"Approved by {request.ApproverUserName}" + (request.Notes != null ? $": {request.Notes}" : "");
+            await _repository.AddHistoryEntryAsync(
+                request.WorkItemId,
+                historyAction,
+                request.ApproverUserName,
+                WorkItemStatus.Approved.ToString(),
+                cancellationToken);
+
+            _logger.LogInformation("Work item {WorkItemId} approved by {ApproverName}",
+                request.WorkItemId, request.ApproverUserName);
+
             return ApproveWorkItemResult.Successful();
         }
         catch (Exception ex)
         {
+            _logger.LogError(ex, "Error approving work item {WorkItemId}", request.WorkItemId);
             return ApproveWorkItemResult.Failed(ex.Message);
         }
     }
@@ -332,29 +401,93 @@ public class ApproveWorkItemCommandHandler : IRequestHandler<ApproveWorkItemComm
 public class CompleteWorkItemCommandHandler : IRequestHandler<CompleteWorkItemCommand, CompleteWorkItemResult>
 {
     private readonly IWorkItemRepository _repository;
+    private readonly ILogger<CompleteWorkItemCommandHandler> _logger;
 
-    public CompleteWorkItemCommandHandler(IWorkItemRepository repository)
+    public CompleteWorkItemCommandHandler(
+        IWorkItemRepository repository,
+        ILogger<CompleteWorkItemCommandHandler> logger)
     {
         _repository = repository;
+        _logger = logger;
     }
 
     public async Task<CompleteWorkItemResult> Handle(CompleteWorkItemCommand request, CancellationToken cancellationToken)
     {
-        try
+        const int maxRetries = 3;
+        int attempt = 0;
+        
+        while (attempt < maxRetries)
         {
-            var workItem = await _repository.GetByIdAsync(request.WorkItemId, cancellationToken);
-            if (workItem == null)
-                return CompleteWorkItemResult.Failed("Work item not found");
+            try
+            {
+                attempt++;
+                _logger.LogDebug("Completing work item {WorkItemId}, attempt {Attempt}", request.WorkItemId, attempt);
+                
+                // Check if work item exists and validate status
+                var workItem = await _repository.GetByIdForUpdateAsync(request.WorkItemId, cancellationToken);
+                if (workItem == null)
+                    return CompleteWorkItemResult.Failed("Work item not found");
 
-            workItem.Complete(request.CompletedByUserId, request.Notes);
-            await _repository.UpdateAsync(workItem, cancellationToken);
-            await _repository.SaveChangesAsync(cancellationToken);
-            return CompleteWorkItemResult.Successful();
+                if (workItem.IsCompleted)
+                    return CompleteWorkItemResult.Failed("Work item is already completed");
+
+                if (workItem.RequiresApproval && workItem.Status != WorkItemStatus.Approved)
+                    return CompleteWorkItemResult.Failed("Work item must be approved before completion");
+
+                // Use ExecuteUpdate to complete the work item directly in the database
+                // This bypasses change tracking and avoids concurrency issues with owned collections
+                var rowsAffected = await _repository.CompleteDirectlyAsync(
+                    request.WorkItemId,
+                    request.CompletedByUserId,
+                    cancellationToken);
+                
+                if (rowsAffected == 0)
+                {
+                    // Entity might have been deleted or status changed
+                    return CompleteWorkItemResult.Failed("Work item not found or has already been completed");
+                }
+                
+                // Add history entry separately using raw SQL to avoid owned collection issues
+                var historyAction = "Completed" + (request.Notes != null ? $": {request.Notes}" : "");
+                await _repository.AddHistoryEntryAsync(
+                    request.WorkItemId,
+                    historyAction,
+                    request.CompletedByUserId,
+                    WorkItemStatus.Completed.ToString(),
+                    cancellationToken);
+                
+                _logger.LogInformation(
+                    "Work item {WorkItemId} completed by {UserId} on attempt {Attempt}",
+                    request.WorkItemId,
+                    request.CompletedByUserId,
+                    attempt);
+                
+                return CompleteWorkItemResult.Successful();
+            }
+            catch (InvalidOperationException ex) when (ex.Message.Contains("completed") || ex.Message.Contains("approved"))
+            {
+                _logger.LogWarning("Cannot complete work item {WorkItemId}: {Message}", request.WorkItemId, ex.Message);
+                return CompleteWorkItemResult.Failed(ex.Message);
+            }
+            catch (Exception ex) when ((ex.Message.Contains("concurrency") || ex.Message.Contains("expected to affect")) && attempt < maxRetries)
+            {
+                _logger.LogWarning(ex, "Concurrency conflict completing work item {WorkItemId} on attempt {Attempt}. Retrying...", 
+                    request.WorkItemId, attempt);
+                
+                // Wait a bit before retry to allow any concurrent operations to complete
+                await Task.Delay(100 * attempt, cancellationToken);
+                
+                // Continue to retry
+                continue;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error completing work item {WorkItemId} on attempt {Attempt}", request.WorkItemId, attempt);
+                return CompleteWorkItemResult.Failed(ex.Message);
+            }
         }
-        catch (Exception ex)
-        {
-            return CompleteWorkItemResult.Failed(ex.Message);
-        }
+        
+        return CompleteWorkItemResult.Failed("Failed to complete work item after multiple retries due to concurrency conflicts");
     }
 }
 

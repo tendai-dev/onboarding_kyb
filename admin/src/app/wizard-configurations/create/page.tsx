@@ -14,13 +14,7 @@ import {
 import { Typography } from '@mukuru/mukuru-react-components';
 // Color mode - always light mode
 const useColorModeValue = <T,>(light: T, _dark: T): T => light;
-import {
-  FiSettings,
-  FiPlus,
-  FiTrash2,
-  FiArrowUp,
-  FiArrowDown,
-} from 'react-icons/fi';
+import { FiSettings, FiPlus, FiTrash2, FiArrowUp, FiArrowDown } from 'react-icons/fi';
 import { useRouter } from 'next/navigation';
 import AdminSidebar from '../../../components/AdminSidebar';
 import { useState, useEffect, useCallback } from 'react';
@@ -639,12 +633,18 @@ export default function CreateWizardConfigurationPage() {
         <Box bg="transparent" py="16px" px="20px">
           <Flex justify="space-between" align="flex-start">
             <VStack align="start" gap="4px">
-              <Typography fontSize="22px" fontWeight="700" color="mukuru.text.primary" lineHeight="1.2">
+              <Typography
+                fontSize="22px"
+                fontWeight="700"
+                color="mukuru.text.primary"
+                lineHeight="1.2"
+              >
                 Create Wizard Configuration
               </Typography>
               <Typography fontSize="13px" color="mukuru.grey.medium" fontWeight="400">
-                {formData.entityTypeId 
-                  ? entityTypes.find(et => et.id === formData.entityTypeId)?.displayName || 'Select Entity Type'
+                {formData.entityTypeId
+                  ? entityTypes.find((et) => et.id === formData.entityTypeId)
+                      ?.displayName || 'Select Entity Type'
                   : 'Select Entity Type'}
               </Typography>
             </VStack>
@@ -661,7 +661,9 @@ export default function CreateWizardConfigurationPage() {
                 textTransform="uppercase"
                 letterSpacing="0.5px"
                 cursor="pointer"
-                onClick={() => setFormData((prev) => ({ ...prev, isActive: !prev.isActive }))}
+                onClick={() =>
+                  setFormData((prev) => ({ ...prev, isActive: !prev.isActive }))
+                }
               >
                 {formData.isActive ? 'Active' : 'Inactive'}
               </Box>
@@ -690,27 +692,44 @@ export default function CreateWizardConfigurationPage() {
 
         {/* Error Display */}
         {error && (
-          <Box px="20px" py="10px" bg="mukuru.text.error" borderBottom="1px solid" borderColor="mukuru.text.error">
-            <Typography fontSize="13px" color="mukuru.white" fontWeight="500">{error}</Typography>
+          <Box
+            px="20px"
+            py="10px"
+            bg="mukuru.text.error"
+            borderBottom="1px solid"
+            borderColor="mukuru.text.error"
+          >
+            <Typography fontSize="13px" color="mukuru.white" fontWeight="500">
+              {error}
+            </Typography>
           </Box>
         )}
 
         {/* Main Content Area */}
         <Box p="20px">
           {/* Entity Type Selection */}
-          <Box 
-            bg="mukuru.cards.white" 
-            border="1px solid" 
-            borderColor="mukuru.grey.light" 
-            borderRadius="8px" 
-            p="16px" 
+          <Box
+            bg="mukuru.cards.white"
+            border="1px solid"
+            borderColor="mukuru.grey.light"
+            borderRadius="8px"
+            p="16px"
             mb="16px"
           >
-            <Typography fontSize="11px" fontWeight="700" color="mukuru.grey.mediumDark" mb="4px" textTransform="uppercase" letterSpacing="0.5px">
+            <Typography
+              fontSize="11px"
+              fontWeight="700"
+              color="mukuru.grey.mediumDark"
+              mb="4px"
+              textTransform="uppercase"
+              letterSpacing="0.5px"
+            >
               Entity Type
             </Typography>
             {loading ? (
-              <Typography fontSize="13px" color="mukuru.grey.medium">Loading...</Typography>
+              <Typography fontSize="13px" color="mukuru.grey.medium">
+                Loading...
+              </Typography>
             ) : (
               <select
                 value={formData.entityTypeId}
@@ -743,9 +762,9 @@ export default function CreateWizardConfigurationPage() {
           </Box>
 
           {/* Steps Header */}
-          <Flex 
-            justify="space-between" 
-            align="center" 
+          <Flex
+            justify="space-between"
+            align="center"
             mb="16px"
             bg="mukuru.cards.white"
             px="16px"
@@ -797,24 +816,28 @@ export default function CreateWizardConfigurationPage() {
                 overflow="hidden"
               >
                 {/* Step Header - Mukuru Primary */}
-                <Flex 
-                  px="14px" 
-                  py="10px" 
-                  bg="mukuru.buttons.primary" 
+                <Flex
+                  px="14px"
+                  py="10px"
+                  bg="mukuru.buttons.primary"
                   justify="space-between"
                   align="center"
                 >
                   <HStack gap="12px">
-                    <Box 
-                      w="26px" 
-                      h="26px" 
-                      borderRadius="6px" 
-                      bg="mukuru.white" 
-                      display="flex" 
-                      alignItems="center" 
+                    <Box
+                      w="26px"
+                      h="26px"
+                      borderRadius="6px"
+                      bg="mukuru.white"
+                      display="flex"
+                      alignItems="center"
                       justifyContent="center"
                     >
-                      <Typography fontSize="13px" fontWeight="700" color="mukuru.buttons.primary">
+                      <Typography
+                        fontSize="13px"
+                        fontWeight="700"
+                        color="mukuru.buttons.primary"
+                      >
                         {step.stepNumber}
                       </Typography>
                     </Box>
@@ -871,13 +894,20 @@ export default function CreateWizardConfigurationPage() {
                     )}
                   </HStack>
                 </Flex>
-                
+
                 {/* Step Body - Clean Form */}
                 <Box p="14px" bg="mukuru.cards.white">
                   {/* Title & Subtitle - Inline */}
                   <SimpleGrid columns={2} gap="14px" mb="12px">
                     <Box>
-                      <Typography fontSize="11px" fontWeight="700" color="mukuru.grey.mediumDark" mb="4px" textTransform="uppercase" letterSpacing="0.5px">
+                      <Typography
+                        fontSize="11px"
+                        fontWeight="700"
+                        color="mukuru.grey.mediumDark"
+                        mb="4px"
+                        textTransform="uppercase"
+                        letterSpacing="0.5px"
+                      >
                         Title
                       </Typography>
                       <ChakraInput
@@ -890,11 +920,21 @@ export default function CreateWizardConfigurationPage() {
                         borderRadius="6px"
                         fontSize="13px"
                         fontWeight="500"
-                        _focus={{ borderColor: 'mukuru.buttons.primary', bg: 'mukuru.cards.white' }}
+                        _focus={{
+                          borderColor: 'mukuru.buttons.primary',
+                          bg: 'mukuru.cards.white',
+                        }}
                       />
                     </Box>
                     <Box>
-                      <Typography fontSize="11px" fontWeight="700" color="mukuru.grey.mediumDark" mb="4px" textTransform="uppercase" letterSpacing="0.5px">
+                      <Typography
+                        fontSize="11px"
+                        fontWeight="700"
+                        color="mukuru.grey.mediumDark"
+                        mb="4px"
+                        textTransform="uppercase"
+                        letterSpacing="0.5px"
+                      >
                         Subtitle
                       </Typography>
                       <ChakraInput
@@ -907,19 +947,31 @@ export default function CreateWizardConfigurationPage() {
                         borderRadius="6px"
                         fontSize="13px"
                         fontWeight="500"
-                        _focus={{ borderColor: 'mukuru.buttons.primary', bg: 'mukuru.cards.white' }}
+                        _focus={{
+                          borderColor: 'mukuru.buttons.primary',
+                          bg: 'mukuru.cards.white',
+                        }}
                       />
                     </Box>
                   </SimpleGrid>
 
                   {/* Category */}
                   <Box mb="12px">
-                    <Typography fontSize="11px" fontWeight="700" color="mukuru.grey.mediumDark" mb="4px" textTransform="uppercase" letterSpacing="0.5px">
+                    <Typography
+                      fontSize="11px"
+                      fontWeight="700"
+                      color="mukuru.grey.mediumDark"
+                      mb="4px"
+                      textTransform="uppercase"
+                      letterSpacing="0.5px"
+                    >
                       Category
                     </Typography>
                     <select
                       value={step.checklistCategory}
-                      onChange={(e) => updateStep(index, 'checklistCategory', e.target.value)}
+                      onChange={(e) =>
+                        updateStep(index, 'checklistCategory', e.target.value)
+                      }
                       style={{
                         width: '100%',
                         backgroundColor: '#F5F5F5',
@@ -933,26 +985,60 @@ export default function CreateWizardConfigurationPage() {
                     >
                       <option value="">Select category</option>
                       {checklistCategories.map((cat) => (
-                        <option key={cat} value={cat}>{cat}</option>
+                        <option key={cat} value={cat}>
+                          {cat}
+                        </option>
                       ))}
                     </select>
                   </Box>
 
                   {/* Requirements */}
                   <Box>
-                    <Typography fontSize="11px" fontWeight="700" color="mukuru.grey.mediumDark" mb="4px" textTransform="uppercase" letterSpacing="0.5px">
+                    <Typography
+                      fontSize="11px"
+                      fontWeight="700"
+                      color="mukuru.grey.mediumDark"
+                      mb="4px"
+                      textTransform="uppercase"
+                      letterSpacing="0.5px"
+                    >
                       Requirements ({step.requirementIds.length} selected)
                     </Typography>
                     {!formData.entityTypeId ? (
-                      <Box bg="mukuru.grey.light" border="1px solid" borderColor="mukuru.grey.light" borderRadius="6px" p="10px" textAlign="center">
-                        <Typography fontSize="12px" color="mukuru.grey.medium">Select an entity type first</Typography>
+                      <Box
+                        bg="mukuru.grey.light"
+                        border="1px solid"
+                        borderColor="mukuru.grey.light"
+                        borderRadius="6px"
+                        p="10px"
+                        textAlign="center"
+                      >
+                        <Typography fontSize="12px" color="mukuru.grey.medium">
+                          Select an entity type first
+                        </Typography>
                       </Box>
                     ) : entityRequirements.length === 0 ? (
-                      <Box bg="mukuru.grey.light" border="1px solid" borderColor="mukuru.grey.light" borderRadius="6px" p="10px" textAlign="center">
-                        <Typography fontSize="12px" color="mukuru.grey.medium">No requirements</Typography>
+                      <Box
+                        bg="mukuru.grey.light"
+                        border="1px solid"
+                        borderColor="mukuru.grey.light"
+                        borderRadius="6px"
+                        p="10px"
+                        textAlign="center"
+                      >
+                        <Typography fontSize="12px" color="mukuru.grey.medium">
+                          No requirements
+                        </Typography>
                       </Box>
                     ) : (
-                      <Box bg="mukuru.grey.light" border="1px solid" borderColor="mukuru.grey.light" borderRadius="6px" maxH="180px" overflowY="auto">
+                      <Box
+                        bg="mukuru.grey.light"
+                        border="1px solid"
+                        borderColor="mukuru.grey.light"
+                        borderRadius="6px"
+                        maxH="180px"
+                        overflowY="auto"
+                      >
                         {(() => {
                           const groupedByTypeMap = new Map<string, Requirement[]>();
                           entityRequirements.forEach((req) => {
@@ -960,52 +1046,71 @@ export default function CreateWizardConfigurationPage() {
                             const existing = groupedByTypeMap.get(type) || [];
                             groupedByTypeMap.set(type, [...existing, req]);
                           });
-                          return Array.from(groupedByTypeMap.entries()).map(([type, reqs]) => (
-                            <Box key={type}>
-                              <Box bg="mukuru.grey.light" px="10px" py="4px">
-                                <Typography fontSize="10px" fontWeight="700" color="mukuru.grey.mediumDark" textTransform="uppercase">
-                                  {type}
-                                </Typography>
-                              </Box>
-                              {reqs.map((req) => (
-                                <Flex 
-                                  key={req.id} 
-                                  gap="10px" 
-                                  py="8px"
-                                  px="10px"
-                                  bg="mukuru.cards.white"
-                                  borderBottom="1px solid"
-                                  borderColor="mukuru.grey.light"
-                                  cursor="pointer"
-                                  _hover={{ bg: 'mukuru.state.hover.card' }}
-                                  onClick={() => toggleRequirement(index, req.id)}
-                                  align="flex-start"
-                                >
-                                  <Box pt="2px">
-                                    <ChakraCheckbox.Root
-                                      checked={step.requirementIds.includes(req.id)}
-                                      onCheckedChange={() => toggleRequirement(index, req.id)}
-                                      size="sm"
-                                    >
-                                      <ChakraCheckbox.Control>
-                                        <ChakraCheckbox.Indicator>✓</ChakraCheckbox.Indicator>
-                                      </ChakraCheckbox.Control>
-                                    </ChakraCheckbox.Root>
-                                  </Box>
-                                  <VStack align="start" gap="2px" flex="1">
-                                    <Typography fontSize="13px" fontWeight="600" color="mukuru.text.primary">
-                                      {req.displayName}
-                                    </Typography>
-                                    {req.description && (
-                                      <Typography fontSize="11px" color="mukuru.grey.medium" fontWeight="400">
-                                        {req.description}
+                          return Array.from(groupedByTypeMap.entries()).map(
+                            ([type, reqs]) => (
+                              <Box key={type}>
+                                <Box bg="mukuru.grey.light" px="10px" py="4px">
+                                  <Typography
+                                    fontSize="10px"
+                                    fontWeight="700"
+                                    color="mukuru.grey.mediumDark"
+                                    textTransform="uppercase"
+                                  >
+                                    {type}
+                                  </Typography>
+                                </Box>
+                                {reqs.map((req) => (
+                                  <Flex
+                                    key={req.id}
+                                    gap="10px"
+                                    py="8px"
+                                    px="10px"
+                                    bg="mukuru.cards.white"
+                                    borderBottom="1px solid"
+                                    borderColor="mukuru.grey.light"
+                                    cursor="pointer"
+                                    _hover={{ bg: 'mukuru.state.hover.card' }}
+                                    onClick={() => toggleRequirement(index, req.id)}
+                                    align="flex-start"
+                                  >
+                                    <Box pt="2px">
+                                      <ChakraCheckbox.Root
+                                        checked={step.requirementIds.includes(req.id)}
+                                        onCheckedChange={() =>
+                                          toggleRequirement(index, req.id)
+                                        }
+                                        size="sm"
+                                      >
+                                        <ChakraCheckbox.Control>
+                                          <ChakraCheckbox.Indicator>
+                                            ✓
+                                          </ChakraCheckbox.Indicator>
+                                        </ChakraCheckbox.Control>
+                                      </ChakraCheckbox.Root>
+                                    </Box>
+                                    <VStack align="start" gap="2px" flex="1">
+                                      <Typography
+                                        fontSize="13px"
+                                        fontWeight="600"
+                                        color="mukuru.text.primary"
+                                      >
+                                        {req.displayName}
                                       </Typography>
-                                    )}
-                                  </VStack>
-                                </Flex>
-                              ))}
-                            </Box>
-                          ));
+                                      {req.description && (
+                                        <Typography
+                                          fontSize="11px"
+                                          color="mukuru.grey.medium"
+                                          fontWeight="400"
+                                        >
+                                          {req.description}
+                                        </Typography>
+                                      )}
+                                    </VStack>
+                                  </Flex>
+                                ))}
+                              </Box>
+                            )
+                          );
                         })()}
                       </Box>
                     )}

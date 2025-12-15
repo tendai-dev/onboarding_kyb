@@ -36,14 +36,32 @@ function sanitizeErrorText(text: string): string {
   sanitized = sanitized.replace(/Bearer\s+[A-Za-z0-9\-._~+/]+/gi, 'Bearer [REDACTED]');
 
   // Remove access_token and refresh_token from JSON responses
-  sanitized = sanitized.replace(/"access_token"\s*:\s*"[^"]*"/gi, '"access_token":"[REDACTED]"');
-  sanitized = sanitized.replace(/"refresh_token"\s*:\s*"[^"]*"/gi, '"refresh_token":"[REDACTED]"');
-  sanitized = sanitized.replace(/"accessToken"\s*:\s*"[^"]*"/gi, '"accessToken":"[REDACTED]"');
-  sanitized = sanitized.replace(/"refreshToken"\s*:\s*"[^"]*"/gi, '"refreshToken":"[REDACTED]"');
+  sanitized = sanitized.replace(
+    /"access_token"\s*:\s*"[^"]*"/gi,
+    '"access_token":"[REDACTED]"'
+  );
+  sanitized = sanitized.replace(
+    /"refresh_token"\s*:\s*"[^"]*"/gi,
+    '"refresh_token":"[REDACTED]"'
+  );
+  sanitized = sanitized.replace(
+    /"accessToken"\s*:\s*"[^"]*"/gi,
+    '"accessToken":"[REDACTED]"'
+  );
+  sanitized = sanitized.replace(
+    /"refreshToken"\s*:\s*"[^"]*"/gi,
+    '"refreshToken":"[REDACTED]"'
+  );
 
   // Remove authorization headers
-  sanitized = sanitized.replace(/authorization\s*:\s*[^\n]*/gi, 'authorization: [REDACTED]');
-  sanitized = sanitized.replace(/Authorization\s*:\s*[^\n]*/gi, 'Authorization: [REDACTED]');
+  sanitized = sanitized.replace(
+    /authorization\s*:\s*[^\n]*/gi,
+    'authorization: [REDACTED]'
+  );
+  sanitized = sanitized.replace(
+    /Authorization\s*:\s*[^\n]*/gi,
+    'Authorization: [REDACTED]'
+  );
 
   // Remove any long base64-like strings that might be tokens (40+ chars of base64)
   sanitized = sanitized.replace(/[A-Za-z0-9+/]{40,}={0,2}/g, '[REDACTED_TOKEN]');

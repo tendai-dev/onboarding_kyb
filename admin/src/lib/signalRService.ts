@@ -6,6 +6,10 @@ class SignalRService {
   private maxReconnectAttempts = 5;
   private listeners: Map<string, Set<(data: Record<string, unknown>) => void>> =
     new Map();
+  private currentThreadId: string | null = null;
+  private connectionPromise: Promise<void> | null = null;
+  private lastHeartbeat: number = 0;
+  private heartbeatInterval: NodeJS.Timeout | null = null;
 
   async connect(): Promise<void> {
     if (this.connection?.state === signalR.HubConnectionState.Connected) {
@@ -44,6 +48,14 @@ class SignalRService {
         process.env.NEXT_PUBLIC_ONBOARDING_TARGET ||
         'http://localhost:8001';
       const hubUrl = `${backendUrl}/api/v1/messages/hub`;
+
+      console.info('[SignalR] Connecting to hub:', hubUrl);
+      console.info('[SignalR] User info:', {
+        userEmail,
+        userName,
+        userRole,
+        userId: userId ? userId.substring(0, 8) + '...' : 'none',
+      });
 
       this.connection = new signalR.HubConnectionBuilder()
         .withUrl(hubUrl, {
@@ -84,6 +96,15 @@ class SignalRService {
       // Don't call it here with userId - that was incorrect
 
       this.reconnectAttempts = 0;
+      this.lastHeartbeat = Date.now();
+
+      // Start heartbeat to detect stale connections
+      this.startHeartbeat();
+
+      // Rejoin thread if we were in one before reconnecting
+      if (this.currentThreadId) {
+        this.joinThread(this.currentThreadId).catch(() => {});
+      }
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
       // SignalR is optional - messaging will work without real-time updates
@@ -166,6 +187,9 @@ class SignalRService {
   }
 
   async joinThread(threadId: string): Promise<void> {
+    // Store current thread for reconnection
+    this.currentThreadId = threadId;
+
     if (this.connection?.state === signalR.HubConnectionState.Connected) {
       // Validate threadId is a valid GUID before calling
       if (!threadId || threadId === '00000000-0000-0000-0000-000000000000') {
@@ -182,7 +206,12 @@ class SignalRService {
           return;
         }
 
-        await this.connection.invoke('JoinThread', threadId);
+        // Try both PascalCase and camelCase for compatibility
+        try {
+          await this.connection.invoke('JoinThread', threadId);
+        } catch {
+          await this.connection.invoke('joinThread', threadId);
+        }
         console.info('[SignalR] Joined thread:', threadId);
       } catch (error) {
         // Method doesn't exist on server - this is expected if backend doesn't implement it
@@ -203,9 +232,19 @@ class SignalRService {
   }
 
   async leaveThread(threadId: string): Promise<void> {
+    // Clear current thread
+    if (this.currentThreadId === threadId) {
+      this.currentThreadId = null;
+    }
+
     if (this.connection?.state === signalR.HubConnectionState.Connected) {
       try {
-        await this.connection.invoke('LeaveThread', threadId);
+        // Try both PascalCase and camelCase for compatibility
+        try {
+          await this.connection.invoke('LeaveThread', threadId);
+        } catch {
+          await this.connection.invoke('leaveThread', threadId);
+        }
       } catch (error) {
         // Method doesn't exist on server - this is expected if backend doesn't implement it
         const errorMessage = error instanceof Error ? error.message : String(error);
@@ -276,6 +315,51 @@ class SignalRService {
 
   getConnectionState(): signalR.HubConnectionState {
     return this.connection?.state || signalR.HubConnectionState.Disconnected;
+  }
+
+  // Get time since last heartbeat (for connection health monitoring)
+  getTimeSinceLastHeartbeat(): number {
+    return Date.now() - this.lastHeartbeat;
+  }
+
+  // Check if connection is healthy (connected and recent heartbeat)
+  isHealthy(): boolean {
+    return this.isConnected() && this.getTimeSinceLastHeartbeat() < 60000;
+  }
+
+  // Start heartbeat interval to detect stale connections
+  private startHeartbeat(): void {
+    this.stopHeartbeat();
+    this.heartbeatInterval = setInterval(() => {
+      if (this.connection?.state === signalR.HubConnectionState.Connected) {
+        this.lastHeartbeat = Date.now();
+      } else {
+        // Connection lost, try to reconnect
+        console.warn(
+          '[SignalR] Heartbeat detected disconnection, attempting reconnect...'
+        );
+        this.connect().catch(() => {});
+      }
+    }, 15000); // Check every 15 seconds
+  }
+
+  // Stop heartbeat interval
+  private stopHeartbeat(): void {
+    if (this.heartbeatInterval) {
+      clearInterval(this.heartbeatInterval);
+      this.heartbeatInterval = null;
+    }
+  }
+
+  // Force reconnection
+  async reconnect(): Promise<void> {
+    await this.disconnect();
+    await this.connect();
+  }
+
+  // Get current thread ID
+  getCurrentThreadId(): string | null {
+    return this.currentThreadId;
   }
 
   private generateUserIdFromEmail(email: string): string {

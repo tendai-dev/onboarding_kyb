@@ -1,0 +1,292 @@
+================================================================================
+SECURITY BEST PRACTICES - Partner Application
+================================================================================
+
+Last Updated: December 15, 2025
+Security Rating: STRONG (Enterprise-Grade)
+
+================================================================================
+1. AUTHENTICATION & AUTHORIZATION
+================================================================================
+
+✅ IMPLEMENTED:
+- Session-based authentication using NextAuth
+- HttpOnly cookies (tokens never exposed to client)
+- Server-side token storage in Redis
+- PartnerId-based ownership validation
+- Multi-layer authorization checks
+
+🔒 BEST PRACTICES:
+- Always verify session before accessing protected resources
+- Never trust client-side data for authorization decisions
+- Validate PartnerId matches authenticated user
+- Use getServerSession() for all API routes
+- Implement role-based access control (RBAC) for admin features
+
+⚠️ SECURITY CHECKLIST:
+[ ] Session timeout configured appropriately (4 hours production)
+[ ] Refresh token rotation enabled
+[ ] Failed login attempts monitored
+[ ] Account lockout after N failed attempts
+[ ] Multi-factor authentication (MFA) considered for sensitive operations
+
+================================================================================
+2. DATA ISOLATION & OWNERSHIP
+================================================================================
+
+✅ IMPLEMENTED:
+- PartnerId-based data filtering
+- Ownership validation on every request
+- Backend-enforced authorization
+- No client-side filtering of sensitive data
+- Strict query parameter validation
+
+🔒 BEST PRACTICES:
+- ALWAYS filter queries by PartnerId or email at backend
+- NEVER return data user doesn't own
+- Validate ownership before ANY data access
+- Use consistent PartnerId generation (lib/partnerIdUtils.ts)
+- Log all ownership validation failures
+
+⚠️ SECURITY CHECKLIST:
+[ ] All API endpoints filter by PartnerId
+[ ] Ownership validation enabled (not disabled for "development")
+[ ] No "fetch all" queries without user filtering
+[ ] Client-side filtering removed from security-critical paths
+[ ] Database indexes on partnerId for performance
+
+================================================================================
+3. RATE LIMITING & ABUSE PREVENTION
+================================================================================
+
+✅ IMPLEMENTED:
+- Request rate limiting (60-100 req/min depending on environment)
+- Automatic blocking of abusive IPs/users
+- Exponential backoff for repeated failures
+- Rate limit headers in responses
+- Manual blocking capabilities
+
+🔒 BEST PRACTICES:
+- Apply rate limiting to ALL public endpoints
+- Use stricter limits for authentication endpoints
+- Monitor for unusual traffic patterns
+- Implement CAPTCHA for repeated failures
+- Consider IP-based + user-based rate limiting
+
+⚠️ SECURITY CHECKLIST:
+[ ] Rate limits configured per environment
+[ ] Failed auth attempts have stricter limits
+[ ] Rate limit bypass for internal services
+[ ] Monitoring alerts for rate limit violations
+[ ] DDoS protection at infrastructure level
+
+================================================================================
+4. INPUT VALIDATION & SANITIZATION
+================================================================================
+
+✅ IMPLEMENTED:
+- SQL injection detection and blocking
+- XSS (Cross-Site Scripting) prevention
+- Path traversal attack prevention
+- UUID/email format validation
+- Request parameter sanitization
+
+🔒 BEST PRACTICES:
+- Validate ALL user input before processing
+- Use whitelist validation (allow known good, not block known bad)
+- Sanitize output when rendering user content
+- Never trust data from client (including headers)
+- Use parameterized queries for database access
+
+⚠️ SECURITY CHECKLIST:
+[ ] All endpoints validate input using requestValidation.ts
+[ ] Database queries use parameterized statements
+[ ] File uploads validated (type, size, content)
+[ ] JSON parsing has size limits
+[ ] Regular expression DoS (ReDoS) prevented
+
+================================================================================
+5. SECURITY HEADERS
+================================================================================
+
+✅ IMPLEMENTED:
+- X-Content-Type-Options: nosniff
+- X-Frame-Options: DENY
+- X-XSS-Protection: 1; mode=block
+- Referrer-Policy: strict-origin-when-cross-origin
+- Strict-Transport-Security (HSTS)
+
+🔒 BEST PRACTICES:
+- Apply security headers to ALL responses (including errors)
+- Use Content Security Policy (CSP) for XSS prevention
+- Enable HSTS in production
+- Set appropriate CORS headers
+- Remove server version headers
+
+⚠️ SECURITY CHECKLIST:
+[ ] CSP configured and tested
+[ ] HSTS enabled with includeSubDomains
+[ ] CORS restricted to known origins
+[ ] No sensitive data in error responses
+[ ] Security headers tested with securityheaders.com
+
+================================================================================
+6. AUDIT LOGGING & MONITORING
+================================================================================
+
+✅ IMPLEMENTED:
+- Comprehensive security event logging
+- Failed authorization attempt tracking
+- Suspicious activity detection
+- Real-time monitoring dashboard
+- Event categorization by severity
+
+🔒 BEST PRACTICES:
+- Log ALL security-relevant events
+- Include timestamp, user, action, result
+- Never log sensitive data (passwords, tokens)
+- Implement log retention policies
+- Set up alerts for critical events
+
+⚠️ SECURITY CHECKLIST:
+[ ] Logs stored securely (encrypted at rest)
+[ ] Log tampering prevention (write-once storage)
+[ ] Automated alerts for suspicious patterns
+[ ] Regular log review process
+[ ] SIEM integration for enterprise deployments
+
+================================================================================
+7. ERROR HANDLING
+================================================================================
+
+✅ IMPLEMENTED:
+- Generic error messages to users
+- Detailed logging for debugging
+- Security headers on error responses
+- No stack traces in production
+- Appropriate HTTP status codes
+
+🔒 BEST PRACTICES:
+- Never expose internal system details in errors
+- Use generic messages: "Invalid credentials" not "User not found"
+- Log full error details server-side
+- Return consistent error format
+- Implement error rate limiting
+
+⚠️ SECURITY CHECKLIST:
+[ ] Stack traces disabled in production
+[ ] Error messages don't reveal system architecture
+[ ] Database errors don't expose schema
+[ ] File path errors sanitized
+[ ] Error responses include security headers
+
+================================================================================
+8. DEPENDENCY SECURITY
+================================================================================
+
+🔒 BEST PRACTICES:
+- Regularly update dependencies (npm audit)
+- Use Dependabot or Snyk for vulnerability scanning
+- Pin dependency versions in production
+- Review security advisories
+- Minimize dependency count
+
+⚠️ SECURITY CHECKLIST:
+[ ] npm audit run regularly
+[ ] Critical vulnerabilities patched within 24 hours
+[ ] Automated dependency updates configured
+[ ] License compliance checked
+[ ] Unused dependencies removed
+
+================================================================================
+9. SECRETS MANAGEMENT
+================================================================================
+
+🔒 BEST PRACTICES:
+- NEVER commit secrets to version control
+- Use environment variables for configuration
+- Rotate secrets regularly
+- Use secret management service (AWS Secrets Manager, Vault)
+- Encrypt secrets at rest
+
+⚠️ SECURITY CHECKLIST:
+[ ] .env files in .gitignore
+[ ] No hardcoded API keys or passwords
+[ ] Secrets rotated quarterly (or after breach)
+[ ] Access to secrets logged
+[ ] Secrets encrypted in CI/CD pipelines
+
+================================================================================
+10. INCIDENT RESPONSE
+================================================================================
+
+🔒 BEST PRACTICES:
+- Have incident response plan documented
+- Define severity levels and escalation paths
+- Maintain contact list for security team
+- Practice incident response drills
+- Document lessons learned
+
+⚠️ SECURITY CHECKLIST:
+[ ] Incident response plan exists and is tested
+[ ] Security contact information up to date
+[ ] Breach notification process defined
+[ ] Backup and recovery procedures tested
+[ ] Post-incident review process established
+
+================================================================================
+SECURITY TESTING CHECKLIST
+================================================================================
+
+BEFORE DEPLOYMENT:
+[ ] Run security test suite (npm test -- security)
+[ ] Perform penetration testing
+[ ] Run OWASP ZAP or similar scanner
+[ ] Test rate limiting effectiveness
+[ ] Verify ownership validation works
+[ ] Test error handling doesn't leak info
+[ ] Check all endpoints require authentication
+[ ] Validate CORS configuration
+[ ] Test session timeout and renewal
+[ ] Verify audit logging captures events
+
+REGULAR MAINTENANCE:
+[ ] Weekly: Review security logs
+[ ] Monthly: Update dependencies
+[ ] Quarterly: Security audit
+[ ] Annually: Penetration test
+[ ] Continuous: Monitor security alerts
+
+================================================================================
+SECURITY CONTACTS
+================================================================================
+
+Security Issues: security@mukuru.com
+Emergency: [Define emergency contact]
+Security Team Lead: [Define lead contact]
+
+Report vulnerabilities responsibly - do not disclose publicly before patch.
+
+================================================================================
+COMPLIANCE & STANDARDS
+================================================================================
+
+This application follows:
+- OWASP Top 10 security practices
+- PCI DSS requirements (where applicable)
+- GDPR data protection principles
+- ISO 27001 security controls
+- NIST Cybersecurity Framework
+
+================================================================================
+ADDITIONAL RESOURCES
+================================================================================
+
+- OWASP Cheat Sheets: https://cheatsheetseries.owasp.org/
+- Security Headers: https://securityheaders.com/
+- Mozilla Observatory: https://observatory.mozilla.org/
+- npm audit: https://docs.npmjs.com/cli/v8/commands/npm-audit
+
+================================================================================
+END OF SECURITY BEST PRACTICES
+================================================================================

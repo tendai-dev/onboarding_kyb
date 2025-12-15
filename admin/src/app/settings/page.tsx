@@ -12,12 +12,7 @@ import {
   Separator,
 } from '@chakra-ui/react';
 // Import components directly from Mukuru package
-import {
-  Typography,
-  Button,
-  Card,
-  IconWrapper,
-} from '@mukuru/mukuru-react-components';
+import { Typography, Button, Card, IconWrapper } from '@mukuru/mukuru-react-components';
 // Color mode - always light mode
 const useColorModeValue = <T,>(light: T, _dark: T): T => light;
 import { useSession } from 'next-auth/react';

@@ -75,6 +75,16 @@ public class WorkItemRepository : IWorkItemRepository
 
         if (!string.IsNullOrWhiteSpace(searchTerm))
         {
+            // SECURITY FIX: Validate and sanitize search term to prevent injection
+            if (searchTerm.Length > 100)
+            {
+                _logger.LogWarning("Search term too long: {Length} characters", searchTerm.Length);
+                searchTerm = searchTerm.Substring(0, 100);
+            }
+            
+            // SECURITY FIX: Remove potentially dangerous characters
+            searchTerm = System.Text.RegularExpressions.Regex.Replace(searchTerm, @"[^\w\s-]", "");
+            
             var search = searchTerm.ToLower();
             // Use EF.Functions.ILike for case-insensitive search that works with PostgreSQL
             // This ensures EF Core uses the correct column names from the mapping
@@ -275,11 +285,81 @@ public class WorkItemRepository : IWorkItemRepository
         
         return rowsAffected;
     }
+
+    public async Task<int> CompleteDirectlyAsync(
+        Guid workItemId,
+        string completedBy,
+        CancellationToken cancellationToken = default)
+    {
+        // Use ExecuteUpdate to complete the work item directly in the database without change tracking
+        // This avoids concurrency issues with owned collections (Comments, History)
+        var now = DateTime.UtcNow;
+        var rowsAffected = await _context.WorkItems
+            .Where(w => w.Id == workItemId 
+                && w.Status != WorkItemStatus.Completed 
+                && w.Status != WorkItemStatus.Declined 
+                && w.Status != WorkItemStatus.Cancelled)
+            .ExecuteUpdateAsync(setters => setters
+                .SetProperty(w => w.Status, WorkItemStatus.Completed)
+                .SetProperty(w => w.UpdatedAt, now)
+                .SetProperty(w => w.UpdatedBy, completedBy),
+                cancellationToken);
+        
+        _logger.LogInformation("ExecuteUpdate affected {RowsAffected} row(s) for work item {WorkItemId} completion", 
+            rowsAffected, workItemId);
+        
+        return rowsAffected;
+    }
+
+
+    public async Task<int> ApproveDirectlyAsync(
+        Guid workItemId,
+        Guid approverId,
+        string approverName,
+        CancellationToken cancellationToken = default)
+    {
+        // Use ExecuteUpdate to approve the work item directly in the database without change tracking
+        var now = DateTime.UtcNow;
+        var rowsAffected = await _context.WorkItems
+            .Where(w => w.Id == workItemId && w.Status == WorkItemStatus.PendingApproval)
+            .ExecuteUpdateAsync(setters => setters
+                .SetProperty(w => w.Status, WorkItemStatus.Approved)
+                .SetProperty(w => w.ApprovedBy, approverId)
+                .SetProperty(w => w.ApprovedByName, approverName)
+                .SetProperty(w => w.ApprovedAt, now)
+                .SetProperty(w => w.UpdatedAt, now)
+                .SetProperty(w => w.UpdatedBy, approverName),
+                cancellationToken);
+        
+        _logger.LogInformation("ExecuteUpdate affected {RowsAffected} row(s) for work item {WorkItemId} approval", 
+            rowsAffected, workItemId);
+        
+        return rowsAffected;
+    }
+
     
     public async Task AddHistoryEntryAsync(Guid workItemId, string action, string performedBy, string status, CancellationToken cancellationToken = default)
     {
-        // Use raw SQL to insert history entry - this is safe because it's just an insert
-        // and doesn't affect the work item entity itself
+        // SECURITY FIX: Validate all string inputs to prevent SQL injection
+        if (string.IsNullOrWhiteSpace(action))
+            throw new ArgumentException("Action cannot be null or empty", nameof(action));
+        if (action.Length > 100)
+            throw new ArgumentException("Action cannot exceed 100 characters", nameof(action));
+        if (string.IsNullOrWhiteSpace(performedBy))
+            throw new ArgumentException("PerformedBy cannot be null or empty", nameof(performedBy));
+        if (performedBy.Length > 255)
+            throw new ArgumentException("PerformedBy cannot exceed 255 characters", nameof(performedBy));
+        if (string.IsNullOrWhiteSpace(status))
+            throw new ArgumentException("Status cannot be null or empty", nameof(status));
+        if (status.Length > 50)
+            throw new ArgumentException("Status cannot exceed 50 characters", nameof(status));
+
+        // SECURITY FIX: Sanitize inputs - remove any potentially dangerous characters
+        action = System.Text.RegularExpressions.Regex.Replace(action, @"[^\w\s-]", "");
+        performedBy = System.Text.RegularExpressions.Regex.Replace(performedBy, @"[^\w\s@.-]", "");
+        status = System.Text.RegularExpressions.Regex.Replace(status, @"[^\w\s-]", "");
+
+        // Use parameterized query - safe from SQL injection when parameters are validated
         var sql = @"INSERT INTO work_queue.work_item_history (id, work_item_id, action, performed_by, performed_at, status)
                     VALUES (gen_random_uuid(), {0}, {1}, {2}, {3}, {4})";
         

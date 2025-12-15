@@ -66,9 +66,17 @@ import {
   markForRefreshUseCase,
   WorkItemApplication,
 } from '../../../services';
-import { getStepReviewStatus, updateStepReviewStatus } from '../../../services/api/workQueueApi';
+import {
+  getStepReviewStatus,
+  updateStepReviewStatus,
+} from '../../../services/api/workQueueApi';
 import { useSession } from 'next-auth/react';
-import { fetchEntitySchema, type EntitySchema, type RenderableField, type RenderableSection } from '../../../lib/entitySchemaRenderer';
+import {
+  fetchEntitySchema,
+  type EntitySchema,
+  type RenderableField,
+  type RenderableSection,
+} from '../../../lib/entitySchemaRenderer';
 import { riskApiService, RiskAssessmentDto } from '../../../services/riskApi';
 import { logger } from '../../../lib/logger';
 import { useSidebar } from '../../../contexts/SidebarContext';
@@ -150,21 +158,30 @@ function WizardStepContent({
     approvedBy?: string;
     notes?: string;
   };
-  onReviewStatusChange?: (stepId: string, field: 'completed' | 'verified' | 'approved', value: boolean) => void;
+  onReviewStatusChange?: (
+    stepId: string,
+    field: 'completed' | 'verified' | 'approved',
+    value: boolean
+  ) => void;
   onNotesChange?: (stepId: string, notes: string) => void;
 }) {
   // Separate requirements into information fields and documents
-  const informationFields = requirements.filter(f => f.type !== 'file' && f.type !== 'File');
-  const documentFields = requirements.filter(f => f.type === 'file' || f.type === 'File');
+  const informationFields = requirements.filter(
+    (f) => f.type !== 'file' && f.type !== 'File'
+  );
+  const documentFields = requirements.filter(
+    (f) => f.type === 'file' || f.type === 'File'
+  );
 
   // Get application metadata
   const appData = applicationData as Record<string, unknown> | null;
   let metadata: Record<string, unknown> = {};
   if (appData?.metadataJson) {
     try {
-      metadata = typeof appData.metadataJson === 'string'
-        ? JSON.parse(appData.metadataJson)
-        : appData.metadataJson;
+      metadata =
+        typeof appData.metadataJson === 'string'
+          ? JSON.parse(appData.metadataJson)
+          : appData.metadataJson;
     } catch {
       // Ignore parse errors
     }
@@ -182,30 +199,28 @@ function WizardStepContent({
           boxShadow="0 2px 8px rgba(0, 0, 0, 0.04)"
           overflow="hidden"
         >
-          <Flex 
-            p="16px 24px" 
-            borderBottom="1px solid" 
-            borderColor="mukuru.grey.light" 
+          <Flex
+            p="16px 24px"
+            borderBottom="1px solid"
+            borderColor="mukuru.grey.light"
             bg="mukuru.background.light"
             align="center"
             justify="space-between"
           >
             <HStack gap="10px">
-              <Box
-                w="8px"
-                h="8px"
-                borderRadius="full"
-                bg="mukuru.buttons.primary"
-              />
+              <Box w="8px" h="8px" borderRadius="full" bg="mukuru.buttons.primary" />
               <Typography fontSize="15px" fontWeight="600" color="mukuru.text.primary">
                 Information Fields
               </Typography>
             </HStack>
             <Typography fontSize="12px" fontWeight="500" color="mukuru.grey.medium">
-              {informationFields.filter(f => {
-                const val = f.value;
-                return val !== null && val !== undefined && val !== '';
-              }).length} / {informationFields.length} provided
+              {
+                informationFields.filter((f) => {
+                  const val = f.value;
+                  return val !== null && val !== undefined && val !== '';
+                }).length
+              }{' '}
+              / {informationFields.length} provided
             </Typography>
           </Flex>
           <Box p="24px">
@@ -214,7 +229,7 @@ function WizardStepContent({
                 // Use the mapped value from entitySchemaRenderer (which uses mapRequirementCodeToValue)
                 // This ensures consistent mapping logic
                 let fieldValue: unknown = field.value;
-                
+
                 // If field.value is empty, try additional fallbacks
                 if (!fieldValue || fieldValue === '') {
                   // Try to get value from metadata with various key formats
@@ -226,24 +241,41 @@ function WizardStepContent({
                     field.label.toLowerCase().replace(/\s+/g, '-'),
                     field.label.toLowerCase().replace(/\s+/g, ''),
                   ];
-                  
+
                   for (const key of possibleKeys) {
-                    if (metadata[key] !== undefined && metadata[key] !== null && metadata[key] !== '') {
+                    if (
+                      metadata[key] !== undefined &&
+                      metadata[key] !== null &&
+                      metadata[key] !== ''
+                    ) {
                       fieldValue = metadata[key];
-                      console.log(`[WizardStepContent] Found value for "${field.code}" via metadata key "${key}":`, fieldValue);
+                      console.log(
+                        `[WizardStepContent] Found value for "${field.code}" via metadata key "${key}":`,
+                        fieldValue
+                      );
                       break;
                     }
                   }
-                  
+
                   // Also check direct field access in applicationData
                   if ((!fieldValue || fieldValue === '') && appData) {
                     const appDataKey = Object.keys(appData).find(
-                      k => k.toLowerCase() === field.code.toLowerCase() || 
-                           k.toLowerCase().replace(/_/g, '') === field.code.toLowerCase().replace(/_/g, '')
+                      (k) =>
+                        k.toLowerCase() === field.code.toLowerCase() ||
+                        k.toLowerCase().replace(/_/g, '') ===
+                          field.code.toLowerCase().replace(/_/g, '')
                     );
-                    if (appDataKey && appData[appDataKey] !== null && appData[appDataKey] !== undefined && appData[appDataKey] !== '') {
+                    if (
+                      appDataKey &&
+                      appData[appDataKey] !== null &&
+                      appData[appDataKey] !== undefined &&
+                      appData[appDataKey] !== ''
+                    ) {
                       fieldValue = appData[appDataKey];
-                      console.log(`[WizardStepContent] Found value for "${field.code}" via applicationData key "${appDataKey}":`, fieldValue);
+                      console.log(
+                        `[WizardStepContent] Found value for "${field.code}" via applicationData key "${appDataKey}":`,
+                        fieldValue
+                      );
                     }
                   }
                 }
@@ -259,7 +291,13 @@ function WizardStepContent({
                       try {
                         const parsed = JSON.parse(trimmed);
                         // Consider it a value if parsed object has meaningful content
-                        return parsed !== null && parsed !== undefined && (typeof parsed === 'object' ? Object.keys(parsed).length > 0 : true);
+                        return (
+                          parsed !== null &&
+                          parsed !== undefined &&
+                          (typeof parsed === 'object'
+                            ? Object.keys(parsed).length > 0
+                            : true)
+                        );
                       } catch {
                         // Not valid JSON, but it's a non-empty string, so it's a value
                         return true;
@@ -272,22 +310,22 @@ function WizardStepContent({
                 })();
 
                 return (
-                  <Box 
+                  <Box
                     key={field.code}
                     p="16px"
                     borderRadius="12px"
                     border="1px solid"
-                    borderColor={hasValue ? "mukuru.grey.light" : "mukuru.text.error"}
-                    bg={hasValue ? "mukuru.cards.white" : "rgba(220, 38, 38, 0.04)"}
+                    borderColor={hasValue ? 'mukuru.grey.light' : 'mukuru.text.error'}
+                    bg={hasValue ? 'mukuru.cards.white' : 'rgba(220, 38, 38, 0.04)'}
                     transition="all 0.2s ease"
                     _hover={{ boxShadow: '0 2px 8px rgba(0, 0, 0, 0.06)' }}
                   >
                     {/* Header row with label and status */}
                     <Flex justify="space-between" align="center" mb="12px">
                       <HStack gap="8px" align="center">
-                        <Typography 
-                          fontSize="13px" 
-                          fontWeight="600" 
+                        <Typography
+                          fontSize="13px"
+                          fontWeight="600"
                           color="mukuru.text.primary"
                           lineHeight="1.4"
                         >
@@ -302,9 +340,9 @@ function WizardStepContent({
                             border="1px solid"
                             borderColor="mukuru.text.error"
                           >
-                            <Typography 
-                              fontSize="10px" 
-                              fontWeight="600" 
+                            <Typography
+                              fontSize="10px"
+                              fontWeight="600"
                               color="mukuru.text.error"
                               textTransform="uppercase"
                               letterSpacing="0.5px"
@@ -318,42 +356,55 @@ function WizardStepContent({
                         px="10px"
                         py="4px"
                         borderRadius="6px"
-                        bg={hasValue ? "rgba(16, 185, 129, 0.08)" : "rgba(220, 38, 38, 0.08)"}
+                        bg={
+                          hasValue
+                            ? 'rgba(16, 185, 129, 0.08)'
+                            : 'rgba(220, 38, 38, 0.08)'
+                        }
                         border="1px solid"
-                        borderColor={hasValue ? "mukuru.text.success" : "mukuru.text.error"}
+                        borderColor={
+                          hasValue ? 'mukuru.text.success' : 'mukuru.text.error'
+                        }
                       >
-                        <Typography 
-                          fontSize="11px" 
-                          fontWeight="600" 
-                          color={hasValue ? "mukuru.text.success" : "mukuru.text.error"}
+                        <Typography
+                          fontSize="11px"
+                          fontWeight="600"
+                          color={hasValue ? 'mukuru.text.success' : 'mukuru.text.error'}
                         >
-                          {hasValue ? "Provided" : "Missing"}
+                          {hasValue ? 'Provided' : 'Missing'}
                         </Typography>
                       </Box>
                     </Flex>
-                    
+
                     {/* Help text */}
                     {field.helpText && (
-                      <Typography fontSize="11px" color="mukuru.grey.medium" mb="10px" lineHeight="1.5">
+                      <Typography
+                        fontSize="11px"
+                        color="mukuru.grey.medium"
+                        mb="10px"
+                        lineHeight="1.5"
+                      >
                         {field.helpText}
                       </Typography>
                     )}
-                    
+
                     {/* Value display */}
                     <Box
                       p="12px 14px"
                       borderRadius="8px"
-                      bg={hasValue ? "mukuru.background.light" : "rgba(220, 38, 38, 0.04)"}
+                      bg={
+                        hasValue ? 'mukuru.background.light' : 'rgba(220, 38, 38, 0.04)'
+                      }
                       border="1px solid"
-                      borderColor={hasValue ? "mukuru.grey.light" : "mukuru.text.error"}
+                      borderColor={hasValue ? 'mukuru.grey.light' : 'mukuru.text.error'}
                     >
-                      <Typography 
-                        fontSize="13px" 
-                        color={hasValue ? "mukuru.text.primary" : "mukuru.text.error"}
-                        fontStyle={hasValue ? "normal" : "italic"}
+                      <Typography
+                        fontSize="13px"
+                        color={hasValue ? 'mukuru.text.primary' : 'mukuru.text.error'}
+                        fontStyle={hasValue ? 'normal' : 'italic'}
                         lineHeight="1.5"
                       >
-                        {hasValue ? String(fieldValue) : "Not provided"}
+                        {hasValue ? String(fieldValue) : 'Not provided'}
                       </Typography>
                     </Box>
                   </Box>
@@ -374,46 +425,50 @@ function WizardStepContent({
           boxShadow="0 2px 8px rgba(0, 0, 0, 0.04)"
           overflow="hidden"
         >
-          <Flex 
-            p="16px 24px" 
-            borderBottom="1px solid" 
-            borderColor="mukuru.grey.light" 
+          <Flex
+            p="16px 24px"
+            borderBottom="1px solid"
+            borderColor="mukuru.grey.light"
             bg="mukuru.background.light"
             align="center"
             justify="space-between"
           >
             <HStack gap="10px">
-              <Box
-                w="8px"
-                h="8px"
-                borderRadius="full"
-                bg="mukuru.teal"
-              />
+              <Box w="8px" h="8px" borderRadius="full" bg="mukuru.teal" />
               <Typography fontSize="15px" fontWeight="600" color="mukuru.text.primary">
                 Documents
               </Typography>
             </HStack>
             <Typography fontSize="12px" fontWeight="500" color="mukuru.grey.medium">
-              {documentFields.filter(f => {
-                const matchingDoc = (documents as Array<Record<string, unknown>>).find(doc => {
-                  const reqName = doc.requirementName as string;
-                  return reqName === f.label || reqName === requirementMap.get(f.code);
-                });
-                return !!matchingDoc;
-              }).length} / {documentFields.length} uploaded
+              {
+                documentFields.filter((f) => {
+                  const matchingDoc = (documents as Array<Record<string, unknown>>).find(
+                    (doc) => {
+                      const reqName = doc.requirementName as string;
+                      return (
+                        reqName === f.label || reqName === requirementMap.get(f.code)
+                      );
+                    }
+                  );
+                  return !!matchingDoc;
+                }).length
+              }{' '}
+              / {documentFields.length} uploaded
             </Typography>
           </Flex>
           <Box p="24px">
             <SimpleGrid columns={{ base: 1, md: 2 }} gap="20px">
               {documentFields.map((field) => {
                 // Find matching document
-                const matchingDoc = (documents as Array<Record<string, unknown>>).find(doc => {
-                  const reqName = doc.requirementName as string;
-                  return (
-                    reqName === field.label ||
-                    reqName === requirementMap.get(field.code)
-                  );
-                });
+                const matchingDoc = (documents as Array<Record<string, unknown>>).find(
+                  (doc) => {
+                    const reqName = doc.requirementName as string;
+                    return (
+                      reqName === field.label ||
+                      reqName === requirementMap.get(field.code)
+                    );
+                  }
+                );
 
                 const hasDocument = !!matchingDoc;
 
@@ -435,16 +490,27 @@ function WizardStepContent({
                           w="32px"
                           h="32px"
                           borderRadius="8px"
-                          bg={hasDocument ? 'mukuru.background.light' : 'rgba(220, 38, 38, 0.08)'}
+                          bg={
+                            hasDocument
+                              ? 'mukuru.background.light'
+                              : 'rgba(220, 38, 38, 0.08)'
+                          }
                           display="flex"
                           alignItems="center"
                           justifyContent="center"
                         >
-                          <FiFile size={16} color={hasDocument ? 'var(--chakra-colors-mukuru-grey-mediumDark)' : 'var(--chakra-colors-mukuru-text-error)'} />
+                          <FiFile
+                            size={16}
+                            color={
+                              hasDocument
+                                ? 'var(--chakra-colors-mukuru-grey-mediumDark)'
+                                : 'var(--chakra-colors-mukuru-text-error)'
+                            }
+                          />
                         </Box>
-                        <Typography 
-                          fontSize="13px" 
-                          fontWeight="600" 
+                        <Typography
+                          fontSize="13px"
+                          fontWeight="600"
                           color="mukuru.text.primary"
                           lineHeight="1.4"
                         >
@@ -459,9 +525,9 @@ function WizardStepContent({
                             border="1px solid"
                             borderColor="mukuru.text.error"
                           >
-                            <Typography 
-                              fontSize="10px" 
-                              fontWeight="600" 
+                            <Typography
+                              fontSize="10px"
+                              fontWeight="600"
                               color="mukuru.text.error"
                               textTransform="uppercase"
                               letterSpacing="0.5px"
@@ -475,42 +541,70 @@ function WizardStepContent({
                         px="10px"
                         py="4px"
                         borderRadius="6px"
-                        bg={hasDocument ? "rgba(16, 185, 129, 0.08)" : "rgba(220, 38, 38, 0.08)"}
+                        bg={
+                          hasDocument
+                            ? 'rgba(16, 185, 129, 0.08)'
+                            : 'rgba(220, 38, 38, 0.08)'
+                        }
                         border="1px solid"
-                        borderColor={hasDocument ? "mukuru.text.success" : "mukuru.text.error"}
+                        borderColor={
+                          hasDocument ? 'mukuru.text.success' : 'mukuru.text.error'
+                        }
                       >
-                        <Typography 
-                          fontSize="11px" 
-                          fontWeight="600" 
-                          color={hasDocument ? "mukuru.text.success" : "mukuru.text.error"}
+                        <Typography
+                          fontSize="11px"
+                          fontWeight="600"
+                          color={
+                            hasDocument ? 'mukuru.text.success' : 'mukuru.text.error'
+                          }
                         >
-                          {hasDocument ? "Uploaded" : "Missing"}
+                          {hasDocument ? 'Uploaded' : 'Missing'}
                         </Typography>
                       </Box>
                     </Flex>
-                    
+
                     {/* Document name */}
                     {hasDocument && matchingDoc && (
-                      <Box mb="10px" overflow="hidden" textOverflow="ellipsis" whiteSpace="nowrap">
-                        <Typography 
-                          fontSize="12px" 
-                          fontWeight="500" 
+                      <Box
+                        mb="10px"
+                        overflow="hidden"
+                        textOverflow="ellipsis"
+                        whiteSpace="nowrap"
+                      >
+                        <Typography
+                          fontSize="12px"
+                          fontWeight="500"
                           color="mukuru.grey.mediumDark"
                           lineHeight="1.4"
-                          title={(matchingDoc.fileName || matchingDoc.file_name || matchingDoc.documentNumber || field.label) as string}
+                          title={
+                            (matchingDoc.fileName ||
+                              matchingDoc.file_name ||
+                              matchingDoc.documentNumber ||
+                              field.label) as string
+                          }
                         >
-                          {(matchingDoc.fileName || matchingDoc.file_name || matchingDoc.documentNumber || field.label) as string}
+                          {
+                            (matchingDoc.fileName ||
+                              matchingDoc.file_name ||
+                              matchingDoc.documentNumber ||
+                              field.label) as string
+                          }
                         </Typography>
                       </Box>
                     )}
-                    
+
                     {/* Help text */}
                     {field.helpText && (
-                      <Typography fontSize="11px" color="mukuru.grey.medium" mb="10px" lineHeight="1.5">
+                      <Typography
+                        fontSize="11px"
+                        color="mukuru.grey.medium"
+                        mb="10px"
+                        lineHeight="1.5"
+                      >
                         {field.helpText}
                       </Typography>
                     )}
-                    
+
                     {/* Action area */}
                     {hasDocument && (
                       <Box mt="4px">
@@ -519,18 +613,30 @@ function WizardStepContent({
                           size="sm"
                           onClick={() => {
                             // Get storageKey from document (try multiple possible field names)
-                            const storageKey = matchingDoc.storageKey || matchingDoc.storage_key || matchingDoc.key || matchingDoc.documentKey;
+                            const storageKey =
+                              matchingDoc.storageKey ||
+                              matchingDoc.storage_key ||
+                              matchingDoc.key ||
+                              matchingDoc.documentKey;
                             // Construct proxy URL from storageKey
-                            const url = storageKey 
+                            const url = storageKey
                               ? `/api/proxy-document?storageKey=${encodeURIComponent(String(storageKey))}`
                               : (matchingDoc.url as string);
-                            const name = (matchingDoc.fileName || matchingDoc.file_name) as string || field.label;
-                            const type = (matchingDoc.contentType || matchingDoc.content_type || matchingDoc.fileType) as string;
-                            const size = (matchingDoc.sizeBytes || matchingDoc.size_bytes || matchingDoc.fileSize) as number;
+                            const name =
+                              ((matchingDoc.fileName ||
+                                matchingDoc.file_name) as string) || field.label;
+                            const type = (matchingDoc.contentType ||
+                              matchingDoc.content_type ||
+                              matchingDoc.fileType) as string;
+                            const size = (matchingDoc.sizeBytes ||
+                              matchingDoc.size_bytes ||
+                              matchingDoc.fileSize) as number;
                             onViewDocument(url, name, type, size);
                           }}
                         >
-                          <IconWrapper><FiEye size={14} /></IconWrapper>
+                          <IconWrapper>
+                            <FiEye size={14} />
+                          </IconWrapper>
                           View Document
                         </Button>
                       </Box>
@@ -568,27 +674,29 @@ function WizardStepContent({
         boxShadow="0 2px 8px rgba(0, 0, 0, 0.04)"
         overflow="hidden"
       >
-        <Flex 
-          p="16px 24px" 
-          borderBottom="1px solid" 
-          borderColor="mukuru.grey.light" 
+        <Flex
+          p="16px 24px"
+          borderBottom="1px solid"
+          borderColor="mukuru.grey.light"
           bg="mukuru.background.light"
           align="center"
           justify="space-between"
         >
           <HStack gap="10px">
-            <Box
-              w="8px"
-              h="8px"
-              borderRadius="full"
-              bg="mukuru.teal"
-            />
+            <Box w="8px" h="8px" borderRadius="full" bg="mukuru.teal" />
             <Typography fontSize="15px" fontWeight="600" color="mukuru.text.primary">
               Step Review
             </Typography>
           </HStack>
           <Typography fontSize="12px" color="mukuru.grey.medium">
-            {[reviewStatus?.completed, reviewStatus?.verified, reviewStatus?.approved].filter(Boolean).length} / 3 completed
+            {
+              [
+                reviewStatus?.completed,
+                reviewStatus?.verified,
+                reviewStatus?.approved,
+              ].filter(Boolean).length
+            }{' '}
+            / 3 completed
           </Typography>
         </Flex>
         <Box p="20px 24px">
@@ -599,16 +707,26 @@ function WizardStepContent({
               p="14px"
               borderRadius="10px"
               border="2px solid"
-              borderColor={reviewStatus?.completed ? "mukuru.text.success" : "mukuru.grey.light"}
-              bg={reviewStatus?.completed ? "rgba(16, 185, 129, 0.08)" : "mukuru.cards.white"}
+              borderColor={
+                reviewStatus?.completed ? 'mukuru.text.success' : 'mukuru.grey.light'
+              }
+              bg={
+                reviewStatus?.completed
+                  ? 'rgba(16, 185, 129, 0.08)'
+                  : 'mukuru.cards.white'
+              }
               cursor="pointer"
               transition="all 0.2s ease"
-              _hover={{ 
-                borderColor: reviewStatus?.completed ? "mukuru.text.success" : "mukuru.buttons.primary",
+              _hover={{
+                borderColor: reviewStatus?.completed
+                  ? 'mukuru.text.success'
+                  : 'mukuru.buttons.primary',
                 transform: 'translateY(-1px)',
-                boxShadow: '0 4px 12px rgba(0, 0, 0, 0.08)'
+                boxShadow: '0 4px 12px rgba(0, 0, 0, 0.08)',
               }}
-              onClick={() => onReviewStatusChange?.(stepId, 'completed', !reviewStatus?.completed)}
+              onClick={() =>
+                onReviewStatusChange?.(stepId, 'completed', !reviewStatus?.completed)
+              }
             >
               <HStack gap="10px" align="center">
                 <Box
@@ -616,8 +734,12 @@ function WizardStepContent({
                   h="20px"
                   borderRadius="5px"
                   border="2px solid"
-                  borderColor={reviewStatus?.completed ? "mukuru.text.success" : "mukuru.grey.medium"}
-                  bg={reviewStatus?.completed ? "mukuru.text.success" : "mukuru.cards.white"}
+                  borderColor={
+                    reviewStatus?.completed ? 'mukuru.text.success' : 'mukuru.grey.medium'
+                  }
+                  bg={
+                    reviewStatus?.completed ? 'mukuru.text.success' : 'mukuru.cards.white'
+                  }
                   display="flex"
                   alignItems="center"
                   justifyContent="center"
@@ -626,7 +748,11 @@ function WizardStepContent({
                   {reviewStatus?.completed && <FiCheck size={12} color="white" />}
                 </Box>
                 <VStack align="flex-start" gap="0">
-                  <Typography fontSize="13px" fontWeight="600" color="mukuru.text.primary">
+                  <Typography
+                    fontSize="13px"
+                    fontWeight="600"
+                    color="mukuru.text.primary"
+                  >
                     Completed
                   </Typography>
                   <Typography fontSize="10px" color="mukuru.grey.medium">
@@ -641,16 +767,22 @@ function WizardStepContent({
               p="14px"
               borderRadius="10px"
               border="2px solid"
-              borderColor={reviewStatus?.verified ? "mukuru.teal" : "mukuru.grey.light"}
-              bg={reviewStatus?.verified ? "rgba(0, 128, 128, 0.08)" : "mukuru.cards.white"}
+              borderColor={reviewStatus?.verified ? 'mukuru.teal' : 'mukuru.grey.light'}
+              bg={
+                reviewStatus?.verified ? 'rgba(0, 128, 128, 0.08)' : 'mukuru.cards.white'
+              }
               cursor="pointer"
               transition="all 0.2s ease"
-              _hover={{ 
-                borderColor: reviewStatus?.verified ? "mukuru.teal" : "mukuru.buttons.primary",
+              _hover={{
+                borderColor: reviewStatus?.verified
+                  ? 'mukuru.teal'
+                  : 'mukuru.buttons.primary',
                 transform: 'translateY(-1px)',
-                boxShadow: '0 4px 12px rgba(0, 0, 0, 0.08)'
+                boxShadow: '0 4px 12px rgba(0, 0, 0, 0.08)',
               }}
-              onClick={() => onReviewStatusChange?.(stepId, 'verified', !reviewStatus?.verified)}
+              onClick={() =>
+                onReviewStatusChange?.(stepId, 'verified', !reviewStatus?.verified)
+              }
             >
               <HStack gap="10px" align="center">
                 <Box
@@ -658,8 +790,10 @@ function WizardStepContent({
                   h="20px"
                   borderRadius="5px"
                   border="2px solid"
-                  borderColor={reviewStatus?.verified ? "mukuru.teal" : "mukuru.grey.medium"}
-                  bg={reviewStatus?.verified ? "mukuru.teal" : "mukuru.cards.white"}
+                  borderColor={
+                    reviewStatus?.verified ? 'mukuru.teal' : 'mukuru.grey.medium'
+                  }
+                  bg={reviewStatus?.verified ? 'mukuru.teal' : 'mukuru.cards.white'}
                   display="flex"
                   alignItems="center"
                   justifyContent="center"
@@ -668,7 +802,11 @@ function WizardStepContent({
                   {reviewStatus?.verified && <FiCheck size={12} color="white" />}
                 </Box>
                 <VStack align="flex-start" gap="0">
-                  <Typography fontSize="13px" fontWeight="600" color="mukuru.text.primary">
+                  <Typography
+                    fontSize="13px"
+                    fontWeight="600"
+                    color="mukuru.text.primary"
+                  >
                     Verified
                   </Typography>
                   <Typography fontSize="10px" color="mukuru.grey.medium">
@@ -683,16 +821,22 @@ function WizardStepContent({
               p="14px"
               borderRadius="10px"
               border="2px solid"
-              borderColor={reviewStatus?.approved ? "mukuru.buttons.primary" : "mukuru.grey.light"}
-              bg={reviewStatus?.approved ? "rgba(240, 84, 35, 0.08)" : "mukuru.cards.white"}
+              borderColor={
+                reviewStatus?.approved ? 'mukuru.buttons.primary' : 'mukuru.grey.light'
+              }
+              bg={
+                reviewStatus?.approved ? 'rgba(240, 84, 35, 0.08)' : 'mukuru.cards.white'
+              }
               cursor="pointer"
               transition="all 0.2s ease"
-              _hover={{ 
-                borderColor: "mukuru.buttons.primary",
+              _hover={{
+                borderColor: 'mukuru.buttons.primary',
                 transform: 'translateY(-1px)',
-                boxShadow: '0 4px 12px rgba(0, 0, 0, 0.08)'
+                boxShadow: '0 4px 12px rgba(0, 0, 0, 0.08)',
               }}
-              onClick={() => onReviewStatusChange?.(stepId, 'approved', !reviewStatus?.approved)}
+              onClick={() =>
+                onReviewStatusChange?.(stepId, 'approved', !reviewStatus?.approved)
+              }
             >
               <HStack gap="10px" align="center">
                 <Box
@@ -700,8 +844,16 @@ function WizardStepContent({
                   h="20px"
                   borderRadius="5px"
                   border="2px solid"
-                  borderColor={reviewStatus?.approved ? "mukuru.buttons.primary" : "mukuru.grey.medium"}
-                  bg={reviewStatus?.approved ? "mukuru.buttons.primary" : "mukuru.cards.white"}
+                  borderColor={
+                    reviewStatus?.approved
+                      ? 'mukuru.buttons.primary'
+                      : 'mukuru.grey.medium'
+                  }
+                  bg={
+                    reviewStatus?.approved
+                      ? 'mukuru.buttons.primary'
+                      : 'mukuru.cards.white'
+                  }
                   display="flex"
                   alignItems="center"
                   justifyContent="center"
@@ -710,7 +862,11 @@ function WizardStepContent({
                   {reviewStatus?.approved && <FiCheck size={12} color="white" />}
                 </Box>
                 <VStack align="flex-start" gap="0">
-                  <Typography fontSize="13px" fontWeight="600" color="mukuru.text.primary">
+                  <Typography
+                    fontSize="13px"
+                    fontWeight="600"
+                    color="mukuru.text.primary"
+                  >
                     Approved
                   </Typography>
                   <Typography fontSize="10px" color="mukuru.grey.medium">
@@ -729,7 +885,12 @@ function WizardStepContent({
             borderColor="mukuru.grey.light"
             bg="mukuru.background.light"
           >
-            <Typography fontSize="12px" fontWeight="600" color="mukuru.text.primary" mb="8px">
+            <Typography
+              fontSize="12px"
+              fontWeight="600"
+              color="mukuru.text.primary"
+              mb="8px"
+            >
               Review Notes
             </Typography>
             <Textarea
@@ -740,7 +901,10 @@ function WizardStepContent({
               borderRadius="8px"
               borderColor="mukuru.grey.light"
               bg="mukuru.cards.white"
-              _focus={{ borderColor: 'mukuru.buttons.primary', boxShadow: '0 0 0 1px var(--chakra-colors-mukuru-buttons-primary)' }}
+              _focus={{
+                borderColor: 'mukuru.buttons.primary',
+                boxShadow: '0 0 0 1px var(--chakra-colors-mukuru-buttons-primary)',
+              }}
               fontSize="12px"
               resize="none"
             />
@@ -758,9 +922,11 @@ export default function ReviewPage() {
   const { data: session } = useSession(); // Session check for auth
   const { condensed } = useSidebar();
   const workItemId = params?.id as string;
-  
+
   // Get initial step from query parameter
-  const initialStep = searchParams?.get('step') ? parseInt(searchParams.get('step')!, 10) : 1;
+  const initialStep = searchParams?.get('step')
+    ? parseInt(searchParams.get('step')!, 10)
+    : 1;
 
   // Color mode values for dark/light mode support
   const bgColor = useColorModeValue('mukuru.background.light', 'mukuru.background.dark');
@@ -772,30 +938,40 @@ export default function ReviewPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [currentStep, setCurrentStep] = useState<string | number>(initialStep);
-  
+
   // Wizard-based navigation state
   const [activeWizardStepId, setActiveWizardStepId] = useState<string | null>(null);
   const [loadedWizardSteps, setLoadedWizardSteps] = useState<Set<string>>(new Set());
-  const [stepCompletion, setStepCompletion] = useState<Record<string, {
-    status: 'complete' | 'partial' | 'incomplete';
-    completedCount: number;
-    totalCount: number;
-    missingRequirements: string[];
-  }>>({});
+  const [stepCompletion, setStepCompletion] = useState<
+    Record<
+      string,
+      {
+        status: 'complete' | 'partial' | 'incomplete';
+        completedCount: number;
+        totalCount: number;
+        missingRequirements: string[];
+      }
+    >
+  >({});
 
   // Step review status - tracks reviewer actions for each step
-  const [stepReviewStatus, setStepReviewStatus] = useState<Record<string, {
-    completed: boolean;
-    verified: boolean;
-    approved: boolean;
-    completedAt?: string;
-    verifiedAt?: string;
-    approvedAt?: string;
-    completedBy?: string;
-    verifiedBy?: string;
-    approvedBy?: string;
-    notes?: string;
-  }>>({});
+  const [stepReviewStatus, setStepReviewStatus] = useState<
+    Record<
+      string,
+      {
+        completed: boolean;
+        verified: boolean;
+        approved: boolean;
+        completedAt?: string;
+        verifiedAt?: string;
+        approvedAt?: string;
+        completedBy?: string;
+        verifiedBy?: string;
+        approvedBy?: string;
+        notes?: string;
+      }
+    >
+  >({});
 
   // Review state
   const [reviewNotes, setReviewNotes] = useState('');
@@ -868,7 +1044,7 @@ export default function ReviewPage() {
     description: string;
     type: 'success' | 'error' | 'warning' | 'info';
   } | null>(null);
-  
+
   // Ref to store timeout ID for cleanup
   const toastTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -882,24 +1058,27 @@ export default function ReviewPage() {
     history: false,
   });
 
-  const showToast = useCallback((
-    title: string,
-    description: string,
-    type: 'success' | 'error' | 'warning' | 'info' = 'info',
-    duration: number = 5000
-  ) => {
-    // Clear any existing timeout
-    if (toastTimeoutRef.current) {
-      clearTimeout(toastTimeoutRef.current);
-    }
-    
-    setToast({ title, description, type });
-    toastTimeoutRef.current = setTimeout(() => {
-      setToast(null);
-      toastTimeoutRef.current = null;
-    }, duration);
-  }, []);
-  
+  const showToast = useCallback(
+    (
+      title: string,
+      description: string,
+      type: 'success' | 'error' | 'warning' | 'info' = 'info',
+      duration: number = 5000
+    ) => {
+      // Clear any existing timeout
+      if (toastTimeoutRef.current) {
+        clearTimeout(toastTimeoutRef.current);
+      }
+
+      setToast({ title, description, type });
+      toastTimeoutRef.current = setTimeout(() => {
+        setToast(null);
+        toastTimeoutRef.current = null;
+      }, duration);
+    },
+    []
+  );
+
   // Cleanup toast timeout on unmount
   useEffect(() => {
     return () => {
@@ -916,7 +1095,7 @@ export default function ReviewPage() {
       setLoading(false);
       return;
     }
-    
+
     try {
       loadingRefs.current.workItem = true;
       setLoading(true);
@@ -928,7 +1107,10 @@ export default function ReviewPage() {
         item = await fetchWorkItemById(workItemId);
       } catch (idErr) {
         // If that fails, try as application ID
-        console.log('[Review Page] Work item ID lookup failed, trying as application ID:', workItemId);
+        console.log(
+          '[Review Page] Work item ID lookup failed, trying as application ID:',
+          workItemId
+        );
         try {
           item = await fetchWorkItemByApplicationId(workItemId);
           // If successful, update the URL to use the correct work item ID
@@ -942,14 +1124,20 @@ export default function ReviewPage() {
           console.log('[Review Page] Both ID lookups failed, trying fallback search');
           const result = await fetchMyWorkItems(1, 1000);
           const foundItem = result.items.find(
-            (w) => w.workItemId === workItemId || w.id === workItemId || w.applicationId === workItemId
+            (w) =>
+              w.workItemId === workItemId ||
+              w.id === workItemId ||
+              w.applicationId === workItemId
           );
 
           if (!foundItem) {
             // Try getting from all work items
             const allResult = await fetchWorkItems({ pageSize: 1000 });
             const fallbackItem = allResult.items.find(
-              (w) => w.workItemId === workItemId || w.id === workItemId || w.applicationId === workItemId
+              (w) =>
+                w.workItemId === workItemId ||
+                w.id === workItemId ||
+                w.applicationId === workItemId
             );
 
             if (!fallbackItem) {
@@ -961,7 +1149,7 @@ export default function ReviewPage() {
           } else {
             item = foundItem;
           }
-          
+
           // Update URL to use correct work item ID if found via fallback
           const correctWorkItemId = item.workItemId || item.id;
           if (correctWorkItemId && correctWorkItemId !== workItemId) {
@@ -969,11 +1157,12 @@ export default function ReviewPage() {
           }
         }
       }
-      
+
       setWorkItem(item);
     } catch (err) {
       console.error('Error loading work item:', err);
-      const errorMessage = err instanceof Error ? err.message : 'Failed to load work item';
+      const errorMessage =
+        err instanceof Error ? err.message : 'Failed to load work item';
       setError(errorMessage);
     } finally {
       setLoading(false);
@@ -983,7 +1172,7 @@ export default function ReviewPage() {
 
   const loadComments = useCallback(async () => {
     if (loadingRefs.current.comments) return;
-    
+
     try {
       loadingRefs.current.comments = true;
       const commentsData = await fetchWorkItemComments(workItemId);
@@ -1000,7 +1189,7 @@ export default function ReviewPage() {
 
   const loadHistory = useCallback(async () => {
     if (loadingRefs.current.history) return;
-    
+
     try {
       loadingRefs.current.history = true;
       const historyData = await fetchWorkItemHistory(workItemId);
@@ -1112,16 +1301,19 @@ export default function ReviewPage() {
   const stepRequirementsMap = useMemo(() => {
     if (!entitySchema?.sections) return new Map<string, RenderableField[]>();
     const map = new Map<string, RenderableField[]>();
-    entitySchema.sections.forEach(section => {
+    entitySchema.sections.forEach((section) => {
       map.set(section.id, section.fields);
     });
     return map;
   }, [entitySchema]);
 
   // Memoize getRequirementsForStep
-  const getRequirementsForStepMemoized = useCallback((stepId: string): RenderableField[] => {
-    return stepRequirementsMap.get(stepId) || [];
-  }, [stepRequirementsMap]);
+  const getRequirementsForStepMemoized = useCallback(
+    (stepId: string): RenderableField[] => {
+      return stepRequirementsMap.get(stepId) || [];
+    },
+    [stepRequirementsMap]
+  );
 
   /**
    * Get requirements for a specific wizard step (memoized)
@@ -1131,133 +1323,154 @@ export default function ReviewPage() {
   /**
    * Calculate completion status for a wizard step (memoized)
    */
-  const calculateStepCompletion = useCallback((stepId: string): {
-    status: 'complete' | 'partial' | 'incomplete';
-    completedCount: number;
-    totalCount: number;
-    missingRequirements: string[];
-  } => {
-    const requirements = getRequirementsForStep(stepId);
-    const requiredFields = requirements.filter(f => f.isRequired);
-    const totalCount = requiredFields.length;
-    
-    if (totalCount === 0) {
-      return {
-        status: 'complete',
-        completedCount: 0,
-        totalCount: 0,
-        missingRequirements: []
-      };
-    }
+  const calculateStepCompletion = useCallback(
+    (
+      stepId: string
+    ): {
+      status: 'complete' | 'partial' | 'incomplete';
+      completedCount: number;
+      totalCount: number;
+      missingRequirements: string[];
+    } => {
+      const requirements = getRequirementsForStep(stepId);
+      const requiredFields = requirements.filter((f) => f.isRequired);
+      const totalCount = requiredFields.length;
 
-    let completedCount = 0;
-    const missingRequirements: string[] = [];
+      if (totalCount === 0) {
+        return {
+          status: 'complete',
+          completedCount: 0,
+          totalCount: 0,
+          missingRequirements: [],
+        };
+      }
 
-    requiredFields.forEach(field => {
-      const isDocument = field.type === 'file' || field.type === 'File';
-      let isSatisfied = false;
+      let completedCount = 0;
+      const missingRequirements: string[] = [];
 
-      if (isDocument) {
-        // Check if document exists
-        isSatisfied = (documents as Array<Record<string, unknown>>).some(doc => {
-          const reqName = doc.requirementName as string;
-          return (
-            reqName === field.label ||
-            reqName === requirementMap.get(field.code)
-          );
-        });
-      } else {
-        // Check if information field has value
-        const appData = applicationData as Record<string, unknown> | null;
-        if (appData?.metadataJson) {
-          try {
-            const metadata = typeof appData.metadataJson === 'string'
-              ? JSON.parse(appData.metadataJson)
-              : appData.metadataJson;
-            
-            // Try multiple possible keys
-            const possibleKeys = [
-              field.code.toLowerCase(),
-              field.code,
-              field.label.toLowerCase().replace(/\s+/g, '_'),
-              field.label.toLowerCase().replace(/\s+/g, '-'),
-            ];
-            
-            for (const key of possibleKeys) {
-              if (metadata[key] !== undefined && metadata[key] !== null && metadata[key] !== '') {
-                isSatisfied = true;
-                break;
+      requiredFields.forEach((field) => {
+        const isDocument = field.type === 'file' || field.type === 'File';
+        let isSatisfied = false;
+
+        if (isDocument) {
+          // Check if document exists
+          isSatisfied = (documents as Array<Record<string, unknown>>).some((doc) => {
+            const reqName = doc.requirementName as string;
+            return reqName === field.label || reqName === requirementMap.get(field.code);
+          });
+        } else {
+          // Check if information field has value
+          const appData = applicationData as Record<string, unknown> | null;
+          if (appData?.metadataJson) {
+            try {
+              const metadata =
+                typeof appData.metadataJson === 'string'
+                  ? JSON.parse(appData.metadataJson)
+                  : appData.metadataJson;
+
+              // Try multiple possible keys
+              const possibleKeys = [
+                field.code.toLowerCase(),
+                field.code,
+                field.label.toLowerCase().replace(/\s+/g, '_'),
+                field.label.toLowerCase().replace(/\s+/g, '-'),
+              ];
+
+              for (const key of possibleKeys) {
+                if (
+                  metadata[key] !== undefined &&
+                  metadata[key] !== null &&
+                  metadata[key] !== ''
+                ) {
+                  isSatisfied = true;
+                  break;
+                }
               }
+
+              // Also check direct field access
+              if (!isSatisfied && appData[field.code]) {
+                isSatisfied = true;
+              }
+            } catch {
+              // Ignore parse errors
             }
-            
-            // Also check direct field access
-            if (!isSatisfied && appData[field.code]) {
-              isSatisfied = true;
-            }
-          } catch {
-            // Ignore parse errors
           }
         }
-      }
 
-      if (isSatisfied) {
-        completedCount++;
+        if (isSatisfied) {
+          completedCount++;
+        } else {
+          missingRequirements.push(field.label);
+        }
+      });
+
+      let status: 'complete' | 'partial' | 'incomplete';
+      if (completedCount === totalCount) {
+        status = 'complete';
+      } else if (completedCount > 0) {
+        status = 'partial';
       } else {
-        missingRequirements.push(field.label);
+        status = 'incomplete';
       }
-    });
 
-    let status: 'complete' | 'partial' | 'incomplete';
-    if (completedCount === totalCount) {
-      status = 'complete';
-    } else if (completedCount > 0) {
-      status = 'partial';
-    } else {
-      status = 'incomplete';
-    }
-
-    return {
-      status,
-      completedCount,
-      totalCount,
-      missingRequirements
-    };
-  }, [getRequirementsForStepMemoized, documents, requirementMap, applicationData]);
+      return {
+        status,
+        completedCount,
+        totalCount,
+        missingRequirements,
+      };
+    },
+    [getRequirementsForStepMemoized, documents, requirementMap, applicationData]
+  );
 
   /**
    * Calculate completion for all wizard steps
    */
   useEffect(() => {
     if (entitySchema?.wizardConfiguration?.steps && entitySchema.sections) {
-      const completion: Record<string, {
-        status: 'complete' | 'partial' | 'incomplete';
-        completedCount: number;
-        totalCount: number;
-        missingRequirements: string[];
-      }> = {};
-      
-      entitySchema.wizardConfiguration.steps.forEach(step => {
+      const completion: Record<
+        string,
+        {
+          status: 'complete' | 'partial' | 'incomplete';
+          completedCount: number;
+          totalCount: number;
+          missingRequirements: string[];
+        }
+      > = {};
+
+      entitySchema.wizardConfiguration.steps.forEach((step) => {
         if (step.isActive) {
           completion[step.id] = calculateStepCompletion(step.id);
         }
       });
 
       setStepCompletion(completion);
-      
+
       // Set first wizard step as active if not set
       if (!activeWizardStepId && entitySchema.wizardConfiguration.steps.length > 0) {
         const firstStep = entitySchema.wizardConfiguration.steps
-          .filter(s => s.isActive)
+          .filter((s) => s.isActive)
           .sort((a, b) => a.stepNumber - b.stepNumber)[0];
         if (firstStep) {
           const firstStepId = `wizard-${firstStep.id}`;
-          console.log('[Review Page] Setting initial wizard step:', { firstStepId, wizardStepId: firstStep.id, title: firstStep.title });
+          console.log('[Review Page] Setting initial wizard step:', {
+            firstStepId,
+            wizardStepId: firstStep.id,
+            title: firstStep.title,
+          });
           setActiveWizardStepId(String(firstStep.id));
           setCurrentStep(firstStepId);
         }
       }
     }
-  }, [entitySchema, documents, applicationData, requirementMap, calculateStepCompletion, activeWizardStepId]);
+  }, [
+    entitySchema,
+    documents,
+    applicationData,
+    requirementMap,
+    calculateStepCompletion,
+    activeWizardStepId,
+  ]);
 
   /**
    * Lazy load step content when step becomes active
@@ -1265,7 +1478,7 @@ export default function ReviewPage() {
   useEffect(() => {
     if (activeWizardStepId && !loadedWizardSteps.has(activeWizardStepId)) {
       // Mark step as loaded (in a real implementation, you might fetch additional data here)
-      setLoadedWizardSteps(prev => new Set([...prev, activeWizardStepId]));
+      setLoadedWizardSteps((prev) => new Set([...prev, activeWizardStepId]));
     }
   }, [activeWizardStepId, loadedWizardSteps]);
 
@@ -1274,15 +1487,15 @@ export default function ReviewPage() {
    */
   const jumpToIncompleteStep = useCallback(() => {
     if (!entitySchema?.wizardConfiguration?.steps) return;
-    
+
     const incompleteStep = entitySchema.wizardConfiguration.steps
-      .filter(s => s.isActive)
+      .filter((s) => s.isActive)
       .sort((a, b) => a.stepNumber - b.stepNumber)
-      .find(step => {
+      .find((step) => {
         const completion = stepCompletion[step.id];
         return completion?.status !== 'complete';
       });
-    
+
     if (incompleteStep) {
       setActiveWizardStepId(incompleteStep.id);
       setCurrentStep(1); // Switch to wizard steps view
@@ -1314,7 +1527,14 @@ export default function ReviewPage() {
     } finally {
       setActionLoading(false);
     }
-  }, [workItem, reviewNotes, validateRequirementCompleteness, showToast, loadWorkItem, router]);
+  }, [
+    workItem,
+    reviewNotes,
+    validateRequirementCompleteness,
+    showToast,
+    loadWorkItem,
+    router,
+  ]);
 
   const handleDecline = useCallback(async () => {
     if (!workItem || !declineReason.trim()) return;
@@ -1366,7 +1586,14 @@ export default function ReviewPage() {
     } finally {
       setActionLoading(false);
     }
-  }, [workItem, reviewNotes, validateRequirementCompleteness, showToast, loadWorkItem, router]);
+  }, [
+    workItem,
+    reviewNotes,
+    validateRequirementCompleteness,
+    showToast,
+    loadWorkItem,
+    router,
+  ]);
 
   const handleSubmitForApproval = useCallback(async () => {
     if (!workItem) return;
@@ -1400,7 +1627,12 @@ export default function ReviewPage() {
     try {
       const userId = (session.user as { id?: string }).id || session.user.email || '';
       const userName = session.user.name || session.user.email || 'Current User';
-      await addCommentUseCase(workItem.workItemId || workItem.id, newComment, userId, userName);
+      await addCommentUseCase(
+        workItem.workItemId || workItem.id,
+        newComment,
+        userId,
+        userName
+      );
       showToast('Comment added', 'Your comment has been added', 'success', 3000);
       setNewComment('');
       await loadComments();
@@ -1424,7 +1656,8 @@ export default function ReviewPage() {
       showToast('Assigned', 'Work item has been assigned to you', 'success', 3000);
       await loadWorkItem();
     } catch (err: unknown) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to assign work item';
+      const errorMessage =
+        err instanceof Error ? err.message : 'Failed to assign work item';
       showToast('Assignment failed', errorMessage, 'error', 5000);
     } finally {
       setActionLoading(false);
@@ -1438,21 +1671,24 @@ export default function ReviewPage() {
         try {
           const workItemId = workItem.workItemId || workItem.id;
           const status = await getStepReviewStatus(workItemId);
-          
+
           // Transform backend format to frontend format
-          const transformed: Record<string, {
-            completed: boolean;
-            verified: boolean;
-            approved: boolean;
-            completedAt?: string;
-            verifiedAt?: string;
-            approvedAt?: string;
-            completedBy?: string;
-            verifiedBy?: string;
-            approvedBy?: string;
-            notes?: string;
-          }> = {};
-          
+          const transformed: Record<
+            string,
+            {
+              completed: boolean;
+              verified: boolean;
+              approved: boolean;
+              completedAt?: string;
+              verifiedAt?: string;
+              approvedAt?: string;
+              completedBy?: string;
+              verifiedBy?: string;
+              approvedBy?: string;
+              notes?: string;
+            }
+          > = {};
+
           for (const [stepId, review] of Object.entries(status)) {
             transformed[stepId] = {
               completed: review.completed ?? false,
@@ -1467,14 +1703,17 @@ export default function ReviewPage() {
               notes: review.notes,
             };
           }
-          
+
           setStepReviewStatus(transformed);
         } catch (err) {
           // Log warning instead of error - step review status is optional
           // 404 is now handled gracefully in getStepReviewStatus (returns empty object)
           const errorMessage = err instanceof Error ? err.message : String(err);
           if (!errorMessage.includes('404')) {
-            console.warn('[Review Page] Failed to load step review status from backend (non-critical):', errorMessage);
+            console.warn(
+              '[Review Page] Failed to load step review status from backend (non-critical):',
+              errorMessage
+            );
           }
           // Don't set error state - step review status is optional, continue with empty object
           // Fallback to localStorage if backend fails (for non-404 errors)
@@ -1495,174 +1734,194 @@ export default function ReviewPage() {
         }
       }
     };
-    
+
     loadStepReviewStatus();
   }, [workItem?.workItemId, workItem?.id]);
 
   // Handle step review status change
-  const handleStepReviewStatusChange = useCallback(async (
-    stepId: string,
-    field: 'completed' | 'verified' | 'approved',
-    value: boolean
-  ) => {
-    if (!session?.user) {
-      showToast('Authentication required', 'Please log in to update review status', 'error', 3000);
-      return;
-    }
-
-    const userId = (session.user as { id?: string }).id || session.user.email || '';
-    const userName = session.user.name || session.user.email || 'Current User';
-    const now = new Date().toISOString();
-
-    // Optimistic update
-    setStepReviewStatus((prev) => {
-      const current = prev[stepId] || {
-        completed: false,
-        verified: false,
-        approved: false,
-      };
-
-      const updated = {
-        ...current,
-        [field]: value,
-        [`${field}At`]: value ? now : undefined,
-        [`${field}By`]: value ? userId : undefined,
-      };
-
-      return {
-        ...prev,
-        [stepId]: updated,
-      };
-    });
-
-    // Save to backend
-    try {
-      const workItemId = workItem?.workItemId || workItem?.id;
-      if (workItemId) {
-        await updateStepReviewStatus(workItemId, stepId, field, value);
-        
-        // Also save to localStorage as backup
-        setStepReviewStatus((prev) => {
-          const storageKey = `workItem_${workItemId}_stepReviewStatus`;
-          try {
-            localStorage.setItem(storageKey, JSON.stringify(prev));
-          } catch (err) {
-            console.error('[Review Page] Failed to save step review status to localStorage:', err);
-          }
-          return prev;
-        });
-        
-        if (value) {
-          showToast(
-            'Status updated',
-            `Step marked as ${field}`,
-            'success',
-            2000
-          );
-        } else {
-          showToast(
-            'Status updated',
-            `Step unmarked as ${field}`,
-            'success',
-            2000
-          );
-        }
+  const handleStepReviewStatusChange = useCallback(
+    async (
+      stepId: string,
+      field: 'completed' | 'verified' | 'approved',
+      value: boolean
+    ) => {
+      if (!session?.user) {
+        showToast(
+          'Authentication required',
+          'Please log in to update review status',
+          'error',
+          3000
+        );
+        return;
       }
-    } catch (err: unknown) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to update review status';
-      showToast('Update failed', errorMessage, 'error', 3000);
-      
-      // Revert optimistic update on error
+
+      const userId = (session.user as { id?: string }).id || session.user.email || '';
+      const userName = session.user.name || session.user.email || 'Current User';
+      const now = new Date().toISOString();
+
+      // Optimistic update
       setStepReviewStatus((prev) => {
         const current = prev[stepId] || {
           completed: false,
           verified: false,
           approved: false,
         };
+
+        const updated = {
+          ...current,
+          [field]: value,
+          [`${field}At`]: value ? now : undefined,
+          [`${field}By`]: value ? userId : undefined,
+        };
+
         return {
           ...prev,
-          [stepId]: {
-            ...current,
-            [field]: !value,
-            [`${field}At`]: current[`${field}At` as keyof typeof current] as string | undefined,
-            [`${field}By`]: current[`${field}By` as keyof typeof current] as string | undefined,
-          },
+          [stepId]: updated,
         };
       });
-    }
-  }, [session, showToast, workItem?.workItemId, workItem?.id]);
+
+      // Save to backend
+      try {
+        const workItemId = workItem?.workItemId || workItem?.id;
+        if (workItemId) {
+          await updateStepReviewStatus(workItemId, stepId, field, value);
+
+          // Also save to localStorage as backup
+          setStepReviewStatus((prev) => {
+            const storageKey = `workItem_${workItemId}_stepReviewStatus`;
+            try {
+              localStorage.setItem(storageKey, JSON.stringify(prev));
+            } catch (err) {
+              console.error(
+                '[Review Page] Failed to save step review status to localStorage:',
+                err
+              );
+            }
+            return prev;
+          });
+
+          if (value) {
+            showToast('Status updated', `Step marked as ${field}`, 'success', 2000);
+          } else {
+            showToast('Status updated', `Step unmarked as ${field}`, 'success', 2000);
+          }
+        }
+      } catch (err: unknown) {
+        const errorMessage =
+          err instanceof Error ? err.message : 'Failed to update review status';
+        showToast('Update failed', errorMessage, 'error', 3000);
+
+        // Revert optimistic update on error
+        setStepReviewStatus((prev) => {
+          const current = prev[stepId] || {
+            completed: false,
+            verified: false,
+            approved: false,
+          };
+          return {
+            ...prev,
+            [stepId]: {
+              ...current,
+              [field]: !value,
+              [`${field}At`]: current[`${field}At` as keyof typeof current] as
+                | string
+                | undefined,
+              [`${field}By`]: current[`${field}By` as keyof typeof current] as
+                | string
+                | undefined,
+            },
+          };
+        });
+      }
+    },
+    [session, showToast, workItem?.workItemId, workItem?.id]
+  );
 
   // Debounce timer for notes updates
   const notesDebounceTimerRef = useRef<Record<string, NodeJS.Timeout>>({});
 
   // Handle notes change with debouncing
-  const handleNotesChange = useCallback((stepId: string, notes: string) => {
-    if (!session?.user || (!workItem?.workItemId && !workItem?.id)) {
-      return;
-    }
-
-    // Optimistic update immediately for better UX
-    setStepReviewStatus((prev) => {
-      const current = prev[stepId] || {
-        completed: false,
-        verified: false,
-        approved: false,
-      };
-
-      return {
-        ...prev,
-        [stepId]: {
-          ...current,
-          notes,
-        },
-      };
-    });
-
-    // Clear existing debounce timer for this step
-    if (notesDebounceTimerRef.current[stepId]) {
-      clearTimeout(notesDebounceTimerRef.current[stepId]);
-    }
-
-    // Debounce the API call - wait 1 second after user stops typing
-    notesDebounceTimerRef.current[stepId] = setTimeout(async () => {
-      try {
-        const workItemId = workItem?.workItemId || workItem?.id;
-        if (workItemId) {
-          // Read current state to get the latest field values
-          // We'll use a functional update to read the current state
-          let currentStatus: typeof stepReviewStatus[string] | undefined;
-          setStepReviewStatus((currentState) => {
-            currentStatus = currentState[stepId];
-            return currentState; // Don't change state, just read it
-          });
-          
-          // Determine which field to use for the update (we need to update at least one field)
-          // Use the first available field, or 'completed' as default
-          // This ensures we preserve existing field values and don't accidentally change them
-          const fieldToUpdate = currentStatus?.completed ? 'completed' : 
-                               currentStatus?.verified ? 'verified' : 
-                               currentStatus?.approved ? 'approved' : 'completed';
-          const valueToUpdate = currentStatus?.[fieldToUpdate] ?? false;
-          
-          // Update with notes - the backend handler will update notes if provided
-          // We use the current field value so it doesn't actually change the field
-          await updateStepReviewStatus(workItemId, stepId, fieldToUpdate, valueToUpdate, notes);
-        }
-      } catch (err: unknown) {
-        const errorMessage = err instanceof Error ? err.message : 'Failed to update notes';
-        console.error('[Review Page] Failed to update notes:', errorMessage);
-        // Silently fail for notes to avoid interrupting user's typing
-      } finally {
-        // Clean up timer reference
-        delete notesDebounceTimerRef.current[stepId];
+  const handleNotesChange = useCallback(
+    (stepId: string, notes: string) => {
+      if (!session?.user || (!workItem?.workItemId && !workItem?.id)) {
+        return;
       }
-    }, 1000); // 1 second debounce
-  }, [session, workItem?.workItemId, workItem?.id]);
+
+      // Optimistic update immediately for better UX
+      setStepReviewStatus((prev) => {
+        const current = prev[stepId] || {
+          completed: false,
+          verified: false,
+          approved: false,
+        };
+
+        return {
+          ...prev,
+          [stepId]: {
+            ...current,
+            notes,
+          },
+        };
+      });
+
+      // Clear existing debounce timer for this step
+      if (notesDebounceTimerRef.current[stepId]) {
+        clearTimeout(notesDebounceTimerRef.current[stepId]);
+      }
+
+      // Debounce the API call - wait 1 second after user stops typing
+      notesDebounceTimerRef.current[stepId] = setTimeout(async () => {
+        try {
+          const workItemId = workItem?.workItemId || workItem?.id;
+          if (workItemId) {
+            // Read current state to get the latest field values
+            // We'll use a functional update to read the current state
+            let currentStatus: (typeof stepReviewStatus)[string] | undefined;
+            setStepReviewStatus((currentState) => {
+              currentStatus = currentState[stepId];
+              return currentState; // Don't change state, just read it
+            });
+
+            // Determine which field to use for the update (we need to update at least one field)
+            // Use the first available field, or 'completed' as default
+            // This ensures we preserve existing field values and don't accidentally change them
+            const fieldToUpdate = currentStatus?.completed
+              ? 'completed'
+              : currentStatus?.verified
+                ? 'verified'
+                : currentStatus?.approved
+                  ? 'approved'
+                  : 'completed';
+            const valueToUpdate = currentStatus?.[fieldToUpdate] ?? false;
+
+            // Update with notes - the backend handler will update notes if provided
+            // We use the current field value so it doesn't actually change the field
+            await updateStepReviewStatus(
+              workItemId,
+              stepId,
+              fieldToUpdate,
+              valueToUpdate,
+              notes
+            );
+          }
+        } catch (err: unknown) {
+          const errorMessage =
+            err instanceof Error ? err.message : 'Failed to update notes';
+          console.error('[Review Page] Failed to update notes:', errorMessage);
+          // Silently fail for notes to avoid interrupting user's typing
+        } finally {
+          // Clean up timer reference
+          delete notesDebounceTimerRef.current[stepId];
+        }
+      }, 1000); // 1 second debounce
+    },
+    [session, workItem?.workItemId, workItem?.id]
+  );
 
   // Cleanup debounce timers on unmount
   useEffect(() => {
     return () => {
-      Object.values(notesDebounceTimerRef.current).forEach(timer => {
+      Object.values(notesDebounceTimerRef.current).forEach((timer) => {
         if (timer) clearTimeout(timer);
       });
     };
@@ -1674,14 +1933,24 @@ export default function ReviewPage() {
 
     setActionLoading(true);
     try {
-      await assignWorkItemUseCase(workItem.workItemId || workItem.id, reassignUserId, reassignUserName);
-      showToast('Reassigned', `Work item has been assigned to ${reassignUserName}`, 'success', 3000);
+      await assignWorkItemUseCase(
+        workItem.workItemId || workItem.id,
+        reassignUserId,
+        reassignUserName
+      );
+      showToast(
+        'Reassigned',
+        `Work item has been assigned to ${reassignUserName}`,
+        'success',
+        3000
+      );
       setReassignModalOpen(false);
       setReassignUserId('');
       setReassignUserName('');
       await loadWorkItem();
     } catch (err: unknown) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to reassign work item';
+      const errorMessage =
+        err instanceof Error ? err.message : 'Failed to reassign work item';
       showToast('Reassignment failed', errorMessage, 'error', 5000);
     } finally {
       setActionLoading(false);
@@ -1698,7 +1967,8 @@ export default function ReviewPage() {
       showToast('Unassigned', 'Work item has been unassigned', 'success', 3000);
       await loadWorkItem();
     } catch (err: unknown) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to unassign work item';
+      const errorMessage =
+        err instanceof Error ? err.message : 'Failed to unassign work item';
       showToast('Unassign failed', errorMessage, 'error', 5000);
     } finally {
       setActionLoading(false);
@@ -1719,7 +1989,12 @@ export default function ReviewPage() {
     try {
       await startReviewUseCase(workItem.workItemId || workItem.id);
       setReviewStarted(true);
-      showToast('Review Started', 'You have started reviewing this work item', 'info', 3000);
+      showToast(
+        'Review Started',
+        'You have started reviewing this work item',
+        'info',
+        3000
+      );
       await loadWorkItem();
     } catch (err: unknown) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to start review';
@@ -1740,11 +2015,17 @@ export default function ReviewPage() {
     setActionLoading(true);
     try {
       await markForRefreshUseCase(workItem.workItemId || workItem.id);
-      showToast('Marked for Refresh', 'Work item has been marked for document refresh', 'success', 3000);
+      showToast(
+        'Marked for Refresh',
+        'Work item has been marked for document refresh',
+        'success',
+        3000
+      );
       setRefreshModalOpen(false);
       await loadWorkItem();
     } catch (err: unknown) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to mark for refresh';
+      const errorMessage =
+        err instanceof Error ? err.message : 'Failed to mark for refresh';
       showToast('Refresh failed', errorMessage, 'error', 5000);
     } finally {
       setActionLoading(false);
@@ -1759,7 +2040,10 @@ export default function ReviewPage() {
       // Always use applicationId - never fall back to work item ID
       const caseId = workItem.applicationId;
       if (!caseId) {
-        console.warn('[Review Page] Cannot load application data: applicationId is missing', { workItem });
+        console.warn(
+          '[Review Page] Cannot load application data: applicationId is missing',
+          { workItem }
+        );
         return;
       }
 
@@ -1792,21 +2076,36 @@ export default function ReviewPage() {
             businessLegalName: appData.businessLegalName,
             businessRegistrationNumber: appData.businessRegistrationNumber,
             businessAddress: appData.businessAddress,
-            metadataJson: appData.metadataJson ? (typeof appData.metadataJson === 'string' ? 'string (parsed below)' : 'object') : 'missing',
-            metadataKeys: appData.metadataJson ? Object.keys(typeof appData.metadataJson === 'string' ? JSON.parse(appData.metadataJson) : appData.metadataJson).slice(0, 30) : [],
-            metadataSample: appData.metadataJson ? (() => {
-              const meta = typeof appData.metadataJson === 'string' ? JSON.parse(appData.metadataJson) : appData.metadataJson;
-              return {
-                registration_number: meta.registration_number,
-                registered_address: meta.registered_address,
-                legal_name: meta.legal_name,
-                businessLegalName: meta.businessLegalName,
-                businessRegistrationNumber: meta.businessRegistrationNumber,
-                businessAddress: meta.businessAddress,
-              };
-            })() : {},
+            metadataJson: appData.metadataJson
+              ? typeof appData.metadataJson === 'string'
+                ? 'string (parsed below)'
+                : 'object'
+              : 'missing',
+            metadataKeys: appData.metadataJson
+              ? Object.keys(
+                  typeof appData.metadataJson === 'string'
+                    ? JSON.parse(appData.metadataJson)
+                    : appData.metadataJson
+                ).slice(0, 30)
+              : [],
+            metadataSample: appData.metadataJson
+              ? (() => {
+                  const meta =
+                    typeof appData.metadataJson === 'string'
+                      ? JSON.parse(appData.metadataJson)
+                      : appData.metadataJson;
+                  return {
+                    registration_number: meta.registration_number,
+                    registered_address: meta.registered_address,
+                    legal_name: meta.legal_name,
+                    businessLegalName: meta.businessLegalName,
+                    businessRegistrationNumber: meta.businessRegistrationNumber,
+                    businessAddress: meta.businessAddress,
+                  };
+                })()
+              : {},
           });
-          
+
           // Fetch entity schema with wizard configuration support
           const schema = await fetchEntitySchema(entityTypeCode, appData, true);
           if (schema) {
@@ -1816,19 +2115,22 @@ export default function ReviewPage() {
               sectionsCount: schema.sections?.length || 0,
               wizardSteps: schema.wizardConfiguration?.steps,
             });
-            
+
             // Log requirement codes and their mapped values
             console.log('[Review Page] Requirement codes and mapped values:');
             schema.sections.forEach((section) => {
               section.fields.forEach((field) => {
                 console.log(`  - ${field.code} (${field.label}):`, {
                   value: field.value,
-                  hasValue: field.value !== null && field.value !== undefined && field.value !== '',
+                  hasValue:
+                    field.value !== null &&
+                    field.value !== undefined &&
+                    field.value !== '',
                   type: field.type,
                 });
               });
             });
-            
+
             setEntitySchema(schema);
 
             // Create requirement code to display name map for document mapping
@@ -2167,90 +2469,93 @@ export default function ReviewPage() {
     }
   }, [workItem, applicationData, requirementMap]);
 
-  const handleViewDocument = useCallback(async (document: Record<string, unknown>) => {
-    try {
-      console.log('[Document Viewer] Attempting to view document:', {
-        id: document.id,
-        fileName: document.fileName,
-        documentNumber: document.documentNumber,
-        storageKey: document.storageKey,
-        type: document.type,
-        hasStorageKey: !!document.storageKey,
-        allKeys: Object.keys(document),
-      });
+  const handleViewDocument = useCallback(
+    async (document: Record<string, unknown>) => {
+      try {
+        console.log('[Document Viewer] Attempting to view document:', {
+          id: document.id,
+          fileName: document.fileName,
+          documentNumber: document.documentNumber,
+          storageKey: document.storageKey,
+          type: document.type,
+          hasStorageKey: !!document.storageKey,
+          allKeys: Object.keys(document),
+        });
 
-      if (!document) {
-        console.error('[Document Viewer] No document provided');
-        showToast('Document error', 'No document provided', 'error', 3000);
-        return;
-      }
+        if (!document) {
+          console.error('[Document Viewer] No document provided');
+          showToast('Document error', 'No document provided', 'error', 3000);
+          return;
+        }
 
-      // Try multiple possible storage key field names
-      const storageKey =
-        document.storageKey ||
-        document.storage_key ||
-        document.storageKey ||
-        document.key ||
-        document.documentKey;
+        // Try multiple possible storage key field names
+        const storageKey =
+          document.storageKey ||
+          document.storage_key ||
+          document.storageKey ||
+          document.key ||
+          document.documentKey;
 
-      if (!storageKey) {
-        console.error('[Document Viewer] Document missing storageKey:', {
-          document,
-          availableKeys: Object.keys(document),
+        if (!storageKey) {
+          console.error('[Document Viewer] Document missing storageKey:', {
+            document,
+            availableKeys: Object.keys(document),
+          });
+          showToast(
+            'Document error',
+            'Document storage key not found. Document may not be available for viewing.',
+            'error',
+            5000
+          );
+          return;
+        }
+
+        // Get document download URL through proxy
+        const downloadUrl = `/api/proxy-document?storageKey=${encodeURIComponent(String(storageKey))}`;
+
+        const fileName =
+          document.fileName ||
+          document.file_name ||
+          document.documentNumber ||
+          document.document_number ||
+          document.name ||
+          'Document';
+
+        console.log('[Document Viewer] Setting up viewer:', {
+          downloadUrl,
+          fileName,
+          type: document.type,
+          storageKey: String(storageKey).substring(0, 50) + '...',
+        });
+
+        setViewingDocumentUrl(downloadUrl);
+        setViewingDocumentName(String(fileName));
+        setViewingDocumentType(document.type ? String(document.type) : undefined);
+        setViewingDocumentSize(
+          (document.sizeBytes || document.size_bytes || document.size) as
+            | number
+            | undefined
+        );
+
+        // Force the modal to open
+        setDocumentViewerOpen(true);
+
+        console.log('[Document Viewer] Viewer state updated, modal should open');
+      } catch (err) {
+        console.error('[Document Viewer] Error viewing document:', err);
+        logger.error(err, 'Error viewing document', {
+          tags: { error_type: 'document_view_error' },
         });
         showToast(
-          'Document error',
-          'Document storage key not found. Document may not be available for viewing.',
+          'View failed',
+          err instanceof Error ? err.message : 'Failed to view document',
           'error',
           5000
         );
-        return;
       }
-
-      // Get document download URL through proxy
-      const downloadUrl = `/api/proxy-document?storageKey=${encodeURIComponent(String(storageKey))}`;
-
-      const fileName =
-        document.fileName ||
-        document.file_name ||
-        document.documentNumber ||
-        document.document_number ||
-        document.name ||
-        'Document';
-
-      console.log('[Document Viewer] Setting up viewer:', {
-        downloadUrl,
-        fileName,
-        type: document.type,
-        storageKey: String(storageKey).substring(0, 50) + '...',
-      });
-
-      setViewingDocumentUrl(downloadUrl);
-      setViewingDocumentName(String(fileName));
-      setViewingDocumentType(document.type ? String(document.type) : undefined);
-      setViewingDocumentSize(
-        (document.sizeBytes || document.size_bytes || document.size) as
-          | number
-          | undefined
-      );
-      
-      // Force the modal to open
-      setDocumentViewerOpen(true);
-
-      console.log('[Document Viewer] Viewer state updated, modal should open');
-    } catch (err) {
-      console.error('[Document Viewer] Error viewing document:', err);
-      logger.error(err, 'Error viewing document', {
-        tags: { error_type: 'document_view_error' },
-      });
-      showToast(
-        'View failed',
-        err instanceof Error ? err.message : 'Failed to view document',
-        'error',
-        5000
-      );
-    }
-  }, [showToast]);
+    },
+    [showToast]
+  );
 
   const formatFileSize = (bytes?: number): string => {
     if (!bytes) return '';
@@ -2266,7 +2571,11 @@ export default function ReviewPage() {
 
   const getDocumentTypeName = (doc: Record<string, unknown>): string => {
     // First try to use requirement name if available
-    if (doc.requirementName && typeof doc.requirementName === 'string' && doc.requirementName.trim() !== '') {
+    if (
+      doc.requirementName &&
+      typeof doc.requirementName === 'string' &&
+      doc.requirementName.trim() !== ''
+    ) {
       return doc.requirementName;
     }
 
@@ -2285,7 +2594,7 @@ export default function ReviewPage() {
         10: 'Financial Statements',
         99: 'Other',
       };
-      
+
       // Handle both number and string types
       let docType: number | null = null;
       if (typeof doc.type === 'number') {
@@ -2296,7 +2605,7 @@ export default function ReviewPage() {
           docType = parsed;
         }
       }
-      
+
       if (docType !== null && docType in typeMap) {
         return typeMap[docType];
       }
@@ -2305,16 +2614,35 @@ export default function ReviewPage() {
     // Try to infer from file name patterns
     const fileName = doc.fileName ? String(doc.fileName).toLowerCase() : '';
     if (fileName) {
-      if (fileName.includes('passport') || fileName.includes('pass')) return 'Passport Copy';
-      if (fileName.includes('national') || fileName.includes('nation') || fileName.includes('id') || fileName.includes('identity')) return 'National ID';
-      if (fileName.includes('driver') || fileName.includes('license') || fileName.includes('licence')) return 'Drivers License';
-      if (fileName.includes('address') || fileName.includes('proof')) return 'Proof of Address';
-      if (fileName.includes('bank') || fileName.includes('statement')) return 'Bank Statement';
-      if (fileName.includes('tax') || fileName.includes('clearance')) return 'Tax Document';
-      if (fileName.includes('registration') || fileName.includes('register')) return 'Business Registration';
-      if (fileName.includes('incorporation') || fileName.includes('articles')) return 'Articles of Incorporation';
-      if (fileName.includes('shareholder') || fileName.includes('share')) return 'Shareholder Registry';
-      if (fileName.includes('financial') || fileName.includes('statement')) return 'Financial Statements';
+      if (fileName.includes('passport') || fileName.includes('pass'))
+        return 'Passport Copy';
+      if (
+        fileName.includes('national') ||
+        fileName.includes('nation') ||
+        fileName.includes('id') ||
+        fileName.includes('identity')
+      )
+        return 'National ID';
+      if (
+        fileName.includes('driver') ||
+        fileName.includes('license') ||
+        fileName.includes('licence')
+      )
+        return 'Drivers License';
+      if (fileName.includes('address') || fileName.includes('proof'))
+        return 'Proof of Address';
+      if (fileName.includes('bank') || fileName.includes('statement'))
+        return 'Bank Statement';
+      if (fileName.includes('tax') || fileName.includes('clearance'))
+        return 'Tax Document';
+      if (fileName.includes('registration') || fileName.includes('register'))
+        return 'Business Registration';
+      if (fileName.includes('incorporation') || fileName.includes('articles'))
+        return 'Articles of Incorporation';
+      if (fileName.includes('shareholder') || fileName.includes('share'))
+        return 'Shareholder Registry';
+      if (fileName.includes('financial') || fileName.includes('statement'))
+        return 'Financial Statements';
     }
 
     // If we have a document number, try to use that
@@ -2486,7 +2814,10 @@ export default function ReviewPage() {
           }
 
           try {
-            const created = await riskApiService.createRiskAssessment(cleanCaseId, partnerId);
+            const created = await riskApiService.createRiskAssessment(
+              cleanCaseId,
+              partnerId
+            );
 
             if (created && typeof created === 'object' && created.id) {
               assessmentId = created.id as string;
@@ -2495,7 +2826,7 @@ export default function ReviewPage() {
               existing = await riskApiService
                 .getRiskAssessmentByCase(cleanCaseId)
                 .catch(() => null);
-              
+
               if (existing) {
                 setRiskAssessment(existing);
                 assessmentId = existing.id;
@@ -2508,7 +2839,7 @@ export default function ReviewPage() {
               existing = await riskApiService
                 .getRiskAssessmentByCase(cleanCaseId)
                 .catch(() => null);
-              
+
               if (existing) {
                 assessmentId = existing.id;
                 setRiskAssessment(existing);
@@ -2521,7 +2852,10 @@ export default function ReviewPage() {
                 error: createError,
                 caseId: cleanCaseId,
                 partnerId: partnerId || '(empty)',
-                errorMessage: createError instanceof Error ? createError.message : String(createError),
+                errorMessage:
+                  createError instanceof Error
+                    ? createError.message
+                    : String(createError),
               });
             }
 
@@ -2529,17 +2863,16 @@ export default function ReviewPage() {
             const fetched = await riskApiService
               .getRiskAssessmentByCase(cleanCaseId)
               .catch(() => null);
-            
+
             if (fetched) {
               existing = fetched;
               assessmentId = fetched.id;
               setRiskAssessment(fetched);
             } else {
               // Creation failed and no existing assessment found
-              const errorMessage = createError instanceof Error 
-                ? createError.message 
-                : 'Unknown error';
-              
+              const errorMessage =
+                createError instanceof Error ? createError.message : 'Unknown error';
+
               // Check if it's a validation error (400) vs server error
               if (errorMessage.includes('400') || errorMessage.includes('Bad Request')) {
                 showToast(
@@ -2630,7 +2963,19 @@ export default function ReviewPage() {
     } finally {
       setSavingRiskAssessment(false);
     }
-  }, [workItem, manualRiskLevel, riskJustification, riskFactors, mitigationMeasures, additionalNotes, riskAssessment, applicationData, showToast, loadRiskAssessment, loadWorkItem]);
+  }, [
+    workItem,
+    manualRiskLevel,
+    riskJustification,
+    riskFactors,
+    mitigationMeasures,
+    additionalNotes,
+    riskAssessment,
+    applicationData,
+    showToast,
+    loadRiskAssessment,
+    loadWorkItem,
+  ]);
 
   // useEffect hooks - placed after all function declarations
   useEffect(() => {
@@ -2651,14 +2996,31 @@ export default function ReviewPage() {
 
   useEffect(() => {
     // Load documents when Documents step is active and work item is loaded (fallback mode only)
-    if ((currentStep === 2 || (typeof currentStep === 'number' && currentStep === 2)) && workItem && !entitySchema?.wizardConfiguration) {
+    if (
+      (currentStep === 2 || (typeof currentStep === 'number' && currentStep === 2)) &&
+      workItem &&
+      !entitySchema?.wizardConfiguration
+    ) {
       loadDocuments();
     }
     // Load documents when wizard step is active
-    if (typeof currentStep === 'string' && currentStep.startsWith('wizard-') && activeWizardStepId && workItem) {
+    if (
+      typeof currentStep === 'string' &&
+      currentStep.startsWith('wizard-') &&
+      activeWizardStepId &&
+      workItem
+    ) {
       loadDocuments();
     }
-  }, [currentStep, workItem, applicationData, requirementMap, loadDocuments, entitySchema, activeWizardStepId]);
+  }, [
+    currentStep,
+    workItem,
+    applicationData,
+    requirementMap,
+    loadDocuments,
+    entitySchema,
+    activeWizardStepId,
+  ]);
 
   useEffect(() => {
     // Load risk assessment when Risk Assessment step is active and work item is loaded
@@ -2669,7 +3031,11 @@ export default function ReviewPage() {
 
   useEffect(() => {
     // Clear enhanced risk analysis fields when risk level changes away from HIGH/CRITICAL
-    if (manualRiskLevel && manualRiskLevel !== 'High' && manualRiskLevel !== 'MediumHigh') {
+    if (
+      manualRiskLevel &&
+      manualRiskLevel !== 'High' &&
+      manualRiskLevel !== 'MediumHigh'
+    ) {
       setRiskFactors('');
       setMitigationMeasures('');
       setAdditionalNotes('');
@@ -2698,40 +3064,59 @@ export default function ReviewPage() {
 
   // Build review steps: wizard steps + fixed steps (Risk Assessment, Review & Decision)
   const reviewSteps = useMemo(() => {
-    const steps: Array<{ id: number | string; title: string; icon: typeof FiFileText; isWizardStep?: boolean; wizardStepId?: string }> = [];
-    
+    const steps: Array<{
+      id: number | string;
+      title: string;
+      icon: typeof FiFileText;
+      isWizardStep?: boolean;
+      wizardStepId?: string;
+    }> = [];
+
     console.log('[Review Steps] Building review steps:', {
       hasEntitySchema: !!entitySchema,
       hasWizardConfig: !!entitySchema?.wizardConfiguration,
       wizardStepsCount: entitySchema?.wizardConfiguration?.steps?.length || 0,
       wizardSteps: entitySchema?.wizardConfiguration?.steps,
     });
-    
+
     // Add wizard steps if available
-    if (entitySchema?.wizardConfiguration?.steps && entitySchema.wizardConfiguration.steps.length > 0) {
+    if (
+      entitySchema?.wizardConfiguration?.steps &&
+      entitySchema.wizardConfiguration.steps.length > 0
+    ) {
       // Show ALL wizard steps, not just active ones (for review purposes)
       // The backend might have inactive steps, but we want to show them for review
-      const allWizardSteps = entitySchema.wizardConfiguration.steps
-        .sort((a, b) => a.stepNumber - b.stepNumber);
-      
-      const activeWizardSteps = allWizardSteps.filter(s => s.isActive);
-      
+      const allWizardSteps = entitySchema.wizardConfiguration.steps.sort(
+        (a, b) => a.stepNumber - b.stepNumber
+      );
+
+      const activeWizardSteps = allWizardSteps.filter((s) => s.isActive);
+
       console.log('[Review Steps] Found wizard steps:', {
         total: entitySchema.wizardConfiguration.steps.length,
         active: activeWizardSteps.length,
-        allSteps: allWizardSteps.map(s => ({
+        allSteps: allWizardSteps.map((s) => ({
           id: s.id,
           title: s.title,
           isActive: s.isActive,
           stepNumber: s.stepNumber,
         })),
       });
-      
+
       // Use active steps if available, otherwise use all steps (for review)
-      const wizardStepsToShow = activeWizardSteps.length > 0 ? activeWizardSteps : allWizardSteps;
-      
+      const wizardStepsToShow =
+        activeWizardSteps.length > 0 ? activeWizardSteps : allWizardSteps;
+
       if (wizardStepsToShow.length > 0) {
-        console.log('[Review Steps] Processing wizard steps:', wizardStepsToShow.map(s => ({ id: s.id, title: s.title, stepNumber: s.stepNumber, isActive: s.isActive })));
+        console.log(
+          '[Review Steps] Processing wizard steps:',
+          wizardStepsToShow.map((s) => ({
+            id: s.id,
+            title: s.title,
+            stepNumber: s.stepNumber,
+            isActive: s.isActive,
+          }))
+        );
         wizardStepsToShow.forEach((wizardStep) => {
           // Use the wizard step ID directly (it's a GUID string)
           const stepId = `wizard-${wizardStep.id}`;
@@ -2742,11 +3127,17 @@ export default function ReviewPage() {
             isWizardStep: true,
             wizardStepId: String(wizardStep.id), // Ensure it's a string
           });
-          console.log('[Review Steps] Added wizard step:', { stepId, wizardStepId: wizardStep.id, title: wizardStep.title });
+          console.log('[Review Steps] Added wizard step:', {
+            stepId,
+            wizardStepId: wizardStep.id,
+            title: wizardStep.title,
+          });
         });
       } else {
         // Wizard config exists but no active steps - use fallback
-        console.log('[Review Steps] Wizard config exists but no active steps, using fallback');
+        console.log(
+          '[Review Steps] Wizard config exists but no active steps, using fallback'
+        );
         steps.push(
           { id: 1, title: 'Overview', icon: FiFileText },
           { id: 2, title: 'Documents', icon: FiFolder }
@@ -2760,13 +3151,13 @@ export default function ReviewPage() {
         { id: 2, title: 'Documents', icon: FiFolder }
       );
     }
-    
+
     // Always add fixed steps at the end
     steps.push(
       { id: 'risk-assessment', title: 'Risk Assessment', icon: FiShield },
       { id: 'review-decision', title: 'Review & Decision', icon: FiCheckSquare }
     );
-    
+
     console.log('[Review Steps] Final steps:', steps);
     return steps;
   }, [entitySchema]);
@@ -2789,7 +3180,12 @@ export default function ReviewPage() {
           transition="margin-left 0.3s ease"
         >
           <VStack gap="24px">
-            <Box p="20px" borderRadius="16px" bg="mukuru.cards.white" boxShadow="0 2px 8px rgba(0, 0, 0, 0.04)">
+            <Box
+              p="20px"
+              borderRadius="16px"
+              bg="mukuru.cards.white"
+              boxShadow="0 2px 8px rgba(0, 0, 0, 0.04)"
+            >
               <Spinner size="lg" color="mukuru.buttons.primary" />
             </Box>
             <Typography color="mukuru.text.primary" fontSize="16px" fontWeight="600">
@@ -2815,10 +3211,20 @@ export default function ReviewPage() {
           justifyContent="center"
           transition="margin-left 0.3s ease"
         >
-          <Box bg="mukuru.cards.white" borderRadius="16px" p="40px" boxShadow="0 2px 8px rgba(0, 0, 0, 0.04)" maxW="400px" textAlign="center">
+          <Box
+            bg="mukuru.cards.white"
+            borderRadius="16px"
+            p="40px"
+            boxShadow="0 2px 8px rgba(0, 0, 0, 0.04)"
+            maxW="400px"
+            textAlign="center"
+          >
             <VStack gap="20px">
               <Box p="16px" borderRadius="full" bg="rgba(220, 38, 38, 0.1)">
-                <FiAlertTriangle size={32} color="var(--chakra-colors-mukuru-text-error)" />
+                <FiAlertTriangle
+                  size={32}
+                  color="var(--chakra-colors-mukuru-text-error)"
+                />
               </Box>
               <Typography fontSize="18px" fontWeight="600" color="mukuru.text.primary">
                 {error ? 'Error Loading Work Item' : 'Work Item Not Found'}
@@ -2828,7 +3234,9 @@ export default function ReviewPage() {
               </Typography>
               <Link href="/work-queue">
                 <Button variant="secondary" size="sm">
-                  <IconWrapper><FiArrowLeft size={16} /></IconWrapper>
+                  <IconWrapper>
+                    <FiArrowLeft size={16} />
+                  </IconWrapper>
                   Back to Work Queue
                 </Button>
               </Link>
@@ -2840,7 +3248,7 @@ export default function ReviewPage() {
   }
 
   return (
-    <Box 
+    <Box
       position="fixed"
       top="0"
       left="0"
@@ -2869,8 +3277,15 @@ export default function ReviewPage() {
           <Box mb="20px">
             <Link href="/work-queue">
               <HStack gap="8px" cursor="pointer" _hover={{ opacity: 0.8 }}>
-                <FiArrowLeft size={18} color="var(--chakra-colors-mukuru-buttons-primary)" />
-                <Typography fontSize="14px" fontWeight="600" color="mukuru.buttons.primary">
+                <FiArrowLeft
+                  size={18}
+                  color="var(--chakra-colors-mukuru-buttons-primary)"
+                />
+                <Typography
+                  fontSize="14px"
+                  fontWeight="600"
+                  color="mukuru.buttons.primary"
+                >
                   Back to Queue
                 </Typography>
               </HStack>
@@ -2888,29 +3303,47 @@ export default function ReviewPage() {
           >
             {/* Overall Progress Summary */}
             {entitySchema?.wizardConfiguration?.steps && (
-              <Box mb="20px" pb="20px" borderBottom="1px solid" borderColor="mukuru.grey.light">
+              <Box
+                mb="20px"
+                pb="20px"
+                borderBottom="1px solid"
+                borderColor="mukuru.grey.light"
+              >
                 <Flex justify="space-between" align="center" mb="12px">
-                  <Typography fontSize="14px" fontWeight="600" color="mukuru.text.primary">
+                  <Typography
+                    fontSize="14px"
+                    fontWeight="600"
+                    color="mukuru.text.primary"
+                  >
                     Review Progress
                   </Typography>
-                  <Button
-                    variant="secondary"
-                    size="sm"
-                    onClick={jumpToIncompleteStep}
-                  >
-                    <IconWrapper><FiArrowRight size={14} /></IconWrapper>
+                  <Button variant="secondary" size="sm" onClick={jumpToIncompleteStep}>
+                    <IconWrapper>
+                      <FiArrowRight size={14} />
+                    </IconWrapper>
                     Jump to Missing
                   </Button>
                 </Flex>
                 <Flex gap="12px" align="center">
                   {(() => {
-                    const wizardSteps = entitySchema.wizardConfiguration!.steps.filter(s => s.isActive);
+                    const wizardSteps = entitySchema.wizardConfiguration!.steps.filter(
+                      (s) => s.isActive
+                    );
                     const totalSteps = wizardSteps.length + 2; // +2 for Risk Assessment and Review & Decision
-                    const completedSteps = Object.values(stepCompletion).filter(c => c.status === 'complete').length;
-                    const progress = totalSteps > 0 ? (completedSteps / totalSteps) * 100 : 0;
+                    const completedSteps = Object.values(stepCompletion).filter(
+                      (c) => c.status === 'complete'
+                    ).length;
+                    const progress =
+                      totalSteps > 0 ? (completedSteps / totalSteps) * 100 : 0;
                     return (
                       <>
-                        <Box flex="1" h="8px" bg="mukuru.grey.light" borderRadius="full" overflow="hidden">
+                        <Box
+                          flex="1"
+                          h="8px"
+                          bg="mukuru.grey.light"
+                          borderRadius="full"
+                          overflow="hidden"
+                        >
                           <Box
                             h="100%"
                             bg="mukuru.buttons.primary"
@@ -2919,7 +3352,11 @@ export default function ReviewPage() {
                             style={{ width: `${progress}%` }}
                           />
                         </Box>
-                        <Typography fontSize="12px" fontWeight="500" color="mukuru.grey.medium">
+                        <Typography
+                          fontSize="12px"
+                          fontWeight="500"
+                          color="mukuru.grey.medium"
+                        >
                           {completedSteps} / {totalSteps} steps complete
                         </Typography>
                       </>
@@ -2930,45 +3367,67 @@ export default function ReviewPage() {
             )}
 
             {/* Step Navigation */}
-            <Flex 
-              justify="space-between" 
-              align="flex-start" 
-              maxW="100%" 
-              mx="auto" 
-              flexWrap="nowrap" 
+            <Flex
+              justify="space-between"
+              align="flex-start"
+              maxW="100%"
+              mx="auto"
+              flexWrap="nowrap"
               gap="8px"
               overflowX="auto"
               pb="4px"
             >
               {reviewSteps.map((step, index) => {
-                const isActive = typeof currentStep === 'string' && currentStep.startsWith('wizard-')
-                  ? currentStep === step.id
-                  : currentStep === step.id;
+                const isActive =
+                  typeof currentStep === 'string' && currentStep.startsWith('wizard-')
+                    ? currentStep === step.id
+                    : currentStep === step.id;
                 const isWizardStep = step.isWizardStep && step.wizardStepId;
-                const stepCompletionData = isWizardStep && step.wizardStepId ? stepCompletion[step.wizardStepId] : null;
-                const isCompleted = stepCompletionData?.status === 'complete' || 
-                  (typeof currentStep === 'number' && typeof step.id === 'number' && currentStep > step.id);
+                const stepCompletionData =
+                  isWizardStep && step.wizardStepId
+                    ? stepCompletion[step.wizardStepId]
+                    : null;
+                const isCompleted =
+                  stepCompletionData?.status === 'complete' ||
+                  (typeof currentStep === 'number' &&
+                    typeof step.id === 'number' &&
+                    currentStep > step.id);
                 const isLast = index === reviewSteps.length - 1;
                 // Use consistent step numbering for all steps
                 const stepNumber = index + 1;
-                
+
                 // Get review status for this step
-                const reviewStatusForStep = isWizardStep && step.wizardStepId 
-                  ? stepReviewStatus[step.wizardStepId] 
-                  : undefined;
+                const reviewStatusForStep =
+                  isWizardStep && step.wizardStepId
+                    ? stepReviewStatus[step.wizardStepId]
+                    : undefined;
 
                 return (
-                  <Flex key={step.id} align="center" flex={isLast ? '0' : '1'} minW="140px">
+                  <Flex
+                    key={step.id}
+                    align="center"
+                    flex={isLast ? '0' : '1'}
+                    minW="140px"
+                  >
                     {/* Step */}
-                    <VStack gap="10px" align="center" cursor="pointer" onClick={() => {
-                      if (isWizardStep && step.wizardStepId) {
-                        console.log('[Review Page] Clicking wizard step:', { stepId: step.id, wizardStepId: step.wizardStepId, title: step.title });
-                        setActiveWizardStepId(String(step.wizardStepId));
-                        setCurrentStep(step.id);
-                      } else {
-                        setCurrentStep(step.id);
-                      }
-                    }}>
+                    <VStack
+                      gap="10px"
+                      align="center"
+                      cursor="pointer"
+                      onClick={() => {
+                        if (isWizardStep && step.wizardStepId) {
+                          console.log('[Review Page] Clicking wizard step:', {
+                            stepId: step.id,
+                            wizardStepId: step.wizardStepId,
+                            title: step.title,
+                          });
+                          setActiveWizardStepId(String(step.wizardStepId));
+                          setCurrentStep(step.id);
+                        } else {
+                          setCurrentStep(step.id);
+                        }
+                      }}
+                    >
                       <Box position="relative">
                         <Box
                           w="52px"
@@ -2976,79 +3435,138 @@ export default function ReviewPage() {
                           borderRadius="14px"
                           bg="mukuru.cards.white"
                           border="2px solid"
-                          borderColor={isActive ? 'mukuru.buttons.primary' : isCompleted ? 'mukuru.text.success' : 'mukuru.grey.light'}
+                          borderColor={
+                            isActive
+                              ? 'mukuru.buttons.primary'
+                              : isCompleted
+                                ? 'mukuru.text.success'
+                                : 'mukuru.grey.light'
+                          }
                           display="flex"
                           alignItems="center"
                           justifyContent="center"
                           transition="all 0.2s ease"
-                          _hover={{ transform: 'scale(1.05)', boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)' }}
-                          boxShadow={isActive ? '0 4px 12px rgba(240, 84, 35, 0.2)' : 'none'}
+                          _hover={{
+                            transform: 'scale(1.05)',
+                            boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)',
+                          }}
+                          boxShadow={
+                            isActive ? '0 4px 12px rgba(240, 84, 35, 0.2)' : 'none'
+                          }
                         >
                           {isCompleted && !isActive ? (
-                            <FiCheck size={22} color="var(--chakra-colors-mukuru-text-success)" />
+                            <FiCheck
+                              size={22}
+                              color="var(--chakra-colors-mukuru-text-success)"
+                            />
                           ) : (
-                            <step.icon 
-                              size={22} 
-                              color={isActive ? 'var(--chakra-colors-mukuru-buttons-primary)' : 'var(--chakra-colors-mukuru-grey-medium)'} 
+                            <step.icon
+                              size={22}
+                              color={
+                                isActive
+                                  ? 'var(--chakra-colors-mukuru-buttons-primary)'
+                                  : 'var(--chakra-colors-mukuru-grey-medium)'
+                              }
                             />
                           )}
                         </Box>
                         {/* Completion Badge */}
-                        {stepCompletionData && stepCompletionData.status !== 'complete' && (
-                          <Box
-                            position="absolute"
-                            top="-6px"
-                            right="-6px"
-                            minW="22px"
-                            h="22px"
-                            px="4px"
-                            borderRadius="full"
-                            bg={stepCompletionData.status === 'partial' ? 'rgba(217, 119, 6, 0.1)' : 'rgba(220, 38, 38, 0.1)'}
-                            border="2px solid"
-                            borderColor="white"
-                            display="flex"
-                            alignItems="center"
-                            justifyContent="center"
-                            boxShadow="0 2px 4px rgba(0, 0, 0, 0.1)"
-                          >
-                            <Typography fontSize="9px" fontWeight="700" color={stepCompletionData.status === 'partial' ? 'mukuru.text.alert' : 'mukuru.text.error'}>
-                              {stepCompletionData.completedCount}/{stepCompletionData.totalCount}
-                            </Typography>
-                          </Box>
-                        )}
+                        {stepCompletionData &&
+                          stepCompletionData.status !== 'complete' && (
+                            <Box
+                              position="absolute"
+                              top="-6px"
+                              right="-6px"
+                              minW="22px"
+                              h="22px"
+                              px="4px"
+                              borderRadius="full"
+                              bg={
+                                stepCompletionData.status === 'partial'
+                                  ? 'rgba(217, 119, 6, 0.1)'
+                                  : 'rgba(220, 38, 38, 0.1)'
+                              }
+                              border="2px solid"
+                              borderColor="white"
+                              display="flex"
+                              alignItems="center"
+                              justifyContent="center"
+                              boxShadow="0 2px 4px rgba(0, 0, 0, 0.1)"
+                            >
+                              <Typography
+                                fontSize="9px"
+                                fontWeight="700"
+                                color={
+                                  stepCompletionData.status === 'partial'
+                                    ? 'mukuru.text.alert'
+                                    : 'mukuru.text.error'
+                                }
+                              >
+                                {stepCompletionData.completedCount}/
+                                {stepCompletionData.totalCount}
+                              </Typography>
+                            </Box>
+                          )}
                         {/* Review Status Indicator */}
-                        {reviewStatusForStep && (reviewStatusForStep.completed || reviewStatusForStep.verified || reviewStatusForStep.approved) && (
-                          <HStack
-                            position="absolute"
-                            bottom="-6px"
-                            left="50%"
-                            transform="translateX(-50%)"
-                            gap="3px"
-                            bg="mukuru.cards.white"
-                            borderRadius="full"
-                            px="5px"
-                            py="2px"
-                            boxShadow="0 1px 3px rgba(0, 0, 0, 0.1)"
-                            border="1px solid"
-                            borderColor="mukuru.grey.light"
-                          >
-                            {reviewStatusForStep.completed && (
-                              <Box w="8px" h="8px" borderRadius="full" bg="mukuru.text.success" title="Completed" />
-                            )}
-                            {reviewStatusForStep.verified && (
-                              <Box w="8px" h="8px" borderRadius="full" bg="mukuru.teal" title="Verified" />
-                            )}
-                            {reviewStatusForStep.approved && (
-                              <Box w="8px" h="8px" borderRadius="full" bg="mukuru.buttons.primary" title="Approved" />
-                            )}
-                          </HStack>
-                        )}
+                        {reviewStatusForStep &&
+                          (reviewStatusForStep.completed ||
+                            reviewStatusForStep.verified ||
+                            reviewStatusForStep.approved) && (
+                            <HStack
+                              position="absolute"
+                              bottom="-6px"
+                              left="50%"
+                              transform="translateX(-50%)"
+                              gap="3px"
+                              bg="mukuru.cards.white"
+                              borderRadius="full"
+                              px="5px"
+                              py="2px"
+                              boxShadow="0 1px 3px rgba(0, 0, 0, 0.1)"
+                              border="1px solid"
+                              borderColor="mukuru.grey.light"
+                            >
+                              {reviewStatusForStep.completed && (
+                                <Box
+                                  w="8px"
+                                  h="8px"
+                                  borderRadius="full"
+                                  bg="mukuru.text.success"
+                                  title="Completed"
+                                />
+                              )}
+                              {reviewStatusForStep.verified && (
+                                <Box
+                                  w="8px"
+                                  h="8px"
+                                  borderRadius="full"
+                                  bg="mukuru.teal"
+                                  title="Verified"
+                                />
+                              )}
+                              {reviewStatusForStep.approved && (
+                                <Box
+                                  w="8px"
+                                  h="8px"
+                                  borderRadius="full"
+                                  bg="mukuru.buttons.primary"
+                                  title="Approved"
+                                />
+                              )}
+                            </HStack>
+                          )}
                       </Box>
                       <VStack gap="4px" align="center" maxW="130px">
                         <Typography
                           fontSize="10px"
                           fontWeight="600"
-                          color={isActive ? 'mukuru.buttons.primary' : isCompleted ? 'mukuru.text.success' : 'mukuru.grey.medium'}
+                          color={
+                            isActive
+                              ? 'mukuru.buttons.primary'
+                              : isCompleted
+                                ? 'mukuru.text.success'
+                                : 'mukuru.grey.medium'
+                          }
                           textTransform="uppercase"
                           letterSpacing="0.5px"
                           whiteSpace="nowrap"
@@ -3058,7 +3576,11 @@ export default function ReviewPage() {
                         <Typography
                           fontSize="12px"
                           fontWeight={isActive ? '600' : '500'}
-                          color={isActive || isCompleted ? 'mukuru.text.primary' : 'mukuru.grey.medium'}
+                          color={
+                            isActive || isCompleted
+                              ? 'mukuru.text.primary'
+                              : 'mukuru.grey.medium'
+                          }
                           textAlign="center"
                           lineHeight="1.3"
                         >
@@ -3095,311 +3617,53 @@ export default function ReviewPage() {
             transition={{ duration: 0.3 }}
           >
             {/* Render wizard step content */}
-            {typeof currentStep === 'string' && currentStep.startsWith('wizard-') && activeWizardStepId && (
-              <Box>
-                {loadedWizardSteps.has(activeWizardStepId) || true ? (
-                  <WizardStepContent
-                    stepId={activeWizardStepId}
-                    requirements={getRequirementsForStep(activeWizardStepId)}
-                    documents={documents}
-                    applicationData={applicationData}
-                    requirementMap={requirementMap}
-                    reviewStatus={stepReviewStatus[activeWizardStepId]}
-                    onReviewStatusChange={handleStepReviewStatusChange}
-                    onNotesChange={handleNotesChange}
-                    onViewDocument={(url, name, type, size) => {
-                      setViewingDocumentUrl(url);
-                      setViewingDocumentName(name);
-                      setViewingDocumentType(type);
-                      setViewingDocumentSize(size);
-                      setDocumentViewerOpen(true);
-                    }}
-                  />
-                ) : (
-                  <Box
-                    bg="mukuru.cards.white"
-                    borderRadius="16px"
-                    border="1px solid"
-                    borderColor="mukuru.grey.light"
-                    boxShadow="0 2px 8px rgba(0, 0, 0, 0.04)"
-                    p="40px"
-                    textAlign="center"
-                  >
-                    <Spinner size="lg" color="mukuru.buttons.primary" />
-                    <Typography mt="16px" fontSize="14px" color="mukuru.grey.medium">
-                      Loading step content...
-                    </Typography>
-                  </Box>
-                )}
-              </Box>
-            )}
+            {typeof currentStep === 'string' &&
+              currentStep.startsWith('wizard-') &&
+              activeWizardStepId && (
+                <Box>
+                  {loadedWizardSteps.has(activeWizardStepId) || true ? (
+                    <WizardStepContent
+                      stepId={activeWizardStepId}
+                      requirements={getRequirementsForStep(activeWizardStepId)}
+                      documents={documents}
+                      applicationData={applicationData}
+                      requirementMap={requirementMap}
+                      reviewStatus={stepReviewStatus[activeWizardStepId]}
+                      onReviewStatusChange={handleStepReviewStatusChange}
+                      onNotesChange={handleNotesChange}
+                      onViewDocument={(url, name, type, size) => {
+                        setViewingDocumentUrl(url);
+                        setViewingDocumentName(name);
+                        setViewingDocumentType(type);
+                        setViewingDocumentSize(size);
+                        setDocumentViewerOpen(true);
+                      }}
+                    />
+                  ) : (
+                    <Box
+                      bg="mukuru.cards.white"
+                      borderRadius="16px"
+                      border="1px solid"
+                      borderColor="mukuru.grey.light"
+                      boxShadow="0 2px 8px rgba(0, 0, 0, 0.04)"
+                      p="40px"
+                      textAlign="center"
+                    >
+                      <Spinner size="lg" color="mukuru.buttons.primary" />
+                      <Typography mt="16px" fontSize="14px" color="mukuru.grey.medium">
+                        Loading step content...
+                      </Typography>
+                    </Box>
+                  )}
+                </Box>
+              )}
 
             {/* Overview Step (fallback if no wizard config or step 1) */}
-            {(currentStep === 1 || (typeof currentStep === 'number' && currentStep === 1)) && !entitySchema?.wizardConfiguration && (
-              <Flex gap="24px" align="flex-start">
-                {/* Work Item Details Card */}
-                <Box
-                  bg="mukuru.cards.white"
-                  borderRadius="16px"
-                  border="1px solid"
-                  borderColor="mukuru.grey.light"
-                  boxShadow="0 2px 8px rgba(0, 0, 0, 0.04)"
-                  overflow="hidden"
-                  flex="1"
-                >
-                  <Box p="16px 20px" borderBottom="1px solid" borderColor="mukuru.grey.light" bg="mukuru.background.light">
-                    <Typography fontSize="15px" fontWeight="600" color="mukuru.text.primary">
-                      Work Item Details
-                    </Typography>
-                  </Box>
-                  <Box bg="mukuru.cards.white">
-                    {/* Work Item Number */}
-                    <Flex px="20px" py="14px" justify="space-between" align="center" borderBottom="1px solid" borderColor="mukuru.grey.light" _hover={{ bg: 'mukuru.background.light' }}>
-                      <HStack gap="12px">
-                        <Box p="8px" borderRadius="8px" bg="mukuru.background.light">
-                          <FiHash size={16} color="var(--chakra-colors-mukuru-grey-mediumDark)" />
-                        </Box>
-                        <Typography fontSize="13px" color="mukuru.grey.mediumDark">Work Item Number</Typography>
-                      </HStack>
-                      <Typography fontSize="13px" fontWeight="500" color="mukuru.text.primary">
-                        {workItem.workItemNumber || workItem.id}
-                      </Typography>
-                    </Flex>
-
-                    {/* Applicant Name */}
-                    <Flex px="20px" py="14px" justify="space-between" align="center" borderBottom="1px solid" borderColor="mukuru.grey.light" _hover={{ bg: 'mukuru.background.light' }}>
-                      <HStack gap="12px">
-                        <Box p="8px" borderRadius="8px" bg="mukuru.background.light">
-                          <FiUser size={16} color="var(--chakra-colors-mukuru-grey-mediumDark)" />
-                        </Box>
-                        <Typography fontSize="13px" color="mukuru.grey.mediumDark">Applicant Name</Typography>
-                      </HStack>
-                      <Typography fontSize="13px" fontWeight="500" color="mukuru.text.primary">
-                        {workItem.legalName}
-                      </Typography>
-                    </Flex>
-
-                    {/* Entity Type */}
-                    <Flex px="20px" py="14px" justify="space-between" align="center" borderBottom="1px solid" borderColor="mukuru.grey.light" _hover={{ bg: 'mukuru.background.light' }}>
-                      <HStack gap="12px">
-                        <Box p="8px" borderRadius="8px" bg="mukuru.background.light">
-                          <FiBriefcase size={16} color="var(--chakra-colors-mukuru-grey-mediumDark)" />
-                        </Box>
-                        <Typography fontSize="13px" color="mukuru.grey.mediumDark">Entity Type</Typography>
-                      </HStack>
-                      <Typography fontSize="13px" fontWeight="500" color="mukuru.text.primary">
-                        {workItem.entityType}
-                      </Typography>
-                    </Flex>
-
-                    {/* Country */}
-                    <Flex px="20px" py="14px" justify="space-between" align="center" borderBottom="1px solid" borderColor="mukuru.grey.light" _hover={{ bg: 'mukuru.background.light' }}>
-                      <HStack gap="12px">
-                        <Box p="8px" borderRadius="8px" bg="mukuru.background.light">
-                          <FiMapPin size={16} color="var(--chakra-colors-mukuru-grey-mediumDark)" />
-                        </Box>
-                        <Typography fontSize="13px" color="mukuru.grey.mediumDark">Country</Typography>
-                      </HStack>
-                      <Typography fontSize="13px" fontWeight="500" color="mukuru.text.primary">
-                        {workItem.country}
-                      </Typography>
-                    </Flex>
-
-                    {/* Due Date */}
-                    {workItem.dueDate && (
-                      <Flex px="20px" py="14px" justify="space-between" align="center" borderBottom="1px solid" borderColor="mukuru.grey.light" _hover={{ bg: 'mukuru.background.light' }}>
-                        <HStack gap="12px">
-                          <Box p="8px" borderRadius="8px" bg="mukuru.background.light">
-                            <FiCalendar size={16} color="var(--chakra-colors-mukuru-grey-mediumDark)" />
-                          </Box>
-                          <Typography fontSize="13px" color="mukuru.grey.mediumDark">Due Date</Typography>
-                        </HStack>
-                        <Typography fontSize="13px" fontWeight="500" color="mukuru.text.primary">
-                          {new Date(workItem.dueDate).toLocaleDateString()}
-                        </Typography>
-                      </Flex>
-                    )}
-
-                    {/* Priority */}
-                    <Flex px="20px" py="14px" justify="space-between" align="center" borderBottom="1px solid" borderColor="mukuru.grey.light" _hover={{ bg: 'mukuru.background.light' }}>
-                      <HStack gap="12px">
-                        <Box p="8px" borderRadius="8px" bg="mukuru.background.light">
-                          <FiFlag size={16} color="var(--chakra-colors-mukuru-grey-mediumDark)" />
-                        </Box>
-                        <Typography fontSize="13px" color="mukuru.grey.mediumDark">Priority</Typography>
-                      </HStack>
-                      <Box px="12px" py="4px" borderRadius="full" bg={workItem.priority?.toLowerCase() === 'high' ? 'rgba(220, 38, 38, 0.1)' : 'rgba(0, 128, 128, 0.1)'} border="1px solid" borderColor={workItem.priority?.toLowerCase() === 'high' ? 'mukuru.text.error' : 'mukuru.teal'}>
-                        <Typography fontSize="11px" fontWeight="600" color={workItem.priority?.toLowerCase() === 'high' ? 'mukuru.text.error' : 'mukuru.teal'}>
-                          {workItem.priority || 'Medium'}
-                        </Typography>
-                      </Box>
-                    </Flex>
-
-                    {/* Assigned To */}
-                    {workItem.assignedToName && (
-                      <Flex px="20px" py="14px" justify="space-between" align="center" _hover={{ bg: 'mukuru.background.light' }}>
-                        <HStack gap="12px">
-                          <Box p="8px" borderRadius="8px" bg="mukuru.background.light">
-                            <FiUser size={16} color="var(--chakra-colors-mukuru-grey-mediumDark)" />
-                          </Box>
-                          <Typography fontSize="13px" color="mukuru.grey.mediumDark">Assigned To</Typography>
-                        </HStack>
-                        <Typography fontSize="13px" fontWeight="500" color="mukuru.text.primary">
-                          {workItem.assignedToName}
-                        </Typography>
-                      </Flex>
-                    )}
-                  </Box>
-                </Box>
-
-                {/* Quick Actions Card */}
-                <Box
-                  bg="mukuru.cards.white"
-                  borderRadius="16px"
-                  border="1px solid"
-                  borderColor="mukuru.grey.light"
-                  boxShadow="0 2px 8px rgba(0, 0, 0, 0.04)"
-                  overflow="hidden"
-                  w="320px"
-                  flexShrink={0}
-                >
-                  <Box p="16px 20px" borderBottom="1px solid" borderColor="mukuru.grey.light" bg="mukuru.background.light">
-                    <Typography fontSize="15px" fontWeight="600" color="mukuru.text.primary">
-                      Quick Actions
-                    </Typography>
-                  </Box>
-                  <Box
-                    p="16px"
-                    display="flex"
-                    flexDirection="column"
-                    justifyContent="flex-start"
-                  >
-                    <VStack align="stretch" gap="3" width="full">
-                      {/* Assignment Actions */}
-                      {!workItem.assignedTo && (
-                        <Button
-                          variant="primary"
-                          onClick={handleAssignToMe}
-                          size="md"
-                          width="full"
-                          className="mukuru-primary-button"
-                          disabled={actionLoading}
-                        >
-                          <HStack gap="2" align="center">
-                            <FiUser size={16} />
-                            <Typography color="mukuru.white">Assign to Me</Typography>
-                          </HStack>
-                        </Button>
-                      )}
-                      {workItem.assignedTo && (
-                        <>
-                          <Button
-                            variant="secondary"
-                            onClick={() => setReassignModalOpen(true)}
-                            size="md"
-                            width="full"
-                            disabled={actionLoading}
-                          >
-                            <HStack gap="2" align="center">
-                              <FiUser size={16} color="var(--chakra-colors-mukuru-grey-mediumDark)" />
-                              <Typography color="mukuru.text.primary">Reassign</Typography>
-                            </HStack>
-                          </Button>
-                          <Button
-                            variant="secondary"
-                            onClick={handleUnassign}
-                            size="md"
-                            width="full"
-                            disabled={actionLoading}
-                          >
-                            <HStack gap="2" align="center">
-                              <FiX size={16} color="var(--chakra-colors-mukuru-grey-mediumDark)" />
-                              <Typography color="mukuru.text.primary">Unassign</Typography>
-                            </HStack>
-                          </Button>
-                        </>
-                      )}
-
-                      <Separator />
-
-                      {/* View Actions */}
-                      <Button
-                        variant="primary"
-                        onClick={() => setCommentsModalOpen(true)}
-                        size="md"
-                        width="full"
-                        className="mukuru-primary-button"
-                      >
-                        <HStack gap="2" align="center">
-                          <IconWrapper>
-                            <FiMessageSquare size={16} color="mukuru.white" />
-                          </IconWrapper>
-                          <Typography color="mukuru.white">View Comments</Typography>
-                        </HStack>
-                        <Typography
-                          fontSize="xs"
-                          color="mukuru.white"
-                          opacity="0.9"
-                          mt="1"
-                        >
-                          {comments.length}{' '}
-                          {comments.length === 1 ? 'comment' : 'comments'}
-                        </Typography>
-                      </Button>
-                      <Button
-                        variant="secondary"
-                        onClick={() => setHistoryModalOpen(true)}
-                        size="md"
-                        width="full"
-                      >
-                        <HStack gap="2" align="center">
-                          <IconWrapper>
-                            <FiClock size={16} color="mukuru.grey.medium" />
-                          </IconWrapper>
-                          <Typography color="mukuru.text.primary">
-                            View History
-                          </Typography>
-                        </HStack>
-                      </Button>
-                      <Link
-                        href={`/applications/${workItem.applicationId || workItem.id}`}
-                        style={{ width: '100%' }}
-                      >
-                        <Button variant="secondary" size="md" width="full">
-                          <HStack gap="2" align="center">
-                            <IconWrapper>
-                              <FiEye size={16} color="mukuru.grey.medium" />
-                            </IconWrapper>
-                            <Typography color="mukuru.text.primary">
-                              View Full Application
-                            </Typography>
-                          </HStack>
-                        </Button>
-                      </Link>
-
-                      <Separator />
-
-                      {/* Refresh Action */}
-                      <Button
-                        variant="secondary"
-                        onClick={() => setRefreshModalOpen(true)}
-                        size="md"
-                        width="full"
-                        disabled={actionLoading}
-                      >
-                        <HStack gap="2" align="center">
-                          <FiRefreshCw size={16} color="var(--chakra-colors-mukuru-grey-mediumDark)" />
-                          <Typography color="mukuru.text.primary">
-                            Request Refresh
-                          </Typography>
-                        </HStack>
-                      </Button>
-                    </VStack>
-                  </Box>
-                </Box>
-
-                {/* Requirements Checklist - Show all required responses */}
-                {entityRequirements.length > 0 && (
+            {(currentStep === 1 ||
+              (typeof currentStep === 'number' && currentStep === 1)) &&
+              !entitySchema?.wizardConfiguration && (
+                <Flex gap="24px" align="flex-start">
+                  {/* Work Item Details Card */}
                   <Box
                     bg="mukuru.cards.white"
                     borderRadius="16px"
@@ -3407,203 +3671,762 @@ export default function ReviewPage() {
                     borderColor="mukuru.grey.light"
                     boxShadow="0 2px 8px rgba(0, 0, 0, 0.04)"
                     overflow="hidden"
-                    w="100%"
-                    mt="24px"
+                    flex="1"
                   >
-                    <Flex p="16px 20px" borderBottom="1px solid" borderColor="mukuru.grey.light" bg="mukuru.background.light" justify="space-between" align="center">
-                      <Typography fontSize="15px" fontWeight="600" color="mukuru.text.primary">
-                        Required Responses
+                    <Box
+                      p="16px 20px"
+                      borderBottom="1px solid"
+                      borderColor="mukuru.grey.light"
+                      bg="mukuru.background.light"
+                    >
+                      <Typography
+                        fontSize="15px"
+                        fontWeight="600"
+                        color="mukuru.text.primary"
+                      >
+                        Work Item Details
                       </Typography>
-                      {(() => {
-                        const validation = validateRequirementCompleteness();
-                        const totalRequired = entityRequirements.filter(r => r.isRequired).length;
-                        const satisfiedCount = totalRequired - validation.missingRequirements.length;
-                        return (
-                          <Box px="12px" py="4px" borderRadius="full" bg={validation.isValid ? 'rgba(16, 185, 129, 0.1)' : 'rgba(217, 119, 6, 0.1)'} border="1px solid" borderColor={validation.isValid ? 'mukuru.text.success' : 'mukuru.text.alert'}>
-                            <Typography fontSize="11px" fontWeight="600" color={validation.isValid ? 'mukuru.text.success' : 'mukuru.text.alert'}>
-                              {satisfiedCount}/{totalRequired} Complete
-                            </Typography>
+                    </Box>
+                    <Box bg="mukuru.cards.white">
+                      {/* Work Item Number */}
+                      <Flex
+                        px="20px"
+                        py="14px"
+                        justify="space-between"
+                        align="center"
+                        borderBottom="1px solid"
+                        borderColor="mukuru.grey.light"
+                        _hover={{ bg: 'mukuru.background.light' }}
+                      >
+                        <HStack gap="12px">
+                          <Box p="8px" borderRadius="8px" bg="mukuru.background.light">
+                            <FiHash
+                              size={16}
+                              color="var(--chakra-colors-mukuru-grey-mediumDark)"
+                            />
                           </Box>
-                        );
-                      })()}
-                    </Flex>
-                    <Box p="20px">
-                      <VStack align="stretch" gap="16px">
-                        {entityRequirements
-                          .filter(req => req.isRequired)
-                          .sort((a, b) => a.displayName.localeCompare(b.displayName))
-                          .map((req) => {
-                            const isDocument = req.fieldType === 'file' || req.fieldType === 'File';
-                            let isSatisfied = false;
-                            let responseValue: string | null = null;
-                            let documentInfo: { id: string; fileName: string } | null = null;
+                          <Typography fontSize="13px" color="mukuru.grey.mediumDark">
+                            Work Item Number
+                          </Typography>
+                        </HStack>
+                        <Typography
+                          fontSize="13px"
+                          fontWeight="500"
+                          color="mukuru.text.primary"
+                        >
+                          {workItem.workItemNumber || workItem.id}
+                        </Typography>
+                      </Flex>
 
-                            if (isDocument) {
-                              // Check if document exists
-                              const matchingDoc = (documents as Array<Record<string, unknown>>).find(
-                                (doc) => {
+                      {/* Applicant Name */}
+                      <Flex
+                        px="20px"
+                        py="14px"
+                        justify="space-between"
+                        align="center"
+                        borderBottom="1px solid"
+                        borderColor="mukuru.grey.light"
+                        _hover={{ bg: 'mukuru.background.light' }}
+                      >
+                        <HStack gap="12px">
+                          <Box p="8px" borderRadius="8px" bg="mukuru.background.light">
+                            <FiUser
+                              size={16}
+                              color="var(--chakra-colors-mukuru-grey-mediumDark)"
+                            />
+                          </Box>
+                          <Typography fontSize="13px" color="mukuru.grey.mediumDark">
+                            Applicant Name
+                          </Typography>
+                        </HStack>
+                        <Typography
+                          fontSize="13px"
+                          fontWeight="500"
+                          color="mukuru.text.primary"
+                        >
+                          {workItem.legalName}
+                        </Typography>
+                      </Flex>
+
+                      {/* Entity Type */}
+                      <Flex
+                        px="20px"
+                        py="14px"
+                        justify="space-between"
+                        align="center"
+                        borderBottom="1px solid"
+                        borderColor="mukuru.grey.light"
+                        _hover={{ bg: 'mukuru.background.light' }}
+                      >
+                        <HStack gap="12px">
+                          <Box p="8px" borderRadius="8px" bg="mukuru.background.light">
+                            <FiBriefcase
+                              size={16}
+                              color="var(--chakra-colors-mukuru-grey-mediumDark)"
+                            />
+                          </Box>
+                          <Typography fontSize="13px" color="mukuru.grey.mediumDark">
+                            Entity Type
+                          </Typography>
+                        </HStack>
+                        <Typography
+                          fontSize="13px"
+                          fontWeight="500"
+                          color="mukuru.text.primary"
+                        >
+                          {workItem.entityType}
+                        </Typography>
+                      </Flex>
+
+                      {/* Country */}
+                      <Flex
+                        px="20px"
+                        py="14px"
+                        justify="space-between"
+                        align="center"
+                        borderBottom="1px solid"
+                        borderColor="mukuru.grey.light"
+                        _hover={{ bg: 'mukuru.background.light' }}
+                      >
+                        <HStack gap="12px">
+                          <Box p="8px" borderRadius="8px" bg="mukuru.background.light">
+                            <FiMapPin
+                              size={16}
+                              color="var(--chakra-colors-mukuru-grey-mediumDark)"
+                            />
+                          </Box>
+                          <Typography fontSize="13px" color="mukuru.grey.mediumDark">
+                            Country
+                          </Typography>
+                        </HStack>
+                        <Typography
+                          fontSize="13px"
+                          fontWeight="500"
+                          color="mukuru.text.primary"
+                        >
+                          {workItem.country}
+                        </Typography>
+                      </Flex>
+
+                      {/* Due Date */}
+                      {workItem.dueDate && (
+                        <Flex
+                          px="20px"
+                          py="14px"
+                          justify="space-between"
+                          align="center"
+                          borderBottom="1px solid"
+                          borderColor="mukuru.grey.light"
+                          _hover={{ bg: 'mukuru.background.light' }}
+                        >
+                          <HStack gap="12px">
+                            <Box p="8px" borderRadius="8px" bg="mukuru.background.light">
+                              <FiCalendar
+                                size={16}
+                                color="var(--chakra-colors-mukuru-grey-mediumDark)"
+                              />
+                            </Box>
+                            <Typography fontSize="13px" color="mukuru.grey.mediumDark">
+                              Due Date
+                            </Typography>
+                          </HStack>
+                          <Typography
+                            fontSize="13px"
+                            fontWeight="500"
+                            color="mukuru.text.primary"
+                          >
+                            {new Date(workItem.dueDate).toLocaleDateString()}
+                          </Typography>
+                        </Flex>
+                      )}
+
+                      {/* Priority */}
+                      <Flex
+                        px="20px"
+                        py="14px"
+                        justify="space-between"
+                        align="center"
+                        borderBottom="1px solid"
+                        borderColor="mukuru.grey.light"
+                        _hover={{ bg: 'mukuru.background.light' }}
+                      >
+                        <HStack gap="12px">
+                          <Box p="8px" borderRadius="8px" bg="mukuru.background.light">
+                            <FiFlag
+                              size={16}
+                              color="var(--chakra-colors-mukuru-grey-mediumDark)"
+                            />
+                          </Box>
+                          <Typography fontSize="13px" color="mukuru.grey.mediumDark">
+                            Priority
+                          </Typography>
+                        </HStack>
+                        <Box
+                          px="12px"
+                          py="4px"
+                          borderRadius="full"
+                          bg={
+                            workItem.priority?.toLowerCase() === 'high'
+                              ? 'rgba(220, 38, 38, 0.1)'
+                              : 'rgba(0, 128, 128, 0.1)'
+                          }
+                          border="1px solid"
+                          borderColor={
+                            workItem.priority?.toLowerCase() === 'high'
+                              ? 'mukuru.text.error'
+                              : 'mukuru.teal'
+                          }
+                        >
+                          <Typography
+                            fontSize="11px"
+                            fontWeight="600"
+                            color={
+                              workItem.priority?.toLowerCase() === 'high'
+                                ? 'mukuru.text.error'
+                                : 'mukuru.teal'
+                            }
+                          >
+                            {workItem.priority || 'Medium'}
+                          </Typography>
+                        </Box>
+                      </Flex>
+
+                      {/* Assigned To */}
+                      {workItem.assignedToName && (
+                        <Flex
+                          px="20px"
+                          py="14px"
+                          justify="space-between"
+                          align="center"
+                          _hover={{ bg: 'mukuru.background.light' }}
+                        >
+                          <HStack gap="12px">
+                            <Box p="8px" borderRadius="8px" bg="mukuru.background.light">
+                              <FiUser
+                                size={16}
+                                color="var(--chakra-colors-mukuru-grey-mediumDark)"
+                              />
+                            </Box>
+                            <Typography fontSize="13px" color="mukuru.grey.mediumDark">
+                              Assigned To
+                            </Typography>
+                          </HStack>
+                          <Typography
+                            fontSize="13px"
+                            fontWeight="500"
+                            color="mukuru.text.primary"
+                          >
+                            {workItem.assignedToName}
+                          </Typography>
+                        </Flex>
+                      )}
+                    </Box>
+                  </Box>
+
+                  {/* Quick Actions Card */}
+                  <Box
+                    bg="mukuru.cards.white"
+                    borderRadius="16px"
+                    border="1px solid"
+                    borderColor="mukuru.grey.light"
+                    boxShadow="0 2px 8px rgba(0, 0, 0, 0.04)"
+                    overflow="hidden"
+                    w="320px"
+                    flexShrink={0}
+                  >
+                    <Box
+                      p="16px 20px"
+                      borderBottom="1px solid"
+                      borderColor="mukuru.grey.light"
+                      bg="mukuru.background.light"
+                    >
+                      <Typography
+                        fontSize="15px"
+                        fontWeight="600"
+                        color="mukuru.text.primary"
+                      >
+                        Quick Actions
+                      </Typography>
+                    </Box>
+                    <Box
+                      p="16px"
+                      display="flex"
+                      flexDirection="column"
+                      justifyContent="flex-start"
+                    >
+                      <VStack align="stretch" gap="3" width="full">
+                        {/* Assignment Actions */}
+                        {!workItem.assignedTo && (
+                          <Button
+                            variant="primary"
+                            onClick={handleAssignToMe}
+                            size="md"
+                            width="full"
+                            className="mukuru-primary-button"
+                            disabled={actionLoading}
+                          >
+                            <HStack gap="2" align="center">
+                              <FiUser size={16} />
+                              <Typography color="mukuru.white">Assign to Me</Typography>
+                            </HStack>
+                          </Button>
+                        )}
+                        {workItem.assignedTo && (
+                          <>
+                            <Button
+                              variant="secondary"
+                              onClick={() => setReassignModalOpen(true)}
+                              size="md"
+                              width="full"
+                              disabled={actionLoading}
+                            >
+                              <HStack gap="2" align="center">
+                                <FiUser
+                                  size={16}
+                                  color="var(--chakra-colors-mukuru-grey-mediumDark)"
+                                />
+                                <Typography color="mukuru.text.primary">
+                                  Reassign
+                                </Typography>
+                              </HStack>
+                            </Button>
+                            <Button
+                              variant="secondary"
+                              onClick={handleUnassign}
+                              size="md"
+                              width="full"
+                              disabled={actionLoading}
+                            >
+                              <HStack gap="2" align="center">
+                                <FiX
+                                  size={16}
+                                  color="var(--chakra-colors-mukuru-grey-mediumDark)"
+                                />
+                                <Typography color="mukuru.text.primary">
+                                  Unassign
+                                </Typography>
+                              </HStack>
+                            </Button>
+                          </>
+                        )}
+
+                        <Separator />
+
+                        {/* View Actions */}
+                        <Button
+                          variant="primary"
+                          onClick={() => setCommentsModalOpen(true)}
+                          size="md"
+                          width="full"
+                          className="mukuru-primary-button"
+                        >
+                          <HStack gap="2" align="center">
+                            <IconWrapper>
+                              <FiMessageSquare size={16} color="mukuru.white" />
+                            </IconWrapper>
+                            <Typography color="mukuru.white">View Comments</Typography>
+                          </HStack>
+                          <Typography
+                            fontSize="xs"
+                            color="mukuru.white"
+                            opacity="0.9"
+                            mt="1"
+                          >
+                            {comments.length}{' '}
+                            {comments.length === 1 ? 'comment' : 'comments'}
+                          </Typography>
+                        </Button>
+                        <Button
+                          variant="secondary"
+                          onClick={() => setHistoryModalOpen(true)}
+                          size="md"
+                          width="full"
+                        >
+                          <HStack gap="2" align="center">
+                            <IconWrapper>
+                              <FiClock size={16} color="mukuru.grey.medium" />
+                            </IconWrapper>
+                            <Typography color="mukuru.text.primary">
+                              View History
+                            </Typography>
+                          </HStack>
+                        </Button>
+                        <Link
+                          href={`/applications/${workItem.applicationId || workItem.id}`}
+                          style={{ width: '100%' }}
+                        >
+                          <Button variant="secondary" size="md" width="full">
+                            <HStack gap="2" align="center">
+                              <IconWrapper>
+                                <FiEye size={16} color="mukuru.grey.medium" />
+                              </IconWrapper>
+                              <Typography color="mukuru.text.primary">
+                                View Full Application
+                              </Typography>
+                            </HStack>
+                          </Button>
+                        </Link>
+
+                        <Separator />
+
+                        {/* Refresh Action */}
+                        <Button
+                          variant="secondary"
+                          onClick={() => setRefreshModalOpen(true)}
+                          size="md"
+                          width="full"
+                          disabled={actionLoading}
+                        >
+                          <HStack gap="2" align="center">
+                            <FiRefreshCw
+                              size={16}
+                              color="var(--chakra-colors-mukuru-grey-mediumDark)"
+                            />
+                            <Typography color="mukuru.text.primary">
+                              Request Refresh
+                            </Typography>
+                          </HStack>
+                        </Button>
+                      </VStack>
+                    </Box>
+                  </Box>
+
+                  {/* Requirements Checklist - Show all required responses */}
+                  {entityRequirements.length > 0 && (
+                    <Box
+                      bg="mukuru.cards.white"
+                      borderRadius="16px"
+                      border="1px solid"
+                      borderColor="mukuru.grey.light"
+                      boxShadow="0 2px 8px rgba(0, 0, 0, 0.04)"
+                      overflow="hidden"
+                      w="100%"
+                      mt="24px"
+                    >
+                      <Flex
+                        p="16px 20px"
+                        borderBottom="1px solid"
+                        borderColor="mukuru.grey.light"
+                        bg="mukuru.background.light"
+                        justify="space-between"
+                        align="center"
+                      >
+                        <Typography
+                          fontSize="15px"
+                          fontWeight="600"
+                          color="mukuru.text.primary"
+                        >
+                          Required Responses
+                        </Typography>
+                        {(() => {
+                          const validation = validateRequirementCompleteness();
+                          const totalRequired = entityRequirements.filter(
+                            (r) => r.isRequired
+                          ).length;
+                          const satisfiedCount =
+                            totalRequired - validation.missingRequirements.length;
+                          return (
+                            <Box
+                              px="12px"
+                              py="4px"
+                              borderRadius="full"
+                              bg={
+                                validation.isValid
+                                  ? 'rgba(16, 185, 129, 0.1)'
+                                  : 'rgba(217, 119, 6, 0.1)'
+                              }
+                              border="1px solid"
+                              borderColor={
+                                validation.isValid
+                                  ? 'mukuru.text.success'
+                                  : 'mukuru.text.alert'
+                              }
+                            >
+                              <Typography
+                                fontSize="11px"
+                                fontWeight="600"
+                                color={
+                                  validation.isValid
+                                    ? 'mukuru.text.success'
+                                    : 'mukuru.text.alert'
+                                }
+                              >
+                                {satisfiedCount}/{totalRequired} Complete
+                              </Typography>
+                            </Box>
+                          );
+                        })()}
+                      </Flex>
+                      <Box p="20px">
+                        <VStack align="stretch" gap="16px">
+                          {entityRequirements
+                            .filter((req) => req.isRequired)
+                            .sort((a, b) => a.displayName.localeCompare(b.displayName))
+                            .map((req) => {
+                              const isDocument =
+                                req.fieldType === 'file' || req.fieldType === 'File';
+                              let isSatisfied = false;
+                              let responseValue: string | null = null;
+                              let documentInfo: { id: string; fileName: string } | null =
+                                null;
+
+                              if (isDocument) {
+                                // Check if document exists
+                                const matchingDoc = (
+                                  documents as Array<Record<string, unknown>>
+                                ).find((doc) => {
                                   const reqName = doc.requirementName as string;
                                   return (
                                     reqName === req.displayName ||
                                     reqName === requirementMap.get(req.code)
                                   );
+                                });
+                                isSatisfied = !!matchingDoc;
+                                if (matchingDoc) {
+                                  documentInfo = {
+                                    id: String(matchingDoc.id || ''),
+                                    fileName: String(
+                                      matchingDoc.fileName ||
+                                        matchingDoc.documentNumber ||
+                                        'Document'
+                                    ),
+                                  };
                                 }
-                              );
-                              isSatisfied = !!matchingDoc;
-                              if (matchingDoc) {
-                                documentInfo = {
-                                  id: String(matchingDoc.id || ''),
-                                  fileName: String(matchingDoc.fileName || matchingDoc.documentNumber || 'Document'),
-                                };
-                              }
-                            } else {
-                              // Check if information field has value
-                              const appData = applicationData as Record<string, unknown> | null;
-                              if (appData?.metadataJson) {
-                                try {
-                                  const metadata = typeof appData.metadataJson === 'string'
-                                    ? JSON.parse(appData.metadataJson)
-                                    : appData.metadataJson;
-                                  
-                                  // Try multiple possible keys
-                                  const possibleKeys = [
-                                    req.code.toLowerCase(),
-                                    req.code,
-                                    req.displayName.toLowerCase().replace(/\s+/g, '_'),
-                                    req.displayName.toLowerCase().replace(/\s+/g, '-'),
-                                  ];
-                                  
-                                  for (const key of possibleKeys) {
-                                    if (metadata[key] !== undefined && metadata[key] !== null && metadata[key] !== '') {
-                                      responseValue = String(metadata[key]);
-                                      isSatisfied = true;
-                                      break;
-                                    }
-                                  }
-                                  
-                                  // Also check direct field access
-                                  if (!isSatisfied && appData[req.code]) {
-                                    responseValue = String(appData[req.code]);
-                                    isSatisfied = true;
-                                  }
-                                } catch {
-                                  // Ignore parse errors
-                                }
-                              }
-                            }
+                              } else {
+                                // Check if information field has value
+                                const appData = applicationData as Record<
+                                  string,
+                                  unknown
+                                > | null;
+                                if (appData?.metadataJson) {
+                                  try {
+                                    const metadata =
+                                      typeof appData.metadataJson === 'string'
+                                        ? JSON.parse(appData.metadataJson)
+                                        : appData.metadataJson;
 
+                                    // Try multiple possible keys
+                                    const possibleKeys = [
+                                      req.code.toLowerCase(),
+                                      req.code,
+                                      req.displayName.toLowerCase().replace(/\s+/g, '_'),
+                                      req.displayName.toLowerCase().replace(/\s+/g, '-'),
+                                    ];
+
+                                    for (const key of possibleKeys) {
+                                      if (
+                                        metadata[key] !== undefined &&
+                                        metadata[key] !== null &&
+                                        metadata[key] !== ''
+                                      ) {
+                                        responseValue = String(metadata[key]);
+                                        isSatisfied = true;
+                                        break;
+                                      }
+                                    }
+
+                                    // Also check direct field access
+                                    if (!isSatisfied && appData[req.code]) {
+                                      responseValue = String(appData[req.code]);
+                                      isSatisfied = true;
+                                    }
+                                  } catch {
+                                    // Ignore parse errors
+                                  }
+                                }
+                              }
+
+                              return (
+                                <Box
+                                  key={req.code}
+                                  p="16px"
+                                  borderRadius="12px"
+                                  border="1px solid"
+                                  borderColor={
+                                    isSatisfied
+                                      ? 'mukuru.text.success'
+                                      : 'mukuru.text.error'
+                                  }
+                                  bg={
+                                    isSatisfied
+                                      ? 'rgba(16, 185, 129, 0.05)'
+                                      : 'rgba(220, 38, 38, 0.05)'
+                                  }
+                                >
+                                  <HStack
+                                    justify="space-between"
+                                    align="flex-start"
+                                    mb={
+                                      isSatisfied && (responseValue || documentInfo)
+                                        ? '12px'
+                                        : '0'
+                                    }
+                                  >
+                                    <HStack gap="12px" align="flex-start" flex="1">
+                                      <Box mt="2px">
+                                        {isSatisfied ? (
+                                          <FiCheck
+                                            size={20}
+                                            color="var(--chakra-colors-mukuru-text-success)"
+                                          />
+                                        ) : (
+                                          <FiX
+                                            size={20}
+                                            color="var(--chakra-colors-mukuru-text-error)"
+                                          />
+                                        )}
+                                      </Box>
+                                      <VStack align="flex-start" gap="4px" flex="1">
+                                        <Typography
+                                          fontSize="14px"
+                                          fontWeight="600"
+                                          color="mukuru.text.primary"
+                                        >
+                                          {req.displayName}
+                                        </Typography>
+                                        {req.description && (
+                                          <Typography
+                                            fontSize="12px"
+                                            color="mukuru.grey.medium"
+                                          >
+                                            {req.description}
+                                          </Typography>
+                                        )}
+                                        {isSatisfied && responseValue && (
+                                          <Box
+                                            mt="8px"
+                                            p="8px 12px"
+                                            bg="mukuru.cards.white"
+                                            borderRadius="8px"
+                                            border="1px solid"
+                                            borderColor="mukuru.grey.light"
+                                            w="100%"
+                                          >
+                                            <Typography
+                                              fontSize="13px"
+                                              color="mukuru.text.primary"
+                                              fontWeight="500"
+                                            >
+                                              {responseValue}
+                                            </Typography>
+                                          </Box>
+                                        )}
+                                        {isSatisfied && documentInfo && (
+                                          <HStack mt="8px" gap="8px">
+                                            <FiFile
+                                              size={16}
+                                              color="var(--chakra-colors-mukuru-text-success)"
+                                            />
+                                            <Typography
+                                              fontSize="13px"
+                                              color="mukuru.text.primary"
+                                              fontWeight="500"
+                                            >
+                                              {documentInfo.fileName}
+                                            </Typography>
+                                            <Button
+                                              size="sm"
+                                              variant="primary"
+                                              onClick={() => {
+                                                const doc = (
+                                                  documents as Array<
+                                                    Record<string, unknown>
+                                                  >
+                                                ).find(
+                                                  (d) => String(d.id) === documentInfo!.id
+                                                );
+                                                if (doc) handleViewDocument(doc);
+                                              }}
+                                            >
+                                              View
+                                            </Button>
+                                          </HStack>
+                                        )}
+                                      </VStack>
+                                    </HStack>
+                                    <Tag
+                                      variant={isSatisfied ? 'success' : 'danger'}
+                                      size="md"
+                                    >
+                                      {isSatisfied ? 'Provided' : 'Missing'}
+                                    </Tag>
+                                  </HStack>
+                                </Box>
+                              );
+                            })}
+                        </VStack>
+                        {(() => {
+                          const validation = validateRequirementCompleteness();
+                          if (!validation.isValid) {
                             return (
                               <Box
-                                key={req.code}
+                                mt="20px"
                                 p="16px"
+                                bg="rgba(217, 119, 6, 0.1)"
                                 borderRadius="12px"
                                 border="1px solid"
-                                borderColor={isSatisfied ? 'mukuru.text.success' : 'mukuru.text.error'}
-                                bg={isSatisfied ? 'rgba(16, 185, 129, 0.05)' : 'rgba(220, 38, 38, 0.05)'}
+                                borderColor="mukuru.text.alert"
                               >
-                                <HStack justify="space-between" align="flex-start" mb={isSatisfied && (responseValue || documentInfo) ? "12px" : "0"}>
-                                  <HStack gap="12px" align="flex-start" flex="1">
-                                    <Box mt="2px">
-                                      {isSatisfied ? (
-                                        <FiCheck size={20} color="var(--chakra-colors-mukuru-text-success)" />
-                                      ) : (
-                                        <FiX size={20} color="var(--chakra-colors-mukuru-text-error)" />
-                                      )}
-                                    </Box>
-                                    <VStack align="flex-start" gap="4px" flex="1">
-                                      <Typography fontSize="14px" fontWeight="600" color="mukuru.text.primary">
-                                        {req.displayName}
-                                      </Typography>
-                                      {req.description && (
-                                        <Typography fontSize="12px" color="mukuru.grey.medium">
-                                          {req.description}
-                                        </Typography>
-                                      )}
-                                      {isSatisfied && responseValue && (
-                                        <Box mt="8px" p="8px 12px" bg="mukuru.cards.white" borderRadius="8px" border="1px solid" borderColor="mukuru.grey.light" w="100%">
-                                          <Typography fontSize="13px" color="mukuru.text.primary" fontWeight="500">
-                                            {responseValue}
-                                          </Typography>
-                                        </Box>
-                                      )}
-                                      {isSatisfied && documentInfo && (
-                                        <HStack mt="8px" gap="8px">
-                                          <FiFile size={16} color="var(--chakra-colors-mukuru-text-success)" />
-                                          <Typography fontSize="13px" color="mukuru.text.primary" fontWeight="500">
-                                            {documentInfo.fileName}
-                                          </Typography>
-                                          <Button
-                                            size="sm"
-                                            variant="primary"
-                                            onClick={() => {
-                                              const doc = (documents as Array<Record<string, unknown>>).find(
-                                                d => String(d.id) === documentInfo!.id
-                                              );
-                                              if (doc) handleViewDocument(doc);
-                                            }}
-                                          >
-                                            View
-                                          </Button>
-                                        </HStack>
-                                      )}
-                                    </VStack>
-                                  </HStack>
-                                  <Tag 
-                                    variant={isSatisfied ? 'success' : 'danger'}
-                                    size="md"
-                                  >
-                                    {isSatisfied ? 'Provided' : 'Missing'}
-                                  </Tag>
+                                <HStack gap="12px" align="flex-start">
+                                  <FiAlertTriangle
+                                    size={20}
+                                    color="var(--chakra-colors-mukuru-text-alert)"
+                                  />
+                                  <VStack align="flex-start" gap="4px" flex="1">
+                                    <Typography
+                                      fontSize="14px"
+                                      fontWeight="600"
+                                      color="mukuru.text.alert"
+                                    >
+                                      Missing Required Information
+                                    </Typography>
+                                    <Typography fontSize="13px" color="mukuru.text.alert">
+                                      {validation.message}
+                                    </Typography>
+                                  </VStack>
                                 </HStack>
                               </Box>
                             );
-                          })}
-                      </VStack>
-                      {(() => {
-                        const validation = validateRequirementCompleteness();
-                        if (!validation.isValid) {
-                          return (
-                            <Box mt="20px" p="16px" bg="rgba(217, 119, 6, 0.1)" borderRadius="12px" border="1px solid" borderColor="mukuru.text.alert">
-                              <HStack gap="12px" align="flex-start">
-                                <FiAlertTriangle size={20} color="var(--chakra-colors-mukuru-text-alert)" />
-                                <VStack align="flex-start" gap="4px" flex="1">
-                                  <Typography fontSize="14px" fontWeight="600" color="mukuru.text.alert">
-                                    Missing Required Information
-                                  </Typography>
-                                  <Typography fontSize="13px" color="mukuru.text.alert">
-                                    {validation.message}
-                                  </Typography>
-                                </VStack>
-                              </HStack>
-                            </Box>
-                          );
-                        }
-                        return null;
-                      })()}
+                          }
+                          return null;
+                        })()}
+                      </Box>
                     </Box>
-                  </Box>
-                )}
-              </Flex>
-            )}
+                  )}
+                </Flex>
+              )}
 
             {/* Documents Step - Only show if no wizard config (fallback) */}
-            {(currentStep === 2 || (typeof currentStep === 'number' && currentStep === 2)) && !entitySchema?.wizardConfiguration && (
-              <>
-                {/* Requirement Completeness Status */}
-                {entityRequirements.length > 0 && (
-                  <Box
-                    bg="mukuru.cards.white"
-                    borderRadius="16px"
-                    border="1px solid"
-                    borderColor="mukuru.grey.light"
-                    boxShadow="0 2px 8px rgba(0, 0, 0, 0.04)"
-                    overflow="hidden"
-                    mb="24px"
-                  >
-                    <Flex p="16px 20px" borderBottom="1px solid" borderColor="mukuru.grey.light" bg="mukuru.background.light" justify="space-between" align="center">
-                      <Typography fontSize="15px" fontWeight="600" color="mukuru.text.primary">
-                        Requirement Status
-                      </Typography>
+            {(currentStep === 2 ||
+              (typeof currentStep === 'number' && currentStep === 2)) &&
+              !entitySchema?.wizardConfiguration && (
+                <>
+                  {/* Requirement Completeness Status */}
+                  {entityRequirements.length > 0 && (
+                    <Box
+                      bg="mukuru.cards.white"
+                      borderRadius="16px"
+                      border="1px solid"
+                      borderColor="mukuru.grey.light"
+                      boxShadow="0 2px 8px rgba(0, 0, 0, 0.04)"
+                      overflow="hidden"
+                      mb="24px"
+                    >
+                      <Flex
+                        p="16px 20px"
+                        borderBottom="1px solid"
+                        borderColor="mukuru.grey.light"
+                        bg="mukuru.background.light"
+                        justify="space-between"
+                        align="center"
+                      >
+                        <Typography
+                          fontSize="15px"
+                          fontWeight="600"
+                          color="mukuru.text.primary"
+                        >
+                          Requirement Status
+                        </Typography>
                         {(() => {
                           const validation = validateRequirementCompleteness();
                           const requiredCount = entityRequirements.filter(
@@ -3614,16 +4437,39 @@ export default function ReviewPage() {
                           const satisfiedCount =
                             requiredCount - validation.missingRequirements.length;
                           return (
-                            <Box px="12px" py="4px" borderRadius="full" bg={validation.isValid ? 'rgba(16, 185, 129, 0.1)' : 'rgba(217, 119, 6, 0.1)'} border="1px solid" borderColor={validation.isValid ? 'mukuru.text.success' : 'mukuru.text.alert'}>
-                              <Typography fontSize="11px" fontWeight="600" color={validation.isValid ? 'mukuru.text.success' : 'mukuru.text.alert'}>
+                            <Box
+                              px="12px"
+                              py="4px"
+                              borderRadius="full"
+                              bg={
+                                validation.isValid
+                                  ? 'rgba(16, 185, 129, 0.1)'
+                                  : 'rgba(217, 119, 6, 0.1)'
+                              }
+                              border="1px solid"
+                              borderColor={
+                                validation.isValid
+                                  ? 'mukuru.text.success'
+                                  : 'mukuru.text.alert'
+                              }
+                            >
+                              <Typography
+                                fontSize="11px"
+                                fontWeight="600"
+                                color={
+                                  validation.isValid
+                                    ? 'mukuru.text.success'
+                                    : 'mukuru.text.alert'
+                                }
+                              >
                                 {satisfiedCount}/{requiredCount} Required Documents
                               </Typography>
                             </Box>
                           );
                         })()}
-                    </Flex>
-                    <Box p="16px 20px">
-                      <VStack align="stretch" gap="12px">
+                      </Flex>
+                      <Box p="16px 20px">
+                        <VStack align="stretch" gap="12px">
                           {entityRequirements
                             .filter(
                               (req) =>
@@ -3725,7 +4571,7 @@ export default function ReviewPage() {
                                       {req.displayName}
                                     </Typography>
                                   </HStack>
-                                  <Tag 
+                                  <Tag
                                     variant={isSatisfied ? 'success' : 'danger'}
                                     size="md"
                                   >
@@ -3734,28 +4580,42 @@ export default function ReviewPage() {
                                 </HStack>
                               );
                             })}
-                      </VStack>
-                      {(() => {
-                        const validation = validateRequirementCompleteness();
-                        if (!validation.isValid) {
-                          return (
-                            <Box mt="16px" p="12px 16px" bg="rgba(217, 119, 6, 0.1)" borderRadius="8px" border="1px solid" borderColor="mukuru.text.alert">
-                              <HStack gap="8px">
-                                <FiAlertTriangle size={16} color="var(--chakra-colors-mukuru-text-alert)" />
-                                <Typography fontSize="13px" fontWeight="500" color="mukuru.text.alert">
-                                  {validation.message}
-                                </Typography>
-                              </HStack>
-                            </Box>
-                          );
-                        }
-                        return null;
-                      })()}
+                        </VStack>
+                        {(() => {
+                          const validation = validateRequirementCompleteness();
+                          if (!validation.isValid) {
+                            return (
+                              <Box
+                                mt="16px"
+                                p="12px 16px"
+                                bg="rgba(217, 119, 6, 0.1)"
+                                borderRadius="8px"
+                                border="1px solid"
+                                borderColor="mukuru.text.alert"
+                              >
+                                <HStack gap="8px">
+                                  <FiAlertTriangle
+                                    size={16}
+                                    color="var(--chakra-colors-mukuru-text-alert)"
+                                  />
+                                  <Typography
+                                    fontSize="13px"
+                                    fontWeight="500"
+                                    color="mukuru.text.alert"
+                                  >
+                                    {validation.message}
+                                  </Typography>
+                                </HStack>
+                              </Box>
+                            );
+                          }
+                          return null;
+                        })()}
+                      </Box>
                     </Box>
-                  </Box>
-                )}
-              </>
-            )}
+                  )}
+                </>
+              )}
             {currentStep === 2 && (
               <Box
                 bg="mukuru.cards.white"
@@ -3765,19 +4625,25 @@ export default function ReviewPage() {
                 boxShadow="0 2px 8px rgba(0, 0, 0, 0.04)"
                 overflow="hidden"
               >
-                <Flex 
-                  p="16px 20px" 
-                  borderBottom="1px solid" 
-                  borderColor="mukuru.grey.light" 
+                <Flex
+                  p="16px 20px"
+                  borderBottom="1px solid"
+                  borderColor="mukuru.grey.light"
                   bg="mukuru.background.light"
                   justify="space-between"
                   align="center"
                 >
-                  <Typography fontSize="15px" fontWeight="600" color="mukuru.text.primary">
+                  <Typography
+                    fontSize="15px"
+                    fontWeight="600"
+                    color="mukuru.text.primary"
+                  >
                     Documents
                   </Typography>
                   <Button size="sm" variant="primary" onClick={loadDocuments}>
-                    <IconWrapper><FiRefreshCw size={14} /></IconWrapper>
+                    <IconWrapper>
+                      <FiRefreshCw size={14} />
+                    </IconWrapper>
                     Refresh
                   </Button>
                 </Flex>
@@ -3825,8 +4691,13 @@ export default function ReviewPage() {
                     ) : (
                       <VStack align="stretch" gap="16px">
                         <HStack justify="space-between" align="center">
-                          <Typography fontSize="13px" fontWeight="500" color="mukuru.text.primary">
-                            {documents.length} document{documents.length !== 1 ? 's' : ''} found
+                          <Typography
+                            fontSize="13px"
+                            fontWeight="500"
+                            color="mukuru.text.primary"
+                          >
+                            {documents.length} document{documents.length !== 1 ? 's' : ''}{' '}
+                            found
                           </Typography>
                         </HStack>
                         <SimpleGrid columns={{ base: 1, md: 2 }} gap="12px">
@@ -3853,12 +4724,11 @@ export default function ReviewPage() {
                             .map((doc: unknown, index: number) => {
                               const docObj = doc as Record<string, unknown>;
                               const requirementName = getDocumentTypeName(docObj);
-                              const fileName =
-                                docObj.fileName
-                                  ? String(docObj.fileName)
-                                  : docObj.documentNumber
-                                    ? String(docObj.documentNumber)
-                                    : `Document ${index + 1}`;
+                              const fileName = docObj.fileName
+                                ? String(docObj.fileName)
+                                : docObj.documentNumber
+                                  ? String(docObj.documentNumber)
+                                  : `Document ${index + 1}`;
                               return (
                                 <Box
                                   key={docObj.id ? String(docObj.id) : `doc-${index}`}
@@ -3889,33 +4759,63 @@ export default function ReviewPage() {
                                       justifyContent="center"
                                       flexShrink={0}
                                     >
-                                      <FiFile size={20} color="var(--chakra-colors-mukuru-buttons-primary)" />
+                                      <FiFile
+                                        size={20}
+                                        color="var(--chakra-colors-mukuru-buttons-primary)"
+                                      />
                                     </Box>
                                     <VStack align="start" gap="6px" flex="1" minW="0">
-                                      {requirementName && requirementName !== 'Document' && requirementName !== 'Unknown' && (
-                                        <Box px="8px" py="2px" bg="rgba(240, 84, 35, 0.08)" borderRadius="4px">
-                                          <Typography fontSize="10px" fontWeight="600" color="mukuru.buttons.primary" textTransform="uppercase" letterSpacing="0.5px">
-                                            {requirementName}
-                                          </Typography>
-                                        </Box>
-                                      )}
+                                      {requirementName &&
+                                        requirementName !== 'Document' &&
+                                        requirementName !== 'Unknown' && (
+                                          <Box
+                                            px="8px"
+                                            py="2px"
+                                            bg="rgba(240, 84, 35, 0.08)"
+                                            borderRadius="4px"
+                                          >
+                                            <Typography
+                                              fontSize="10px"
+                                              fontWeight="600"
+                                              color="mukuru.buttons.primary"
+                                              textTransform="uppercase"
+                                              letterSpacing="0.5px"
+                                            >
+                                              {requirementName}
+                                            </Typography>
+                                          </Box>
+                                        )}
                                       <Typography
                                         fontWeight="600"
                                         fontSize="13px"
                                         color="mukuru.text.primary"
-                                        style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '100%' }}
+                                        style={{
+                                          overflow: 'hidden',
+                                          textOverflow: 'ellipsis',
+                                          whiteSpace: 'nowrap',
+                                          maxWidth: '100%',
+                                        }}
                                       >
                                         {fileName}
                                       </Typography>
                                       <HStack gap="12px">
-                                        {docObj.sizeBytes && typeof docObj.sizeBytes === 'number' ? (
-                                          <Typography fontSize="11px" color="mukuru.grey.medium">
+                                        {docObj.sizeBytes &&
+                                        typeof docObj.sizeBytes === 'number' ? (
+                                          <Typography
+                                            fontSize="11px"
+                                            color="mukuru.grey.medium"
+                                          >
                                             {formatFileSize(docObj.sizeBytes as number)}
                                           </Typography>
                                         ) : null}
                                         {docObj.uploadedAt ? (
-                                          <Typography fontSize="11px" color="mukuru.grey.medium">
-                                            {new Date(String(docObj.uploadedAt)).toLocaleDateString()}
+                                          <Typography
+                                            fontSize="11px"
+                                            color="mukuru.grey.medium"
+                                          >
+                                            {new Date(
+                                              String(docObj.uploadedAt)
+                                            ).toLocaleDateString()}
                                           </Typography>
                                         ) : null}
                                       </HStack>
@@ -3933,7 +4833,13 @@ export default function ReviewPage() {
                                       >
                                         <HStack gap="6px" align="center">
                                           <FiEye size={14} />
-                                          <Typography fontSize="12px" color="white" fontWeight="500">View</Typography>
+                                          <Typography
+                                            fontSize="12px"
+                                            color="white"
+                                            fontWeight="500"
+                                          >
+                                            View
+                                          </Typography>
                                         </HStack>
                                       </Button>
                                     </VStack>
@@ -3942,7 +4848,12 @@ export default function ReviewPage() {
                               );
                             })}
                         </SimpleGrid>
-                        <Box mt="20px" pt="16px" borderTop="1px solid" borderColor="mukuru.grey.light">
+                        <Box
+                          mt="20px"
+                          pt="16px"
+                          borderTop="1px solid"
+                          borderColor="mukuru.grey.light"
+                        >
                           <Link
                             href={`/applications/${workItem.applicationId || workItem.id}`}
                             style={{ width: '100%' }}
@@ -3956,7 +4867,11 @@ export default function ReviewPage() {
                               h="48px"
                             >
                               <HStack gap="8px" align="center" justify="center">
-                                <Typography color="white" fontWeight="500" fontSize="14px">
+                                <Typography
+                                  color="white"
+                                  fontWeight="500"
+                                  fontSize="14px"
+                                >
                                   View Full Application Details
                                 </Typography>
                                 <FiArrowRight size={16} />
@@ -3980,29 +4895,40 @@ export default function ReviewPage() {
                 boxShadow="0 2px 8px rgba(0, 0, 0, 0.04)"
                 overflow="hidden"
               >
-                <Flex 
-                  p="16px 20px" 
-                  borderBottom="1px solid" 
-                  borderColor="mukuru.grey.light" 
+                <Flex
+                  p="16px 20px"
+                  borderBottom="1px solid"
+                  borderColor="mukuru.grey.light"
                   bg="mukuru.background.light"
                   justify="space-between"
                   align="center"
                 >
-                  <Typography fontSize="15px" fontWeight="600" color="mukuru.text.primary">
+                  <Typography
+                    fontSize="15px"
+                    fontWeight="600"
+                    color="mukuru.text.primary"
+                  >
                     Manual Risk Assessment
                   </Typography>
                   {riskAssessment && (
-                    <Box px="12px" py="4px" borderRadius="full" bg="#D1FAE5" border="1px solid" borderColor="#6EE7B7">
+                    <Box
+                      px="12px"
+                      py="4px"
+                      borderRadius="full"
+                      bg="#D1FAE5"
+                      border="1px solid"
+                      borderColor="#6EE7B7"
+                    >
                       <HStack gap="6px">
                         <FiCheck size={12} color="#059669" />
-                        <Typography fontSize="11px" fontWeight="600" color="#059669">Assessed</Typography>
+                        <Typography fontSize="11px" fontWeight="600" color="#059669">
+                          Assessed
+                        </Typography>
                       </HStack>
                     </Box>
                   )}
                 </Flex>
-                <Box
-                  p="24px"
-                >
+                <Box p="24px">
                   {riskAssessmentLoading ? (
                     <VStack gap="3" py="6" align="center">
                       <Spinner size="md" color="mukuru.primary" />
@@ -4021,27 +4947,82 @@ export default function ReviewPage() {
                           borderColor="mukuru.grey.light"
                           overflow="hidden"
                         >
-                          <Box p="14px 16px" borderBottom="1px solid" borderColor="mukuru.grey.light" bg="mukuru.background.light">
-                            <Typography fontSize="14px" fontWeight="600" color="mukuru.text.primary">
+                          <Box
+                            p="14px 16px"
+                            borderBottom="1px solid"
+                            borderColor="mukuru.grey.light"
+                            bg="mukuru.background.light"
+                          >
+                            <Typography
+                              fontSize="14px"
+                              fontWeight="600"
+                              color="mukuru.text.primary"
+                            >
                               Current Risk Assessment
                             </Typography>
                           </Box>
                           <Box p="16px">
                             {/* Risk Level Row */}
-                            <Flex py="12px" justify="space-between" align="center" borderBottom="1px solid" borderColor="mukuru.grey.light">
+                            <Flex
+                              py="12px"
+                              justify="space-between"
+                              align="center"
+                              borderBottom="1px solid"
+                              borderColor="mukuru.grey.light"
+                            >
                               <HStack gap="10px">
-                                <Box p="6px" borderRadius="6px" bg="mukuru.background.light">
-                                  <FiShield size={14} color="var(--chakra-colors-mukuru-grey-mediumDark)" />
+                                <Box
+                                  p="6px"
+                                  borderRadius="6px"
+                                  bg="mukuru.background.light"
+                                >
+                                  <FiShield
+                                    size={14}
+                                    color="var(--chakra-colors-mukuru-grey-mediumDark)"
+                                  />
                                 </Box>
-                                <Typography fontSize="13px" color="mukuru.grey.mediumDark">Risk Level</Typography>
+                                <Typography
+                                  fontSize="13px"
+                                  color="mukuru.grey.mediumDark"
+                                >
+                                  Risk Level
+                                </Typography>
                               </HStack>
-                              <Box 
-                                px="10px" py="3px" borderRadius="full" 
-                                bg={getRiskColor(riskAssessment.overallRiskLevel) === 'red' ? '#FEE2E2' : getRiskColor(riskAssessment.overallRiskLevel) === 'orange' ? '#FEF3C7' : '#DBEAFE'} 
-                                border="1px solid" 
-                                borderColor={getRiskColor(riskAssessment.overallRiskLevel) === 'red' ? '#FCA5A5' : getRiskColor(riskAssessment.overallRiskLevel) === 'orange' ? '#FCD34D' : '#93C5FD'}
+                              <Box
+                                px="10px"
+                                py="3px"
+                                borderRadius="full"
+                                bg={
+                                  getRiskColor(riskAssessment.overallRiskLevel) === 'red'
+                                    ? '#FEE2E2'
+                                    : getRiskColor(riskAssessment.overallRiskLevel) ===
+                                        'orange'
+                                      ? '#FEF3C7'
+                                      : '#DBEAFE'
+                                }
+                                border="1px solid"
+                                borderColor={
+                                  getRiskColor(riskAssessment.overallRiskLevel) === 'red'
+                                    ? '#FCA5A5'
+                                    : getRiskColor(riskAssessment.overallRiskLevel) ===
+                                        'orange'
+                                      ? '#FCD34D'
+                                      : '#93C5FD'
+                                }
                               >
-                                <Typography fontSize="11px" fontWeight="600" color={getRiskColor(riskAssessment.overallRiskLevel) === 'red' ? '#DC2626' : getRiskColor(riskAssessment.overallRiskLevel) === 'orange' ? '#D97706' : '#1D4ED8'}>
+                                <Typography
+                                  fontSize="11px"
+                                  fontWeight="600"
+                                  color={
+                                    getRiskColor(riskAssessment.overallRiskLevel) ===
+                                    'red'
+                                      ? '#DC2626'
+                                      : getRiskColor(riskAssessment.overallRiskLevel) ===
+                                          'orange'
+                                        ? '#D97706'
+                                        : '#1D4ED8'
+                                  }
+                                >
                                   {riskAssessment.overallRiskLevel}
                                 </Typography>
                               </Box>
@@ -4049,22 +5030,59 @@ export default function ReviewPage() {
 
                             {/* Risk Score Row */}
                             {riskAssessment.riskScore !== undefined && (
-                              <Flex py="12px" justify="space-between" align="center" borderBottom="1px solid" borderColor="mukuru.grey.light">
+                              <Flex
+                                py="12px"
+                                justify="space-between"
+                                align="center"
+                                borderBottom="1px solid"
+                                borderColor="mukuru.grey.light"
+                              >
                                 <HStack gap="10px">
-                                  <Box p="6px" borderRadius="6px" bg="mukuru.background.light">
-                                    <FiShield size={14} color="var(--chakra-colors-mukuru-grey-mediumDark)" />
+                                  <Box
+                                    p="6px"
+                                    borderRadius="6px"
+                                    bg="mukuru.background.light"
+                                  >
+                                    <FiShield
+                                      size={14}
+                                      color="var(--chakra-colors-mukuru-grey-mediumDark)"
+                                    />
                                   </Box>
-                                  <Typography fontSize="13px" color="mukuru.grey.mediumDark">Risk Score</Typography>
+                                  <Typography
+                                    fontSize="13px"
+                                    color="mukuru.grey.mediumDark"
+                                  >
+                                    Risk Score
+                                  </Typography>
                                 </HStack>
                                 <HStack gap="12px">
-                                  <Typography fontSize="13px" fontWeight="500" color="mukuru.text.primary">
+                                  <Typography
+                                    fontSize="13px"
+                                    fontWeight="500"
+                                    color="mukuru.text.primary"
+                                  >
                                     {riskAssessment.riskScore}%
                                   </Typography>
-                                  <Box w="80px" h="6px" bg="mukuru.grey.light" borderRadius="full" overflow="hidden">
-                                    <Box 
-                                      w={`${riskAssessment.riskScore}%`} 
-                                      h="full" 
-                                      bg={getRiskColor(riskAssessment.overallRiskLevel) === 'red' ? '#EF4444' : getRiskColor(riskAssessment.overallRiskLevel) === 'orange' ? '#F59E0B' : '#3B82F6'} 
+                                  <Box
+                                    w="80px"
+                                    h="6px"
+                                    bg="mukuru.grey.light"
+                                    borderRadius="full"
+                                    overflow="hidden"
+                                  >
+                                    <Box
+                                      w={`${riskAssessment.riskScore}%`}
+                                      h="full"
+                                      bg={
+                                        getRiskColor(riskAssessment.overallRiskLevel) ===
+                                        'red'
+                                          ? '#EF4444'
+                                          : getRiskColor(
+                                                riskAssessment.overallRiskLevel
+                                              ) === 'orange'
+                                            ? '#F59E0B'
+                                            : '#3B82F6'
+                                      }
                                       borderRadius="full"
                                     />
                                   </Box>
@@ -4074,20 +5092,47 @@ export default function ReviewPage() {
 
                             {/* Assessed By Row */}
                             {riskAssessment.assessedBy && (
-                              <Flex py="12px" justify="space-between" align="center" borderBottom="1px solid" borderColor="mukuru.grey.light">
+                              <Flex
+                                py="12px"
+                                justify="space-between"
+                                align="center"
+                                borderBottom="1px solid"
+                                borderColor="mukuru.grey.light"
+                              >
                                 <HStack gap="10px">
-                                  <Box p="6px" borderRadius="6px" bg="mukuru.background.light">
-                                    <FiUser size={14} color="var(--chakra-colors-mukuru-grey-mediumDark)" />
+                                  <Box
+                                    p="6px"
+                                    borderRadius="6px"
+                                    bg="mukuru.background.light"
+                                  >
+                                    <FiUser
+                                      size={14}
+                                      color="var(--chakra-colors-mukuru-grey-mediumDark)"
+                                    />
                                   </Box>
-                                  <Typography fontSize="13px" color="mukuru.grey.mediumDark">Assessed By</Typography>
+                                  <Typography
+                                    fontSize="13px"
+                                    color="mukuru.grey.mediumDark"
+                                  >
+                                    Assessed By
+                                  </Typography>
                                 </HStack>
                                 <VStack align="flex-end" gap="2px">
-                                  <Typography fontSize="13px" fontWeight="500" color="mukuru.text.primary">
+                                  <Typography
+                                    fontSize="13px"
+                                    fontWeight="500"
+                                    color="mukuru.text.primary"
+                                  >
                                     {riskAssessment.assessedBy}
                                   </Typography>
                                   {riskAssessment.completedAt && (
-                                    <Typography fontSize="11px" color="mukuru.grey.medium">
-                                      {new Date(riskAssessment.completedAt).toLocaleDateString()}
+                                    <Typography
+                                      fontSize="11px"
+                                      color="mukuru.grey.medium"
+                                    >
+                                      {new Date(
+                                        riskAssessment.completedAt
+                                      ).toLocaleDateString()}
                                     </Typography>
                                   )}
                                 </VStack>
@@ -4097,10 +5142,17 @@ export default function ReviewPage() {
                             {/* Notes/Justification Row */}
                             {riskAssessment.notes && (
                               <Box pt="12px">
-                                <Typography fontSize="12px" fontWeight="600" color="mukuru.grey.mediumDark" mb="6px">Notes</Typography>
-                                <Box 
-                                  fontSize="13px" 
-                                  color="mukuru.text.primary" 
+                                <Typography
+                                  fontSize="12px"
+                                  fontWeight="600"
+                                  color="mukuru.grey.mediumDark"
+                                  mb="6px"
+                                >
+                                  Notes
+                                </Typography>
+                                <Box
+                                  fontSize="13px"
+                                  color="mukuru.text.primary"
                                   lineHeight="1.6"
                                   p="12px"
                                   bg="mukuru.background.light"
@@ -4108,28 +5160,66 @@ export default function ReviewPage() {
                                   maxH="200px"
                                   overflowY="auto"
                                 >
-                                  {riskAssessment.notes.split('\n\n').map((section, idx) => {
-                                    // Check if this is a section header (e.g., "RISK FACTORS IDENTIFIED:")
-                                    const isHeader = section.includes(':') && section.split(':')[0].toUpperCase() === section.split(':')[0];
-                                    if (isHeader) {
-                                      const [header, ...content] = section.split(':');
+                                  {riskAssessment.notes
+                                    .split('\n\n')
+                                    .map((section, idx) => {
+                                      // Check if this is a section header (e.g., "RISK FACTORS IDENTIFIED:")
+                                      const isHeader =
+                                        section.includes(':') &&
+                                        section.split(':')[0].toUpperCase() ===
+                                          section.split(':')[0];
+                                      if (isHeader) {
+                                        const [header, ...content] = section.split(':');
+                                        return (
+                                          <Box
+                                            key={idx}
+                                            mb={
+                                              idx <
+                                              riskAssessment.notes!.split('\n\n').length -
+                                                1
+                                                ? '12px'
+                                                : '0'
+                                            }
+                                          >
+                                            <Typography
+                                              fontSize="11px"
+                                              fontWeight="600"
+                                              color="mukuru.grey.mediumDark"
+                                              textTransform="uppercase"
+                                              mb="4px"
+                                            >
+                                              {header.replace(
+                                                'MANUAL CLASSIFICATION',
+                                                'Justification'
+                                              )}
+                                            </Typography>
+                                            <Typography
+                                              fontSize="13px"
+                                              color="mukuru.text.primary"
+                                              whiteSpace="pre-wrap"
+                                            >
+                                              {content.join(':').trim()}
+                                            </Typography>
+                                          </Box>
+                                        );
+                                      }
                                       return (
-                                        <Box key={idx} mb={idx < riskAssessment.notes!.split('\n\n').length - 1 ? "12px" : "0"}>
-                                          <Typography fontSize="11px" fontWeight="600" color="mukuru.grey.mediumDark" textTransform="uppercase" mb="4px">
-                                            {header.replace('MANUAL CLASSIFICATION', 'Justification')}
-                                          </Typography>
-                                          <Typography fontSize="13px" color="mukuru.text.primary" whiteSpace="pre-wrap">
-                                            {content.join(':').trim()}
-                                          </Typography>
-                                        </Box>
+                                        <Typography
+                                          key={idx}
+                                          fontSize="13px"
+                                          color="mukuru.text.primary"
+                                          whiteSpace="pre-wrap"
+                                          mb={
+                                            idx <
+                                            riskAssessment.notes!.split('\n\n').length - 1
+                                              ? '8px'
+                                              : '0'
+                                          }
+                                        >
+                                          {section}
+                                        </Typography>
                                       );
-                                    }
-                                    return (
-                                      <Typography key={idx} fontSize="13px" color="mukuru.text.primary" whiteSpace="pre-wrap" mb={idx < riskAssessment.notes!.split('\n\n').length - 1 ? "8px" : "0"}>
-                                        {section}
-                                      </Typography>
-                                    );
-                                  })}
+                                    })}
                                 </Box>
                               </Box>
                             )}
@@ -4145,8 +5235,17 @@ export default function ReviewPage() {
                         borderColor="mukuru.grey.light"
                         overflow="hidden"
                       >
-                        <Box p="14px 16px" borderBottom="1px solid" borderColor="mukuru.grey.light" bg="mukuru.background.light">
-                          <Typography fontSize="14px" fontWeight="600" color="mukuru.text.primary">
+                        <Box
+                          p="14px 16px"
+                          borderBottom="1px solid"
+                          borderColor="mukuru.grey.light"
+                          bg="mukuru.background.light"
+                        >
+                          <Typography
+                            fontSize="14px"
+                            fontWeight="600"
+                            color="mukuru.text.primary"
+                          >
                             Determine Risk Level
                           </Typography>
                         </Box>
@@ -4155,11 +5254,23 @@ export default function ReviewPage() {
                             {/* Risk Level Field */}
                             <Box width="full">
                               <VStack align="flex-start" gap="4px" mb="10px">
-                                <Typography fontSize="14px" fontWeight="600" color="mukuru.text.primary">
-                                  Risk Level <Box as="span" color="mukuru.text.error">*</Box>
+                                <Typography
+                                  fontSize="14px"
+                                  fontWeight="600"
+                                  color="mukuru.text.primary"
+                                >
+                                  Risk Level{' '}
+                                  <Box as="span" color="mukuru.text.error">
+                                    *
+                                  </Box>
                                 </Typography>
-                                <Typography fontSize="12px" color="mukuru.grey.medium" lineHeight="1.4">
-                                  Select the appropriate risk level based on your manual assessment
+                                <Typography
+                                  fontSize="12px"
+                                  color="mukuru.grey.medium"
+                                  lineHeight="1.4"
+                                >
+                                  Select the appropriate risk level based on your manual
+                                  assessment
                                 </Typography>
                               </VStack>
                               <select
@@ -4190,11 +5301,24 @@ export default function ReviewPage() {
                             {/* Justification Field */}
                             <Box width="full">
                               <VStack align="flex-start" gap="4px" mb="10px">
-                                <Typography fontSize="14px" fontWeight="600" color="mukuru.text.primary">
-                                  Justification <Box as="span" color="mukuru.text.error">*</Box>
+                                <Typography
+                                  fontSize="14px"
+                                  fontWeight="600"
+                                  color="mukuru.text.primary"
+                                >
+                                  Justification{' '}
+                                  <Box as="span" color="mukuru.text.error">
+                                    *
+                                  </Box>
                                 </Typography>
-                                <Typography fontSize="12px" color="mukuru.grey.medium" lineHeight="1.4">
-                                  Provide a detailed justification for the selected risk level. This is required for audit and compliance purposes.
+                                <Typography
+                                  fontSize="12px"
+                                  color="mukuru.grey.medium"
+                                  lineHeight="1.4"
+                                >
+                                  Provide a detailed justification for the selected risk
+                                  level. This is required for audit and compliance
+                                  purposes.
                                 </Typography>
                               </VStack>
                               <Textarea
@@ -4212,7 +5336,10 @@ export default function ReviewPage() {
                                 color="mukuru.text.primary"
                                 bg="mukuru.cards.white"
                                 _placeholder={{ color: 'mukuru.grey.medium' }}
-                                _focus={{ borderColor: 'mukuru.buttons.primary', boxShadow: '0 0 0 1px rgba(240, 84, 35, 0.2)' }}
+                                _focus={{
+                                  borderColor: 'mukuru.buttons.primary',
+                                  boxShadow: '0 0 0 1px rgba(240, 84, 35, 0.2)',
+                                }}
                               />
                             </Box>
 
@@ -4226,11 +5353,20 @@ export default function ReviewPage() {
                                 {/* Risk Factors Identified */}
                                 <Box width="full">
                                   <VStack align="flex-start" gap="4px" mb="10px">
-                                    <Typography fontSize="14px" fontWeight="600" color="mukuru.text.primary">
+                                    <Typography
+                                      fontSize="14px"
+                                      fontWeight="600"
+                                      color="mukuru.text.primary"
+                                    >
                                       Risk Factors Identified
                                     </Typography>
-                                    <Typography fontSize="12px" color="mukuru.grey.medium" lineHeight="1.4">
-                                      List all specific risk factors that contributed to this assessment
+                                    <Typography
+                                      fontSize="12px"
+                                      color="mukuru.grey.medium"
+                                      lineHeight="1.4"
+                                    >
+                                      List all specific risk factors that contributed to
+                                      this assessment
                                     </Typography>
                                   </VStack>
                                   <Textarea
@@ -4248,23 +5384,37 @@ export default function ReviewPage() {
                                     color="mukuru.text.primary"
                                     bg="mukuru.cards.white"
                                     _placeholder={{ color: 'mukuru.grey.medium' }}
-                                    _focus={{ borderColor: 'mukuru.buttons.primary', boxShadow: '0 0 0 1px rgba(240, 84, 35, 0.2)' }}
+                                    _focus={{
+                                      borderColor: 'mukuru.buttons.primary',
+                                      boxShadow: '0 0 0 1px rgba(240, 84, 35, 0.2)',
+                                    }}
                                   />
                                 </Box>
 
                                 {/* Mitigation Measures */}
                                 <Box width="full">
                                   <VStack align="flex-start" gap="4px" mb="10px">
-                                    <Typography fontSize="14px" fontWeight="600" color="mukuru.text.primary">
+                                    <Typography
+                                      fontSize="14px"
+                                      fontWeight="600"
+                                      color="mukuru.text.primary"
+                                    >
                                       Mitigation Measures
                                     </Typography>
-                                    <Typography fontSize="12px" color="mukuru.grey.medium" lineHeight="1.4">
-                                      Describe any mitigation measures or additional due diligence required
+                                    <Typography
+                                      fontSize="12px"
+                                      color="mukuru.grey.medium"
+                                      lineHeight="1.4"
+                                    >
+                                      Describe any mitigation measures or additional due
+                                      diligence required
                                     </Typography>
                                   </VStack>
                                   <Textarea
                                     value={mitigationMeasures}
-                                    onChange={(e) => setMitigationMeasures(e.target.value)}
+                                    onChange={(e) =>
+                                      setMitigationMeasures(e.target.value)
+                                    }
                                     placeholder="e.g., Enhanced due diligence, Additional documentation required, Ongoing monitoring, Senior management approval..."
                                     rows={3}
                                     resize="vertical"
@@ -4277,17 +5427,28 @@ export default function ReviewPage() {
                                     color="mukuru.text.primary"
                                     bg="mukuru.cards.white"
                                     _placeholder={{ color: 'mukuru.grey.medium' }}
-                                    _focus={{ borderColor: 'mukuru.buttons.primary', boxShadow: '0 0 0 1px rgba(240, 84, 35, 0.2)' }}
+                                    _focus={{
+                                      borderColor: 'mukuru.buttons.primary',
+                                      boxShadow: '0 0 0 1px rgba(240, 84, 35, 0.2)',
+                                    }}
                                   />
                                 </Box>
 
                                 {/* Additional Notes */}
                                 <Box width="full">
                                   <VStack align="flex-start" gap="4px" mb="10px">
-                                    <Typography fontSize="14px" fontWeight="600" color="mukuru.text.primary">
+                                    <Typography
+                                      fontSize="14px"
+                                      fontWeight="600"
+                                      color="mukuru.text.primary"
+                                    >
                                       Additional Notes
                                     </Typography>
-                                    <Typography fontSize="12px" color="mukuru.grey.medium" lineHeight="1.4">
+                                    <Typography
+                                      fontSize="12px"
+                                      color="mukuru.grey.medium"
+                                      lineHeight="1.4"
+                                    >
                                       Any additional observations or recommendations
                                     </Typography>
                                   </VStack>
@@ -4306,7 +5467,10 @@ export default function ReviewPage() {
                                     color="mukuru.text.primary"
                                     bg="mukuru.cards.white"
                                     _placeholder={{ color: 'mukuru.grey.medium' }}
-                                    _focus={{ borderColor: 'mukuru.buttons.primary', boxShadow: '0 0 0 1px rgba(240, 84, 35, 0.2)' }}
+                                    _focus={{
+                                      borderColor: 'mukuru.buttons.primary',
+                                      boxShadow: '0 0 0 1px rgba(240, 84, 35, 0.2)',
+                                    }}
                                   />
                                 </Box>
                               </>
@@ -4318,25 +5482,32 @@ export default function ReviewPage() {
                               (riskAssessment.overallRiskLevel === 'HIGH' ||
                                 riskAssessment.overallRiskLevel === 'CRITICAL') && (
                                 <Box width="full" mt="16px">
-                                  <Link 
-                                    href={`/risk-assessment/${riskAssessment.id}`} 
+                                  <Link
+                                    href={`/risk-assessment/${riskAssessment.id}`}
                                     style={{ width: '100%' }}
                                   >
-                                    <Button 
-                                      variant="primary" 
-                                      w="full" 
-                                      size="md"
-                                    >
-                                      <FiShield size={16} style={{ marginRight: '8px' }} />
+                                    <Button variant="primary" w="full" size="md">
+                                      <FiShield
+                                        size={16}
+                                        style={{ marginRight: '8px' }}
+                                      />
                                       Create Enhanced Risk Assessment
-                                      <FiArrowRight size={16} style={{ marginLeft: '8px' }} />
+                                      <FiArrowRight
+                                        size={16}
+                                        style={{ marginLeft: '8px' }}
+                                      />
                                     </Button>
                                   </Link>
                                 </Box>
                               )}
 
                             {/* Action Buttons */}
-                            <Box width="full" height="1px" bg="mukuru.grey.light" mt="12px" />
+                            <Box
+                              width="full"
+                              height="1px"
+                              bg="mukuru.grey.light"
+                              mt="12px"
+                            />
 
                             <HStack gap="16px" justify="flex-end" pt="20px" width="full">
                               <Button
@@ -4385,8 +5556,17 @@ export default function ReviewPage() {
                 boxShadow="0 2px 8px rgba(0, 0, 0, 0.04)"
                 overflow="hidden"
               >
-                <Box p="16px 20px" borderBottom="1px solid" borderColor="mukuru.grey.light" bg="mukuru.background.light">
-                  <Typography fontSize="15px" fontWeight="600" color="mukuru.text.primary">
+                <Box
+                  p="16px 20px"
+                  borderBottom="1px solid"
+                  borderColor="mukuru.grey.light"
+                  bg="mukuru.background.light"
+                >
+                  <Typography
+                    fontSize="15px"
+                    fontWeight="600"
+                    color="mukuru.text.primary"
+                  >
                     Review & Decision
                   </Typography>
                 </Box>
@@ -4394,7 +5574,12 @@ export default function ReviewPage() {
                   <VStack align="stretch" gap="24px">
                     {/* Review Notes */}
                     <Box>
-                      <Typography fontSize="13px" fontWeight="600" color="mukuru.text.primary" mb="8px">
+                      <Typography
+                        fontSize="13px"
+                        fontWeight="600"
+                        color="mukuru.text.primary"
+                        mb="8px"
+                      >
                         Review Notes
                       </Typography>
                       <Textarea
@@ -4410,7 +5595,10 @@ export default function ReviewPage() {
                         fontSize="14px"
                         color="mukuru.text.primary"
                         _placeholder={{ color: 'mukuru.grey.medium' }}
-                        _focus={{ borderColor: 'mukuru.buttons.primary', boxShadow: '0 0 0 1px rgba(240, 84, 35, 0.2)' }}
+                        _focus={{
+                          borderColor: 'mukuru.buttons.primary',
+                          boxShadow: '0 0 0 1px rgba(240, 84, 35, 0.2)',
+                        }}
                       />
                     </Box>
 
@@ -4420,23 +5608,8 @@ export default function ReviewPage() {
                     <SimpleGrid columns={{ base: 1, md: 2 }} gap="4">
                       {workItem.status === 'IN PROGRESS' && (
                         <>
-                          <Button
-                            variant="primary"
-                            onClick={() => setCompleteModalOpen(true)}
-                            size="md"
-                            w="full"
-                            className="mukuru-primary-button"
-                          >
-                            <HStack gap="2" align="center" justify="center">
-                              <IconWrapper>
-                                <TickCircleIcon />
-                              </IconWrapper>
-                              <Typography color="mukuru.white">
-                                Complete Review
-                              </Typography>
-                            </HStack>
-                          </Button>
-                          {workItem.requiresApproval && (
+                          {/* If requires approval, show Submit for Approval; otherwise show Complete Review */}
+                          {workItem.requiresApproval ? (
                             <Button
                               variant="primary"
                               onClick={() => setSubmitApprovalModalOpen(true)}
@@ -4450,6 +5623,23 @@ export default function ReviewPage() {
                                 </IconWrapper>
                                 <Typography color="mukuru.white">
                                   Submit for Approval
+                                </Typography>
+                              </HStack>
+                            </Button>
+                          ) : (
+                            <Button
+                              variant="primary"
+                              onClick={() => setCompleteModalOpen(true)}
+                              size="md"
+                              w="full"
+                              className="mukuru-primary-button"
+                            >
+                              <HStack gap="2" align="center" justify="center">
+                                <IconWrapper>
+                                  <TickCircleIcon />
+                                </IconWrapper>
+                                <Typography color="mukuru.white">
+                                  Complete Review
                                 </Typography>
                               </HStack>
                             </Button>
@@ -4695,7 +5885,7 @@ export default function ReviewPage() {
             zIndex={9998}
             onClick={() => setCommentsModalOpen(false)}
           />
-          
+
           {/* Modal */}
           <Box
             position="fixed"
@@ -4714,7 +5904,12 @@ export default function ReviewPage() {
             flexDirection="column"
           >
             {/* Header */}
-            <Box p="24px" borderBottom="1px solid" borderColor="mukuru.grey.light" bg="mukuru.background.light">
+            <Box
+              p="24px"
+              borderBottom="1px solid"
+              borderColor="mukuru.grey.light"
+              bg="mukuru.background.light"
+            >
               <HStack justify="space-between" align="center">
                 <HStack gap="16px">
                   <Box
@@ -4726,10 +5921,17 @@ export default function ReviewPage() {
                     alignItems="center"
                     justifyContent="center"
                   >
-                    <FiMessageSquare size={24} color="var(--chakra-colors-mukuru-buttons-primary)" />
+                    <FiMessageSquare
+                      size={24}
+                      color="var(--chakra-colors-mukuru-buttons-primary)"
+                    />
                   </Box>
                   <VStack align="start" gap="2px">
-                    <Typography fontSize="18px" fontWeight="600" color="mukuru.text.primary">
+                    <Typography
+                      fontSize="18px"
+                      fontWeight="600"
+                      color="mukuru.text.primary"
+                    >
                       Comments
                     </Typography>
                     <Typography fontSize="13px" color="mukuru.grey.medium">
@@ -4758,7 +5960,13 @@ export default function ReviewPage() {
             {/* Content */}
             <Box flex="1" overflowY="auto" p="24px">
               {comments.length === 0 ? (
-                <Flex direction="column" align="center" justify="center" py="48px" gap="20px">
+                <Flex
+                  direction="column"
+                  align="center"
+                  justify="center"
+                  py="48px"
+                  gap="20px"
+                >
                   <Box
                     w="72px"
                     h="72px"
@@ -4768,13 +5976,25 @@ export default function ReviewPage() {
                     alignItems="center"
                     justifyContent="center"
                   >
-                    <FiMessageSquare size={32} color="var(--chakra-colors-mukuru-grey-medium)" />
+                    <FiMessageSquare
+                      size={32}
+                      color="var(--chakra-colors-mukuru-grey-medium)"
+                    />
                   </Box>
                   <VStack gap="8px" maxW="280px">
-                    <Typography fontSize="16px" fontWeight="600" color="mukuru.text.primary">
+                    <Typography
+                      fontSize="16px"
+                      fontWeight="600"
+                      color="mukuru.text.primary"
+                    >
                       No comments yet
                     </Typography>
-                    <Typography fontSize="14px" color="mukuru.grey.medium" textAlign="center" lineHeight="1.5">
+                    <Typography
+                      fontSize="14px"
+                      color="mukuru.grey.medium"
+                      textAlign="center"
+                      lineHeight="1.5"
+                    >
                       Be the first to add a comment to this work item
                     </Typography>
                   </VStack>
@@ -4803,10 +6023,17 @@ export default function ReviewPage() {
                             justifyContent="center"
                             flexShrink={0}
                           >
-                            <FiUser size={18} color="var(--chakra-colors-mukuru-grey-mediumDark)" />
+                            <FiUser
+                              size={18}
+                              color="var(--chakra-colors-mukuru-grey-mediumDark)"
+                            />
                           </Box>
                           <VStack align="start" gap="2px" flex="1">
-                            <Typography fontSize="14px" fontWeight="600" color="mukuru.text.primary">
+                            <Typography
+                              fontSize="14px"
+                              fontWeight="600"
+                              color="mukuru.text.primary"
+                            >
                               {commentObj.createdBy
                                 ? String(commentObj.createdBy)
                                 : commentObj.authorName
@@ -4814,16 +6041,27 @@ export default function ReviewPage() {
                                   : 'Unknown User'}
                             </Typography>
                             <HStack gap="6px" align="center">
-                              <FiClock size={12} color="var(--chakra-colors-mukuru-grey-medium)" />
+                              <FiClock
+                                size={12}
+                                color="var(--chakra-colors-mukuru-grey-medium)"
+                              />
                               <Typography fontSize="12px" color="mukuru.grey.medium">
                                 {new Date(
-                                  String(commentObj.createdAt || commentObj.timestamp || Date.now())
+                                  String(
+                                    commentObj.createdAt ||
+                                      commentObj.timestamp ||
+                                      Date.now()
+                                  )
                                 ).toLocaleString()}
                               </Typography>
                             </HStack>
                           </VStack>
                         </HStack>
-                        <Typography fontSize="14px" color="mukuru.text.primary" lineHeight="1.6">
+                        <Typography
+                          fontSize="14px"
+                          color="mukuru.text.primary"
+                          lineHeight="1.6"
+                        >
                           {commentObj.text
                             ? String(commentObj.text)
                             : commentObj.comment
@@ -4838,7 +6076,12 @@ export default function ReviewPage() {
             </Box>
 
             {/* Footer - Add Comment */}
-            <Box p="24px" borderTop="1px solid" borderColor="mukuru.grey.light" bg="mukuru.cards.white">
+            <Box
+              p="24px"
+              borderTop="1px solid"
+              borderColor="mukuru.grey.light"
+              bg="mukuru.cards.white"
+            >
               <VStack align="stretch" gap="16px">
                 <Typography fontSize="14px" fontWeight="600" color="mukuru.text.primary">
                   Add Comment
@@ -4856,7 +6099,10 @@ export default function ReviewPage() {
                   color="mukuru.text.primary"
                   bg="mukuru.cards.white"
                   _placeholder={{ color: 'mukuru.grey.medium' }}
-                  _focus={{ borderColor: 'mukuru.buttons.primary', boxShadow: '0 0 0 2px rgba(240, 84, 35, 0.15)' }}
+                  _focus={{
+                    borderColor: 'mukuru.buttons.primary',
+                    boxShadow: '0 0 0 2px rgba(240, 84, 35, 0.15)',
+                  }}
                 />
                 <HStack justify="flex-end" gap="12px">
                   <Button
@@ -4874,7 +6120,11 @@ export default function ReviewPage() {
                       background: 'white',
                     }}
                   >
-                    <Typography fontSize="14px" fontWeight="500" color="mukuru.text.primary">
+                    <Typography
+                      fontSize="14px"
+                      fontWeight="500"
+                      color="mukuru.text.primary"
+                    >
                       Cancel
                     </Typography>
                   </Button>
@@ -4921,7 +6171,7 @@ export default function ReviewPage() {
             zIndex={9998}
             onClick={() => setHistoryModalOpen(false)}
           />
-          
+
           {/* Modal */}
           <Box
             position="fixed"
@@ -4952,7 +6202,10 @@ export default function ReviewPage() {
                     alignItems="center"
                     justifyContent="center"
                   >
-                    <FiClock size={22} color="var(--chakra-colors-mukuru-buttons-primary)" />
+                    <FiClock
+                      size={22}
+                      color="var(--chakra-colors-mukuru-buttons-primary)"
+                    />
                   </Box>
                   <VStack align="start" gap="2px">
                     <Typography fontSize="17px" fontWeight="600" color="#1D2939">
@@ -4985,7 +6238,13 @@ export default function ReviewPage() {
             {/* Content */}
             <Box flex="1" overflowY="auto" p="20px 24px">
               {history.length === 0 ? (
-                <Flex direction="column" align="center" justify="center" py="40px" gap="16px">
+                <Flex
+                  direction="column"
+                  align="center"
+                  justify="center"
+                  py="40px"
+                  gap="16px"
+                >
                   <Box
                     w="64px"
                     h="64px"
@@ -5001,7 +6260,12 @@ export default function ReviewPage() {
                     <Typography fontSize="15px" fontWeight="600" color="#1D2939">
                       No history yet
                     </Typography>
-                    <Typography fontSize="13px" color="#667085" textAlign="center" lineHeight="1.5">
+                    <Typography
+                      fontSize="13px"
+                      color="#667085"
+                      textAlign="center"
+                      lineHeight="1.5"
+                    >
                       Activity will appear here as actions are performed
                     </Typography>
                   </VStack>
@@ -5017,7 +6281,7 @@ export default function ReviewPage() {
                         : entryObj.eventType
                           ? String(entryObj.eventType)
                           : 'Activity';
-                    
+
                     return (
                       <Box
                         key={idx}
@@ -5041,7 +6305,10 @@ export default function ReviewPage() {
                               justifyContent="center"
                               boxShadow="0 1px 2px rgba(0,0,0,0.05)"
                             >
-                              <FiCheckSquare size={16} color="var(--chakra-colors-mukuru-buttons-primary)" />
+                              <FiCheckSquare
+                                size={16}
+                                color="var(--chakra-colors-mukuru-buttons-primary)"
+                              />
                             </Box>
                             <Typography fontSize="14px" fontWeight="500" color="#1D2939">
                               {action}
@@ -5117,7 +6384,10 @@ export default function ReviewPage() {
                     alignItems="center"
                     justifyContent="center"
                   >
-                    <FiUser size={22} color="var(--chakra-colors-mukuru-buttons-primary)" />
+                    <FiUser
+                      size={22}
+                      color="var(--chakra-colors-mukuru-buttons-primary)"
+                    />
                   </Box>
                   <VStack align="start" gap="2px">
                     <Typography fontSize="17px" fontWeight="600" color="#1D2939">
@@ -5164,7 +6434,10 @@ export default function ReviewPage() {
                     color="#1D2939"
                     bg="mukuru.cards.white"
                     _placeholder={{ color: '#98A2B3' }}
-                    _focus={{ borderColor: 'mukuru.buttons.primary', boxShadow: '0 0 0 2px rgba(240, 84, 35, 0.1)' }}
+                    _focus={{
+                      borderColor: 'mukuru.buttons.primary',
+                      boxShadow: '0 0 0 2px rgba(240, 84, 35, 0.1)',
+                    }}
                   />
                 </Box>
                 <Box>
@@ -5184,7 +6457,10 @@ export default function ReviewPage() {
                     color="#1D2939"
                     bg="mukuru.cards.white"
                     _placeholder={{ color: '#98A2B3' }}
-                    _focus={{ borderColor: 'mukuru.buttons.primary', boxShadow: '0 0 0 2px rgba(240, 84, 35, 0.1)' }}
+                    _focus={{
+                      borderColor: 'mukuru.buttons.primary',
+                      boxShadow: '0 0 0 2px rgba(240, 84, 35, 0.1)',
+                    }}
                   />
                 </Box>
               </VStack>
@@ -5199,20 +6475,35 @@ export default function ReviewPage() {
                     setReassignUserName('');
                   }}
                   size="md"
-                  style={{ height: '42px', borderRadius: '10px', border: '1px solid #D0D5DD', background: 'white' }}
+                  style={{
+                    height: '42px',
+                    borderRadius: '10px',
+                    border: '1px solid #D0D5DD',
+                    background: 'white',
+                  }}
                 >
-                  <Typography fontSize="14px" fontWeight="500" color="#344054">Cancel</Typography>
+                  <Typography fontSize="14px" fontWeight="500" color="#344054">
+                    Cancel
+                  </Typography>
                 </Button>
                 <Button
                   variant="primary"
                   onClick={handleReassign}
-                  disabled={actionLoading || !reassignUserId.trim() || !reassignUserName.trim()}
+                  disabled={
+                    actionLoading || !reassignUserId.trim() || !reassignUserName.trim()
+                  }
                   loading={actionLoading}
                   className="mukuru-primary-button"
                   size="md"
-                  style={{ height: '42px', borderRadius: '10px', background: 'var(--chakra-colors-mukuru-buttons-primary)' }}
+                  style={{
+                    height: '42px',
+                    borderRadius: '10px',
+                    background: 'var(--chakra-colors-mukuru-buttons-primary)',
+                  }}
                 >
-                  <Typography fontSize="14px" fontWeight="500" color="white">Reassign</Typography>
+                  <Typography fontSize="14px" fontWeight="500" color="white">
+                    Reassign
+                  </Typography>
                 </Button>
               </HStack>
             </Box>
@@ -5258,7 +6549,10 @@ export default function ReviewPage() {
                     alignItems="center"
                     justifyContent="center"
                   >
-                    <FiRefreshCw size={22} color="var(--chakra-colors-mukuru-buttons-primary)" />
+                    <FiRefreshCw
+                      size={22}
+                      color="var(--chakra-colors-mukuru-buttons-primary)"
+                    />
                   </Box>
                   <VStack align="start" gap="2px">
                     <Typography fontSize="17px" fontWeight="600" color="#1D2939">
@@ -5287,15 +6581,26 @@ export default function ReviewPage() {
               </HStack>
             </Box>
             <Box p="24px">
-              <Box p="16px" bg="#FEF3F2" borderRadius="12px" border="1px solid" borderColor="#FECDCA">
+              <Box
+                p="16px"
+                bg="#FEF3F2"
+                borderRadius="12px"
+                border="1px solid"
+                borderColor="#FECDCA"
+              >
                 <HStack gap="12px" align="start">
-                  <FiAlertTriangle size={20} color="var(--chakra-colors-mukuru-buttons-primary)" />
+                  <FiAlertTriangle
+                    size={20}
+                    color="var(--chakra-colors-mukuru-buttons-primary)"
+                  />
                   <VStack align="start" gap="4px">
                     <Typography fontSize="14px" fontWeight="500" color="#B42318">
                       This will notify the applicant
                     </Typography>
                     <Typography fontSize="13px" color="#667085" lineHeight="1.5">
-                      The applicant will be asked to provide updated or additional documents. The work item will be moved to &quot;Pending Refresh&quot; status.
+                      The applicant will be asked to provide updated or additional
+                      documents. The work item will be moved to &quot;Pending
+                      Refresh&quot; status.
                     </Typography>
                   </VStack>
                 </HStack>
@@ -5307,9 +6612,16 @@ export default function ReviewPage() {
                   variant="secondary"
                   onClick={() => setRefreshModalOpen(false)}
                   size="md"
-                  style={{ height: '42px', borderRadius: '10px', border: '1px solid #D0D5DD', background: 'white' }}
+                  style={{
+                    height: '42px',
+                    borderRadius: '10px',
+                    border: '1px solid #D0D5DD',
+                    background: 'white',
+                  }}
                 >
-                  <Typography fontSize="14px" fontWeight="500" color="#344054">Cancel</Typography>
+                  <Typography fontSize="14px" fontWeight="500" color="#344054">
+                    Cancel
+                  </Typography>
                 </Button>
                 <Button
                   variant="primary"
@@ -5318,11 +6630,17 @@ export default function ReviewPage() {
                   loading={actionLoading}
                   className="mukuru-primary-button"
                   size="md"
-                  style={{ height: '42px', borderRadius: '10px', background: 'var(--chakra-colors-mukuru-buttons-primary)' }}
+                  style={{
+                    height: '42px',
+                    borderRadius: '10px',
+                    background: 'var(--chakra-colors-mukuru-buttons-primary)',
+                  }}
                 >
                   <HStack gap="8px">
                     <FiRefreshCw size={16} />
-                    <Typography fontSize="14px" fontWeight="500" color="white">Request Refresh</Typography>
+                    <Typography fontSize="14px" fontWeight="500" color="white">
+                      Request Refresh
+                    </Typography>
                   </HStack>
                 </Button>
               </HStack>

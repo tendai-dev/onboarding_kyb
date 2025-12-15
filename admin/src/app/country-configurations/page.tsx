@@ -448,7 +448,9 @@ export default function CountryConfigurationsPage() {
             </VStack>
             <Link href="/country-configurations/create">
               <Button variant="primary" size="md">
-                <IconWrapper><FiPlus size={16} /></IconWrapper>
+                <IconWrapper>
+                  <FiPlus size={16} />
+                </IconWrapper>
                 Country
               </Button>
             </Link>
@@ -456,21 +458,25 @@ export default function CountryConfigurationsPage() {
         </Box>
 
         {/* Status Filter Tabs */}
-        <Box px="24px" bg={cardBgNew} borderBottom="1px solid" borderColor={borderColorNew}>
+        <Box
+          px="24px"
+          bg={cardBgNew}
+          borderBottom="1px solid"
+          borderColor={borderColorNew}
+        >
           {error && (
             <Box mb="12px">
               <AlertBar status="error" title="Error" description={error} />
             </Box>
           )}
-          <TabsRoot 
-            value={statusFilter} 
+          <TabsRoot
+            value={statusFilter}
             onValueChange={(details) => setStatusFilter(details.value)}
           >
             <TabsList>
               {(['all', 'active', 'inactive'] as const).map((filter) => {
-                const label = filter === 'all' ? 'All' 
-                  : filter === 'active' ? 'Active' 
-                  : 'Inactive';
+                const label =
+                  filter === 'all' ? 'All' : filter === 'active' ? 'Active' : 'Inactive';
                 return (
                   <TabsTrigger key={filter} value={filter}>
                     {label}
@@ -483,7 +489,13 @@ export default function CountryConfigurationsPage() {
         </Box>
 
         {/* Search Row */}
-        <Box px="24px" py="12px" bg={cardBgNew} borderBottom="1px solid" borderColor={borderColorNew}>
+        <Box
+          px="24px"
+          py="12px"
+          bg={cardBgNew}
+          borderBottom="1px solid"
+          borderColor={borderColorNew}
+        >
           <Box maxW="400px">
             <Search
               placeholder="Search by country name, code..."

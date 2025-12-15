@@ -8,6 +8,9 @@ class SignalRService {
   private maxReconnectAttempts = 5;
   private listeners: Map<string, Set<(data: unknown) => void>> =
     new Map();
+  private currentThreadId: string | null = null;
+  private lastHeartbeat: number = 0;
+  private heartbeatInterval: NodeJS.Timeout | null = null;
 
   async connect(): Promise<void> {
     if (this.connection?.state === signalR.HubConnectionState.Connected) {
@@ -26,6 +29,9 @@ class SignalRService {
       // Next.js API routes don't support WebSocket connections, so SignalR must connect directly
       const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8001';
       const hubUrl = `${backendUrl}/api/v1/messages/hub`;
+      
+      console.info('[SignalR] Connecting to hub:', hubUrl);
+      console.info('[SignalR] User info:', { userEmail, userName: user.name, userId: userId ? userId.substring(0, 8) + '...' : 'none' });
 
       this.connection = new signalR.HubConnectionBuilder()
         .withUrl(hubUrl, {
@@ -61,6 +67,15 @@ class SignalRService {
       console.info('[SignalR] Connected to messaging hub');
 
       this.reconnectAttempts = 0;
+      this.lastHeartbeat = Date.now();
+      
+      // Start heartbeat to detect stale connections
+      this.startHeartbeat();
+      
+      // Rejoin thread if we were in one before reconnecting
+      if (this.currentThreadId) {
+        this.joinThread(this.currentThreadId).catch(() => {});
+      }
     } catch (error) {
       // SignalR is optional - messaging will work without real-time updates
       console.warn('[SignalR] Connection failed (non-critical):', error);
@@ -129,6 +144,9 @@ class SignalRService {
   }
 
   async joinThread(threadId: string): Promise<void> {
+    // Store current thread for reconnection
+    this.currentThreadId = threadId;
+    
     if (this.connection?.state === signalR.HubConnectionState.Connected) {
       // Validate threadId is a valid GUID before calling
       if (!threadId || threadId === '00000000-0000-0000-0000-000000000000') {
@@ -145,18 +163,61 @@ class SignalRService {
           return;
         }
 
-        await this.connection.invoke('joinThread', threadId);
+        // Try both PascalCase and camelCase for compatibility with different backend versions
+        try {
+          await this.connection.invoke('JoinThread', threadId);
+        } catch {
+          await this.connection.invoke('joinThread', threadId);
+        }
         console.info('[SignalR] Joined thread:', threadId);
       } catch (error) {
-        console.error('[SignalR] Failed to join thread:', threadId, error);
-        throw error;
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        // Method doesn't exist on server - this is expected if backend doesn't implement it yet
+        if (
+          errorMessage.includes('Method does not exist') ||
+          errorMessage.includes('HubException')
+        ) {
+          console.debug(
+            '[SignalR] JoinThread method not available on server (non-critical)'
+          );
+          // Don't throw - allow messaging to continue without thread-specific updates
+        } else {
+          console.error('[SignalR] Failed to join thread:', threadId, error);
+          // Only throw for non-method-missing errors
+          throw error;
+        }
       }
     }
   }
 
   async leaveThread(threadId: string): Promise<void> {
+    // Clear current thread
+    if (this.currentThreadId === threadId) {
+      this.currentThreadId = null;
+    }
+    
     if (this.connection?.state === signalR.HubConnectionState.Connected) {
-      await this.connection.invoke('LeaveThread', threadId);
+      try {
+        // Try both PascalCase and camelCase for compatibility
+        try {
+          await this.connection.invoke('LeaveThread', threadId);
+        } catch {
+          await this.connection.invoke('leaveThread', threadId);
+        }
+      } catch (error) {
+        // Method doesn't exist on server - this is expected if backend doesn't implement it
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        if (
+          errorMessage.includes('Method does not exist') ||
+          errorMessage.includes('HubException')
+        ) {
+          console.debug(
+            '[SignalR] LeaveThread method not available on server (non-critical)'
+          );
+        } else {
+          console.warn('[SignalR] Failed to leave thread:', threadId, error);
+        }
+      }
     }
   }
 
@@ -198,6 +259,49 @@ class SignalRService {
 
   getConnectionState(): signalR.HubConnectionState {
     return this.connection?.state || signalR.HubConnectionState.Disconnected;
+  }
+  
+  // Get time since last heartbeat (for connection health monitoring)
+  getTimeSinceLastHeartbeat(): number {
+    return Date.now() - this.lastHeartbeat;
+  }
+  
+  // Check if connection is healthy (connected and recent heartbeat)
+  isHealthy(): boolean {
+    return this.isConnected() && this.getTimeSinceLastHeartbeat() < 60000;
+  }
+  
+  // Start heartbeat interval to detect stale connections
+  private startHeartbeat(): void {
+    this.stopHeartbeat();
+    this.heartbeatInterval = setInterval(() => {
+      if (this.connection?.state === signalR.HubConnectionState.Connected) {
+        this.lastHeartbeat = Date.now();
+      } else {
+        // Connection lost, try to reconnect
+        console.warn('[SignalR] Heartbeat detected disconnection, attempting reconnect...');
+        this.connect().catch(() => {});
+      }
+    }, 15000); // Check every 15 seconds
+  }
+  
+  // Stop heartbeat interval
+  private stopHeartbeat(): void {
+    if (this.heartbeatInterval) {
+      clearInterval(this.heartbeatInterval);
+      this.heartbeatInterval = null;
+    }
+  }
+  
+  // Force reconnection
+  async reconnect(): Promise<void> {
+    await this.disconnect();
+    await this.connect();
+  }
+  
+  // Get current thread ID
+  getCurrentThreadId(): string | null {
+    return this.currentThreadId;
   }
 }
 

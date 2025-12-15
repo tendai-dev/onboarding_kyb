@@ -91,7 +91,12 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" suppressHydrationWarning className="light" style={{ colorScheme: 'light' }}>
+    <html
+      lang="en"
+      suppressHydrationWarning
+      className="light"
+      style={{ colorScheme: 'light' }}
+    >
       <head>
         <link rel="manifest" href="/manifest.json" />
         <link rel="icon" href="/favicon.png" />

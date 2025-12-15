@@ -46,7 +46,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setUser(null);
     }
 
-    setIsLoading(status === 'loading');
+    setIsLoading(false);
   }, [status, session]);
 
   const refreshUser = useCallback(() => {

@@ -3,6 +3,13 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import crypto from 'crypto';
+import {
+  logOwnershipValidationSuccess,
+  logOwnershipValidationFailure,
+  logDataAccess,
+} from '@/lib/securityAudit';
+import { checkRateLimit, getRateLimitHeaders } from '@/lib/rateLimit';
+import { validateCaseId } from '@/lib/requestValidation';
 
 // Entity configuration is now part of onboarding-api (port 8001)
 const ENTITY_CONFIG_API_BASE =
@@ -26,12 +33,33 @@ export async function GET(
     return NextResponse.json({ error: 'Case ID is required' }, { status: 400 });
   }
 
-  // Determine if it's a GUID or case number
-  const guidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-  const isGuid = guidRegex.test(id);
+  // SECURITY: Validate case ID format to prevent injection attacks
+  const caseIdValidation = validateCaseId(id);
+  if (!caseIdValidation.valid) {
+    return NextResponse.json(
+      { 
+        error: 'Invalid case ID',
+        details: caseIdValidation.reason 
+      },
+      { status: 400 }
+    );
+  }
+
+  const isGuid = caseIdValidation.isGuid;
 
   try {
     const session = await getServerSession(authOptions);
+    
+    // SECURITY: Rate limiting - prevent enumeration attacks
+    const rateLimitKey = session?.user?.email || request.headers.get('x-forwarded-for') || 'anonymous';
+    const rateLimitResult = checkRateLimit(rateLimitKey, 60, 60000); // 60 requests per minute
+    
+    if (rateLimitResult) {
+      return NextResponse.json(rateLimitResult.body, {
+        status: rateLimitResult.status,
+        headers: rateLimitResult.headers,
+      });
+    }
 
     // Get user email from session for ownership validation
     let userEmail = '';
@@ -48,27 +76,23 @@ export async function GET(
 
     // Generate partnerId from email if available (for ownership validation)
     if (userEmail) {
-      // Use the same UUID v5 generation as frontend
-      const NAMESPACE_UUID = '6ba7b810-9dad-11d1-80b4-00c04fd430c8';
-      const namespaceBytes = Buffer.from(NAMESPACE_UUID.replace(/-/g, ''), 'hex');
-      const emailBytes = Buffer.from(userEmail.toLowerCase(), 'utf8');
-      const hash = crypto
-        .createHash('sha1')
-        .update(Buffer.concat([namespaceBytes, emailBytes]))
-        .digest();
-      hash[6] = (hash[6] & 0x0f) | 0x50; // Version 5
-      hash[8] = (hash[8] & 0x3f) | 0x80; // Variant
-      userPartnerId = [
-        hash.toString('hex', 0, 4),
-        hash.toString('hex', 4, 6),
-        hash.toString('hex', 6, 8),
-        hash.toString('hex', 8, 10),
-        hash.toString('hex', 10, 16),
-      ].join('-');
-      console.info('[API Route] 👤 User identification:', {
-        email: userEmail,
-        partnerId: userPartnerId,
-      });
+      const { generatePartnerId } = await import('@/lib/partnerIdUtils');
+      try {
+        userPartnerId = generatePartnerId(userEmail);
+        console.info('[API Route] 👤 User identification:', {
+          email: userEmail,
+          partnerId: userPartnerId,
+        });
+      } catch (error) {
+        console.error('[API Route] Failed to generate PartnerId:', error);
+        return NextResponse.json(
+          { 
+            error: 'Internal Server Error',
+            details: 'Failed to validate user identity'
+          },
+          { status: 500 }
+        );
+      }
     }
 
     // Build headers
@@ -170,9 +194,63 @@ export async function GET(
           match: casePartnerId?.toLowerCase() === userPartnerId.toLowerCase(),
         });
 
-        // TEMPORARILY DISABLED for development - skip ownership check
-        // The partner ID generation needs to be consistent between creation and validation
-        console.info('[API Route] ⚠️ Ownership validation DISABLED for development');
+        // SECURITY: Enforce ownership validation
+        if (!casePartnerId) {
+          console.error('[API Route] ❌ Case has no partnerId - cannot validate ownership');
+          logOwnershipValidationFailure(userEmail, 'case', id, {
+            reason: 'missing_partner_id',
+          });
+          return NextResponse.json(
+            { 
+              error: 'Forbidden',
+              details: 'Case ownership cannot be verified'
+            },
+            { status: 403 }
+          );
+        }
+
+        if (casePartnerId.toLowerCase() !== userPartnerId.toLowerCase()) {
+          console.error('[API Route] ❌ Ownership validation FAILED:', {
+            casePartnerId,
+            userPartnerId,
+            caseId: id,
+          });
+          logOwnershipValidationFailure(userEmail, 'case', id, {
+            casePartnerId,
+            userPartnerId,
+            reason: 'partner_id_mismatch',
+          });
+          return NextResponse.json(
+            { 
+              error: 'Forbidden',
+              details: 'You do not have permission to access this case'
+            },
+            { status: 403 }
+          );
+        }
+
+        console.info('[API Route] ✅ Ownership validation PASSED');
+        logOwnershipValidationSuccess(userEmail, 'case', id);
+        logDataAccess(userEmail, 'case', id, 'READ');
+      } else {
+        // No user session - require authentication
+        console.error('[API Route] ❌ No user session - authentication required');
+        const { logAuthenticationFailure } = await import('@/lib/securityAudit');
+        logAuthenticationFailure({ resource: 'case', resourceId: id });
+        
+        // Add security headers to error response
+        const headers = new Headers();
+        headers.set('X-Content-Type-Options', 'nosniff');
+        headers.set('X-Frame-Options', 'DENY');
+        headers.set('Content-Type', 'application/json');
+        
+        return new NextResponse(
+          JSON.stringify({ 
+            error: 'Unauthorized',
+            details: 'Authentication required to access case details'
+          }),
+          { status: 401, headers }
+        );
       }
 
       // Extract form configuration identifiers from case metadata
@@ -405,6 +483,39 @@ export async function GET(
           metadata.business_address ||
           metadata.businessAddress ||
           '',
+        registeredAddress: (() => {
+          // Check if address is an object (from backend Business.RegisteredAddress)
+          const business = data.business || {};
+          const registeredAddr = business.registeredAddress || business.RegisteredAddress;
+          if (registeredAddr && typeof registeredAddr === 'object') {
+            // Serialize address object to string
+            const parts = [
+              registeredAddr.street || registeredAddr.Street,
+              registeredAddr.street2 || registeredAddr.Street2,
+              registeredAddr.city || registeredAddr.City,
+              registeredAddr.state || registeredAddr.State,
+              registeredAddr.postalCode || registeredAddr.PostalCode,
+              registeredAddr.country || registeredAddr.Country,
+            ].filter(Boolean);
+            if (parts.length > 0) {
+              return parts.join(', ');
+            }
+          }
+          
+          // Check string values
+          return (
+            data.registeredAddress ||
+            data.registered_address ||
+            metadata.registered_address ||
+            metadata.registeredAddress ||
+            metadata['Registered Address'] ||
+            data.businessAddress ||
+            data.business_address ||
+            metadata.business_address ||
+            metadata.businessAddress ||
+            ''
+          );
+        })(),
         businessCity:
           data.businessCity ||
           data.business_city ||
@@ -484,10 +595,41 @@ export async function GET(
         applicantFirstName: caseData.applicantFirstName,
         applicantEmail: caseData.applicantEmail,
         businessRegistrationNumber: caseData.businessRegistrationNumber,
+        registeredAddress: caseData.registeredAddress,
         businessCountryOfRegistration: caseData.businessCountryOfRegistration,
       });
+      // Log all root data keys that might contain address or registration info
+      const addressKeys = Object.keys(data).filter(k => 
+        k.toLowerCase().includes('address') || 
+        k.toLowerCase().includes('registration') ||
+        k.toLowerCase().includes('reg_number')
+      );
+      console.info('  - Root data keys containing "address" or "registration":', addressKeys);
+      if (addressKeys.length > 0) {
+        const addressValues = Object.fromEntries(
+          addressKeys.map(k => [k, data[k]])
+        );
+        console.info('  - Values for address/registration keys:', addressValues);
+      }
 
-      return NextResponse.json(responseData);
+      // Add security headers to successful response
+      const responseHeaders = new Headers();
+      responseHeaders.set('Content-Type', 'application/json');
+      responseHeaders.set('X-Content-Type-Options', 'nosniff');
+      responseHeaders.set('X-Frame-Options', 'DENY');
+      responseHeaders.set('X-XSS-Protection', '1; mode=block');
+      responseHeaders.set('Referrer-Policy', 'strict-origin-when-cross-origin');
+      
+      // Add rate limit headers
+      const rateLimitHeaders = getRateLimitHeaders(rateLimitKey, 60);
+      Object.entries(rateLimitHeaders).forEach(([key, value]) => {
+        responseHeaders.set(key, value);
+      });
+
+      return new NextResponse(JSON.stringify(responseData), {
+        status: 200,
+        headers: responseHeaders,
+      });
     } catch (fetchError) {
       clearTimeout(timeoutId);
       throw fetchError;

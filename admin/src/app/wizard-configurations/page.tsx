@@ -238,7 +238,12 @@ export default function WizardConfigurationsPage() {
                       borderColor="#F3F4F6"
                       bg="#FAFBFC"
                     >
-                      <Flex justify="space-between" align="center" gap="16px" flexWrap="wrap">
+                      <Flex
+                        justify="space-between"
+                        align="center"
+                        gap="16px"
+                        flexWrap="wrap"
+                      >
                         {/* Title */}
                         <Typography
                           fontSize="18px"
@@ -250,7 +255,7 @@ export default function WizardConfigurationsPage() {
                             config.entity_type_display_name ||
                             'Unknown Entity Type'}
                         </Typography>
-                        
+
                         {/* Actions */}
                         <HStack gap="10px">
                           <Box
@@ -305,7 +310,11 @@ export default function WizardConfigurationsPage() {
                             cursor={deleting === config.id ? 'not-allowed' : 'pointer'}
                             opacity={deleting === config.id ? 0.7 : 1}
                             transition="all 0.2s"
-                            _hover={deleting === config.id ? {} : { bg: '#B91C1C', transform: 'translateY(-1px)' }}
+                            _hover={
+                              deleting === config.id
+                                ? {}
+                                : { bg: '#B91C1C', transform: 'translateY(-1px)' }
+                            }
                             onClick={() => !deleting && handleDelete(config.id)}
                           >
                             <FiTrash2 size={14} />
@@ -314,7 +323,7 @@ export default function WizardConfigurationsPage() {
                         </HStack>
                       </Flex>
                     </Box>
-                    
+
                     {/* Card Body */}
                     <Box px="24px" py="20px">
                       {/* Meta Info */}
@@ -332,19 +341,28 @@ export default function WizardConfigurationsPage() {
                             <FiList size={14} color="#F05423" />
                           </Box>
                           <Typography fontSize="14px" fontWeight="600" color="#374151">
-                            {config.steps.length} {config.steps.length === 1 ? 'Step' : 'Steps'}
+                            {config.steps.length}{' '}
+                            {config.steps.length === 1 ? 'Step' : 'Steps'}
                           </Typography>
                         </HStack>
                         <HStack gap="6px">
-                          <Typography fontSize="13px" color="#6B7280">Created:</Typography>
+                          <Typography fontSize="13px" color="#6B7280">
+                            Created:
+                          </Typography>
                           <Typography fontSize="13px" fontWeight="600" color="#374151">
-                            {new Date(config.createdAt || config.created_at || '').toLocaleDateString()}
+                            {new Date(
+                              config.createdAt || config.created_at || ''
+                            ).toLocaleDateString()}
                           </Typography>
                         </HStack>
                         <HStack gap="6px">
-                          <Typography fontSize="13px" color="#6B7280">Updated:</Typography>
+                          <Typography fontSize="13px" color="#6B7280">
+                            Updated:
+                          </Typography>
                           <Typography fontSize="13px" fontWeight="600" color="#374151">
-                            {new Date(config.updatedAt || config.updated_at || '').toLocaleDateString()}
+                            {new Date(
+                              config.updatedAt || config.updated_at || ''
+                            ).toLocaleDateString()}
                           </Typography>
                         </HStack>
                       </HStack>
@@ -352,7 +370,12 @@ export default function WizardConfigurationsPage() {
                       {/* Steps Preview */}
                       {config.steps.length > 0 && (
                         <Box>
-                          <Typography fontSize="13px" fontWeight="600" color="#6B7280" mb="10px">
+                          <Typography
+                            fontSize="13px"
+                            fontWeight="600"
+                            color="#6B7280"
+                            mb="10px"
+                          >
                             Steps:
                           </Typography>
                           <Flex flexWrap="wrap" gap="8px">
@@ -378,7 +401,11 @@ export default function WizardConfigurationsPage() {
                                   >
                                     {step.stepNumber}.
                                   </Typography>
-                                  <Typography fontSize="13px" fontWeight="500" color="#374151">
+                                  <Typography
+                                    fontSize="13px"
+                                    fontWeight="500"
+                                    color="#374151"
+                                  >
                                     {step.title}
                                   </Typography>
                                 </Box>

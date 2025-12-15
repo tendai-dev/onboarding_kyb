@@ -1,12 +1,6 @@
 'use client';
 
-import {
-  Box,
-  VStack,
-  HStack,
-  Flex,
-  Spinner,
-} from '@chakra-ui/react';
+import { Box, VStack, HStack, Flex, Spinner } from '@chakra-ui/react';
 import {
   Typography,
   Button,
@@ -23,7 +17,11 @@ import { useState, useEffect, use } from 'react';
 import { entityConfigApiService, FieldType } from '../../../../services/entityConfigApi';
 import { SweetAlert } from '../../../../utils/sweetAlert';
 
-export default function EditRequirementPage({ params }: { params: Promise<{ id: string }> }) {
+export default function EditRequirementPage({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}) {
   const router = useRouter();
   const { condensed } = useSidebar();
   const { id } = use(params);
@@ -85,7 +83,10 @@ export default function EditRequirementPage({ params }: { params: Promise<{ id: 
       router.push('/requirements');
     } catch (err) {
       console.error('Error updating requirement:', err);
-      SweetAlert.error('Update Failed', 'Failed to update requirement. Please try again.');
+      SweetAlert.error(
+        'Update Failed',
+        'Failed to update requirement. Please try again.'
+      );
     } finally {
       setSaving(false);
     }
@@ -197,15 +198,20 @@ export default function EditRequirementPage({ params }: { params: Promise<{ id: 
         </Typography>
 
         {/* General Information Card */}
-        <Box 
-          bg="white" 
-          borderRadius="12px" 
+        <Box
+          bg="white"
+          borderRadius="12px"
           border="1px solid #E5E7EB"
           p="28px"
           mb="24px"
           boxShadow="0 2px 8px rgba(0,0,0,0.06)"
         >
-          <Typography fontSize="16px" fontWeight="600" color="mukuru.text.primary" mb="20px">
+          <Typography
+            fontSize="16px"
+            fontWeight="600"
+            color="mukuru.text.primary"
+            mb="20px"
+          >
             General Information
           </Typography>
 
@@ -213,11 +219,19 @@ export default function EditRequirementPage({ params }: { params: Promise<{ id: 
           <Flex gap="24px" mb="24px">
             {/* Code Field (Read-only for edit) */}
             <Box flex="1">
-              <Typography fontSize="13px" fontWeight="500" color="mukuru.text.primary" mb="8px">
+              <Typography
+                fontSize="13px"
+                fontWeight="500"
+                color="mukuru.text.primary"
+                mb="8px"
+              >
                 Code
               </Typography>
               <input
-                value={(formData.displayName || '').toUpperCase().replace(/\s+/g, '_').replace(/[^A-Z0-9_]/g, '')}
+                value={(formData.displayName || '')
+                  .toUpperCase()
+                  .replace(/\s+/g, '_')
+                  .replace(/[^A-Z0-9_]/g, '')}
                 readOnly
                 style={{
                   width: '100%',
@@ -239,7 +253,12 @@ export default function EditRequirementPage({ params }: { params: Promise<{ id: 
 
             {/* Display Name Field */}
             <Box flex="1">
-              <Typography fontSize="13px" fontWeight="500" color="mukuru.text.primary" mb="8px">
+              <Typography
+                fontSize="13px"
+                fontWeight="500"
+                color="mukuru.text.primary"
+                mb="8px"
+              >
                 Display Name <span style={{ color: '#EF4444' }}>*</span>
               </Typography>
               <input
@@ -268,7 +287,12 @@ export default function EditRequirementPage({ params }: { params: Promise<{ id: 
 
           {/* Description Field */}
           <Box mb="24px">
-            <Typography fontSize="13px" fontWeight="500" color="mukuru.text.primary" mb="8px">
+            <Typography
+              fontSize="13px"
+              fontWeight="500"
+              color="mukuru.text.primary"
+              mb="8px"
+            >
               Description <span style={{ color: '#EF4444' }}>*</span>
             </Typography>
             <textarea
@@ -295,7 +319,12 @@ export default function EditRequirementPage({ params }: { params: Promise<{ id: 
 
           {/* Field Type (optional) */}
           <Box>
-            <Typography fontSize="13px" fontWeight="500" color="mukuru.text.primary" mb="8px">
+            <Typography
+              fontSize="13px"
+              fontWeight="500"
+              color="mukuru.text.primary"
+              mb="8px"
+            >
               Field Type
             </Typography>
             <input
@@ -321,21 +350,31 @@ export default function EditRequirementPage({ params }: { params: Promise<{ id: 
         </Box>
 
         {/* Field Configuration Card */}
-        <Box 
-          bg="white" 
-          borderRadius="12px" 
+        <Box
+          bg="white"
+          borderRadius="12px"
           border="1px solid #E5E7EB"
           p="28px"
           mb="24px"
           boxShadow="0 2px 8px rgba(0,0,0,0.06)"
         >
-          <Typography fontSize="16px" fontWeight="600" color="mukuru.text.primary" mb="20px">
+          <Typography
+            fontSize="16px"
+            fontWeight="600"
+            color="mukuru.text.primary"
+            mb="20px"
+          >
             Field Configuration
           </Typography>
 
           {/* Validation Rules */}
           <Box mb="24px">
-            <Typography fontSize="13px" fontWeight="500" color="mukuru.text.primary" mb="8px">
+            <Typography
+              fontSize="13px"
+              fontWeight="500"
+              color="mukuru.text.primary"
+              mb="8px"
+            >
               Validation Rules (JSON)
             </Typography>
             <textarea
@@ -365,7 +404,12 @@ export default function EditRequirementPage({ params }: { params: Promise<{ id: 
 
           {/* Help Text */}
           <Box>
-            <Typography fontSize="13px" fontWeight="500" color="mukuru.text.primary" mb="8px">
+            <Typography
+              fontSize="13px"
+              fontWeight="500"
+              color="mukuru.text.primary"
+              mb="8px"
+            >
               Help Text (optional)
             </Typography>
             <textarea
@@ -395,9 +439,9 @@ export default function EditRequirementPage({ params }: { params: Promise<{ id: 
         </Box>
 
         {/* Status Card */}
-        <Box 
-          bg="white" 
-          borderRadius="12px" 
+        <Box
+          bg="white"
+          borderRadius="12px"
           border="1px solid #E5E7EB"
           p="28px"
           mb="24px"
@@ -405,7 +449,12 @@ export default function EditRequirementPage({ params }: { params: Promise<{ id: 
         >
           <HStack justify="space-between" align="center">
             <Box>
-              <Typography fontSize="16px" fontWeight="600" color="mukuru.text.primary" mb="4px">
+              <Typography
+                fontSize="16px"
+                fontWeight="600"
+                color="mukuru.text.primary"
+                mb="4px"
+              >
                 Active Status
               </Typography>
               <Typography fontSize="13px" color="mukuru.grey.medium">
@@ -418,7 +467,9 @@ export default function EditRequirementPage({ params }: { params: Promise<{ id: 
               </Tag>
               <Switch
                 checked={formData.isActive}
-                onChange={() => setFormData((prev) => ({ ...prev, isActive: !prev.isActive }))}
+                onChange={() =>
+                  setFormData((prev) => ({ ...prev, isActive: !prev.isActive }))
+                }
               />
             </HStack>
           </HStack>
@@ -426,11 +477,7 @@ export default function EditRequirementPage({ params }: { params: Promise<{ id: 
 
         {/* Action Buttons */}
         <HStack justify="flex-end" gap="12px" mt="24px">
-          <Button
-            onClick={handleCancel}
-            variant="secondary"
-            disabled={saving}
-          >
+          <Button onClick={handleCancel} variant="secondary" disabled={saving}>
             Cancel
           </Button>
           <Button

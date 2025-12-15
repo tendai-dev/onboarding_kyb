@@ -1,12 +1,16 @@
 'use client';
 
 import React from 'react';
-import { Box, HStack, Textarea, Input as ChakraInput } from '@chakra-ui/react';
+import { Box, HStack, Textarea, Input } from '@chakra-ui/react';
 // Import components directly from Mukuru package
-import { Typography, Tag } from '@mukuru/mukuru-react-components';
+import { Typography, Tag, Button, Checkbox } from '@mukuru/mukuru-react-components';
+import { FiEye, FiFileText } from 'react-icons/fi';
 // Color mode - always light mode
 const useColorModeValue = <T,>(light: T, _dark: T): T => light;
 import { RenderableField } from '../lib/entitySchemaRenderer';
+
+// Lighter placeholder color for better visibility - Mukuru grey.800
+const PLACEHOLDER_COLOR = '#BBBBBB';
 
 interface DynamicFieldRendererProps {
   field: RenderableField;
@@ -22,14 +26,17 @@ export function DynamicFieldRenderer({
   readOnly = true,
   onDocumentClick,
 }: DynamicFieldRendererProps) {
-  // Color mode values for dark/light mode support
+  // Color mode values for dark/light mode support - using official Mukuru tokens
   const inputBg = useColorModeValue('mukuru.cards.white', 'mukuru.cards.dark');
   const readOnlyBg = useColorModeValue(
     'mukuru.background.light',
     'mukuru.background.dark'
   );
-  const borderColor = useColorModeValue('mukuru.grey.light', 'mukuru.grey.500');
-  const borderColorActive = useColorModeValue('mukuru.grey.medium', 'mukuru.grey.400');
+  // Using Mukuru Input recipe styling
+  const borderColor = useColorModeValue('#E0E0E0', '#E0E0E0'); // Mukuru Input default border
+  const borderColorActive = useColorModeValue('mukuru.grey.medium', 'mukuru.grey.mediumDark');
+  const textColor = useColorModeValue('mukuru.text.primary', 'mukuru.text.primary');
+  const labelColor = useColorModeValue('mukuru.grey.mediumDark', 'mukuru.grey.mediumDark');
 
   const renderField = () => {
     switch (field.type) {
@@ -37,7 +44,7 @@ export function DynamicFieldRenderer({
       case 'Email':
       case 'Phone':
         return (
-          <ChakraInput
+          <Input
             value={
               typeof field.value === 'string' || typeof field.value === 'number'
                 ? String(field.value)
@@ -50,11 +57,15 @@ export function DynamicFieldRenderer({
             }
             bg={readOnly ? readOnlyBg : inputBg}
             borderColor={readOnly ? borderColor : borderColorActive}
+            color={textColor}
             borderWidth="1px"
             borderRadius="md"
             px="3"
             py="2"
             fontSize="sm"
+            _placeholder={{
+              color: PLACEHOLDER_COLOR,
+            }}
             _readOnly={{
               cursor: 'default',
               opacity: 1,
@@ -75,11 +86,15 @@ export function DynamicFieldRenderer({
             rows={4}
             bg={readOnly ? readOnlyBg : inputBg}
             borderColor={readOnly ? borderColor : borderColorActive}
+            color={textColor}
             borderWidth="1px"
             borderRadius="md"
             px="3"
             py="2"
             fontSize="sm"
+            _placeholder={{
+              color: PLACEHOLDER_COLOR,
+            }}
             _readOnly={{
               cursor: 'default',
               opacity: 1,
@@ -89,7 +104,7 @@ export function DynamicFieldRenderer({
 
       case 'Number':
         return (
-          <ChakraInput
+          <Input
             value={
               typeof field.value === 'string' || typeof field.value === 'number'
                 ? String(field.value)
@@ -100,12 +115,25 @@ export function DynamicFieldRenderer({
             type="number"
             bg={readOnly ? readOnlyBg : inputBg}
             borderColor={readOnly ? borderColor : borderColorActive}
+            color={textColor}
+            borderWidth="1px"
+            borderRadius="md"
+            px="3"
+            py="2"
+            fontSize="sm"
+            _placeholder={{
+              color: PLACEHOLDER_COLOR,
+            }}
+            _readOnly={{
+              cursor: 'default',
+              opacity: 1,
+            }}
           />
         );
 
       case 'Date':
         return (
-          <ChakraInput
+          <Input
             value={
               field.value &&
               (typeof field.value === 'string' || typeof field.value === 'number')
@@ -117,11 +145,15 @@ export function DynamicFieldRenderer({
             type="date"
             bg={readOnly ? readOnlyBg : inputBg}
             borderColor={readOnly ? borderColor : borderColorActive}
+            color={textColor}
             borderWidth="1px"
             borderRadius="md"
             px="3"
             py="2"
             fontSize="sm"
+            _placeholder={{
+              color: PLACEHOLDER_COLOR,
+            }}
             _readOnly={{
               cursor: 'default',
               opacity: 1,
@@ -151,7 +183,7 @@ export function DynamicFieldRenderer({
                     );
                   })
                 ) : (
-                  <Typography color="gray.400" fontSize="sm">
+                  <Typography color="mukuru.grey.medium" fontSize="sm">
                     No selection
                   </Typography>
                 )}
@@ -161,7 +193,7 @@ export function DynamicFieldRenderer({
             // Single select
             const selectedOption = field.options.find((opt) => opt.value === field.value);
             return (
-              <ChakraInput
+              <Input
                 value={
                   selectedOption?.label ||
                   (typeof field.value === 'string' || typeof field.value === 'number'
@@ -170,14 +202,27 @@ export function DynamicFieldRenderer({
                 }
                 placeholder={field.placeholder}
                 readOnly={true}
-                bg="gray.50"
-                borderColor="gray.200"
+                bg={readOnlyBg}
+                borderColor={borderColor}
+                color={textColor}
+                borderWidth="1px"
+                borderRadius="md"
+                px="3"
+                py="2"
+                fontSize="sm"
+                _placeholder={{
+                  color: PLACEHOLDER_COLOR,
+                }}
+                _readOnly={{
+                  cursor: 'default',
+                  opacity: 1,
+                }}
               />
             );
           }
         }
         return (
-          <ChakraInput
+          <Input
             value={
               typeof field.value === 'string' || typeof field.value === 'number'
                 ? String(field.value)
@@ -187,19 +232,30 @@ export function DynamicFieldRenderer({
             readOnly={readOnly}
             bg={readOnly ? readOnlyBg : inputBg}
             borderColor={readOnly ? borderColor : borderColorActive}
+            color={textColor}
+            borderWidth="1px"
+            borderRadius="md"
+            px="3"
+            py="2"
+            fontSize="sm"
+            _placeholder={{
+              color: PLACEHOLDER_COLOR,
+            }}
+            _readOnly={{
+              cursor: 'default',
+              opacity: 1,
+            }}
           />
         );
 
       case 'Checkbox':
         return (
           <HStack>
-            <input
-              type="checkbox"
+            <Checkbox
               checked={field.value === true || field.value === 'true'}
-              readOnly={readOnly}
               disabled={readOnly}
             />
-            <Typography fontSize="sm" color="gray.600">
+            <Typography fontSize="sm" color="mukuru.text.primary">
               {field.value === true || field.value === 'true' ? 'Yes' : 'No'}
             </Typography>
           </HStack>
@@ -227,7 +283,7 @@ export function DynamicFieldRenderer({
               <HStack gap="2">
                 <Typography
                   fontSize="sm"
-                  color="orange.600"
+                  color="mukuru.primary"
                   cursor="pointer"
                   _hover={{ textDecoration: 'underline' }}
                   onClick={() => {
@@ -284,13 +340,13 @@ export function DynamicFieldRenderer({
                       : 'File attached'}
                 </Typography>
                 {fileData?.fileSize && typeof fileData.fileSize === 'number' ? (
-                  <Typography fontSize="xs" color="gray.500">
+                  <Typography fontSize="xs" color="mukuru.text.accent">
                     ({((fileData.fileSize as number) / 1024 / 1024).toFixed(2)} MB)
                   </Typography>
                 ) : null}
               </HStack>
             ) : (
-              <Typography fontSize="sm" color="gray.400">
+              <Typography fontSize="sm" color="mukuru.grey.medium">
                 Not provided
               </Typography>
             )}
@@ -300,7 +356,7 @@ export function DynamicFieldRenderer({
 
       case 'Country':
         return (
-          <ChakraInput
+          <Input
             value={
               typeof field.value === 'string' || typeof field.value === 'number'
                 ? String(field.value)
@@ -310,12 +366,25 @@ export function DynamicFieldRenderer({
             readOnly={readOnly}
             bg={readOnly ? readOnlyBg : inputBg}
             borderColor={readOnly ? borderColor : borderColorActive}
+            color={textColor}
+            borderWidth="1px"
+            borderRadius="md"
+            px="3"
+            py="2"
+            fontSize="sm"
+            _placeholder={{
+              color: PLACEHOLDER_COLOR,
+            }}
+            _readOnly={{
+              cursor: 'default',
+              opacity: 1,
+            }}
           />
         );
 
       case 'Currency':
         return (
-          <ChakraInput
+          <Input
             value={
               field.value &&
               (typeof field.value === 'string' || typeof field.value === 'number')
@@ -331,6 +400,19 @@ export function DynamicFieldRenderer({
             readOnly={readOnly}
             bg={readOnly ? readOnlyBg : inputBg}
             borderColor={readOnly ? borderColor : borderColorActive}
+            color={textColor}
+            borderWidth="1px"
+            borderRadius="md"
+            px="3"
+            py="2"
+            fontSize="sm"
+            _placeholder={{
+              color: PLACEHOLDER_COLOR,
+            }}
+            _readOnly={{
+              cursor: 'default',
+              opacity: 1,
+            }}
           />
         );
 
@@ -347,11 +429,15 @@ export function DynamicFieldRenderer({
             rows={3}
             bg={readOnly ? readOnlyBg : inputBg}
             borderColor={readOnly ? borderColor : borderColorActive}
+            color={textColor}
             borderWidth="1px"
             borderRadius="md"
             px="3"
             py="2"
             fontSize="sm"
+            _placeholder={{
+              color: PLACEHOLDER_COLOR,
+            }}
             _readOnly={{
               cursor: 'default',
               opacity: 1,
@@ -362,7 +448,7 @@ export function DynamicFieldRenderer({
       default:
         // Fallback for unknown types
         return (
-          <ChakraInput
+          <Input
             value={
               typeof field.value === 'string' || typeof field.value === 'number'
                 ? String(field.value)
@@ -372,6 +458,19 @@ export function DynamicFieldRenderer({
             readOnly={readOnly}
             bg={readOnly ? readOnlyBg : inputBg}
             borderColor={readOnly ? borderColor : borderColorActive}
+            color={textColor}
+            borderWidth="1px"
+            borderRadius="md"
+            px="3"
+            py="2"
+            fontSize="sm"
+            _placeholder={{
+              color: PLACEHOLDER_COLOR,
+            }}
+            _readOnly={{
+              cursor: 'default',
+              opacity: 1,
+            }}
           />
         );
     }
@@ -379,17 +478,17 @@ export function DynamicFieldRenderer({
 
   return (
     <Box>
-      <Typography fontSize="sm" fontWeight="medium" color="gray.700" mb="2">
+      <Typography fontSize="sm" fontWeight="medium" color={labelColor} mb="2">
         {field.label}
         {field.isRequired && (
-          <Typography as="span" color="red.500" ml="1">
+          <Typography as="span" color="mukuru.text.error" ml="1">
             *
           </Typography>
         )}
       </Typography>
       {renderField()}
       {field.helpText && (
-        <Typography fontSize="xs" color="gray.500" mt="1.5">
+        <Typography fontSize="xs" color="mukuru.grey.medium" mt="1.5">
           {field.helpText}
         </Typography>
       )}

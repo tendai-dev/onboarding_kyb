@@ -10,14 +10,14 @@ import { useState, useEffect } from 'react';
 
 /**
  * Root Providers Component
- * 
+ *
  * Provider order is critical:
  * 1. EmotionRegistry - Handles CSS-in-JS for Emotion/Chakra UI
  * 2. SessionProvider - NextAuth session management
  * 3. MukuruComponentProvider - Includes ChakraProvider and theme setup
  * 4. ErrorBoundary - Catches errors (uses plain HTML/CSS, no Chakra UI)
  * 5. SidebarProvider - Sidebar state management
- * 
+ *
  * All Chakra UI components MUST be rendered inside MukuruComponentProvider
  * which includes ChakraProvider internally.
  */

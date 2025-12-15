@@ -1,9 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { logger } from '@/lib/logger';
 import { auth } from '@/lib/auth';
-import {
-  getAccountTokensFromNextAuth,
-} from '@/lib/redis-session';
+import { getAccountTokensFromNextAuth } from '@/lib/redis-session';
 
 /**
  * Proxy endpoint for serving documents/images from MinIO
@@ -76,7 +74,10 @@ export async function GET(req: NextRequest) {
           } catch (tokenError) {
             // Log warning but continue without token
             if (process.env.NODE_ENV === 'development') {
-              console.warn('[Proxy-Document] Could not get auth token, proceeding without:', tokenError);
+              console.warn(
+                '[Proxy-Document] Could not get auth token, proceeding without:',
+                tokenError
+              );
             }
           }
 
@@ -169,8 +170,8 @@ export async function GET(req: NextRequest) {
             '[Proxy-Document] Direct download failed',
             {
               tags: { error_type: 'document_download_error' },
-              extra: { 
-                status: downloadResponse.status, 
+              extra: {
+                status: downloadResponse.status,
                 errorText,
                 storageKey: decodedKey,
                 url: directDownloadUrl,
@@ -183,7 +184,8 @@ export async function GET(req: NextRequest) {
             console.error('[Proxy-Document] Download failed:', {
               status: downloadResponse.status,
               storageKey: decodedKey,
-              errorText: typeof errorText === 'string' ? errorText.substring(0, 200) : errorText,
+              errorText:
+                typeof errorText === 'string' ? errorText.substring(0, 200) : errorText,
             });
           }
 
@@ -195,25 +197,29 @@ export async function GET(req: NextRequest) {
             errorData && typeof errorData === 'object'
               ? (errorData as Record<string, unknown>)
               : null;
-          
+
           // Extract error message - check multiple possible fields
           const errorMessage =
             (errorObj && typeof errorObj.error === 'string' ? errorObj.error : null) ||
-            (errorObj && typeof errorObj.message === 'string' ? errorObj.message : null) ||
+            (errorObj && typeof errorObj.message === 'string'
+              ? errorObj.message
+              : null) ||
             (typeof errorText === 'string' && errorText.length > 0 ? errorText : null) ||
             'Failed to download document';
-          
+
           const suggestion =
             errorObj && typeof errorObj.suggestion === 'string'
               ? errorObj.suggestion
               : null;
 
           // For 404 errors, provide a more helpful message
-          const finalMessage = statusCode === 404
-            ? (errorMessage.includes('missing from storage') || errorMessage.includes('not found'))
-              ? errorMessage
-              : 'The document could not be found. It may have been deleted or never uploaded.'
-            : suggestion || errorMessage || 'The document could not be retrieved.';
+          const finalMessage =
+            statusCode === 404
+              ? errorMessage.includes('missing from storage') ||
+                errorMessage.includes('not found')
+                ? errorMessage
+                : 'The document could not be found. It may have been deleted or never uploaded.'
+              : suggestion || errorMessage || 'The document could not be retrieved.';
 
           return new NextResponse(
             JSON.stringify({

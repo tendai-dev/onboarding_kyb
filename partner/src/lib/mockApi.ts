@@ -106,7 +106,7 @@ export interface Requirement {
 
 // Mock data generators
 const generateRandomId = () => Math.random().toString(36).substr(2, 9).toUpperCase();
-const generateRandomDate = (_daysAgo: Record<string, unknown>) => {
+const generateRandomDate = (daysAgo: number) => {
   const date = new Date();
   date.setDate(date.getDate() - daysAgo);
   return date.toISOString();

@@ -131,19 +131,33 @@ function ErrorDisplay({ error, resetError }: { error: Error; resetError: () => v
       <div style={containerStyles}>
         <h1 style={titleStyles}>Something went wrong</h1>
         <p style={textStyles}>
-          An unexpected error occurred. Our team has been notified and is working on a fix.
+          An unexpected error occurred. Our team has been notified and is working on a
+          fix.
         </p>
         {process.env.NODE_ENV === 'development' && (
           <div style={errorBoxStyles}>
             <div style={{ marginBottom: '0.5rem' }}>{error.toString()}</div>
             {error.stack && (
-              <pre style={{ marginTop: '0.5rem', fontSize: '0.75rem', whiteSpace: 'pre-wrap' }}>
+              <pre
+                style={{
+                  marginTop: '0.5rem',
+                  fontSize: '0.75rem',
+                  whiteSpace: 'pre-wrap',
+                }}
+              >
                 {error.stack}
               </pre>
             )}
           </div>
         )}
-        <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'center', flexWrap: 'wrap' }}>
+        <div
+          style={{
+            display: 'flex',
+            gap: '0.5rem',
+            justifyContent: 'center',
+            flexWrap: 'wrap',
+          }}
+        >
           <button
             style={buttonStyles}
             onClick={resetError}

@@ -22,12 +22,7 @@ import {
 } from '@/lib/mukuruComponentWrappers';
 // Color mode - always light mode
 const useColorModeValue = <T,>(light: T, _dark: T): T => light;
-import {
-  FiFileText,
-  FiEdit3,
-  FiPlus,
-  FiTrash2,
-} from 'react-icons/fi';
+import { FiFileText, FiEdit3, FiPlus, FiTrash2 } from 'react-icons/fi';
 import * as FiIcons from 'react-icons/fi';
 import AdminSidebar from '../../components/AdminSidebar';
 import PortalHeader from '../../components/PortalHeader';
@@ -282,7 +277,10 @@ export default function EntityTypesPage() {
       width: '10%',
       minWidth: '80px',
       render: (value) => (
-        <Tag variant={value ? 'success' : 'inactive'} style={{ fontSize: '11px', padding: '2px 8px' }}>
+        <Tag
+          variant={value ? 'success' : 'inactive'}
+          style={{ fontSize: '11px', padding: '2px 8px' }}
+        >
           {value ? 'Active' : 'Inactive'}
         </Tag>
       ),
@@ -300,7 +298,11 @@ export default function EntityTypesPage() {
             <Tooltip content="Edit entity type">
               <Link
                 href={`/entity-types/edit/${entityType.id}`}
-                style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
               >
                 <button
                   style={{
@@ -402,7 +404,9 @@ export default function EntityTypesPage() {
             </VStack>
             <Link href="/entity-types/create">
               <Button variant="primary" size="md">
-                <IconWrapper><FiPlus size={16} /></IconWrapper>
+                <IconWrapper>
+                  <FiPlus size={16} />
+                </IconWrapper>
                 New Entity Type
               </Button>
             </Link>
@@ -410,21 +414,25 @@ export default function EntityTypesPage() {
         </Box>
 
         {/* Status Filter Tabs */}
-        <Box px="24px" bg={cardBgNew} borderBottom="1px solid" borderColor={borderColorNew}>
+        <Box
+          px="24px"
+          bg={cardBgNew}
+          borderBottom="1px solid"
+          borderColor={borderColorNew}
+        >
           {error && (
             <Box mb="12px">
               <AlertBar status="error" title="Error" description={error} />
             </Box>
           )}
-          <TabsRoot 
-            value={statusFilter} 
+          <TabsRoot
+            value={statusFilter}
             onValueChange={(details) => setStatusFilter(details.value)}
           >
             <TabsList>
               {(['all', 'active', 'inactive'] as const).map((filter) => {
-                const label = filter === 'all' ? 'All' 
-                  : filter === 'active' ? 'Active' 
-                  : 'Inactive';
+                const label =
+                  filter === 'all' ? 'All' : filter === 'active' ? 'Active' : 'Inactive';
                 return (
                   <TabsTrigger key={filter} value={filter}>
                     {label}
@@ -437,7 +445,13 @@ export default function EntityTypesPage() {
         </Box>
 
         {/* Search Row */}
-        <Box px="24px" py="12px" bg={cardBgNew} borderBottom="1px solid" borderColor={borderColorNew}>
+        <Box
+          px="24px"
+          py="12px"
+          bg={cardBgNew}
+          borderBottom="1px solid"
+          borderColor={borderColorNew}
+        >
           <Box maxW="400px">
             <Search
               placeholder="Search by name, code..."
@@ -447,11 +461,11 @@ export default function EntityTypesPage() {
         </Box>
 
         {/* Table Section */}
-        <Box 
-          flex="1" 
-          minH="0" 
-          px="24px" 
-          py="16px" 
+        <Box
+          flex="1"
+          minH="0"
+          px="24px"
+          py="16px"
           bg={bgColorNew}
           display="flex"
           flexDirection="column"
@@ -461,7 +475,7 @@ export default function EntityTypesPage() {
               <Spinner size="xl" />
             </Box>
           ) : (
-            <Box 
+            <Box
               flex="1"
               minH="0"
               bg={cardBgNew}

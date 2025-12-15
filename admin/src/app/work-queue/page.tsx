@@ -44,10 +44,7 @@ import { useSession } from 'next-auth/react';
 import AdminSidebar from '../../components/AdminSidebar';
 import PortalHeader from '../../components/PortalHeader';
 import { useSidebar } from '../../contexts/SidebarContext';
-import {
-  exportWorkItems,
-  WorkItemDto,
-} from '../../services';
+import { exportWorkItems, WorkItemDto } from '../../services';
 import { rulesAndPermissionsApiService } from '../../services/rulesAndPermissionsApi';
 import { logger } from '../../lib/logger';
 
@@ -66,9 +63,10 @@ export default function WorkQueuePage() {
   const subtleText = 'mukuru.grey.medium';
 
   const { data: session } = useSession();
-  
+
   // Get current user info
-  const currentUserId = session?.user?.id || session?.user?.email || '00000000-0000-0000-0000-000000000001';
+  const currentUserId =
+    session?.user?.id || session?.user?.email || '00000000-0000-0000-0000-000000000001';
   const currentUserName = session?.user?.name || session?.user?.email || 'Current User';
 
   const [workItems, setWorkItems] = useState<WorkItemDto[]>([]);
@@ -78,17 +76,23 @@ export default function WorkQueuePage() {
   const [activeTab, setActiveTab] = useState<TabFilter>('All');
   const [exporting, setExporting] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
-  const [toast, setToast] = useState<{ title: string; description: string; type: 'success' | 'error' | 'info' | 'warning' } | null>(null);
-  
+  const [toast, setToast] = useState<{
+    title: string;
+    description: string;
+    type: 'success' | 'error' | 'info' | 'warning';
+  } | null>(null);
+
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(20);
   const [totalCount, setTotalCount] = useState(0);
-  
+
   // Assign modal state
   const [assignModalOpen, setAssignModalOpen] = useState(false);
   const [selectedWorkItemId, setSelectedWorkItemId] = useState<string | null>(null);
-  const [users, setUsers] = useState<Array<{ id: string; name: string; email: string }>>([]);
+  const [users, setUsers] = useState<Array<{ id: string; name: string; email: string }>>(
+    []
+  );
   const [usersLoading, setUsersLoading] = useState(false);
   const [selectedUserId, setSelectedUserId] = useState<string>('');
 
@@ -100,7 +104,7 @@ export default function WorkQueuePage() {
     assignedTo?: string;
   }>({});
   const [showFilters, setShowFilters] = useState(false);
-  
+
   // Sorting
   const [sortBy, setSortBy] = useState<string>('CreatedAt');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
@@ -113,7 +117,7 @@ export default function WorkQueuePage() {
       // Build filters based on active tab
       let statusFilter = filters.status;
       let assignedToFilter = filters.assignedTo;
-      
+
       if (activeTab === 'MyItems') {
         // My Items: Show items assigned to current user
         assignedToFilter = currentUserId;
@@ -150,39 +154,41 @@ export default function WorkQueuePage() {
       const workItemDtos: WorkItemDto[] = result.items.map((item: any) => {
         // Backend returns snake_case: 'id' is the work item ID, 'application_id' is the application ID
         const workItemId = item.id || item.Id || item.workItemId || item.work_item_id;
-        const applicationId = item.application_id || item.applicationId || item.ApplicationId;
+        const applicationId =
+          item.application_id || item.applicationId || item.ApplicationId;
         return {
           id: String(workItemId), // Work item ID
           workItemId: String(workItemId), // Work item ID (same as id)
-          workItemNumber: item.workItemNumber || item.work_item_number || item.WorkItemNumber || '',
+          workItemNumber:
+            item.workItemNumber || item.work_item_number || item.WorkItemNumber || '',
           applicationId: String(applicationId || workItemId), // Application ID (fallback to workItemId if missing)
           applicantName: item.applicantName || 'Unknown Applicant',
-        businessName: item.businessName,
-        entityType: item.entityType || 'Unknown',
-        entityTypeDisplayName: item.entityTypeDisplayName,
-        country: item.country || 'Unknown',
-        status: item.status || 'New',
-        priority: item.priority || 'Medium',
-        riskLevel: item.riskLevel || 'Unknown',
-        assignedTo: item.assignedTo ? String(item.assignedTo) : undefined,
-        assignedToName: item.assignedToName,
-        assignedAt: item.assignedAt,
-        requiresApproval: item.requiresApproval ?? false,
-        approvedBy: item.approvedBy ? String(item.approvedBy) : undefined,
-        approvedByName: item.approvedByName,
-        approvedAt: item.approvedAt,
-        approvalNotes: item.approvalNotes,
-        rejectionReason: item.rejectionReason,
-        rejectedAt: item.rejectedAt,
-        dueDate: item.dueDate || item.createdAt,
-        isOverdue: item.isOverdue ?? false,
-        createdAt: item.createdAt,
-        updatedAt: item.updatedAt,
-        nextRefreshDate: item.nextRefreshDate,
-        lastRefreshedAt: item.lastRefreshedAt,
-        refreshCount: item.refreshCount ?? 0,
-        createdBy: item.createdBy || 'System',
-        updatedBy: item.updatedBy,
+          businessName: item.businessName,
+          entityType: item.entityType || 'Unknown',
+          entityTypeDisplayName: item.entityTypeDisplayName,
+          country: item.country || 'Unknown',
+          status: item.status || 'New',
+          priority: item.priority || 'Medium',
+          riskLevel: item.riskLevel || 'Unknown',
+          assignedTo: item.assignedTo ? String(item.assignedTo) : undefined,
+          assignedToName: item.assignedToName,
+          assignedAt: item.assignedAt,
+          requiresApproval: item.requiresApproval ?? false,
+          approvedBy: item.approvedBy ? String(item.approvedBy) : undefined,
+          approvedByName: item.approvedByName,
+          approvedAt: item.approvedAt,
+          approvalNotes: item.approvalNotes,
+          rejectionReason: item.rejectionReason,
+          rejectedAt: item.rejectedAt,
+          dueDate: item.dueDate || item.createdAt,
+          isOverdue: item.isOverdue ?? false,
+          createdAt: item.createdAt,
+          updatedAt: item.updatedAt,
+          nextRefreshDate: item.nextRefreshDate,
+          lastRefreshedAt: item.lastRefreshedAt,
+          refreshCount: item.refreshCount ?? 0,
+          createdBy: item.createdBy || 'System',
+          updatedBy: item.updatedBy,
         };
       });
 
@@ -290,18 +296,21 @@ export default function WorkQueuePage() {
           userName: selectedUser.name,
         },
       });
-      const errorMessage = err instanceof Error ? err.message : 'Failed to assign work item';
-      
+      const errorMessage =
+        err instanceof Error ? err.message : 'Failed to assign work item';
+
       // Check if this is a concurrency error - if so, refresh the work queue automatically
-      const isConcurrencyError = errorMessage.toLowerCase().includes('modified by another user') ||
-                                 errorMessage.toLowerCase().includes('modified by another process');
-      
+      const isConcurrencyError =
+        errorMessage.toLowerCase().includes('modified by another user') ||
+        errorMessage.toLowerCase().includes('modified by another process');
+
       if (isConcurrencyError) {
         // Refresh the work queue to get the latest data
         await loadWorkItems();
         setToast({
           title: 'Work Item Updated',
-          description: 'The work item was modified by another user. The page has been refreshed. Please try assigning again.',
+          description:
+            'The work item was modified by another user. The page has been refreshed. Please try assigning again.',
           type: 'error',
         });
         // Keep the modal open so user can try again with fresh data
@@ -357,7 +366,9 @@ export default function WorkQueuePage() {
     return workItems.filter((item) => {
       let matchesTab = true;
       if (activeTab === 'Active') {
-        matchesTab = ['New', 'Assigned', 'InProgress', 'PendingApproval'].includes(item.status);
+        matchesTab = ['New', 'Assigned', 'InProgress', 'PendingApproval'].includes(
+          item.status
+        );
       } else if (activeTab === 'Completed') {
         matchesTab = ['Completed', 'Approved', 'Declined'].includes(item.status);
       } else if (activeTab === 'MyItems') {
@@ -371,8 +382,13 @@ export default function WorkQueuePage() {
       // Handle unassigned filter client-side (only if not MyItems tab)
       let matchesAssignedFilter = true;
       if (activeTab !== 'MyItems' && filters.assignedTo === 'unassigned') {
-        matchesAssignedFilter = !item.assignedToName || item.assignedToName === 'Unassigned';
-      } else if (activeTab !== 'MyItems' && filters.assignedTo && filters.assignedTo !== 'unassigned') {
+        matchesAssignedFilter =
+          !item.assignedToName || item.assignedToName === 'Unassigned';
+      } else if (
+        activeTab !== 'MyItems' &&
+        filters.assignedTo &&
+        filters.assignedTo !== 'unassigned'
+      ) {
         matchesAssignedFilter = item.assignedTo === filters.assignedTo;
       }
 
@@ -405,7 +421,9 @@ export default function WorkQueuePage() {
   };
 
   // Get status variant
-  const getStatusVariant = (status: string): 'success' | 'warning' | 'danger' | 'info' => {
+  const getStatusVariant = (
+    status: string
+  ): 'success' | 'warning' | 'danger' | 'info' => {
     switch (status) {
       case 'Completed':
       case 'Approved':
@@ -429,7 +447,15 @@ export default function WorkQueuePage() {
   };
 
   // Tab component - Entity Types style (underline on active)
-  const Tab = ({ label, isActive, onClick }: { label: string; isActive: boolean; onClick: () => void }) => (
+  const Tab = ({
+    label,
+    isActive,
+    onClick,
+  }: {
+    label: string;
+    isActive: boolean;
+    onClick: () => void;
+  }) => (
     <Box
       as="button"
       pb="2"
@@ -469,22 +495,22 @@ export default function WorkQueuePage() {
             {getEntityIcon(row.entityType)}
           </Box>
           <VStack align="start" gap="2px" flex="1" minW="0">
-            <Typography 
-              fontSize="13px" 
-              fontWeight="500" 
+            <Typography
+              fontSize="13px"
+              fontWeight="500"
               color={textColor}
-              style={{ 
-                whiteSpace: 'nowrap', 
-                overflow: 'hidden', 
-                textOverflow: 'ellipsis', 
+              style={{
+                whiteSpace: 'nowrap',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
                 maxWidth: '100%',
-                lineHeight: '20px'
+                lineHeight: '20px',
               }}
             >
               {row.businessName || value || 'Unknown Applicant'}
             </Typography>
-            <Typography 
-              fontSize="11px" 
+            <Typography
+              fontSize="11px"
               color="mukuru.grey.medium"
               fontWeight="400"
               style={{
@@ -492,7 +518,7 @@ export default function WorkQueuePage() {
                 overflow: 'hidden',
                 textOverflow: 'ellipsis',
                 maxWidth: '100%',
-                lineHeight: '1.3'
+                lineHeight: '1.3',
               }}
             >
               {row.entityTypeDisplayName || row.entityType || 'Application'}
@@ -506,14 +532,14 @@ export default function WorkQueuePage() {
       header: 'CODE',
       sortable: true,
       render: (value, row) => (
-        <Typography 
-          fontSize="12px" 
-          fontFamily="mono" 
+        <Typography
+          fontSize="12px"
+          fontFamily="mono"
           color={textColor}
-          style={{ 
-            whiteSpace: 'nowrap', 
-            overflow: 'hidden', 
-            textOverflow: 'ellipsis' 
+          style={{
+            whiteSpace: 'nowrap',
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
           }}
         >
           {value || row.workItemNumber || String(row.id).substring(0, 10).toUpperCase()}
@@ -525,22 +551,26 @@ export default function WorkQueuePage() {
       header: 'DETAILS',
       render: (value, row) => (
         <VStack align="start" gap="2px">
-          <Typography 
-            fontSize="13px" 
-            fontWeight="500" 
+          <Typography
+            fontSize="13px"
+            fontWeight="500"
             color={textColor}
             style={{ lineHeight: '20px' }}
           >
             {row.priority || 'Medium'}
           </Typography>
-            <Typography 
-              fontSize="11px" 
-              fontWeight="400" 
-              color={row.riskLevel === 'High' || row.riskLevel === 'Critical' ? 'mukuru.text.error' : 'mukuru.grey.medium'}
-              style={{ lineHeight: '1.3' }}
-            >
-              {row.riskLevel || 'Unknown'}
-            </Typography>
+          <Typography
+            fontSize="11px"
+            fontWeight="400"
+            color={
+              row.riskLevel === 'High' || row.riskLevel === 'Critical'
+                ? 'mukuru.text.error'
+                : 'mukuru.grey.medium'
+            }
+            style={{ lineHeight: '1.3' }}
+          >
+            {row.riskLevel || 'Unknown'}
+          </Typography>
         </VStack>
       ),
     },
@@ -565,15 +595,15 @@ export default function WorkQueuePage() {
             >
               <FiUser size={12} color="var(--chakra-colors-mukuru-grey-medium)" />
             </Box>
-            <Typography 
-              fontSize="13px" 
-              fontWeight="500" 
+            <Typography
+              fontSize="13px"
+              fontWeight="500"
               color={isAssigned ? textColor : 'mukuru.grey.medium'}
-              style={{ 
-                whiteSpace: 'nowrap', 
-                overflow: 'hidden', 
+              style={{
+                whiteSpace: 'nowrap',
+                overflow: 'hidden',
                 textOverflow: 'ellipsis',
-                lineHeight: '20px'
+                lineHeight: '20px',
               }}
             >
               {isAssigned ? assignedTo : 'Unassigned'}
@@ -589,12 +619,20 @@ export default function WorkQueuePage() {
       render: (value) => {
         const status = String(value) || 'New';
         // Entity Types uses green "Active" badge style
-        const isActive = ['New', 'Assigned', 'InProgress', 'PendingApproval'].includes(status);
+        const isActive = ['New', 'Assigned', 'InProgress', 'PendingApproval'].includes(
+          status
+        );
         return (
-          <Typography 
-            fontSize="13px" 
+          <Typography
+            fontSize="13px"
             fontWeight="500"
-            color={isActive ? 'mukuru.buttons.primary' : status === 'Completed' || status === 'Approved' ? 'mukuru.teal' : 'mukuru.text.error'}
+            color={
+              isActive
+                ? 'mukuru.buttons.primary'
+                : status === 'Completed' || status === 'Approved'
+                  ? 'mukuru.teal'
+                  : 'mukuru.text.error'
+            }
             style={{ lineHeight: '20px' }}
           >
             {formatStatus(status)}
@@ -605,32 +643,35 @@ export default function WorkQueuePage() {
   ];
 
   // Helper function to execute action with error handling
-  const executeAction = useCallback(async (
-    actionFn: () => Promise<void>,
-    successMessage: string,
-    errorPrefix: string
-  ) => {
-    try {
-      await actionFn();
-      setToast({
-        title: 'Success',
-        description: successMessage,
-        type: 'success',
-      });
-      setRefreshKey((prev) => prev + 1);
-      setTimeout(() => setToast(null), 3000);
-    } catch (err) {
-      logger.error(err, `[Work Queue] ${errorPrefix}`);
-      const errorMessage = err instanceof Error ? err.message : `${errorPrefix} failed`;
-      setError(errorMessage);
-      setToast({
-        title: 'Error',
-        description: errorMessage,
-        type: 'error',
-      });
-      setTimeout(() => setToast(null), 5000);
-    }
-  }, []);
+  const executeAction = useCallback(
+    async (
+      actionFn: () => Promise<void>,
+      successMessage: string,
+      errorPrefix: string
+    ) => {
+      try {
+        await actionFn();
+        setToast({
+          title: 'Success',
+          description: successMessage,
+          type: 'success',
+        });
+        setRefreshKey((prev) => prev + 1);
+        setTimeout(() => setToast(null), 3000);
+      } catch (err) {
+        logger.error(err, `[Work Queue] ${errorPrefix}`);
+        const errorMessage = err instanceof Error ? err.message : `${errorPrefix} failed`;
+        setError(errorMessage);
+        setToast({
+          title: 'Error',
+          description: errorMessage,
+          type: 'error',
+        });
+        setTimeout(() => setToast(null), 5000);
+      }
+    },
+    []
+  );
 
   // Action column - Entity Types style (edit, assign, more)
   const actionColumn = {
@@ -645,17 +686,24 @@ export default function WorkQueuePage() {
       const canStartReview = ['New', 'Assigned'].includes(status);
       const canSubmitForApproval = status === 'InProgress' && row.requiresApproval;
       const canApprove = status === 'PendingApproval';
-      const canComplete = status === 'Approved' || (status === 'InProgress' && !row.requiresApproval);
-      const canDecline = ['New', 'Assigned', 'InProgress', 'PendingApproval'].includes(status);
+      const canComplete =
+        status === 'Approved' || (status === 'InProgress' && !row.requiresApproval);
+      const canDecline = ['New', 'Assigned', 'InProgress', 'PendingApproval'].includes(
+        status
+      );
       const canCancel = !['Completed', 'Declined', 'Cancelled'].includes(status);
       const canMarkForRefresh = status === 'Completed';
-      const canUnassign = isAssignedToMe && !['Completed', 'Declined', 'Cancelled'].includes(status);
+      const canUnassign =
+        isAssignedToMe && !['Completed', 'Declined', 'Cancelled'].includes(status);
 
       return (
         <HStack gap="1" justify="flex-end" flexWrap="wrap">
           {/* Review/View Details - Always visible */}
           <Tooltip content="Review Application" showArrow variant="light">
-            <Link href={`/review/${row.applicationId || row.workItemId || row.id}`} style={{ textDecoration: 'none' }}>
+            <Link
+              href={`/review/${row.applicationId || row.workItemId || row.id}`}
+              style={{ textDecoration: 'none' }}
+            >
               <Box
                 as="button"
                 p="1.5"
@@ -710,11 +758,14 @@ export default function WorkQueuePage() {
                 onClick={async (e: React.MouseEvent) => {
                   e.stopPropagation();
                   try {
-                    const { startReview } = await import('../../services/api/workQueueApi');
+                    const { startReview } = await import(
+                      '../../services/api/workQueueApi'
+                    );
                     await startReview(workItemId);
                     setToast({
                       title: 'Success',
-                      description: 'Review started successfully. Redirecting to review page...',
+                      description:
+                        'Review started successfully. Redirecting to review page...',
                       type: 'success',
                     });
                     setRefreshKey((prev) => prev + 1);
@@ -722,28 +773,33 @@ export default function WorkQueuePage() {
                     // Backend returns 'id' as the work item ID - ensure we use that, NOT applicationId
                     // The workItemId should be the same as id (both are the work item ID from backend)
                     const redirectId = row.workItemId || row.id;
-                    
+
                     // Validate that we're not accidentally using applicationId
                     if (!redirectId || redirectId === row.applicationId) {
                       if (process.env.NODE_ENV === 'development') {
-                        console.error('[Work Queue] Cannot redirect: work item ID not found or matches applicationId', {
-                          workItemId: row.workItemId,
-                          id: row.id,
-                          applicationId: row.applicationId,
-                        });
+                        console.error(
+                          '[Work Queue] Cannot redirect: work item ID not found or matches applicationId',
+                          {
+                            workItemId: row.workItemId,
+                            id: row.id,
+                            applicationId: row.applicationId,
+                          }
+                        );
                       }
-                      logger.error('[Work Queue] Cannot redirect: work item ID not found or matches applicationId');
+                      logger.error(
+                        '[Work Queue] Cannot redirect: work item ID not found or matches applicationId'
+                      );
                       setError('Work item ID not found');
                       return;
                     }
-                    
+
                     if (process.env.NODE_ENV === 'development') {
-                      console.log('[Work Queue] Redirecting to review page', { 
-                        workItemId: row.workItemId, 
-                        id: row.id, 
+                      console.log('[Work Queue] Redirecting to review page', {
+                        workItemId: row.workItemId,
+                        id: row.id,
                         applicationId: row.applicationId,
                         redirectId,
-                        usingCorrectId: redirectId !== row.applicationId
+                        usingCorrectId: redirectId !== row.applicationId,
                       });
                     }
                     setTimeout(() => {
@@ -751,7 +807,8 @@ export default function WorkQueuePage() {
                     }, 500);
                   } catch (err) {
                     logger.error(err, '[Work Queue] Error starting review');
-                    const errorMessage = err instanceof Error ? err.message : 'Error starting review';
+                    const errorMessage =
+                      err instanceof Error ? err.message : 'Error starting review';
                     setError(errorMessage);
                     setToast({
                       title: 'Error',
@@ -781,7 +838,9 @@ export default function WorkQueuePage() {
                 justifyContent="center"
                 onClick={async (e: React.MouseEvent) => {
                   e.stopPropagation();
-                  const { submitForApproval } = await import('../../services/api/workQueueApi');
+                  const { submitForApproval } = await import(
+                    '../../services/api/workQueueApi'
+                  );
                   await executeAction(
                     () => submitForApproval(workItemId),
                     'Submitted for approval successfully',
@@ -808,7 +867,9 @@ export default function WorkQueuePage() {
                 justifyContent="center"
                 onClick={async (e: React.MouseEvent) => {
                   e.stopPropagation();
-                  const { approveWorkItem } = await import('../../services/api/workQueueApi');
+                  const { approveWorkItem } = await import(
+                    '../../services/api/workQueueApi'
+                  );
                   await executeAction(
                     () => approveWorkItem(workItemId),
                     'Work item approved successfully',
@@ -835,7 +896,9 @@ export default function WorkQueuePage() {
                 justifyContent="center"
                 onClick={async (e: React.MouseEvent) => {
                   e.stopPropagation();
-                  const { completeWorkItem } = await import('../../services/api/workQueueApi');
+                  const { completeWorkItem } = await import(
+                    '../../services/api/workQueueApi'
+                  );
                   await executeAction(
                     () => completeWorkItem(workItemId),
                     'Work item completed successfully',
@@ -864,7 +927,9 @@ export default function WorkQueuePage() {
                   e.stopPropagation();
                   const reason = prompt('Please provide a reason for declining:');
                   if (reason && reason.trim()) {
-                    const { declineWorkItem } = await import('../../services/api/workQueueApi');
+                    const { declineWorkItem } = await import(
+                      '../../services/api/workQueueApi'
+                    );
                     await executeAction(
                       () => declineWorkItem(workItemId, reason),
                       'Work item declined successfully',
@@ -892,7 +957,9 @@ export default function WorkQueuePage() {
                 justifyContent="center"
                 onClick={async (e: React.MouseEvent) => {
                   e.stopPropagation();
-                  const { unassignWorkItem } = await import('../../services/api/workQueueApi');
+                  const { unassignWorkItem } = await import(
+                    '../../services/api/workQueueApi'
+                  );
                   await executeAction(
                     () => unassignWorkItem(workItemId),
                     'Work item unassigned successfully',
@@ -919,7 +986,9 @@ export default function WorkQueuePage() {
                 justifyContent="center"
                 onClick={async (e: React.MouseEvent) => {
                   e.stopPropagation();
-                  const { markForRefresh } = await import('../../services/api/workQueueApi');
+                  const { markForRefresh } = await import(
+                    '../../services/api/workQueueApi'
+                  );
                   await executeAction(
                     () => markForRefresh(workItemId),
                     'Work item marked for refresh successfully',
@@ -938,7 +1007,6 @@ export default function WorkQueuePage() {
               <Box
                 as="button"
                 p="1.5"
-
                 bg="transparent"
                 _hover={{ bg: 'mukuru.state.hover' }}
                 display="flex"
@@ -976,7 +1044,9 @@ export default function WorkQueuePage() {
                     currentPriority
                   );
                   if (newPriority && priorities.includes(newPriority)) {
-                    const { updateWorkItemPriority } = await import('../../services/api/workQueueApi');
+                    const { updateWorkItemPriority } = await import(
+                      '../../services/api/workQueueApi'
+                    );
                     await executeAction(
                       () => updateWorkItemPriority(workItemId, newPriority),
                       'Priority updated successfully',
@@ -1006,7 +1076,9 @@ export default function WorkQueuePage() {
                   e.stopPropagation();
                   const reason = prompt('Please provide a reason for cancelling:');
                   if (reason && reason.trim()) {
-                    const { cancelWorkItem } = await import('../../services/api/workQueueApi');
+                    const { cancelWorkItem } = await import(
+                      '../../services/api/workQueueApi'
+                    );
                     await executeAction(
                       () => cancelWorkItem(workItemId, reason),
                       'Work item cancelled successfully',
@@ -1067,7 +1139,13 @@ export default function WorkQueuePage() {
 
       {/* Toast Notification */}
       {toast && (
-        <Box position="fixed" top={error ? "160px" : "100px"} right="24px" zIndex={10001} maxW="400px">
+        <Box
+          position="fixed"
+          top={error ? '160px' : '100px'}
+          right="24px"
+          zIndex={10001}
+          maxW="400px"
+        >
           <AlertBar
             status={toast.type}
             title={toast.title}
@@ -1108,7 +1186,11 @@ export default function WorkQueuePage() {
                 opacity={loading ? 0.5 : 1}
                 cursor={loading ? 'not-allowed' : 'pointer'}
               >
-                <FiRefreshCw size={18} color="var(--chakra-colors-mukuru-charcoal)" className={loading ? 'animate-spin' : ''} />
+                <FiRefreshCw
+                  size={18}
+                  color="var(--chakra-colors-mukuru-charcoal)"
+                  className={loading ? 'animate-spin' : ''}
+                />
               </Box>
             </Tooltip>
             <Button
@@ -1125,7 +1207,12 @@ export default function WorkQueuePage() {
         {/* Stats Row - Inline like Entity Types */}
         <HStack gap="12" mb="4">
           <HStack gap="2" cursor="pointer" onClick={() => setActiveTab('All')}>
-            <Typography fontSize="xs" color={subtleText} textTransform="uppercase" letterSpacing="wide">
+            <Typography
+              fontSize="xs"
+              color={subtleText}
+              textTransform="uppercase"
+              letterSpacing="wide"
+            >
               Total Items
             </Typography>
             <Typography fontSize="sm" fontWeight="600" color={textColor}>
@@ -1133,7 +1220,12 @@ export default function WorkQueuePage() {
             </Typography>
           </HStack>
           <HStack gap="2" cursor="pointer" onClick={() => setActiveTab('Active')}>
-            <Typography fontSize="xs" color={subtleText} textTransform="uppercase" letterSpacing="wide">
+            <Typography
+              fontSize="xs"
+              color={subtleText}
+              textTransform="uppercase"
+              letterSpacing="wide"
+            >
               Active
             </Typography>
             <Typography fontSize="sm" fontWeight="600" color="mukuru.buttons.primary">
@@ -1141,7 +1233,12 @@ export default function WorkQueuePage() {
             </Typography>
           </HStack>
           <HStack gap="2" cursor="pointer" onClick={() => setActiveTab('Completed')}>
-            <Typography fontSize="xs" color={subtleText} textTransform="uppercase" letterSpacing="wide">
+            <Typography
+              fontSize="xs"
+              color={subtleText}
+              textTransform="uppercase"
+              letterSpacing="wide"
+            >
               Completed
             </Typography>
             <Typography fontSize="sm" fontWeight="600" color="mukuru.teal">
@@ -1149,7 +1246,12 @@ export default function WorkQueuePage() {
             </Typography>
           </HStack>
           <HStack gap="2">
-            <Typography fontSize="xs" color={subtleText} textTransform="uppercase" letterSpacing="wide">
+            <Typography
+              fontSize="xs"
+              color={subtleText}
+              textTransform="uppercase"
+              letterSpacing="wide"
+            >
               Overdue
             </Typography>
             <Typography fontSize="sm" fontWeight="600" color="mukuru.text.error">
@@ -1230,7 +1332,9 @@ export default function WorkQueuePage() {
                     { value: 'Low', label: 'Low' },
                   ]}
                   defaultValue={filters.priority || ''}
-                  onSelectionChange={(value: string) => setFilters({ ...filters, priority: value || undefined })}
+                  onSelectionChange={(value: string) =>
+                    setFilters({ ...filters, priority: value || undefined })
+                  }
                   placeholder="Select Priority"
                 />
               </Box>
@@ -1248,7 +1352,9 @@ export default function WorkQueuePage() {
                     { value: 'Unknown', label: 'Unknown' },
                   ]}
                   defaultValue={filters.riskLevel || ''}
-                  onSelectionChange={(value: string) => setFilters({ ...filters, riskLevel: value || undefined })}
+                  onSelectionChange={(value: string) =>
+                    setFilters({ ...filters, riskLevel: value || undefined })
+                  }
                   placeholder="Select Risk Level"
                 />
               </Box>
@@ -1268,7 +1374,9 @@ export default function WorkQueuePage() {
                     { value: 'Declined', label: 'Declined' },
                   ]}
                   defaultValue={filters.status || ''}
-                  onSelectionChange={(value: string) => setFilters({ ...filters, status: value || undefined })}
+                  onSelectionChange={(value: string) =>
+                    setFilters({ ...filters, status: value || undefined })
+                  }
                   placeholder="Select Status"
                 />
               </Box>
@@ -1450,12 +1558,15 @@ export default function WorkQueuePage() {
           <Flex justify="space-between" align="center" mt="4">
             <HStack gap="2">
               <Typography fontSize="sm" color={subtleText}>
-                Showing {((currentPage - 1) * pageSize) + 1} to {Math.min(currentPage * pageSize, totalCount)} of {totalCount} items
+                Showing {(currentPage - 1) * pageSize + 1} to{' '}
+                {Math.min(currentPage * pageSize, totalCount)} of {totalCount} items
               </Typography>
               <Typography fontSize="sm" fontWeight="500" color={textColor}>
                 {pageSize}
               </Typography>
-              <Typography fontSize="sm" color={subtleText}>per page</Typography>
+              <Typography fontSize="sm" color={subtleText}>
+                per page
+              </Typography>
             </HStack>
             <HStack gap="2">
               <HStack
@@ -1463,58 +1574,92 @@ export default function WorkQueuePage() {
                 gap="1"
                 opacity={currentPage === 1 || loading ? 0.4 : 1}
                 cursor={currentPage === 1 || loading ? 'not-allowed' : 'pointer'}
-                onClick={() => currentPage > 1 && !loading && setCurrentPage(prev => prev - 1)}
+                onClick={() =>
+                  currentPage > 1 && !loading && setCurrentPage((prev) => prev - 1)
+                }
                 _hover={{ color: 'mukuru.charcoal' }}
               >
-                <FiChevronLeft size={16} color="var(--chakra-colors-mukuru-grey-medium)" />
-                <Typography fontSize="sm" color={subtleText}>Previous</Typography>
+                <FiChevronLeft
+                  size={16}
+                  color="var(--chakra-colors-mukuru-grey-medium)"
+                />
+                <Typography fontSize="sm" color={subtleText}>
+                  Previous
+                </Typography>
               </HStack>
               <HStack gap="1">
-                {Array.from({ length: Math.min(5, Math.ceil(totalCount / pageSize)) }, (_, i) => {
-                  const totalPages = Math.ceil(totalCount / pageSize);
-                  let pageNum: number;
-                  
-                  if (totalPages <= 5) {
-                    pageNum = i + 1;
-                  } else if (currentPage <= 3) {
-                    pageNum = i + 1;
-                  } else if (currentPage >= totalPages - 2) {
-                    pageNum = totalPages - 4 + i;
-                  } else {
-                    pageNum = currentPage - 2 + i;
+                {Array.from(
+                  { length: Math.min(5, Math.ceil(totalCount / pageSize)) },
+                  (_, i) => {
+                    const totalPages = Math.ceil(totalCount / pageSize);
+                    let pageNum: number;
+
+                    if (totalPages <= 5) {
+                      pageNum = i + 1;
+                    } else if (currentPage <= 3) {
+                      pageNum = i + 1;
+                    } else if (currentPage >= totalPages - 2) {
+                      pageNum = totalPages - 4 + i;
+                    } else {
+                      pageNum = currentPage - 2 + i;
+                    }
+
+                    return (
+                      <Box
+                        key={pageNum}
+                        as="button"
+                        px="3"
+                        py="1"
+                        borderRadius="md"
+                        bg={
+                          currentPage === pageNum
+                            ? 'mukuru.buttons.primary'
+                            : 'transparent'
+                        }
+                        color={currentPage === pageNum ? 'white' : subtleText}
+                        fontSize="sm"
+                        fontWeight="500"
+                        _hover={{
+                          bg:
+                            currentPage === pageNum
+                              ? 'mukuru.buttons.primary'
+                              : 'mukuru.state.hover',
+                        }}
+                        onClick={() => !loading && setCurrentPage(pageNum)}
+                        cursor={loading ? 'not-allowed' : 'pointer'}
+                        minW="28px"
+                      >
+                        {pageNum}
+                      </Box>
+                    );
                   }
-                  
-                  return (
-                    <Box
-                      key={pageNum}
-                      as="button"
-                      px="3"
-                      py="1"
-                      borderRadius="md"
-                      bg={currentPage === pageNum ? 'mukuru.buttons.primary' : 'transparent'}
-                      color={currentPage === pageNum ? 'white' : subtleText}
-                      fontSize="sm"
-                      fontWeight="500"
-                      _hover={{ bg: currentPage === pageNum ? 'mukuru.buttons.primary' : 'mukuru.state.hover' }}
-                      onClick={() => !loading && setCurrentPage(pageNum)}
-                      cursor={loading ? 'not-allowed' : 'pointer'}
-                      minW="28px"
-                    >
-                      {pageNum}
-                    </Box>
-                  );
-                })}
+                )}
               </HStack>
               <HStack
                 as="button"
                 gap="1"
-                opacity={currentPage >= Math.ceil(totalCount / pageSize) || loading ? 0.4 : 1}
-                cursor={currentPage >= Math.ceil(totalCount / pageSize) || loading ? 'not-allowed' : 'pointer'}
-                onClick={() => currentPage < Math.ceil(totalCount / pageSize) && !loading && setCurrentPage(prev => prev + 1)}
+                opacity={
+                  currentPage >= Math.ceil(totalCount / pageSize) || loading ? 0.4 : 1
+                }
+                cursor={
+                  currentPage >= Math.ceil(totalCount / pageSize) || loading
+                    ? 'not-allowed'
+                    : 'pointer'
+                }
+                onClick={() =>
+                  currentPage < Math.ceil(totalCount / pageSize) &&
+                  !loading &&
+                  setCurrentPage((prev) => prev + 1)
+                }
                 _hover={{ color: 'mukuru.charcoal' }}
               >
-                <Typography fontSize="sm" color={subtleText}>Next</Typography>
-                <FiChevronRight size={16} color="var(--chakra-colors-mukuru-grey-medium)" />
+                <Typography fontSize="sm" color={subtleText}>
+                  Next
+                </Typography>
+                <FiChevronRight
+                  size={16}
+                  color="var(--chakra-colors-mukuru-grey-medium)"
+                />
               </HStack>
             </HStack>
           </Flex>
@@ -1536,9 +1681,9 @@ export default function WorkQueuePage() {
           {/* Custom Modal Content - Clean Professional Design */}
           <Box>
             {/* Header Section */}
-            <Box 
-              px="24px" 
-              pt="24px" 
+            <Box
+              px="24px"
+              pt="24px"
               pb="20px"
               borderBottom="1px solid"
               borderColor={borderColor}
@@ -1554,24 +1699,23 @@ export default function WorkQueuePage() {
                   justify="center"
                   flexShrink={0}
                 >
-                  <FiUserPlus size={24} color="var(--chakra-colors-mukuru-buttons-primary)" />
+                  <FiUserPlus
+                    size={24}
+                    color="var(--chakra-colors-mukuru-buttons-primary)"
+                  />
                 </Flex>
-                
+
                 {/* Title & Description */}
                 <VStack align="flex-start" gap="4px" flex="1">
-                  <Typography 
-                    fontSize="18px" 
-                    fontWeight="600" 
+                  <Typography
+                    fontSize="18px"
+                    fontWeight="600"
                     color={textColor}
                     lineHeight="1.3"
                   >
                     Assign Work Item
                   </Typography>
-                  <Typography 
-                    fontSize="14px" 
-                    color={subtleText}
-                    lineHeight="1.4"
-                  >
+                  <Typography fontSize="14px" color={subtleText} lineHeight="1.4">
                     Select a team member to handle this work item
                   </Typography>
                 </VStack>
@@ -1581,9 +1725,9 @@ export default function WorkQueuePage() {
             {/* Body Section */}
             <Box px="24px" py="24px">
               {usersLoading ? (
-                <Flex 
-                  justify="center" 
-                  align="center" 
+                <Flex
+                  justify="center"
+                  align="center"
                   py="40px"
                   bg={bgColor}
                   borderRadius="8px"
@@ -1598,9 +1742,9 @@ export default function WorkQueuePage() {
                   </VStack>
                 </Flex>
               ) : users.length === 0 ? (
-                <Flex 
-                  justify="center" 
-                  align="center" 
+                <Flex
+                  justify="center"
+                  align="center"
                   py="40px"
                   bg={bgColor}
                   borderRadius="8px"
@@ -1632,15 +1776,15 @@ export default function WorkQueuePage() {
                 <VStack align="stretch" gap="20px">
                   {/* Form Field - Custom User Selection */}
                   <Box>
-                    <Typography 
-                      fontSize="13px" 
-                      fontWeight="500" 
-                      color={labelColor} 
+                    <Typography
+                      fontSize="13px"
+                      fontWeight="500"
+                      color={labelColor}
                       mb="12px"
                     >
                       Select Team Member
                     </Typography>
-                    
+
                     {/* User List */}
                     <Box
                       border="1px solid"
@@ -1649,8 +1793,8 @@ export default function WorkQueuePage() {
                       overflow="hidden"
                       bg="white"
                     >
-                      <Box 
-                        maxH="240px" 
+                      <Box
+                        maxH="240px"
                         overflowY="auto"
                         css={{
                           '&::-webkit-scrollbar': {
@@ -1676,7 +1820,7 @@ export default function WorkQueuePage() {
                             .join('')
                             .toUpperCase()
                             .slice(0, 2);
-                          
+
                           return (
                             <Box
                               key={user.id}
@@ -1687,12 +1831,16 @@ export default function WorkQueuePage() {
                               alignItems="center"
                               gap="12px"
                               bg={isSelected ? 'rgba(240, 84, 35, 0.08)' : 'transparent'}
-                              borderBottom={index < users.length - 1 ? '1px solid' : 'none'}
+                              borderBottom={
+                                index < users.length - 1 ? '1px solid' : 'none'
+                              }
                               borderColor={borderColor}
                               cursor="pointer"
                               transition="all 0.15s ease"
                               _hover={{
-                                bg: isSelected ? 'rgba(240, 84, 35, 0.12)' : 'mukuru.state.hover',
+                                bg: isSelected
+                                  ? 'rgba(240, 84, 35, 0.12)'
+                                  : 'mukuru.state.hover',
                               }}
                               onClick={() => setSelectedUserId(user.id)}
                               textAlign="left"
@@ -1702,34 +1850,40 @@ export default function WorkQueuePage() {
                                 w="36px"
                                 h="36px"
                                 borderRadius="full"
-                                bg={isSelected ? 'mukuru.buttons.primary' : 'mukuru.grey.light'}
+                                bg={
+                                  isSelected
+                                    ? 'mukuru.buttons.primary'
+                                    : 'mukuru.grey.light'
+                                }
                                 align="center"
                                 justify="center"
                                 flexShrink={0}
                                 transition="all 0.15s ease"
                               >
-                                <Typography 
-                                  fontSize="12px" 
-                                  fontWeight="600" 
+                                <Typography
+                                  fontSize="12px"
+                                  fontWeight="600"
                                   color={isSelected ? 'white' : 'mukuru.grey.mediumDark'}
                                 >
                                   {initials}
                                 </Typography>
                               </Flex>
-                              
+
                               {/* User Info */}
                               <VStack align="flex-start" gap="2px" flex="1" minW="0">
-                                <Typography 
-                                  fontSize="14px" 
+                                <Typography
+                                  fontSize="14px"
                                   fontWeight={isSelected ? '600' : '500'}
-                                  color={isSelected ? 'mukuru.buttons.primary' : textColor}
+                                  color={
+                                    isSelected ? 'mukuru.buttons.primary' : textColor
+                                  }
                                   lineHeight="1.3"
                                 >
                                   {user.name}
                                 </Typography>
                                 {user.email && (
-                                  <Typography 
-                                    fontSize="12px" 
+                                  <Typography
+                                    fontSize="12px"
                                     color={subtleText}
                                     lineHeight="1.2"
                                     style={{
@@ -1743,7 +1897,7 @@ export default function WorkQueuePage() {
                                   </Typography>
                                 )}
                               </VStack>
-                              
+
                               {/* Selection Indicator */}
                               {isSelected && (
                                 <Flex
@@ -1763,23 +1917,26 @@ export default function WorkQueuePage() {
                         })}
                       </Box>
                     </Box>
-                    
+
                     {/* Selected User Summary */}
                     {selectedUserId && (
-                      <HStack 
-                        mt="12px" 
-                        p="10px 12px" 
+                      <HStack
+                        mt="12px"
+                        p="10px 12px"
                         bg="rgba(240, 84, 35, 0.06)"
                         borderRadius="8px"
                         border="1px solid"
                         borderColor="rgba(240, 84, 35, 0.2)"
                       >
-                        <FiCheck size={14} color="var(--chakra-colors-mukuru-buttons-primary)" />
+                        <FiCheck
+                          size={14}
+                          color="var(--chakra-colors-mukuru-buttons-primary)"
+                        />
                         <Typography fontSize="13px" color={textColor}>
                           <Box as="span" fontWeight="500">
-                            {users.find(u => u.id === selectedUserId)?.name}
-                          </Box>
-                          {' '}will be assigned this work item
+                            {users.find((u) => u.id === selectedUserId)?.name}
+                          </Box>{' '}
+                          will be assigned this work item
                         </Typography>
                       </HStack>
                     )}
@@ -1789,8 +1946,8 @@ export default function WorkQueuePage() {
             </Box>
 
             {/* Footer Section */}
-            <Box 
-              px="24px" 
+            <Box
+              px="24px"
               py="16px"
               borderTop="1px solid"
               borderColor={borderColor}

@@ -27,11 +27,7 @@ public class RolesController : ControllerBase
     /// Get all realm roles
     /// </summary>
     [HttpGet]
-#if !DEBUG
-    [Authorize(Policy = "AdminPolicy")]
-#else
-    [AllowAnonymous]
-#endif
+    [Authorize(Policy = "AdminPolicy")] // SECURITY FIX: Always require admin, even in DEBUG
     [ProducesResponseType(typeof(List<RoleDto>), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetRoles()
     {
@@ -59,11 +55,7 @@ public class RolesController : ControllerBase
     /// Create a new realm role
     /// </summary>
     [HttpPost]
-#if !DEBUG
-    [Authorize(Policy = "AdminPolicy")]
-#else
-    [AllowAnonymous]
-#endif
+    [Authorize(Policy = "AdminPolicy")] // SECURITY FIX: Always require admin, even in DEBUG
     [ProducesResponseType(typeof(RoleDto), StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public async Task<IActionResult> CreateRole([FromBody] CreateRoleRequest request)
@@ -91,7 +83,9 @@ public class RolesController : ControllerBase
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error creating role {RoleName}", request.Name);
-            return BadRequest(new { error = ex.Message ?? "Failed to create role" });
+            // SECURITY FIX: Don't expose exception details
+            _logger.LogError(ex, "Error creating role {RoleName}", request.Name);
+            return BadRequest(new { error = "Failed to create role" });
         }
     }
 
@@ -99,11 +93,7 @@ public class RolesController : ControllerBase
     /// Delete a realm role
     /// </summary>
     [HttpDelete("{roleName}")]
-#if !DEBUG
-    [Authorize(Policy = "AdminPolicy")]
-#else
-    [AllowAnonymous]
-#endif
+    [Authorize(Policy = "AdminPolicy")] // SECURITY FIX: Always require admin, even in DEBUG
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> DeleteRole(string roleName)
@@ -123,11 +113,13 @@ public class RolesController : ControllerBase
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error deleting role {RoleName}", roleName);
+            // SECURITY FIX: Don't expose exception details
             if (ex.Message.Contains("not found"))
             {
-                return NotFound(new { error = ex.Message });
+                return NotFound(new { error = "Role not found" });
             }
-            return BadRequest(new { error = ex.Message ?? "Failed to delete role" });
+            _logger.LogError(ex, "Error deleting role {RoleName}", roleName);
+            return BadRequest(new { error = "Failed to delete role" });
         }
     }
 }

@@ -1,7 +1,7 @@
 /**
  * Test SignNow API Routes
  * Tests the Next.js API proxy routes
- * 
+ *
  * Usage: node scripts/test-signnow-routes.mjs
  * Make sure the dev server is running: npm run dev
  */
@@ -10,7 +10,7 @@ const API_BASE = 'http://localhost:3001';
 
 async function testRoutes() {
   console.log('🧪 Testing SignNow API Routes\n');
-  console.log('=' .repeat(50));
+  console.log('='.repeat(50));
 
   try {
     // Test 1: Check if server is running
@@ -35,7 +35,7 @@ async function testRoutes() {
     console.log('   ✅ API routes are available');
     console.log('   ✅ Ready to handle requests\n');
 
-    console.log('=' .repeat(50));
+    console.log('='.repeat(50));
     console.log('\n✅ Route Tests Complete!\n');
     console.log('📋 Available API Routes:');
     console.log(`   POST   ${API_BASE}/api/signnow/document`);
@@ -45,7 +45,6 @@ async function testRoutes() {
     console.log(`   GET    ${API_BASE}/api/signnow/document/:id/download`);
     console.log(`   GET    ${API_BASE}/api/signnow/document/:id/download/link`);
     console.log(`   POST   ${API_BASE}/api/signnow/document/:id/embeddedinvite\n`);
-
   } catch (error) {
     console.error('\n❌ Route Test Failed!');
     console.error('Error:', error.message);
@@ -54,4 +53,3 @@ async function testRoutes() {
 }
 
 testRoutes();
-

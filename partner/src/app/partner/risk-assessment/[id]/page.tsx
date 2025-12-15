@@ -23,6 +23,7 @@ import {
   RiskAssessmentDto,
   RiskAssessmentFormData,
 } from '@/services/riskApi';
+import { PartnerHeader } from '@/components/PartnerHeader';
 
 export default function RiskAssessmentPage() {
   const params = useParams();
@@ -85,7 +86,13 @@ export default function RiskAssessmentPage() {
         if (!assessment) {
           // Create new risk assessment if it doesn't exist
           try {
-            assessment = await riskApiService.createRiskAssessment(caseId, userPartnerId);
+            const newAssessment = await riskApiService.createRiskAssessment(caseId, userPartnerId);
+            if (!newAssessment) {
+              setError('Failed to create risk assessment. Please try again.');
+              setLoading(false);
+              return;
+            }
+            assessment = newAssessment;
           } catch (err) {
             console.error('Failed to create risk assessment:', err);
             setError('Failed to create risk assessment. Please try again.');
@@ -169,14 +176,19 @@ export default function RiskAssessmentPage() {
 
   if (loading) {
     return (
-      <Box minH="100vh" bg="mukuru.background.light" display="flex" alignItems="center" justifyContent="center">
-        <Spinner size="xl" color="mukuru.buttons.primary" />
+      <Box minH="100vh" bg="mukuru.background.light" display="flex" flexDirection="column">
+        <PartnerHeader />
+        <Box flex="1" display="flex" alignItems="center" justifyContent="center">
+          <Spinner size="xl" color="mukuru.buttons.primary" />
+        </Box>
       </Box>
     );
   }
 
   return (
-    <Box minH="100vh" bg="mukuru.background.light" p={6}>
+    <Box minH="100vh" bg="mukuru.background.light">
+      <PartnerHeader />
+      <Box p={6}>
       <Container maxW="6xl">
         <VStack align="stretch" gap={6}>
           {/* Header */}
@@ -196,7 +208,7 @@ export default function RiskAssessmentPage() {
                 onClick={handleSave}
                 disabled={saving}
                 leftIcon={<FiSave />}
-                variant="outline"
+                variant="secondary"
               >
                 {saving ? 'Saving...' : 'Save'}
               </Button>
@@ -309,6 +321,7 @@ export default function RiskAssessmentPage() {
           </SimpleGrid>
         </VStack>
       </Container>
+      </Box>
     </Box>
   );
 }

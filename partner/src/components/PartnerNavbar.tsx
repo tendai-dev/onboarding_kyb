@@ -5,7 +5,7 @@ import { motion } from 'framer-motion';
 import Link from 'next/link';
 import { FiPlus, FiLogOut, FiMessageSquare } from 'react-icons/fi';
 import { Button, MukuruLogo, Typography } from '@mukuru/mukuru-react-components';
-import { getInitials, logout } from '@/lib/auth/session';
+import { getInitials } from '@/lib/auth/session';
 
 const MotionBox = motion.create(Box);
 const MotionHStack = motion.create(HStack);

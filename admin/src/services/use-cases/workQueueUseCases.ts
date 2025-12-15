@@ -69,7 +69,9 @@ export async function fetchWorkItemById(id: string): Promise<Application> {
 /**
  * Get work item by application ID with frontend domain model
  */
-export async function fetchWorkItemByApplicationId(applicationId: string): Promise<Application> {
+export async function fetchWorkItemByApplicationId(
+  applicationId: string
+): Promise<Application> {
   // Call API to get backend DTO
   const workItem = await getWorkItemByApplicationId(applicationId);
 
@@ -181,26 +183,30 @@ export async function addCommentUseCase(
 /**
  * Get comments use case
  */
-export async function fetchWorkItemComments(workItemId: string): Promise<Array<{
-  id: string;
-  text: string;
-  authorId: string;
-  authorName: string;
-  createdAt: string;
-}>> {
+export async function fetchWorkItemComments(workItemId: string): Promise<
+  Array<{
+    id: string;
+    text: string;
+    authorId: string;
+    authorName: string;
+    createdAt: string;
+  }>
+> {
   return getComments(workItemId);
 }
 
 /**
  * Get history use case
  */
-export async function fetchWorkItemHistory(workItemId: string): Promise<Array<{
-  id: string;
-  action: string;
-  performedBy: string;
-  performedAt: string;
-  status: string;
-}>> {
+export async function fetchWorkItemHistory(workItemId: string): Promise<
+  Array<{
+    id: string;
+    action: string;
+    performedBy: string;
+    performedAt: string;
+    status: string;
+  }>
+> {
   return getHistory(workItemId);
 }
 
@@ -289,4 +295,3 @@ export async function exportWorkItems(filters?: {
 
   return createCsvBlob(headers, rows);
 }
-

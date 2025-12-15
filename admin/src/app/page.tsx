@@ -28,7 +28,7 @@ export default function AdminLoginPage() {
     document.documentElement.style.colorScheme = 'dark';
     document.body.style.backgroundColor = '#222222';
     document.body.style.color = '#ffffff';
-    
+
     // Force all elements to use dark mode
     const style = document.createElement('style');
     style.id = 'admin-dark-mode';
@@ -37,7 +37,7 @@ export default function AdminLoginPage() {
       * { color-scheme: dark !important; }
     `;
     document.head.appendChild(style);
-    
+
     return () => {
       document.documentElement.removeAttribute('data-theme');
       document.documentElement.removeAttribute('data-color-mode');

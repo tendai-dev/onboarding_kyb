@@ -268,20 +268,66 @@ export async function GET(request: NextRequest) {
       // Frontend expects: { items, totalCount, page, pageSize }
       let items = data.Items || data.items || [];
 
-      // Enrich projections that have missing company names or assignedTo
-      // Check if any items need enrichment (missing businessLegalName/applicant names or assignedToName)
+      // Always fetch work queue data to get assigned handler info for all items
+      // Work queue is the source of truth for assignment information
+      let workQueueMap = new Map<string, any>();
+      try {
+        const workQueuePath = `/api/proxy/api/v1/workqueue`;
+        const workQueueUrl = new URL(workQueuePath, request.url);
+        const workQueueResponse = await fetch(workQueueUrl.toString(), {
+          method: 'GET',
+          headers,
+          cache: 'no-store',
+          signal: AbortSignal.timeout(5000),
+        });
+
+        if (workQueueResponse.ok) {
+          const workQueueData = await workQueueResponse.json();
+          const workItems = workQueueData.items || workQueueData.Items || [];
+          // Create a map of applicationId/caseId -> work item for quick lookup
+          workItems.forEach((item: any) => {
+            // Work queue uses application_id to reference the case
+            const appId = item.application_id || item.applicationId || item.caseId || item.case_id || item.id;
+            if (appId) {
+              workQueueMap.set(appId, item);
+            }
+          });
+          logger.debug('[Applications API Route] Work queue data fetched', {
+            workItemCount: workItems.length,
+          });
+        }
+      } catch (wqErr) {
+        logger.debug('[Applications API Route] Failed to fetch work queue', {
+          error: wqErr instanceof Error ? wqErr.message : 'Unknown error',
+        });
+      }
+
+      // Enrich all items with work queue assignment data
+      items = items.map((item: any) => {
+        const itemId = item.id || item.caseId || item.case_id;
+        const workItem = workQueueMap.get(itemId);
+        
+        if (workItem) {
+          // Use work queue data for assignment info (it's the source of truth)
+          if (!item.assignedToName && !item.assigned_to_name) {
+            item.assignedToName = workItem.assigned_to_name || workItem.assignedToName || '';
+          }
+          if (!item.assignedTo && !item.assigned_to) {
+            item.assignedTo = workItem.assigned_to || workItem.assignedTo || '';
+          }
+        }
+        return item;
+      });
+
+      // Enrich projections that have missing company names
+      // Check if any items need enrichment (missing businessLegalName/applicant names)
       const itemsNeedingEnrichment = items.filter((item: any) => {
         const hasCompanyName =
           item.businessLegalName ||
           item.business_legal_name ||
           (item.applicantFirstName && item.applicantLastName) ||
           (item.applicant_first_name && item.applicant_last_name);
-        const hasAssignedTo =
-          item.assignedToName ||
-          item.assigned_to_name ||
-          item.assignedTo ||
-          item.assigned_to;
-        return !hasCompanyName || !hasAssignedTo;
+        return !hasCompanyName;
       });
 
       // If we have items needing enrichment, try to get details from cases API
@@ -360,7 +406,25 @@ export async function GET(request: NextRequest) {
                 }
                 if (!item.assignedToName && !item.assigned_to_name) {
                   item.assignedToName =
-                    caseData.assignedToName || caseData.assigned_to_name || '';
+                    caseData.assignedToName ||
+                    caseData.assigned_to_name ||
+                    caseData.handler?.name ||
+                    caseData.handler?.fullName ||
+                    caseData.handler?.displayName ||
+                    caseData.handlerName ||
+                    caseData.handler_name ||
+                    '';
+                }
+                // Also check for assignedTo (handler ID/email) if assignedToName is still empty
+                if (!item.assignedTo && !item.assigned_to) {
+                  item.assignedTo =
+                    caseData.assignedTo ||
+                    caseData.assigned_to ||
+                    caseData.handlerId ||
+                    caseData.handler_id ||
+                    caseData.handler?.id ||
+                    caseData.handler?.email ||
+                    '';
                 }
               }
               return item;

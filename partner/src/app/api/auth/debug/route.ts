@@ -40,8 +40,8 @@ export async function GET(_req: NextRequest) {
       } else {
         keycloakError = `HTTP ${response.status}: ${response.statusText}`;
       }
-    } catch (error: Record<string, unknown>) {
-      keycloakError = error.message || 'Failed to fetch Keycloak config';
+    } catch (error: unknown) {
+      keycloakError = error instanceof Error ? error.message : 'Failed to fetch Keycloak config';
     }
   }
 

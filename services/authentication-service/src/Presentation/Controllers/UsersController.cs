@@ -189,11 +189,7 @@ public class UsersController : ControllerBase
     /// List users (admin only)
     /// </summary>
     [HttpGet]
-#if !DEBUG
-    [Authorize(Policy = "AdminPolicy")]
-#else
-    [AllowAnonymous]
-#endif
+    [Authorize(Policy = "AdminPolicy")] // SECURITY FIX: Always require admin, even in DEBUG
     [ProducesResponseType(typeof(UsersListResponse), StatusCodes.Status200OK)]
     public async Task<IActionResult> ListUsers(
         [FromQuery] int page = 1,
@@ -292,11 +288,7 @@ public class UsersController : ControllerBase
     /// Assign role to user (admin only)
     /// </summary>
     [HttpPost("{id}/roles")]
-#if !DEBUG
-    [Authorize(Policy = "AdminPolicy")]
-#else
-    [AllowAnonymous]
-#endif
+    [Authorize(Policy = "AdminPolicy")] // SECURITY FIX: Always require admin, even in DEBUG
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> AssignRole(string id, [FromBody] AssignRoleRequest request)
@@ -309,7 +301,9 @@ public class UsersController : ControllerBase
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error assigning role {Role} to user {UserId}", request.RoleName, id);
-            return BadRequest(new { error = ex.Message ?? "Failed to assign role" });
+            // SECURITY FIX: Don't expose exception details
+            _logger.LogError(ex, "Error assigning role {Role} to user {UserId}", request.RoleName, id);
+            return BadRequest(new { error = "Failed to assign role" });
         }
     }
 
@@ -317,11 +311,7 @@ public class UsersController : ControllerBase
     /// Remove role from user (admin only)
     /// </summary>
     [HttpDelete("{id}/roles/{roleName}")]
-#if !DEBUG
-    [Authorize(Policy = "AdminPolicy")]
-#else
-    [AllowAnonymous]
-#endif
+    [Authorize(Policy = "AdminPolicy")] // SECURITY FIX: Always require admin, even in DEBUG
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> RemoveRole(string id, string roleName, [FromQuery] string? scope = null)
@@ -334,7 +324,9 @@ public class UsersController : ControllerBase
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error removing role {Role} from user {UserId}", roleName, id);
-            return BadRequest(new { error = ex.Message ?? "Failed to remove role" });
+            // SECURITY FIX: Don't expose exception details
+            _logger.LogError(ex, "Error removing role {Role} from user {UserId}", roleName, id);
+            return BadRequest(new { error = "Failed to remove role" });
         }
     }
 

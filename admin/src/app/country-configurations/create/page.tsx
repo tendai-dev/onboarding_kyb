@@ -15,7 +15,10 @@ import { useSidebar } from '../../../contexts/SidebarContext';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import React, { useState } from 'react';
-import { countryConfigApiService, CreateCountryProfileRequest } from '../../../services/countryConfigApi';
+import {
+  countryConfigApiService,
+  CreateCountryProfileRequest,
+} from '../../../services/countryConfigApi';
 import { SweetAlert } from '../../../utils/sweetAlert';
 
 export default function CreateCountryConfigurationPage() {
@@ -121,12 +124,21 @@ export default function CreateCountryConfigurationPage() {
         transition="margin-left 0.3s ease"
       >
         {/* Page Header */}
-        <Box px="24px" pt="24px" pb="16px" bg={cardBgNew} borderBottom="1px solid" borderColor={borderColorNew}>
+        <Box
+          px="24px"
+          pt="24px"
+          pb="16px"
+          bg={cardBgNew}
+          borderBottom="1px solid"
+          borderColor={borderColorNew}
+        >
           <Flex justify="space-between" align="center">
             <HStack gap="16px" align="center">
               <Link href="/country-configurations">
                 <Button variant="ghost" size="sm">
-                  <IconWrapper><FiArrowLeft size={18} /></IconWrapper>
+                  <IconWrapper>
+                    <FiArrowLeft size={18} />
+                  </IconWrapper>
                 </Button>
               </Link>
               <VStack align="start" gap="2px">
@@ -160,7 +172,13 @@ export default function CreateCountryConfigurationPage() {
             <form onSubmit={handleSubmit}>
               <VStack gap="24px" align="stretch">
                 {/* Icon and Title */}
-                <HStack gap="16px" align="center" pb="16px" borderBottom="1px solid" borderColor={borderColorNew}>
+                <HStack
+                  gap="16px"
+                  align="center"
+                  pb="16px"
+                  borderBottom="1px solid"
+                  borderColor={borderColorNew}
+                >
                   <Box
                     w="48px"
                     h="48px"
@@ -192,7 +210,7 @@ export default function CreateCountryConfigurationPage() {
                   <Input
                     placeholder="e.g., ZA, ZW, UK"
                     value={formData.countryCode}
-                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => 
+                    onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
                       handleInputChange('countryCode', e.target.value.toUpperCase())
                     }
                     maxLength={3}
@@ -220,7 +238,7 @@ export default function CreateCountryConfigurationPage() {
                   <Input
                     placeholder="e.g., South Africa, Zimbabwe, United Kingdom"
                     value={formData.countryName}
-                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => 
+                    onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
                       handleInputChange('countryName', e.target.value)
                     }
                   />
@@ -239,7 +257,7 @@ export default function CreateCountryConfigurationPage() {
                   <Input
                     placeholder="Optional description for this country configuration..."
                     value={formData.description || ''}
-                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => 
+                    onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
                       handleInputChange('description', e.target.value)
                     }
                   />
@@ -249,18 +267,19 @@ export default function CreateCountryConfigurationPage() {
                 </Box>
 
                 {/* Action Buttons */}
-                <HStack gap="12px" justify="flex-end" pt="16px" borderTop="1px solid" borderColor={borderColorNew}>
+                <HStack
+                  gap="12px"
+                  justify="flex-end"
+                  pt="16px"
+                  borderTop="1px solid"
+                  borderColor={borderColorNew}
+                >
                   <Link href="/country-configurations">
                     <Button variant="secondary" size="md" disabled={loading}>
                       Cancel
                     </Button>
                   </Link>
-                  <Button
-                    variant="primary"
-                    size="md"
-                    type="submit"
-                    disabled={loading}
-                  >
+                  <Button variant="primary" size="md" type="submit" disabled={loading}>
                     {loading ? (
                       <>
                         <Spinner size="sm" mr="8px" />
@@ -268,7 +287,9 @@ export default function CreateCountryConfigurationPage() {
                       </>
                     ) : (
                       <>
-                        <IconWrapper><FiSave size={16} /></IconWrapper>
+                        <IconWrapper>
+                          <FiSave size={16} />
+                        </IconWrapper>
                         Create Country Profile
                       </>
                     )}

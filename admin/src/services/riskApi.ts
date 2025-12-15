@@ -52,7 +52,7 @@ function snakeToCamel(str: string): string {
 function transformKeys<T>(obj: unknown): T {
   if (obj === null || obj === undefined) return obj as T;
   if (Array.isArray(obj)) {
-    return obj.map(item => transformKeys(item)) as T;
+    return obj.map((item) => transformKeys(item)) as T;
   }
   if (typeof obj === 'object') {
     const result: Record<string, unknown> = {};
@@ -79,18 +79,15 @@ class RiskApiService {
   async getRiskAssessmentByCase(caseId: string): Promise<RiskAssessmentDto | null> {
     // Clean caseId - remove leading underscores and trim
     const cleanCaseId = caseId.trim().replace(/^_+/, '');
-    
+
     // Encode the caseId to handle special characters in URL
     const encodedCaseId = encodeURIComponent(cleanCaseId);
-    
-    const response = await fetch(
-      `${API_BASE_URL}/api/risk/case/${encodedCaseId}`,
-      {
-        method: 'GET',
-        headers: await this.getAuthHeaders(),
-        cache: 'no-store',
-      }
-    );
+
+    const response = await fetch(`${API_BASE_URL}/api/risk/case/${encodedCaseId}`, {
+      method: 'GET',
+      headers: await this.getAuthHeaders(),
+      cache: 'no-store',
+    });
 
     if (!response.ok) {
       if (response.status === 404) {
@@ -148,7 +145,9 @@ class RiskApiService {
           errorData = await response.json();
           errorText = errorData.message || errorData.error || errorData.title || '';
         } catch {
-          errorText = await response.text().catch(() => `HTTP ${response.status} ${response.statusText}`);
+          errorText = await response
+            .text()
+            .catch(() => `HTTP ${response.status} ${response.statusText}`);
         }
 
         // Log error for debugging
@@ -168,22 +167,27 @@ class RiskApiService {
           // Already exists - this is not an error, return null to indicate it exists
           return null;
         }
-        
+
         if (response.status === 400) {
           // Bad request - check if it's "already exists" error
           const errorMessage = errorText || 'Invalid request parameters';
-          
+
           // Backend returns 400 with "already exists" message instead of 409
           if (errorMessage.toLowerCase().includes('already exists')) {
             return null; // Treat as "exists" - not an error
           }
-          
+
           // Provide more detailed error message
-          throw new Error(`Validation failed: ${errorMessage}. Case ID: ${cleanCaseId}, Partner ID: ${cleanPartnerId || 'not provided'}`);
+          throw new Error(
+            `Validation failed: ${errorMessage}. Case ID: ${cleanCaseId}, Partner ID: ${cleanPartnerId || 'not provided'}`
+          );
         }
 
         // For other errors, get the error message
-        throw new Error(errorText || `Failed to create risk assessment: ${response.status} ${response.statusText}`);
+        throw new Error(
+          errorText ||
+            `Failed to create risk assessment: ${response.status} ${response.statusText}`
+        );
       }
 
       return response.json();
@@ -239,14 +243,11 @@ class RiskApiService {
     if (filters?.page) params.append('page', filters.page.toString());
     if (filters?.pageSize) params.append('pageSize', filters.pageSize.toString());
 
-    const response = await fetch(
-      `${API_BASE_URL}/api/risk?${params.toString()}`,
-      {
-        method: 'GET',
-        headers: await this.getAuthHeaders(),
-        cache: 'no-store',
-      }
-    );
+    const response = await fetch(`${API_BASE_URL}/api/risk?${params.toString()}`, {
+      method: 'GET',
+      headers: await this.getAuthHeaders(),
+      cache: 'no-store',
+    });
 
     if (!response.ok) {
       throw new Error(
@@ -263,14 +264,11 @@ class RiskApiService {
    * Get risk assessment by ID
    */
   async getRiskAssessmentById(assessmentId: string): Promise<RiskAssessmentDto> {
-    const response = await fetch(
-      `${API_BASE_URL}/api/risk/${assessmentId}`,
-      {
-        method: 'GET',
-        headers: await this.getAuthHeaders(),
-        cache: 'no-store',
-      }
-    );
+    const response = await fetch(`${API_BASE_URL}/api/risk/${assessmentId}`, {
+      method: 'GET',
+      headers: await this.getAuthHeaders(),
+      cache: 'no-store',
+    });
 
     if (!response.ok) {
       throw new Error(
@@ -285,18 +283,12 @@ class RiskApiService {
   /**
    * Update risk assessment notes
    */
-  async updateRiskAssessmentNotes(
-    assessmentId: string,
-    notes: string
-  ): Promise<void> {
-    const response = await fetch(
-      `${API_BASE_URL}/api/risk/${assessmentId}/notes`,
-      {
-        method: 'PUT',
-        headers: await this.getAuthHeaders(),
-        body: JSON.stringify({ notes }),
-      }
-    );
+  async updateRiskAssessmentNotes(assessmentId: string, notes: string): Promise<void> {
+    const response = await fetch(`${API_BASE_URL}/api/risk/${assessmentId}/notes`, {
+      method: 'PUT',
+      headers: await this.getAuthHeaders(),
+      body: JSON.stringify({ notes }),
+    });
 
     if (!response.ok) {
       const error = await response.json().catch(() => ({ message: 'Unknown error' }));
@@ -316,14 +308,11 @@ class RiskApiService {
       description: string;
     }
   ): Promise<RiskFactorDto> {
-    const response = await fetch(
-      `${API_BASE_URL}/api/risk/${assessmentId}/factors`,
-      {
-        method: 'POST',
-        headers: await this.getAuthHeaders(),
-        body: JSON.stringify(factor),
-      }
-    );
+    const response = await fetch(`${API_BASE_URL}/api/risk/${assessmentId}/factors`, {
+      method: 'POST',
+      headers: await this.getAuthHeaders(),
+      body: JSON.stringify(factor),
+    });
 
     if (!response.ok) {
       const error = await response.json().catch(() => ({ message: 'Unknown error' }));
@@ -336,40 +325,30 @@ class RiskApiService {
   /**
    * Complete risk assessment
    */
-  async completeRiskAssessment(
-    assessmentId: string,
-    notes?: string
-  ): Promise<void> {
-    const response = await fetch(
-      `${API_BASE_URL}/api/risk/${assessmentId}/complete`,
-      {
-        method: 'POST',
-        headers: await this.getAuthHeaders(),
-        body: JSON.stringify({ notes }),
-      }
-    );
+  async completeRiskAssessment(assessmentId: string, notes?: string): Promise<void> {
+    const response = await fetch(`${API_BASE_URL}/api/risk/${assessmentId}/complete`, {
+      method: 'POST',
+      headers: await this.getAuthHeaders(),
+      body: JSON.stringify({ notes }),
+    });
 
     if (!response.ok) {
       const error = await response.json().catch(() => ({ message: 'Unknown error' }));
-      throw new Error(error.message || `Failed to complete assessment: ${response.status}`);
+      throw new Error(
+        error.message || `Failed to complete assessment: ${response.status}`
+      );
     }
   }
 
   /**
    * Reject risk assessment
    */
-  async rejectRiskAssessment(
-    assessmentId: string,
-    reason: string
-  ): Promise<void> {
-    const response = await fetch(
-      `${API_BASE_URL}/api/risk/${assessmentId}/reject`,
-      {
-        method: 'POST',
-        headers: await this.getAuthHeaders(),
-        body: JSON.stringify({ reason }),
-      }
-    );
+  async rejectRiskAssessment(assessmentId: string, reason: string): Promise<void> {
+    const response = await fetch(`${API_BASE_URL}/api/risk/${assessmentId}/reject`, {
+      method: 'POST',
+      headers: await this.getAuthHeaders(),
+      body: JSON.stringify({ reason }),
+    });
 
     if (!response.ok) {
       const error = await response.json().catch(() => ({ message: 'Unknown error' }));
@@ -422,4 +401,3 @@ class RiskApiService {
 }
 
 export const riskApiService = new RiskApiService();
-

@@ -262,7 +262,7 @@ async function removeQueuedSubmission(id: string): Promise<void> {
   });
 }
 
-async function cacheData(key: string, data: Record<string, unknown>): Promise<void> {
+async function cacheData(key: string, data: unknown): Promise<void> {
   return new Promise((resolve, reject) => {
     const request = indexedDB.open('MukuruKYB', 1);
 

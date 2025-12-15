@@ -2,6 +2,7 @@ using Polly;
 using Polly.CircuitBreaker;
 using Polly.Retry;
 using Polly.Timeout;
+using Microsoft.Extensions.Logging;
 
 namespace OnboardingApi.Infrastructure.Resilience;
 
@@ -10,6 +11,16 @@ namespace OnboardingApi.Infrastructure.Resilience;
 /// </summary>
 public static class PollyPolicies
 {
+    private static ILogger? _logger;
+
+    /// <summary>
+    /// Initialize logger for policies (call this during startup)
+    /// </summary>
+    public static void Initialize(ILogger logger)
+    {
+        _logger = logger;
+    }
+
     /// <summary>
     /// Retry policy with exponential backoff and jitter
     /// </summary>
@@ -27,7 +38,11 @@ public static class PollyPolicies
                                                   + TimeSpan.FromMilliseconds(jitterer.Next(0, 1000)),
                 onRetry: (outcome, timespan, retryCount, context) =>
                 {
-                    Console.WriteLine($"Retry {retryCount} after {timespan.TotalSeconds}s due to {outcome.Exception?.Message ?? outcome.Result?.StatusCode.ToString()}");
+                    // SECURITY FIX: Use logger instead of Console.WriteLine
+                    _logger?.LogWarning("HTTP retry {RetryCount} after {Seconds}s due to {Reason}", 
+                        retryCount, 
+                        timespan.TotalSeconds, 
+                        outcome.Exception?.Message ?? outcome.Result?.StatusCode.ToString());
                 });
     }
 
@@ -44,15 +59,18 @@ public static class PollyPolicies
                 durationOfBreak: TimeSpan.FromSeconds(30),
                 onBreak: (outcome, duration) =>
                 {
-                    Console.WriteLine($"Circuit breaker opened for {duration.TotalSeconds}s");
+                    // SECURITY FIX: Use logger instead of Console.WriteLine
+                    _logger?.LogWarning("Circuit breaker opened for {Seconds}s", duration.TotalSeconds);
                 },
                 onReset: () =>
                 {
-                    Console.WriteLine("Circuit breaker reset");
+                    // SECURITY FIX: Use logger instead of Console.WriteLine
+                    _logger?.LogInformation("Circuit breaker reset");
                 },
                 onHalfOpen: () =>
                 {
-                    Console.WriteLine("Circuit breaker half-open");
+                    // SECURITY FIX: Use logger instead of Console.WriteLine
+                    _logger?.LogInformation("Circuit breaker half-open");
                 });
     }
 

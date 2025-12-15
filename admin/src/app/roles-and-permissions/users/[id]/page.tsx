@@ -1,13 +1,6 @@
 'use client';
 
-import {
-  Box,
-  VStack,
-  HStack,
-  Flex,
-  Spinner,
-  SimpleGrid,
-} from '@chakra-ui/react';
+import { Box, VStack, HStack, Flex, Spinner, SimpleGrid } from '@chakra-ui/react';
 // Import components directly from Mukuru package
 import {
   Typography,
@@ -345,7 +338,9 @@ export default function UserDetailPage({ params }: { params: Promise<{ id: strin
             variant="secondary"
             onClick={() => router.push('/roles-and-permissions')}
           >
-            <IconWrapper><FiArrowLeft size={16} /></IconWrapper>
+            <IconWrapper>
+              <FiArrowLeft size={16} />
+            </IconWrapper>
             Back to Roles and Permissions
           </Button>
         </Box>
@@ -375,7 +370,14 @@ export default function UserDetailPage({ params }: { params: Promise<{ id: strin
         transition="margin-left 0.3s ease"
       >
         {/* Page Header */}
-        <Box px="24px" pt="24px" pb="16px" bg={cardBgNew} borderBottom="1px solid" borderColor={borderColorNew}>
+        <Box
+          px="24px"
+          pt="24px"
+          pb="16px"
+          bg={cardBgNew}
+          borderBottom="1px solid"
+          borderColor={borderColorNew}
+        >
           {/* Back Button */}
           <HStack gap="12px" align="center" mb="16px">
             <Button
@@ -383,7 +385,9 @@ export default function UserDetailPage({ params }: { params: Promise<{ id: strin
               size="sm"
               onClick={() => router.push('/roles-and-permissions')}
             >
-              <IconWrapper><FiArrowLeft size={18} /></IconWrapper>
+              <IconWrapper>
+                <FiArrowLeft size={18} />
+              </IconWrapper>
             </Button>
             <Typography fontSize="14px" color="mukuru.grey.600">
               Back to Roles and Permissions
@@ -407,7 +411,12 @@ export default function UserDetailPage({ params }: { params: Promise<{ id: strin
                 <FiUser size={22} color="#F05423" />
               </Box>
               <VStack align="start" gap="0px">
-                <Typography fontSize="18px" fontWeight="600" color="#111827" lineHeight="1.3">
+                <Typography
+                  fontSize="18px"
+                  fontWeight="600"
+                  color="#111827"
+                  lineHeight="1.3"
+                >
                   {user.name || user.email}
                 </Typography>
                 <Typography fontSize="12px" color="#9CA3AF">
@@ -433,7 +442,12 @@ export default function UserDetailPage({ params }: { params: Promise<{ id: strin
                         display="flex"
                         alignItems="center"
                       >
-                        <Typography fontSize="12px" fontWeight="500" color="#D92D20" whiteSpace="nowrap">
+                        <Typography
+                          fontSize="12px"
+                          fontWeight="500"
+                          color="#D92D20"
+                          whiteSpace="nowrap"
+                        >
                           {userRole.roleDisplayName || userRole.roleName}
                         </Typography>
                       </Box>
@@ -446,7 +460,9 @@ export default function UserDetailPage({ params }: { params: Promise<{ id: strin
                 onClick={() => setShowAssignRoleModal(true)}
                 disabled={availableRoles.length === 0 || actionLoading}
               >
-                <IconWrapper><FiPlus size={16} /></IconWrapper>
+                <IconWrapper>
+                  <FiPlus size={16} />
+                </IconWrapper>
                 Assign Role
               </Button>
             </HStack>
@@ -458,24 +474,47 @@ export default function UserDetailPage({ params }: { params: Promise<{ id: strin
           {/* Error Alert */}
           {error && (
             <Box mb="16px">
-              <AlertBar status="error" title="Error" description={error} onClose={() => setError(null)} />
+              <AlertBar
+                status="error"
+                title="Error"
+                description={error}
+                onClose={() => setError(null)}
+              />
             </Box>
           )}
 
           {/* User Information Card */}
-          <Box bg={cardBgNew} borderRadius="8px" border="1px solid" borderColor={borderColorNew} mb="24px" overflow="hidden">
+          <Box
+            bg={cardBgNew}
+            borderRadius="8px"
+            border="1px solid"
+            borderColor={borderColorNew}
+            mb="24px"
+            overflow="hidden"
+          >
             {/* Card Header */}
-            <Box px="20px" py="16px" borderBottom="1px solid" borderColor={borderColorNew} bg="#FAFAFA">
+            <Box
+              px="20px"
+              py="16px"
+              borderBottom="1px solid"
+              borderColor={borderColorNew}
+              bg="#FAFAFA"
+            >
               <Typography fontSize="15px" fontWeight="600" color="#111827">
                 User Information
               </Typography>
             </Box>
-            
+
             {/* Card Content */}
             <Box px="20px" py="16px">
               <VStack align="stretch" gap="0">
                 {/* Full Name Row */}
-                <Flex py="12px" borderBottom="1px solid" borderColor="#F0F0F0" align="center">
+                <Flex
+                  py="12px"
+                  borderBottom="1px solid"
+                  borderColor="#F0F0F0"
+                  align="center"
+                >
                   <HStack gap="12px" w="180px" flexShrink={0}>
                     <Box w="20px" display="flex" justifyContent="center">
                       <FiUser size={16} color="#6B7280" />
@@ -490,7 +529,12 @@ export default function UserDetailPage({ params }: { params: Promise<{ id: strin
                 </Flex>
 
                 {/* Email Row */}
-                <Flex py="12px" borderBottom="1px solid" borderColor="#F0F0F0" align="center">
+                <Flex
+                  py="12px"
+                  borderBottom="1px solid"
+                  borderColor="#F0F0F0"
+                  align="center"
+                >
                   <HStack gap="12px" w="180px" flexShrink={0}>
                     <Box w="20px" display="flex" justifyContent="center">
                       <FiMail size={16} color="#6B7280" />
@@ -505,7 +549,12 @@ export default function UserDetailPage({ params }: { params: Promise<{ id: strin
                 </Flex>
 
                 {/* First Login Row */}
-                <Flex py="12px" borderBottom="1px solid" borderColor="#F0F0F0" align="center">
+                <Flex
+                  py="12px"
+                  borderBottom="1px solid"
+                  borderColor="#F0F0F0"
+                  align="center"
+                >
                   <HStack gap="12px" w="180px" flexShrink={0}>
                     <Box w="20px" display="flex" justifyContent="center">
                       <FiClock size={16} color="#6B7280" />
@@ -554,9 +603,21 @@ export default function UserDetailPage({ params }: { params: Promise<{ id: strin
           </Box>
 
           {/* Permissions Card */}
-          <Box bg={cardBgNew} borderRadius="8px" border="1px solid" borderColor={borderColorNew} overflow="hidden">
+          <Box
+            bg={cardBgNew}
+            borderRadius="8px"
+            border="1px solid"
+            borderColor={borderColorNew}
+            overflow="hidden"
+          >
             {/* Card Header */}
-            <Box px="20px" py="16px" borderBottom="1px solid" borderColor={borderColorNew} bg="#FAFAFA">
+            <Box
+              px="20px"
+              py="16px"
+              borderBottom="1px solid"
+              borderColor={borderColorNew}
+              bg="#FAFAFA"
+            >
               <Flex justify="space-between" align="center">
                 <HStack gap="12px" align="center">
                   <FiShield size={18} color="#F05423" />
@@ -573,16 +634,25 @@ export default function UserDetailPage({ params }: { params: Promise<{ id: strin
                   onClick={() => setShowGrantPermissionModal(true)}
                   disabled={actionLoading}
                 >
-                  <IconWrapper><FiPlus size={14} /></IconWrapper>
+                  <IconWrapper>
+                    <FiPlus size={14} />
+                  </IconWrapper>
                   Grant Permission
                 </Button>
               </Flex>
             </Box>
-            
+
             {/* Permissions Grid */}
             <Box px="20px" py="16px">
               {allPermissions.length === 0 ? (
-                <Box p="24px" textAlign="center" borderRadius="8px" bg="#F9FAFB" border="1px dashed" borderColor="#E5E7EB">
+                <Box
+                  p="24px"
+                  textAlign="center"
+                  borderRadius="8px"
+                  bg="#F9FAFB"
+                  border="1px dashed"
+                  borderColor="#E5E7EB"
+                >
                   <Typography fontSize="13px" color="#6B7280" fontStyle="italic">
                     No permissions assigned to this user
                   </Typography>
@@ -602,14 +672,30 @@ export default function UserDetailPage({ params }: { params: Promise<{ id: strin
                     >
                       <VStack align="stretch" gap="4px">
                         <Flex justify="space-between" align="flex-start">
-                          <Typography fontSize="12px" fontWeight="600" color="#111827" style={{ fontFamily: 'monospace' }}>
+                          <Typography
+                            fontSize="12px"
+                            fontWeight="600"
+                            color="#111827"
+                            style={{ fontFamily: 'monospace' }}
+                          >
                             {perm.permissionName}
                           </Typography>
                           {perm.source === 'direct' && perm.permissionId && (
                             <button
-                              onClick={() => handleRevokePermission(perm.permissionId!, perm.permissionName)}
+                              onClick={() =>
+                                handleRevokePermission(
+                                  perm.permissionId!,
+                                  perm.permissionName
+                                )
+                              }
                               disabled={actionLoading}
-                              style={{ padding: '4px', background: 'transparent', border: 'none', cursor: 'pointer', borderRadius: '4px' }}
+                              style={{
+                                padding: '4px',
+                                background: 'transparent',
+                                border: 'none',
+                                cursor: 'pointer',
+                                borderRadius: '4px',
+                              }}
                             >
                               <FiX size={12} color="#EF4444" />
                             </button>
@@ -626,14 +712,14 @@ export default function UserDetailPage({ params }: { params: Promise<{ id: strin
                             <Typography fontSize="10px" color="#9CA3AF">
                               via {perm.roleName}
                             </Typography>
-                            )}
-                          </HStack>
-                        </VStack>
-                      </Box>
-                    ))}
-                  </SimpleGrid>
-                )}
-              </Box>
+                          )}
+                        </HStack>
+                      </VStack>
+                    </Box>
+                  ))}
+                </SimpleGrid>
+              )}
+            </Box>
           </Box>
         </Box>
       </Box>

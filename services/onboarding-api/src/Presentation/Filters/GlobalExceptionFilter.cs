@@ -137,9 +137,14 @@ public class GlobalExceptionFilter : IExceptionFilter
                         new ErrorDetail { Field = "exceptionType", Message = context.Exception.GetType().Name },
                         new ErrorDetail { Field = "innerException", Message = context.Exception.InnerException?.Message ?? "None" }
                     };
+                    // SECURITY FIX: Only include stack trace in development, and limit its length
                     if (!string.IsNullOrEmpty(context.Exception.StackTrace))
                     {
-                        details.Add(new ErrorDetail { Field = "stackTrace", Message = context.Exception.StackTrace });
+                        // Limit stack trace length to prevent information leakage
+                        var stackTrace = context.Exception.StackTrace.Length > 1000 
+                            ? context.Exception.StackTrace.Substring(0, 1000) + "... (truncated)"
+                            : context.Exception.StackTrace;
+                        details.Add(new ErrorDetail { Field = "stackTrace", Message = stackTrace });
                     }
                     
                     // Return error in format expected by frontend (simple JSON with "error" field)
@@ -197,7 +202,10 @@ public class GlobalExceptionFilter : IExceptionFilter
                     exceptionType = context.Exception.GetType().Name,
                     message = context.Exception.Message,
                     innerException = context.Exception.InnerException?.Message,
-                    stackTrace = context.Exception.StackTrace
+                    // SECURITY FIX: Limit stack trace length in development
+                    stackTrace = context.Exception.StackTrace?.Length > 1000 
+                        ? context.Exception.StackTrace.Substring(0, 1000) + "... (truncated)"
+                        : context.Exception.StackTrace
                 } : null
             };
             

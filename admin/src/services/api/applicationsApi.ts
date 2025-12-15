@@ -17,7 +17,7 @@ function snakeToCamel(str: string): string {
 function transformKeys<T>(obj: unknown): T {
   if (obj === null || obj === undefined) return obj as T;
   if (Array.isArray(obj)) {
-    return obj.map(item => transformKeys(item)) as T;
+    return obj.map((item) => transformKeys(item)) as T;
   }
   if (typeof obj === 'object') {
     const result: Record<string, unknown> = {};
@@ -70,7 +70,7 @@ export async function getApplications(
   // Transform response to match PagedResult interface
   // Transform snake_case keys to camelCase
   const items = transformKeys<OnboardingCaseProjection[]>(data.items || data.data || []);
-  
+
   return {
     items,
     totalCount: data.total_count || data.totalCount || data.total || 0,

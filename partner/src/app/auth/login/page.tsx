@@ -1,12 +1,12 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { Box, Spinner, VStack } from '@chakra-ui/react';
 import { Button, Typography, AlertBar } from '@/lib/mukuruImports';
 import { signIn, useSession } from 'next-auth/react';
 
-export default function LoginPage() {
+function LoginContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { data: session, status } = useSession();
@@ -119,5 +119,22 @@ export default function LoginPage() {
         </Typography>
       </VStack>
     </Box>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense
+      fallback={
+        <Box minH="100vh" display="flex" alignItems="center" justifyContent="center">
+          <VStack gap={4}>
+            <Spinner size="xl" />
+            <Typography>Loading...</Typography>
+          </VStack>
+        </Box>
+      }
+    >
+      <LoginContent />
+    </Suspense>
   );
 }

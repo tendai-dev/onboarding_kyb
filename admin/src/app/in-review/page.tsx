@@ -1,7 +1,18 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Box, Container, Heading, Text, VStack, HStack, Badge, Button, Spinner, SimpleGrid } from '@chakra-ui/react';
+import {
+  Box,
+  Container,
+  Heading,
+  Text,
+  VStack,
+  HStack,
+  Badge,
+  Button,
+  Spinner,
+  SimpleGrid,
+} from '@chakra-ui/react';
 import { useRouter } from 'next/navigation';
 
 interface WorkItem {
@@ -38,18 +49,24 @@ export default function InReviewPage() {
       // Assigned items that are assigned to someone are ready for review
       const [assignedResponse, inProgressResponse] = await Promise.all([
         fetch('/api/workqueue?status=Assigned'),
-        fetch('/api/workqueue?status=InProgress')
+        fetch('/api/workqueue?status=InProgress'),
       ]);
-      
-      const assignedData = assignedResponse.ok ? await assignedResponse.json() : { items: [] };
-      const inProgressData = inProgressResponse.ok ? await inProgressResponse.json() : { items: [] };
-      
+
+      const assignedData = assignedResponse.ok
+        ? await assignedResponse.json()
+        : { items: [] };
+      const inProgressData = inProgressResponse.ok
+        ? await inProgressResponse.json()
+        : { items: [] };
+
       // Combine both lists and remove duplicates
       const allItems = [...(assignedData.items || []), ...(inProgressData.items || [])];
-      const uniqueItems = allItems.filter((item, index, self) => 
-        index === self.findIndex((t) => t.workItemId === item.workItemId || t.id === item.id)
+      const uniqueItems = allItems.filter(
+        (item, index, self) =>
+          index ===
+          self.findIndex((t) => t.workItemId === item.workItemId || t.id === item.id)
       );
-      
+
       setWorkItems(uniqueItems);
     } catch (error) {
       console.error('Failed to load in-review items:', error);
@@ -80,15 +97,19 @@ export default function InReviewPage() {
           {/* Stats */}
           <HStack gap={4}>
             <Box bg="white" p={4} borderRadius="md" boxShadow="sm" flex={1}>
-              <Text fontSize="sm" color="mukuru.text.secondary">Total In Review</Text>
+              <Text fontSize="sm" color="mukuru.text.secondary">
+                Total In Review
+              </Text>
               <Text fontSize="2xl" fontWeight="bold" color="mukuru.buttons.primary">
                 {workItems.length}
               </Text>
             </Box>
             <Box bg="white" p={4} borderRadius="md" boxShadow="sm" flex={1}>
-              <Text fontSize="sm" color="mukuru.text.secondary">Assigned to Me</Text>
+              <Text fontSize="sm" color="mukuru.text.secondary">
+                Assigned to Me
+              </Text>
               <Text fontSize="2xl" fontWeight="bold" color="mukuru.buttons.primary">
-                {workItems.filter(item => item.assignedTo === 'Current User').length}
+                {workItems.filter((item) => item.assignedTo === 'Current User').length}
               </Text>
             </Box>
           </HStack>
@@ -116,12 +137,22 @@ export default function InReviewPage() {
                   >
                     <VStack align="stretch" gap={2}>
                       <HStack justify="space-between">
-                        <Text fontSize="sm" fontWeight="bold">{item.workItemNumber || item.applicationId}</Text>
-                        <Badge colorScheme="blue" fontSize="xs">{item.priority || 'NORMAL'}</Badge>
+                        <Text fontSize="sm" fontWeight="bold">
+                          {item.workItemNumber || item.applicationId}
+                        </Text>
+                        <Badge colorScheme="blue" fontSize="xs">
+                          {item.priority || 'NORMAL'}
+                        </Badge>
                       </HStack>
-                      <Text fontSize="sm" color="mukuru.text.secondary">{item.applicantName || 'N/A'}</Text>
-                      <Text fontSize="xs" color="mukuru.text.secondary">{item.entityTypeDisplayName || item.entityType || 'N/A'}</Text>
-                      <Text fontSize="xs" color="mukuru.text.secondary">Assigned: {item.assignedToName || 'Unassigned'}</Text>
+                      <Text fontSize="sm" color="mukuru.text.secondary">
+                        {item.applicantName || 'N/A'}
+                      </Text>
+                      <Text fontSize="xs" color="mukuru.text.secondary">
+                        {item.entityTypeDisplayName || item.entityType || 'N/A'}
+                      </Text>
+                      <Text fontSize="xs" color="mukuru.text.secondary">
+                        Assigned: {item.assignedToName || 'Unassigned'}
+                      </Text>
                       <Button
                         size="sm"
                         colorScheme="orange"

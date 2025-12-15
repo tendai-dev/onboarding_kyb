@@ -133,4 +133,3 @@ export async function DELETE(
 ) {
   return forwardRequest(request, 'DELETE');
 }
-

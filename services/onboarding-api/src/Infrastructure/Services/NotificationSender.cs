@@ -35,6 +35,9 @@ public class NotificationSender : INotificationSender
             switch (notification.Channel)
             {
                 case NotificationChannel.Email:
+                    // SendGridEmailSender auto-detects HTML in SendEmailAsync
+                    // It will send HTML if content contains HTML tags, plain text otherwise
+                    // This ensures HTML emails are properly formatted
                     await _emailSender.SendEmailAsync(
                         notification.Recipient,
                         notification.Subject,
@@ -87,6 +90,9 @@ public class NotificationSender : INotificationSender
     }
 }
 
+/// <summary>
+/// Fallback email sender for development/testing when SendGrid is not configured
+/// </summary>
 public class EmailSender : IEmailSender
 {
     private readonly ILogger<EmailSender> _logger;
@@ -98,13 +104,15 @@ public class EmailSender : IEmailSender
 
     public async Task SendEmailAsync(string to, string subject, string content, CancellationToken cancellationToken = default)
     {
-        // Simplified implementation - in production, use MailKit/SendGrid/AWS SES
-        _logger.LogInformation("Sending email to {To} with subject '{Subject}'", to, subject);
+        // Fallback implementation - logs email instead of sending
+        // In production, use SendGridEmailSender instead
+        _logger.LogInformation("EmailSender (fallback) - Would send email to {To} with subject '{Subject}'", to, subject);
+        _logger.LogInformation("Email content: {Content}", content);
         
         // Simulate email sending
         await Task.Delay(100, cancellationToken);
         
-        _logger.LogInformation("Email sent successfully to {To}", to);
+        _logger.LogInformation("EmailSender (fallback) - Email logged successfully for {To}", to);
     }
 }
 

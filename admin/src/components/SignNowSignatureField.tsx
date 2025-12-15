@@ -10,7 +10,11 @@ import {
   Text,
 } from '@chakra-ui/react';
 import { FiCheckCircle, FiEdit3, FiSend, FiDownload, FiClock } from 'react-icons/fi';
-import { Typography, Tag, Button, Modal, ModalHeader, ModalBody, ModalFooter } from '@mukuru/mukuru-react-components';
+import {
+  Typography,
+  Tag,
+  Button,
+} from '@mukuru/mukuru-react-components';
 import { useState } from 'react';
 
 export interface SignNowSignatureFieldProps {
@@ -225,11 +229,7 @@ export function SignNowSignatureField({
                   </HStack>
                 </Button>
                 {status === 'signed' && (
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    onClick={handleDownload}
-                  >
+                  <Button size="sm" variant="ghost" onClick={handleDownload}>
                     <HStack gap="4px">
                       <FiDownload size={14} />
                       <Typography fontSize="sm">Download</Typography>
@@ -239,11 +239,7 @@ export function SignNowSignatureField({
               </>
             )}
             {!disabled && (
-              <Button
-                size="sm"
-                variant="secondary"
-                onClick={onOpen}
-              >
+              <Button size="sm" variant="secondary" onClick={onOpen}>
                 <HStack gap="4px">
                   {signature ? <FiEdit3 size={14} /> : <FiSend size={14} />}
                   <Typography fontSize="sm">
@@ -257,64 +253,98 @@ export function SignNowSignatureField({
       </HStack>
 
       {/* Send Signature Modal */}
-      <Modal
-        isOpen={open}
-        onClose={onClose}
-        title="Send for Signature"
-        size="small"
-        closeOnBackdropClick={true}
-        closeOnEsc={true}
-      >
-        <ModalHeader>
-          <Typography fontSize="lg" fontWeight="700">
-            Send for Signature
-          </Typography>
-        </ModalHeader>
-        <ModalBody>
-          <VStack align="stretch" gap="16px">
-            <Box>
-              <Typography fontSize="14px" fontWeight="600" mb="4px">
-                Signer:
-              </Typography>
-              <Typography fontSize="14px" color="#6B7280">
-                {signerName} ({signerEmail})
+      {open && (
+        <Box
+          position="fixed"
+          top="0"
+          left="0"
+          right="0"
+          bottom="0"
+          bg="rgba(0, 0, 0, 0.5)"
+          display="flex"
+          alignItems="center"
+          justifyContent="center"
+          zIndex="1400"
+          onClick={onClose}
+        >
+          <Box
+            bg="white"
+            borderRadius="12px"
+            boxShadow="0 25px 50px -12px rgba(0, 0, 0, 0.25)"
+            width="100%"
+            maxWidth="400px"
+            mx="16px"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Modal Header */}
+            <Box p="20px" borderBottom="1px solid" borderColor="#E5E7EB">
+              <Typography fontSize="lg" fontWeight="700">
+                Send for Signature
               </Typography>
             </Box>
-            {error && (
-              <Box p="12px" bg="rgba(220, 38, 38, 0.1)" borderRadius="8px" border="1px solid" borderColor="#DC2626">
-                <Typography fontSize="13px" color="#DC2626">{error}</Typography>
-              </Box>
-            )}
-            {!documentId && (
-              <Box p="12px" bg="rgba(251, 191, 36, 0.1)" borderRadius="8px" border="1px solid" borderColor="#F59E0B">
-                <Typography fontSize="13px" color="#92400E">
-                  Please save the form first to generate the document for signing.
-                </Typography>
-              </Box>
-            )}
-          </VStack>
-        </ModalBody>
-        <ModalFooter>
-          <HStack gap="8px">
-            <Button variant="secondary" onClick={onClose}>
-              <Typography>Cancel</Typography>
-            </Button>
-            <Button
-              variant="primary"
-              onClick={handleSendForSignature}
-              disabled={!documentId || isLoading}
-            >
-              <HStack gap="4px">
-                {isLoading ? <Spinner size="sm" /> : <FiSend size={14} />}
-                <Typography>
-                  {isLoading ? 'Sending...' : 'Send Invite'}
-                </Typography>
+
+            {/* Modal Body */}
+            <Box p="20px">
+              <VStack align="stretch" gap="16px">
+                <Box>
+                  <Typography fontSize="14px" fontWeight="600" mb="4px">
+                    Signer:
+                  </Typography>
+                  <Typography fontSize="14px" color="#6B7280">
+                    {signerName} ({signerEmail})
+                  </Typography>
+                </Box>
+                {error && (
+                  <Box
+                    p="12px"
+                    bg="rgba(220, 38, 38, 0.1)"
+                    borderRadius="8px"
+                    border="1px solid"
+                    borderColor="#DC2626"
+                  >
+                    <Typography fontSize="13px" color="#DC2626">
+                      {error}
+                    </Typography>
+                  </Box>
+                )}
+                {!documentId && (
+                  <Box
+                    p="12px"
+                    bg="rgba(251, 191, 36, 0.1)"
+                    borderRadius="8px"
+                    border="1px solid"
+                    borderColor="#F59E0B"
+                    textAlign="center"
+                  >
+                    <Typography fontSize="13px" color="#92400E" textAlign="center">
+                      Please save the form first to generate the document for signing.
+                    </Typography>
+                  </Box>
+                )}
+              </VStack>
+            </Box>
+
+            {/* Modal Footer */}
+            <Box p="20px" borderTop="1px solid" borderColor="#E5E7EB">
+              <HStack gap="12px" justifyContent="flex-end">
+                <Button variant="secondary" onClick={onClose}>
+                  <Typography>Cancel</Typography>
+                </Button>
+                <Button
+                  variant="primary"
+                  onClick={handleSendForSignature}
+                  disabled={!documentId || isLoading}
+                >
+                  <HStack gap="4px">
+                    {isLoading ? <Spinner size="sm" /> : <FiSend size={14} />}
+                    <Typography>{isLoading ? 'Sending...' : 'Send Invite'}</Typography>
+                  </HStack>
+                </Button>
               </HStack>
-            </Button>
-          </HStack>
-        </ModalFooter>
-      </Modal>
+            </Box>
+          </Box>
+        </Box>
+      )}
     </Box>
   );
 }
-

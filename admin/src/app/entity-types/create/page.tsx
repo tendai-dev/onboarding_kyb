@@ -199,13 +199,19 @@ export default function CreateEntityTypePage() {
         transition="margin-left 0.3s ease"
       >
         {/* Page Header */}
-        <Box px="32px" py="28px" bg="mukuru.cards.white" borderBottom="1px solid" borderColor="mukuru.grey.light">
+        <Box
+          px="32px"
+          py="28px"
+          bg="mukuru.cards.white"
+          borderBottom="1px solid"
+          borderColor="mukuru.grey.light"
+        >
           {/* Back Button */}
-          <HStack 
-            gap="6px" 
-            align="center" 
-            mb="20px" 
-            cursor="pointer" 
+          <HStack
+            gap="6px"
+            align="center"
+            mb="20px"
+            cursor="pointer"
             onClick={() => router.push('/entity-types')}
             _hover={{ bg: 'mukuru.state.hover' }}
             w="fit-content"
@@ -219,9 +225,14 @@ export default function CreateEntityTypePage() {
               Back to Entity Types
             </Typography>
           </HStack>
-          
+
           <VStack align="start" gap="6px">
-            <Typography fontSize="26px" fontWeight="700" color="mukuru.text.primary" lineHeight="1.2">
+            <Typography
+              fontSize="26px"
+              fontWeight="700"
+              color="mukuru.text.primary"
+              lineHeight="1.2"
+            >
               Create Entity Type
             </Typography>
             <Typography fontSize="14px" color="mukuru.grey.medium">
@@ -240,15 +251,20 @@ export default function CreateEntityTypePage() {
           )}
 
           {/* General Information Card */}
-          <Box 
-            bg="white" 
-            borderRadius="12px" 
+          <Box
+            bg="white"
+            borderRadius="12px"
             border="1px solid #E5E7EB"
             p="28px"
             mb="24px"
             boxShadow="0 2px 8px rgba(0,0,0,0.06)"
           >
-            <Typography fontSize="16px" fontWeight="600" color="mukuru.text.primary" mb="20px">
+            <Typography
+              fontSize="16px"
+              fontWeight="600"
+              color="mukuru.text.primary"
+              mb="20px"
+            >
               General Information
             </Typography>
 
@@ -257,8 +273,16 @@ export default function CreateEntityTypePage() {
               <Flex gap="24px">
                 {/* Code Field */}
                 <Box flex="1">
-                  <Typography fontSize="13px" fontWeight="500" color="mukuru.text.primary" mb="8px">
-                    Code <span style={{ color: 'var(--chakra-colors-mukuru-text-error)' }}>*</span>
+                  <Typography
+                    fontSize="13px"
+                    fontWeight="500"
+                    color="mukuru.text.primary"
+                    mb="8px"
+                  >
+                    Code{' '}
+                    <span style={{ color: 'var(--chakra-colors-mukuru-text-error)' }}>
+                      *
+                    </span>
                   </Typography>
                   <input
                     value={formData.code}
@@ -283,8 +307,16 @@ export default function CreateEntityTypePage() {
 
                 {/* Display Name Field */}
                 <Box flex="1">
-                  <Typography fontSize="13px" fontWeight="500" color="mukuru.text.primary" mb="8px">
-                    Display Name <span style={{ color: 'var(--chakra-colors-mukuru-text-error)' }}>*</span>
+                  <Typography
+                    fontSize="13px"
+                    fontWeight="500"
+                    color="mukuru.text.primary"
+                    mb="8px"
+                  >
+                    Display Name{' '}
+                    <span style={{ color: 'var(--chakra-colors-mukuru-text-error)' }}>
+                      *
+                    </span>
                   </Typography>
                   <input
                     value={formData.displayName}
@@ -311,8 +343,16 @@ export default function CreateEntityTypePage() {
 
               {/* Description Field */}
               <Box>
-                <Typography fontSize="13px" fontWeight="500" color="mukuru.text.primary" mb="8px">
-                  Description <span style={{ color: 'var(--chakra-colors-mukuru-text-error)' }}>*</span>
+                <Typography
+                  fontSize="13px"
+                  fontWeight="500"
+                  color="mukuru.text.primary"
+                  mb="8px"
+                >
+                  Description{' '}
+                  <span style={{ color: 'var(--chakra-colors-mukuru-text-error)' }}>
+                    *
+                  </span>
                 </Typography>
                 <textarea
                   value={formData.description}
@@ -338,8 +378,21 @@ export default function CreateEntityTypePage() {
 
               {/* Icon Field */}
               <Box>
-                <Typography fontSize="13px" fontWeight="500" color="mukuru.text.primary" mb="8px">
-                  Icon <span style={{ color: 'var(--chakra-colors-mukuru-grey-medium)', fontWeight: '400' }}>(optional)</span>
+                <Typography
+                  fontSize="13px"
+                  fontWeight="500"
+                  color="mukuru.text.primary"
+                  mb="8px"
+                >
+                  Icon{' '}
+                  <span
+                    style={{
+                      color: 'var(--chakra-colors-mukuru-grey-medium)',
+                      fontWeight: '400',
+                    }}
+                  >
+                    (optional)
+                  </span>
                 </Typography>
                 <IconPicker
                   value={formData.icon}
@@ -355,9 +408,9 @@ export default function CreateEntityTypePage() {
           </Box>
 
           {/* Requirements Card */}
-          <Box 
-            bg="white" 
-            borderRadius="12px" 
+          <Box
+            bg="white"
+            borderRadius="12px"
             border="1px solid #E5E7EB"
             p="28px"
             mb="24px"
@@ -372,81 +425,118 @@ export default function CreateEntityTypePage() {
                   Select which requirements apply to this entity type
                 </Typography>
               </VStack>
-              <Box px="12px" py="4px" bg="mukuru.state.hover" borderRadius="16px" border="1px solid" borderColor="mukuru.buttons.primary">
-                <Typography fontSize="12px" fontWeight="500" color="mukuru.buttons.primary">
+              <Box
+                px="12px"
+                py="4px"
+                bg="mukuru.state.hover"
+                borderRadius="16px"
+                border="1px solid"
+                borderColor="mukuru.buttons.primary"
+              >
+                <Typography
+                  fontSize="12px"
+                  fontWeight="500"
+                  color="mukuru.buttons.primary"
+                >
                   {selectedRequirements.length} selected
                 </Typography>
               </Box>
             </Flex>
             {loading ? (
-                <Flex justify="center" py="48px">
-                  <Spinner size="lg" color="mukuru.buttons.primary" />
-                </Flex>
-              ) : allRequirements.length === 0 ? (
-                <Box py="48px" textAlign="center">
-                  <Typography fontSize="13px" color="mukuru.grey.medium">
-                    No requirements available
-                  </Typography>
-                </Box>
-              ) : (
-                <SimpleGrid columns={{ base: 2, lg: 3 }} gap="12px">
-                  {allRequirements.map((requirement) => {
-                    const isSelected = selectedRequirements.includes(requirement.id);
-                    return (
-                      <Box
-                        key={requirement.id}
-                        p="14px"
-                        border="1px solid"
-                        borderColor={isSelected ? 'mukuru.buttons.primary' : 'mukuru.grey.light'}
-                        borderRadius="8px"
-                        bg={isSelected ? 'mukuru.state.hover' : 'mukuru.cards.white'}
-                        cursor="pointer"
-                        onClick={() => {
-                          if (isSelected) {
-                            setSelectedRequirements(prev => prev.filter(id => id !== requirement.id));
-                          } else {
-                            setSelectedRequirements(prev => [...prev, requirement.id]);
+              <Flex justify="center" py="48px">
+                <Spinner size="lg" color="mukuru.buttons.primary" />
+              </Flex>
+            ) : allRequirements.length === 0 ? (
+              <Box py="48px" textAlign="center">
+                <Typography fontSize="13px" color="mukuru.grey.medium">
+                  No requirements available
+                </Typography>
+              </Box>
+            ) : (
+              <SimpleGrid columns={{ base: 2, lg: 3 }} gap="12px">
+                {allRequirements.map((requirement) => {
+                  const isSelected = selectedRequirements.includes(requirement.id);
+                  return (
+                    <Box
+                      key={requirement.id}
+                      p="14px"
+                      border="1px solid"
+                      borderColor={
+                        isSelected ? 'mukuru.buttons.primary' : 'mukuru.grey.light'
+                      }
+                      borderRadius="8px"
+                      bg={isSelected ? 'mukuru.state.hover' : 'mukuru.cards.white'}
+                      cursor="pointer"
+                      onClick={() => {
+                        if (isSelected) {
+                          setSelectedRequirements((prev) =>
+                            prev.filter((id) => id !== requirement.id)
+                          );
+                        } else {
+                          setSelectedRequirements((prev) => [...prev, requirement.id]);
+                        }
+                      }}
+                      _hover={{
+                        borderColor: 'mukuru.buttons.primary',
+                        bg: isSelected ? 'mukuru.state.hover' : 'mukuru.state.hover.card',
+                      }}
+                      transition="all 0.15s"
+                    >
+                      <Flex gap="10px" align="flex-start">
+                        <Box
+                          w="18px"
+                          h="18px"
+                          borderRadius="4px"
+                          border="2px solid"
+                          borderColor={
+                            isSelected ? 'mukuru.buttons.primary' : 'mukuru.grey.light'
                           }
-                        }}
-                        _hover={{ borderColor: 'mukuru.buttons.primary', bg: isSelected ? 'mukuru.state.hover' : 'mukuru.state.hover.card' }}
-                        transition="all 0.15s"
-                      >
-                        <Flex gap="10px" align="flex-start">
-                          <Box
-                            w="18px"
-                            h="18px"
-                            borderRadius="4px"
-                            border="2px solid"
-                            borderColor={isSelected ? 'mukuru.buttons.primary' : 'mukuru.grey.light'}
-                            bg={isSelected ? 'mukuru.buttons.primary' : 'mukuru.cards.white'}
-                            display="flex"
-                            alignItems="center"
-                            justifyContent="center"
-                            flexShrink={0}
-                            mt="1px"
+                          bg={
+                            isSelected ? 'mukuru.buttons.primary' : 'mukuru.cards.white'
+                          }
+                          display="flex"
+                          alignItems="center"
+                          justifyContent="center"
+                          flexShrink={0}
+                          mt="1px"
+                        >
+                          {isSelected && (
+                            <Box
+                              as="span"
+                              color="mukuru.white"
+                              fontSize="10px"
+                              fontWeight="bold"
+                            >
+                              ✓
+                            </Box>
+                          )}
+                        </Box>
+                        <VStack align="start" gap="2px" flex="1">
+                          <Typography
+                            fontSize="13px"
+                            fontWeight="500"
+                            color="mukuru.text.primary"
                           >
-                            {isSelected && (
-                              <Box as="span" color="mukuru.white" fontSize="10px" fontWeight="bold">✓</Box>
-                            )}
-                          </Box>
-                          <VStack align="start" gap="2px" flex="1">
-                            <Typography fontSize="13px" fontWeight="500" color="mukuru.text.primary">
-                              {requirement.displayName}
+                            {requirement.displayName}
+                          </Typography>
+                          {requirement.description && (
+                            <Typography
+                              fontSize="11px"
+                              color="mukuru.grey.medium"
+                              lineHeight="1.3"
+                            >
+                              {requirement.description.length > 60
+                                ? requirement.description.substring(0, 60) + '...'
+                                : requirement.description}
                             </Typography>
-                            {requirement.description && (
-                              <Typography fontSize="11px" color="mukuru.grey.medium" lineHeight="1.3">
-                                {requirement.description.length > 60 
-                                  ? requirement.description.substring(0, 60) + '...' 
-                                  : requirement.description}
-                              </Typography>
-                            )}
-                          </VStack>
-                        </Flex>
-                      </Box>
-                    );
-                  })}
-                </SimpleGrid>
-              )}
+                          )}
+                        </VStack>
+                      </Flex>
+                    </Box>
+                  );
+                })}
+              </SimpleGrid>
+            )}
           </Box>
 
           {/* Action Buttons - At the bottom */}
@@ -456,9 +546,13 @@ export default function CreateEntityTypePage() {
                 variant="primary"
                 size="md"
                 onClick={handleCreate}
-                disabled={loading || saving || !formData.displayName || !formData.description}
+                disabled={
+                  loading || saving || !formData.displayName || !formData.description
+                }
               >
-                <IconWrapper><FiFileText size={14} /></IconWrapper>
+                <IconWrapper>
+                  <FiFileText size={14} />
+                </IconWrapper>
                 {saving ? 'Creating...' : 'Create Entity Type'}
               </Button>
               <Button
@@ -467,7 +561,9 @@ export default function CreateEntityTypePage() {
                 onClick={handleCancel}
                 disabled={saving}
               >
-                <IconWrapper><FiX size={14} /></IconWrapper>
+                <IconWrapper>
+                  <FiX size={14} />
+                </IconWrapper>
                 Cancel
               </Button>
             </HStack>

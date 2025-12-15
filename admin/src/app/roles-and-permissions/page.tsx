@@ -852,14 +852,19 @@ export default function RulesAndPermissionsPage() {
         </Box>
 
         {/* Tab Filters */}
-        <Box px="24px" bg={cardBgNew} borderBottom="1px solid" borderColor={borderColorNew}>
+        <Box
+          px="24px"
+          bg={cardBgNew}
+          borderBottom="1px solid"
+          borderColor={borderColorNew}
+        >
           {error && (
             <Box mb="12px">
               <AlertBar status="error" title="Error" description={error} />
             </Box>
           )}
-          <TabsRoot 
-            value={activeTab} 
+          <TabsRoot
+            value={activeTab}
             onValueChange={(details) => setActiveTab(details.value as 'roles' | 'users')}
           >
             <TabsList>
@@ -871,17 +876,29 @@ export default function RulesAndPermissionsPage() {
         </Box>
 
         {/* Search Row */}
-        <Box px="24px" py="12px" bg={cardBgNew} borderBottom="1px solid" borderColor={borderColorNew}>
+        <Box
+          px="24px"
+          py="12px"
+          bg={cardBgNew}
+          borderBottom="1px solid"
+          borderColor={borderColorNew}
+        >
           <Flex justify="space-between" align="center">
             <Box maxW="400px" flex="1">
               <Search
-                placeholder={activeTab === 'roles' ? 'Search roles...' : 'Search users by email or name...'}
+                placeholder={
+                  activeTab === 'roles'
+                    ? 'Search roles...'
+                    : 'Search users by email or name...'
+                }
                 onSearchChange={(query) => setSearchTerm(query)}
               />
             </Box>
             {activeTab === 'roles' && (
               <Button variant="primary" size="md" onClick={openCreateRoleModal}>
-                <IconWrapper><FiPlus size={16} /></IconWrapper>
+                <IconWrapper>
+                  <FiPlus size={16} />
+                </IconWrapper>
                 Create Role
               </Button>
             )}
@@ -897,10 +914,19 @@ export default function RulesAndPermissionsPage() {
                   <Spinner size="xl" color="#F05423" />
                 </Flex>
               ) : filteredRoles.length === 0 ? (
-                <Box bg={cardBgNew} borderRadius="8px" border="1px solid" borderColor={borderColorNew} p="48px" textAlign="center">
+                <Box
+                  bg={cardBgNew}
+                  borderRadius="8px"
+                  border="1px solid"
+                  borderColor={borderColorNew}
+                  p="48px"
+                  textAlign="center"
+                >
                   <VStack gap="8px">
                     <FiShield size={32} color="#9CA3AF" />
-                    <Typography fontSize="14px" color="#6B7280">No roles found</Typography>
+                    <Typography fontSize="14px" color="#6B7280">
+                      No roles found
+                    </Typography>
                   </VStack>
                 </Box>
               ) : (
@@ -925,11 +951,20 @@ export default function RulesAndPermissionsPage() {
                             <Typography fontSize="15px" fontWeight="600" color="#111827">
                               {role.displayName}
                             </Typography>
-                            <Typography fontSize="11px" color="#9CA3AF" style={{ fontFamily: 'monospace' }}>
+                            <Typography
+                              fontSize="11px"
+                              color="#9CA3AF"
+                              style={{ fontFamily: 'monospace' }}
+                            >
                               {role.name}
                             </Typography>
                             {role.description && (
-                              <Typography fontSize="12px" color="#6B7280" mt="6px" lineHeight="1.4">
+                              <Typography
+                                fontSize="12px"
+                                color="#6B7280"
+                                mt="6px"
+                                lineHeight="1.4"
+                              >
                                 {role.description}
                               </Typography>
                             )}
@@ -941,7 +976,11 @@ export default function RulesAndPermissionsPage() {
                             borderRadius="4px"
                             flexShrink={0}
                           >
-                            <Typography fontSize="11px" fontWeight="600" color={role.isActive ? '#059669' : '#DC2626'}>
+                            <Typography
+                              fontSize="11px"
+                              fontWeight="600"
+                              color={role.isActive ? '#059669' : '#DC2626'}
+                            >
                               {role.isActive ? 'Active' : 'Inactive'}
                             </Typography>
                           </Box>
@@ -949,8 +988,20 @@ export default function RulesAndPermissionsPage() {
                       </Box>
 
                       {/* Permissions Section */}
-                      <Box px="20px" py="14px" bg="#F9FAFB" borderTop="1px solid" borderColor="#F0F0F0" flex="1">
-                        <Typography fontSize="12px" fontWeight="600" color="#374151" mb="10px">
+                      <Box
+                        px="20px"
+                        py="14px"
+                        bg="#F9FAFB"
+                        borderTop="1px solid"
+                        borderColor="#F0F0F0"
+                        flex="1"
+                      >
+                        <Typography
+                          fontSize="12px"
+                          fontWeight="600"
+                          color="#374151"
+                          mb="10px"
+                        >
                           Permissions ({role.permissions.length})
                         </Typography>
                         {role.permissions.length === 0 ? (
@@ -968,14 +1019,23 @@ export default function RulesAndPermissionsPage() {
                                 border="1px solid #FED7AA"
                                 borderRadius="4px"
                               >
-                                <Typography fontSize="10px" fontWeight="500" color="#C2410C" whiteSpace="nowrap">
+                                <Typography
+                                  fontSize="10px"
+                                  fontWeight="500"
+                                  color="#C2410C"
+                                  whiteSpace="nowrap"
+                                >
                                   {permission.permissionName}
                                 </Typography>
                               </Box>
                             ))}
                             {role.permissions.length > 6 && (
                               <Box px="8px" py="3px" bg="#F3F4F6" borderRadius="4px">
-                                <Typography fontSize="10px" fontWeight="500" color="#6B7280">
+                                <Typography
+                                  fontSize="10px"
+                                  fontWeight="500"
+                                  color="#6B7280"
+                                >
                                   +{role.permissions.length - 6} more
                                 </Typography>
                               </Box>
@@ -985,7 +1045,13 @@ export default function RulesAndPermissionsPage() {
                       </Box>
 
                       {/* Card Footer */}
-                      <Box px="20px" py="12px" borderTop="1px solid" borderColor="#F0F0F0" bg={cardBgNew}>
+                      <Box
+                        px="20px"
+                        py="12px"
+                        borderTop="1px solid"
+                        borderColor="#F0F0F0"
+                        bg={cardBgNew}
+                      >
                         <Flex gap="8px" justify="flex-end" align="center">
                           <button
                             onClick={() => openManagePermissionsModal(role)}
@@ -1102,7 +1168,9 @@ export default function RulesAndPermissionsPage() {
                   `}</style>
                   <DataTable
                     data={filteredUsers as unknown as Record<string, unknown>[]}
-                    columns={userColumns as unknown as ColumnConfig<Record<string, unknown>>[]}
+                    columns={
+                      userColumns as unknown as ColumnConfig<Record<string, unknown>>[]
+                    }
                     onRowClick={(row, _index) => {
                       const user = row as unknown as User;
                       router.push(`/roles-and-permissions/users/${user.id}`);
@@ -1118,541 +1186,561 @@ export default function RulesAndPermissionsPage() {
             </>
           )}
 
-            {/* Create Role Modal */}
-            {showCreateRoleModal && (
+          {/* Create Role Modal */}
+          {showCreateRoleModal && (
+            <Box
+              position="fixed"
+              top="0"
+              left="0"
+              right="0"
+              bottom="0"
+              bg="rgba(0, 0, 0, 0.6)"
+              zIndex="1000"
+              display="flex"
+              alignItems="center"
+              justifyContent="center"
+              onClick={closeCreateRoleModal}
+              style={{
+                backdropFilter: 'blur(8px)',
+                WebkitBackdropFilter: 'blur(8px)',
+              }}
+            >
               <Box
-                position="fixed"
-                top="0"
-                left="0"
-                right="0"
-                bottom="0"
-                bg="rgba(0, 0, 0, 0.6)"
-                zIndex="1000"
-                display="flex"
-                alignItems="center"
-                justifyContent="center"
-                onClick={closeCreateRoleModal}
-                style={{
-                  backdropFilter: 'blur(8px)',
-                  WebkitBackdropFilter: 'blur(8px)',
-                }}
+                bg="var(--mukuru-cards-white)"
+                borderRadius="xl"
+                p="6"
+                maxW="500px"
+                width="90%"
+                onClick={(e) => e.stopPropagation()}
+                boxShadow="xl"
               >
-                <Box
-                  bg="var(--mukuru-cards-white)"
-                  borderRadius="xl"
-                  p="6"
-                  maxW="500px"
-                  width="90%"
-                  onClick={(e) => e.stopPropagation()}
-                  boxShadow="xl"
-                >
-                  <VStack gap="4" align="stretch">
-                    <HStack justify="space-between" align="center">
-                      <Typography
-                        fontSize="xl"
-                        fontWeight="bold"
-                        color="var(--mukuru-text-primary)"
-                      >
-                        Create Role
-                      </Typography>
-                      <Button variant="ghost" size="sm" onClick={closeCreateRoleModal}>
-                        <IconWrapper>
-                          <FiX size={16} />
-                        </IconWrapper>
-                      </Button>
-                    </HStack>
-
-                    <Field.Root required>
-                      <Field.Label color="var(--mukuru-text-primary)" fontWeight="medium">
-                        Role Name (Internal)
-                      </Field.Label>
-                      <Input
-                        placeholder="e.g., admin, reviewer"
-                        value={roleForm.name}
-                        onChange={(e) =>
-                          setRoleForm({ ...roleForm, name: e.target.value })
-                        }
-                        color="var(--mukuru-text-primary)"
-                      />
-                    </Field.Root>
-
-                    <Field.Root required>
-                      <Field.Label color="var(--mukuru-text-primary)" fontWeight="medium">
-                        Display Name
-                      </Field.Label>
-                      <Input
-                        placeholder="e.g., Administrator, Reviewer"
-                        value={roleForm.displayName}
-                        onChange={(e) =>
-                          setRoleForm({ ...roleForm, displayName: e.target.value })
-                        }
-                        color="var(--mukuru-text-primary)"
-                      />
-                    </Field.Root>
-
-                    <Field.Root>
-                      <Field.Label color="var(--mukuru-text-primary)" fontWeight="medium">
-                        Description (Optional)
-                      </Field.Label>
-                      <Textarea
-                        placeholder="Describe what this role allows..."
-                        value={roleForm.description}
-                        onChange={(e) =>
-                          setRoleForm({ ...roleForm, description: e.target.value })
-                        }
-                        rows={3}
-                        color="var(--mukuru-text-primary)"
-                        _placeholder={{ color: 'var(--mukuru-text-input)' }}
-                      />
-                    </Field.Root>
-
-                    <HStack gap="3" justify="flex-end" mt="4">
-                      <Button variant="ghost" onClick={closeCreateRoleModal}>
-                        Cancel
-                      </Button>
-                      <Button variant="primary" onClick={handleCreateRole}>
-                        Create Role
-                      </Button>
-                    </HStack>
-                  </VStack>
-                </Box>
-              </Box>
-            )}
-
-            {/* Edit Role Modal */}
-            {showEditRoleModal && selectedRole && (
-              <Box
-                position="fixed"
-                top="0"
-                left="0"
-                right="0"
-                bottom="0"
-                bg="rgba(0, 0, 0, 0.6)"
-                zIndex="1000"
-                display="flex"
-                alignItems="center"
-                justifyContent="center"
-                onClick={closeEditRoleModal}
-                style={{
-                  backdropFilter: 'blur(8px)',
-                  WebkitBackdropFilter: 'blur(8px)',
-                }}
-              >
-                <Box
-                  bg="var(--mukuru-cards-white)"
-                  borderRadius="xl"
-                  p="6"
-                  maxW="500px"
-                  width="90%"
-                  onClick={(e) => e.stopPropagation()}
-                  boxShadow="xl"
-                >
-                  <VStack gap="4" align="stretch">
-                    <HStack justify="space-between" align="center">
-                      <Typography
-                        fontSize="xl"
-                        fontWeight="bold"
-                        color="var(--mukuru-text-primary)"
-                      >
-                        Edit Role
-                      </Typography>
-                      <Button variant="ghost" size="sm" onClick={closeEditRoleModal}>
-                        <IconWrapper>
-                          <FiX size={16} />
-                        </IconWrapper>
-                      </Button>
-                    </HStack>
-
-                    <Field.Root required>
-                      <Field.Label color="var(--mukuru-text-primary)" fontWeight="medium">
-                        Display Name
-                      </Field.Label>
-                      <Input
-                        value={roleForm.displayName}
-                        onChange={(e) =>
-                          setRoleForm({ ...roleForm, displayName: e.target.value })
-                        }
-                        color="var(--mukuru-text-primary)"
-                      />
-                    </Field.Root>
-
-                    <Field.Root>
-                      <Field.Label color="var(--mukuru-text-primary)" fontWeight="medium">
-                        Description (Optional)
-                      </Field.Label>
-                      <Textarea
-                        value={roleForm.description}
-                        onChange={(e) =>
-                          setRoleForm({ ...roleForm, description: e.target.value })
-                        }
-                        rows={3}
-                        color="var(--mukuru-text-primary)"
-                      />
-                    </Field.Root>
-
-                    <HStack gap="3" justify="flex-end" mt="4">
-                      <Button variant="ghost" onClick={closeEditRoleModal}>
-                        Cancel
-                      </Button>
-                      <Button variant="primary" onClick={handleUpdateRole}>
-                        Update Role
-                      </Button>
-                    </HStack>
-                  </VStack>
-                </Box>
-              </Box>
-            )}
-
-            {/* Manage Permissions Modal */}
-            {showManagePermissionsModal && selectedRole && (
-              <Box
-                position="fixed"
-                top="0"
-                left="0"
-                right="0"
-                bottom="0"
-                bg="rgba(0, 0, 0, 0.6)"
-                zIndex={9999}
-                display="flex"
-                alignItems="center"
-                justifyContent="center"
-                onClick={closeManagePermissionsModal}
-                style={{
-                  position: 'fixed',
-                  top: 0,
-                  left: 0,
-                  right: 0,
-                  bottom: 0,
-                  zIndex: 9999,
-                  backdropFilter: 'blur(8px)',
-                  WebkitBackdropFilter: 'blur(8px)',
-                }}
-              >
-                <Box
-                  bg="var(--mukuru-cards-white)"
-                  borderRadius="xl"
-                  p="6"
-                  maxW="800px"
-                  maxH="90vh"
-                  width="90%"
-                  onClick={(e) => e.stopPropagation()}
-                  boxShadow="xl"
-                  overflowY="auto"
-                  style={{
-                    maxHeight: '90vh',
-                    overflowY: 'auto',
-                    zIndex: 10000,
-                  }}
-                >
-                  <VStack gap="4" align="stretch">
-                    <HStack justify="space-between" align="center">
-                      <Typography
-                        fontSize="xl"
-                        fontWeight="bold"
-                        color="var(--mukuru-text-primary)"
-                      >
-                        Manage Permissions - {selectedRole.displayName}
-                      </Typography>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={closeManagePermissionsModal}
-                      >
-                        <IconWrapper>
-                          <FiX size={16} />
-                        </IconWrapper>
-                      </Button>
-                    </HStack>
-
-                    <Box>
-                      <Typography
-                        fontSize="sm"
-                        fontWeight="bold"
-                        mb="3"
-                        style={{
-                          color: 'var(--mukuru-text-primary)',
-                          fontSize: '14px',
-                          fontWeight: '600',
-                          WebkitTextFillColor: 'var(--mukuru-text-primary)',
-                        }}
-                      >
-                        Current Permissions ({selectedRole.permissions.length}):
-                      </Typography>
-                      {selectedRole.permissions.length === 0 ? (
-                        <Box
-                          p="4"
-                          bg="var(--mukuru-state-hover)"
-                          borderRadius="md"
-                          border="1px"
-                          borderColor="var(--mukuru-grey-light)"
-                          mb="4"
-                        >
-                          <Typography
-                            style={{
-                              color: 'var(--mukuru-text-primary)',
-                              fontSize: '14px',
-                              WebkitTextFillColor: 'var(--mukuru-text-primary)',
-                            }}
-                          >
-                            No permissions assigned
-                          </Typography>
-                        </Box>
-                      ) : (
-                        <Box
-                          maxH="250px"
-                          overflowY="auto"
-                          border="1px"
-                          borderColor="var(--mukuru-grey-light)"
-                          borderRadius="md"
-                          p="3"
-                          bg="var(--mukuru-cards-white)"
-                          mb="4"
-                          className="current-permissions-list"
-                          style={{
-                            maxHeight: '250px',
-                            overflowY: 'auto',
-                            backgroundColor: 'var(--mukuru-cards-white)',
-                            border: '1px solid var(--mukuru-grey-light)',
-                            color: 'var(--mukuru-text-primary)',
-                          }}
-                        >
-                          <SimpleGrid columns={2} gap="2">
-                            {selectedRole.permissions.map((permission) => (
-                              <HStack
-                                key={permission.id}
-                                justify="space-between"
-                                p="2.5"
-                                bg="var(--mukuru-state-hover)"
-                                borderRadius="md"
-                                border="1px"
-                                borderColor="var(--mukuru-grey-light)"
-                                _hover={{
-                                  bg: 'var(--mukuru-state-hover)',
-                                  borderColor: 'var(--mukuru-primary)',
-                                }}
-                                transition="all 0.2s"
-                                data-permission-item
-                                style={{
-                                  backgroundColor: 'var(--mukuru-state-hover)',
-                                  border: '1px solid var(--mukuru-grey-light)',
-                                  padding: '10px',
-                                  color: 'var(--mukuru-text-primary)',
-                                }}
-                              >
-                                <Box
-                                  flex="1"
-                                  style={{ color: 'var(--mukuru-text-primary)' }}
-                                >
-                                  <span
-                                    style={{
-                                      color: 'var(--mukuru-text-primary) !important',
-                                      fontSize: '13px',
-                                      fontWeight: '500',
-                                      lineHeight: '20px',
-                                      WebkitTextFillColor:
-                                        'var(--mukuru-text-primary) !important',
-                                      display: 'block',
-                                      fontFamily: 'inherit',
-                                    }}
-                                  >
-                                    {permission.permissionName || 'Unnamed Permission'}
-                                    {permission.resource && (
-                                      <span
-                                        style={{
-                                          color: 'var(--mukuru-text-primary) !important',
-                                          fontSize: '11px',
-                                          marginLeft: '6px',
-                                          fontWeight: '400',
-                                          opacity: '0.7',
-                                          WebkitTextFillColor:
-                                            'var(--mukuru-text-primary) !important',
-                                          fontFamily: 'inherit',
-                                        }}
-                                      >
-                                        ({permission.resource})
-                                      </span>
-                                    )}
-                                  </span>
-                                </Box>
-                                <Button
-                                  size="sm"
-                                  variant="ghost"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    handleRemovePermissionFromRole(
-                                      selectedRole.id,
-                                      permission.id,
-                                      permission.permissionName
-                                    );
-                                  }}
-                                  minW="auto"
-                                  p="1"
-                                  _hover={{ bg: 'var(--mukuru-state-hover-card)' }}
-                                  style={{
-                                    minWidth: 'auto',
-                                    padding: '4px',
-                                    backgroundColor: 'transparent',
-                                  }}
-                                >
-                                  <IconWrapper>
-                                    <FiX
-                                      size={14}
-                                      color="var(--mukuru-text-error-dark)"
-                                    />
-                                  </IconWrapper>
-                                </Button>
-                              </HStack>
-                            ))}
-                          </SimpleGrid>
-                        </Box>
-                      )}
-                    </Box>
-
-                    <Box
-                      borderTop="2px"
-                      borderColor="var(--mukuru-grey-light)"
-                      pt="6"
-                      mt="6"
+                <VStack gap="4" align="stretch">
+                  <HStack justify="space-between" align="center">
+                    <Typography
+                      fontSize="xl"
+                      fontWeight="bold"
+                      color="var(--mukuru-text-primary)"
                     >
-                      <Typography
-                        fontSize="md"
-                        fontWeight="bold"
-                        color="var(--mukuru-text-primary)"
+                      Create Role
+                    </Typography>
+                    <Button variant="ghost" size="sm" onClick={closeCreateRoleModal}>
+                      <IconWrapper>
+                        <FiX size={16} />
+                      </IconWrapper>
+                    </Button>
+                  </HStack>
+
+                  <Field.Root required>
+                    <Field.Label color="var(--mukuru-text-primary)" fontWeight="medium">
+                      Role Name (Internal)
+                    </Field.Label>
+                    <Input
+                      placeholder="e.g., admin, reviewer"
+                      value={roleForm.name}
+                      onChange={(e) => setRoleForm({ ...roleForm, name: e.target.value })}
+                      color="var(--mukuru-text-primary)"
+                    />
+                  </Field.Root>
+
+                  <Field.Root required>
+                    <Field.Label color="var(--mukuru-text-primary)" fontWeight="medium">
+                      Display Name
+                    </Field.Label>
+                    <Input
+                      placeholder="e.g., Administrator, Reviewer"
+                      value={roleForm.displayName}
+                      onChange={(e) =>
+                        setRoleForm({ ...roleForm, displayName: e.target.value })
+                      }
+                      color="var(--mukuru-text-primary)"
+                    />
+                  </Field.Root>
+
+                  <Field.Root>
+                    <Field.Label color="var(--mukuru-text-primary)" fontWeight="medium">
+                      Description (Optional)
+                    </Field.Label>
+                    <Textarea
+                      placeholder="Describe what this role allows..."
+                      value={roleForm.description}
+                      onChange={(e) =>
+                        setRoleForm({ ...roleForm, description: e.target.value })
+                      }
+                      rows={3}
+                      color="var(--mukuru-text-primary)"
+                      _placeholder={{ color: 'var(--mukuru-text-input)' }}
+                    />
+                  </Field.Root>
+
+                  <HStack gap="3" justify="flex-end" mt="4">
+                    <Button variant="ghost" onClick={closeCreateRoleModal}>
+                      Cancel
+                    </Button>
+                    <Button variant="primary" onClick={handleCreateRole}>
+                      Create Role
+                    </Button>
+                  </HStack>
+                </VStack>
+              </Box>
+            </Box>
+          )}
+
+          {/* Edit Role Modal */}
+          {showEditRoleModal && selectedRole && (
+            <Box
+              position="fixed"
+              top="0"
+              left="0"
+              right="0"
+              bottom="0"
+              bg="rgba(0, 0, 0, 0.6)"
+              zIndex="1000"
+              display="flex"
+              alignItems="center"
+              justifyContent="center"
+              onClick={closeEditRoleModal}
+              style={{
+                backdropFilter: 'blur(8px)',
+                WebkitBackdropFilter: 'blur(8px)',
+              }}
+            >
+              <Box
+                bg="var(--mukuru-cards-white)"
+                borderRadius="xl"
+                p="6"
+                maxW="500px"
+                width="90%"
+                onClick={(e) => e.stopPropagation()}
+                boxShadow="xl"
+              >
+                <VStack gap="4" align="stretch">
+                  <HStack justify="space-between" align="center">
+                    <Typography
+                      fontSize="xl"
+                      fontWeight="bold"
+                      color="var(--mukuru-text-primary)"
+                    >
+                      Edit Role
+                    </Typography>
+                    <Button variant="ghost" size="sm" onClick={closeEditRoleModal}>
+                      <IconWrapper>
+                        <FiX size={16} />
+                      </IconWrapper>
+                    </Button>
+                  </HStack>
+
+                  <Field.Root required>
+                    <Field.Label color="var(--mukuru-text-primary)" fontWeight="medium">
+                      Display Name
+                    </Field.Label>
+                    <Input
+                      value={roleForm.displayName}
+                      onChange={(e) =>
+                        setRoleForm({ ...roleForm, displayName: e.target.value })
+                      }
+                      color="var(--mukuru-text-primary)"
+                    />
+                  </Field.Root>
+
+                  <Field.Root>
+                    <Field.Label color="var(--mukuru-text-primary)" fontWeight="medium">
+                      Description (Optional)
+                    </Field.Label>
+                    <Textarea
+                      value={roleForm.description}
+                      onChange={(e) =>
+                        setRoleForm({ ...roleForm, description: e.target.value })
+                      }
+                      rows={3}
+                      color="var(--mukuru-text-primary)"
+                    />
+                  </Field.Root>
+
+                  <HStack gap="3" justify="flex-end" mt="4">
+                    <Button variant="ghost" onClick={closeEditRoleModal}>
+                      Cancel
+                    </Button>
+                    <Button variant="primary" onClick={handleUpdateRole}>
+                      Update Role
+                    </Button>
+                  </HStack>
+                </VStack>
+              </Box>
+            </Box>
+          )}
+
+          {/* Manage Permissions Modal */}
+          {showManagePermissionsModal && selectedRole && (
+            <Box
+              position="fixed"
+              top="0"
+              left="0"
+              right="0"
+              bottom="0"
+              bg="rgba(0, 0, 0, 0.6)"
+              zIndex={9999}
+              display="flex"
+              alignItems="center"
+              justifyContent="center"
+              onClick={closeManagePermissionsModal}
+              style={{
+                position: 'fixed',
+                top: 0,
+                left: 0,
+                right: 0,
+                bottom: 0,
+                zIndex: 9999,
+                backdropFilter: 'blur(8px)',
+                WebkitBackdropFilter: 'blur(8px)',
+              }}
+            >
+              <Box
+                bg="var(--mukuru-cards-white)"
+                borderRadius="xl"
+                p="6"
+                maxW="800px"
+                maxH="90vh"
+                width="90%"
+                onClick={(e) => e.stopPropagation()}
+                boxShadow="xl"
+                overflowY="auto"
+                style={{
+                  maxHeight: '90vh',
+                  overflowY: 'auto',
+                  zIndex: 10000,
+                }}
+              >
+                <VStack gap="4" align="stretch">
+                  <HStack justify="space-between" align="center">
+                    <Typography
+                      fontSize="xl"
+                      fontWeight="bold"
+                      color="var(--mukuru-text-primary)"
+                    >
+                      Manage Permissions - {selectedRole.displayName}
+                    </Typography>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={closeManagePermissionsModal}
+                    >
+                      <IconWrapper>
+                        <FiX size={16} />
+                      </IconWrapper>
+                    </Button>
+                  </HStack>
+
+                  <Box>
+                    <Typography
+                      fontSize="sm"
+                      fontWeight="bold"
+                      mb="3"
+                      style={{
+                        color: 'var(--mukuru-text-primary)',
+                        fontSize: '14px',
+                        fontWeight: '600',
+                        WebkitTextFillColor: 'var(--mukuru-text-primary)',
+                      }}
+                    >
+                      Current Permissions ({selectedRole.permissions.length}):
+                    </Typography>
+                    {selectedRole.permissions.length === 0 ? (
+                      <Box
+                        p="4"
+                        bg="var(--mukuru-state-hover)"
+                        borderRadius="md"
+                        border="1px"
+                        borderColor="var(--mukuru-grey-light)"
                         mb="4"
                       >
-                        Add Permissions
-                      </Typography>
-
-                      <Field.Root mb="4">
-                        <Field.Label>Resource (Optional)</Field.Label>
-                        <select
-                          value={permissionToAdd.resource}
-                          onChange={(e) =>
-                            setPermissionToAdd({
-                              ...permissionToAdd,
-                              resource: e.target.value,
-                            })
-                          }
+                        <Typography
                           style={{
-                            width: '100%',
-                            padding: '8px 12px',
-                            fontSize: '14px',
-                            borderRadius: '6px',
-                            border: '1px solid var(--mukuru-grey-light)',
-                            backgroundColor: 'var(--mukuru-cards-white)',
                             color: 'var(--mukuru-text-primary)',
-                            WebkitAppearance: 'none',
-                            MozAppearance: 'none',
-                            appearance: 'none',
+                            fontSize: '14px',
+                            WebkitTextFillColor: 'var(--mukuru-text-primary)',
                           }}
                         >
+                          No permissions assigned
+                        </Typography>
+                      </Box>
+                    ) : (
+                      <Box
+                        maxH="250px"
+                        overflowY="auto"
+                        border="1px"
+                        borderColor="var(--mukuru-grey-light)"
+                        borderRadius="md"
+                        p="3"
+                        bg="var(--mukuru-cards-white)"
+                        mb="4"
+                        className="current-permissions-list"
+                        style={{
+                          maxHeight: '250px',
+                          overflowY: 'auto',
+                          backgroundColor: 'var(--mukuru-cards-white)',
+                          border: '1px solid var(--mukuru-grey-light)',
+                          color: 'var(--mukuru-text-primary)',
+                        }}
+                      >
+                        <SimpleGrid columns={2} gap="2">
+                          {selectedRole.permissions.map((permission) => (
+                            <HStack
+                              key={permission.id}
+                              justify="space-between"
+                              p="2.5"
+                              bg="var(--mukuru-state-hover)"
+                              borderRadius="md"
+                              border="1px"
+                              borderColor="var(--mukuru-grey-light)"
+                              _hover={{
+                                bg: 'var(--mukuru-state-hover)',
+                                borderColor: 'var(--mukuru-primary)',
+                              }}
+                              transition="all 0.2s"
+                              data-permission-item
+                              style={{
+                                backgroundColor: 'var(--mukuru-state-hover)',
+                                border: '1px solid var(--mukuru-grey-light)',
+                                padding: '10px',
+                                color: 'var(--mukuru-text-primary)',
+                              }}
+                            >
+                              <Box
+                                flex="1"
+                                style={{ color: 'var(--mukuru-text-primary)' }}
+                              >
+                                <span
+                                  style={{
+                                    color: 'var(--mukuru-text-primary) !important',
+                                    fontSize: '13px',
+                                    fontWeight: '500',
+                                    lineHeight: '20px',
+                                    WebkitTextFillColor:
+                                      'var(--mukuru-text-primary) !important',
+                                    display: 'block',
+                                    fontFamily: 'inherit',
+                                  }}
+                                >
+                                  {permission.permissionName || 'Unnamed Permission'}
+                                  {permission.resource && (
+                                    <span
+                                      style={{
+                                        color: 'var(--mukuru-text-primary) !important',
+                                        fontSize: '11px',
+                                        marginLeft: '6px',
+                                        fontWeight: '400',
+                                        opacity: '0.7',
+                                        WebkitTextFillColor:
+                                          'var(--mukuru-text-primary) !important',
+                                        fontFamily: 'inherit',
+                                      }}
+                                    >
+                                      ({permission.resource})
+                                    </span>
+                                  )}
+                                </span>
+                              </Box>
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleRemovePermissionFromRole(
+                                    selectedRole.id,
+                                    permission.id,
+                                    permission.permissionName
+                                  );
+                                }}
+                                minW="auto"
+                                p="1"
+                                _hover={{ bg: 'var(--mukuru-state-hover-card)' }}
+                                style={{
+                                  minWidth: 'auto',
+                                  padding: '4px',
+                                  backgroundColor: 'transparent',
+                                }}
+                              >
+                                <IconWrapper>
+                                  <FiX size={14} color="var(--mukuru-text-error-dark)" />
+                                </IconWrapper>
+                              </Button>
+                            </HStack>
+                          ))}
+                        </SimpleGrid>
+                      </Box>
+                    )}
+                  </Box>
+
+                  <Box
+                    borderTop="2px"
+                    borderColor="var(--mukuru-grey-light)"
+                    pt="6"
+                    mt="6"
+                  >
+                    <Typography
+                      fontSize="md"
+                      fontWeight="bold"
+                      color="var(--mukuru-text-primary)"
+                      mb="4"
+                    >
+                      Add Permissions
+                    </Typography>
+
+                    <Field.Root mb="4">
+                      <Field.Label>Resource (Optional)</Field.Label>
+                      <select
+                        value={permissionToAdd.resource}
+                        onChange={(e) =>
+                          setPermissionToAdd({
+                            ...permissionToAdd,
+                            resource: e.target.value,
+                          })
+                        }
+                        style={{
+                          width: '100%',
+                          padding: '8px 12px',
+                          fontSize: '14px',
+                          borderRadius: '6px',
+                          border: '1px solid var(--mukuru-grey-light)',
+                          backgroundColor: 'var(--mukuru-cards-white)',
+                          color: 'var(--mukuru-text-primary)',
+                          WebkitAppearance: 'none',
+                          MozAppearance: 'none',
+                          appearance: 'none',
+                        }}
+                      >
+                        <option
+                          value=""
+                          style={{
+                            color: 'var(--mukuru-text-primary)',
+                            backgroundColor: 'var(--mukuru-cards-white)',
+                          }}
+                        >
+                          None
+                        </option>
+                        {AVAILABLE_RESOURCES.map((resource) => (
                           <option
-                            value=""
+                            key={resource.value}
+                            value={resource.value}
                             style={{
                               color: 'var(--mukuru-text-primary)',
                               backgroundColor: 'var(--mukuru-cards-white)',
                             }}
                           >
-                            None
+                            {resource.label}
                           </option>
-                          {AVAILABLE_RESOURCES.map((resource) => (
-                            <option
-                              key={resource.value}
-                              value={resource.value}
+                        ))}
+                      </select>
+                    </Field.Root>
+
+                    <Box
+                      maxH="450px"
+                      overflowY="auto"
+                      border="1px"
+                      borderColor="var(--mukuru-grey-light)"
+                      borderRadius="lg"
+                      p="5"
+                      bg="var(--mukuru-cards-white)"
+                      style={{
+                        scrollbarWidth: 'thin',
+                        scrollbarColor:
+                          'var(--mukuru-grey-light) var(--mukuru-state-hover)',
+                      }}
+                    >
+                      <VStack gap="5" align="stretch">
+                        {PERMISSION_CATEGORIES.map((category) => (
+                          <Box key={category.category}>
+                            <Typography
+                              fontSize="sm"
+                              fontWeight="bold"
+                              color="var(--mukuru-text-primary)"
+                              mb="3"
                               style={{
-                                color: 'var(--mukuru-text-primary)',
-                                backgroundColor: 'var(--mukuru-cards-white)',
+                                fontSize: '13px',
+                                textTransform: 'uppercase',
+                                letterSpacing: '0.5px',
+                                color: 'var(--mukuru-grey-medium)',
                               }}
                             >
-                              {resource.label}
-                            </option>
-                          ))}
-                        </select>
-                      </Field.Root>
+                              {category.category}
+                            </Typography>
+                            <SimpleGrid columns={2} gap="3">
+                              {category.permissions.map((perm) => {
+                                // Check if this permission is already assigned to the role
+                                const isAlreadyAssigned =
+                                  selectedRole?.permissions?.some((rolePerm) => {
+                                    const rolePermName = rolePerm.permissionName;
+                                    return rolePermName === perm.value;
+                                  }) || false;
 
-                      <Box
-                        maxH="450px"
-                        overflowY="auto"
-                        border="1px"
-                        borderColor="var(--mukuru-grey-light)"
-                        borderRadius="lg"
-                        p="5"
-                        bg="var(--mukuru-cards-white)"
-                        style={{
-                          scrollbarWidth: 'thin',
-                          scrollbarColor:
-                            'var(--mukuru-grey-light) var(--mukuru-state-hover)',
-                        }}
-                      >
-                        <VStack gap="5" align="stretch">
-                          {PERMISSION_CATEGORIES.map((category) => (
-                            <Box key={category.category}>
-                              <Typography
-                                fontSize="sm"
-                                fontWeight="bold"
-                                color="var(--mukuru-text-primary)"
-                                mb="3"
-                                style={{
-                                  fontSize: '13px',
-                                  textTransform: 'uppercase',
-                                  letterSpacing: '0.5px',
-                                  color: 'var(--mukuru-grey-medium)',
-                                }}
-                              >
-                                {category.category}
-                              </Typography>
-                              <SimpleGrid columns={2} gap="3">
-                                {category.permissions.map((perm) => {
-                                  // Check if this permission is already assigned to the role
-                                  const isAlreadyAssigned =
-                                    selectedRole?.permissions?.some((rolePerm) => {
-                                      const rolePermName = rolePerm.permissionName;
-                                      return rolePermName === perm.value;
-                                    }) || false;
+                                // Check if it's selected for adding (but not yet saved)
+                                const isSelectedForAdding = selectedPermissions.has(
+                                  perm.value
+                                );
 
-                                  // Check if it's selected for adding (but not yet saved)
-                                  const isSelectedForAdding = selectedPermissions.has(
-                                    perm.value
-                                  );
+                                // Checkbox should be checked if it's already assigned OR selected for adding
+                                const isChecked =
+                                  isAlreadyAssigned || isSelectedForAdding;
 
-                                  // Checkbox should be checked if it's already assigned OR selected for adding
-                                  const isChecked =
-                                    isAlreadyAssigned || isSelectedForAdding;
-
-                                  return (
-                                    <HStack
-                                      key={perm.value}
-                                      gap="3"
-                                      align="start"
-                                      p="3"
-                                      borderRadius="lg"
-                                      bg={
-                                        isAlreadyAssigned
-                                          ? 'var(--mukuru-state-hover-card)'
-                                          : 'var(--mukuru-cards-white)'
-                                      }
-                                      border={
-                                        isAlreadyAssigned
-                                          ? '2px solid var(--mukuru-primary)'
-                                          : '1px solid var(--mukuru-grey-light)'
-                                      }
-                                      _hover={
-                                        isAlreadyAssigned
-                                          ? { bg: 'var(--mukuru-state-hover-card)' }
-                                          : {
-                                              bg: 'var(--mukuru-state-hover)',
-                                              borderColor: 'var(--mukuru-grey-medium)',
-                                            }
-                                      }
-                                      transition="all 0.2s"
+                                return (
+                                  <HStack
+                                    key={perm.value}
+                                    gap="3"
+                                    align="start"
+                                    p="3"
+                                    borderRadius="lg"
+                                    bg={
+                                      isAlreadyAssigned
+                                        ? 'var(--mukuru-state-hover-card)'
+                                        : 'var(--mukuru-cards-white)'
+                                    }
+                                    border={
+                                      isAlreadyAssigned
+                                        ? '2px solid var(--mukuru-primary)'
+                                        : '1px solid var(--mukuru-grey-light)'
+                                    }
+                                    _hover={
+                                      isAlreadyAssigned
+                                        ? { bg: 'var(--mukuru-state-hover-card)' }
+                                        : {
+                                            bg: 'var(--mukuru-state-hover)',
+                                            borderColor: 'var(--mukuru-grey-medium)',
+                                          }
+                                    }
+                                    transition="all 0.2s"
+                                    style={{
+                                      boxShadow: isAlreadyAssigned
+                                        ? '0 1px 3px 0 rgba(240, 84, 35, 0.1)'
+                                        : 'none',
+                                    }}
+                                  >
+                                    <Box
+                                      flexShrink={0}
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        if (!isAlreadyAssigned) {
+                                          handlePermissionToggle(perm.value);
+                                        }
+                                      }}
                                       style={{
-                                        boxShadow: isAlreadyAssigned
-                                          ? '0 1px 3px 0 rgba(240, 84, 35, 0.1)'
-                                          : 'none',
+                                        paddingTop: '2px',
+                                        cursor: isAlreadyAssigned ? 'default' : 'pointer',
+                                        pointerEvents: 'auto',
+                                        position: 'relative',
+                                        zIndex: 10,
                                       }}
                                     >
-                                      <Box
-                                        flexShrink={0}
+                                      <Checkbox.Root
+                                        checked={isChecked}
+                                        onCheckedChange={(_details) => {
+                                          if (!isAlreadyAssigned) {
+                                            handlePermissionToggle(perm.value);
+                                          }
+                                        }}
+                                        colorScheme="orange"
+                                        id={`permission-checkbox-${perm.value}`}
+                                        name={`permission-checkbox-${perm.value}`}
+                                        value={perm.value}
                                         onClick={(e) => {
                                           e.stopPropagation();
                                           if (!isAlreadyAssigned) {
@@ -1660,26 +1748,15 @@ export default function RulesAndPermissionsPage() {
                                           }
                                         }}
                                         style={{
-                                          paddingTop: '2px',
                                           cursor: isAlreadyAssigned
                                             ? 'default'
                                             : 'pointer',
                                           pointerEvents: 'auto',
                                           position: 'relative',
-                                          zIndex: 10,
+                                          zIndex: 11,
                                         }}
                                       >
-                                        <Checkbox.Root
-                                          checked={isChecked}
-                                          onCheckedChange={(_details) => {
-                                            if (!isAlreadyAssigned) {
-                                              handlePermissionToggle(perm.value);
-                                            }
-                                          }}
-                                          colorScheme="orange"
-                                          id={`permission-checkbox-${perm.value}`}
-                                          name={`permission-checkbox-${perm.value}`}
-                                          value={perm.value}
+                                        <Checkbox.Control
                                           onClick={(e) => {
                                             e.stopPropagation();
                                             if (!isAlreadyAssigned) {
@@ -1687,756 +1764,734 @@ export default function RulesAndPermissionsPage() {
                                             }
                                           }}
                                           style={{
+                                            backgroundColor: isChecked
+                                              ? 'var(--mukuru-primary)'
+                                              : 'var(--mukuru-cards-white)',
+                                            borderColor: isChecked
+                                              ? 'var(--mukuru-primary)'
+                                              : 'var(--mukuru-grey-light)',
+                                            borderWidth: '2px',
+                                            width: '20px',
+                                            height: '20px',
+                                            borderRadius: '4px',
                                             cursor: isAlreadyAssigned
                                               ? 'default'
                                               : 'pointer',
                                             pointerEvents: 'auto',
                                             position: 'relative',
-                                            zIndex: 11,
+                                            zIndex: 12,
                                           }}
                                         >
-                                          <Checkbox.Control
-                                            onClick={(e) => {
-                                              e.stopPropagation();
-                                              if (!isAlreadyAssigned) {
-                                                handlePermissionToggle(perm.value);
-                                              }
-                                            }}
+                                          <Checkbox.Indicator
                                             style={{
-                                              backgroundColor: isChecked
-                                                ? 'var(--mukuru-primary)'
-                                                : 'var(--mukuru-cards-white)',
-                                              borderColor: isChecked
-                                                ? 'var(--mukuru-primary)'
-                                                : 'var(--mukuru-grey-light)',
-                                              borderWidth: '2px',
-                                              width: '20px',
-                                              height: '20px',
-                                              borderRadius: '4px',
-                                              cursor: isAlreadyAssigned
-                                                ? 'default'
-                                                : 'pointer',
-                                              pointerEvents: 'auto',
-                                              position: 'relative',
-                                              zIndex: 12,
+                                              color: 'var(--mukuru-text-inverse)',
+                                              fontSize: '14px',
+                                              fontWeight: 'bold',
                                             }}
                                           >
-                                            <Checkbox.Indicator
-                                              style={{
-                                                color: 'var(--mukuru-text-inverse)',
-                                                fontSize: '14px',
-                                                fontWeight: 'bold',
-                                              }}
-                                            >
-                                              ✓
-                                            </Checkbox.Indicator>
-                                          </Checkbox.Control>
-                                        </Checkbox.Root>
-                                      </Box>
-                                      <Box
-                                        flex="1"
-                                        onClick={(e) => {
-                                          if (!isAlreadyAssigned) {
-                                            e.stopPropagation();
-                                            handlePermissionToggle(perm.value);
-                                          }
-                                        }}
+                                            ✓
+                                          </Checkbox.Indicator>
+                                        </Checkbox.Control>
+                                      </Checkbox.Root>
+                                    </Box>
+                                    <Box
+                                      flex="1"
+                                      onClick={(e) => {
+                                        if (!isAlreadyAssigned) {
+                                          e.stopPropagation();
+                                          handlePermissionToggle(perm.value);
+                                        }
+                                      }}
+                                      style={{
+                                        cursor: isAlreadyAssigned ? 'default' : 'pointer',
+                                        pointerEvents: 'auto',
+                                      }}
+                                    >
+                                      <Typography
+                                        fontSize="sm"
+                                        cursor={isAlreadyAssigned ? 'default' : 'pointer'}
                                         style={{
-                                          cursor: isAlreadyAssigned
-                                            ? 'default'
-                                            : 'pointer',
+                                          color: isAlreadyAssigned
+                                            ? 'var(--mukuru-primary)'
+                                            : 'var(--mukuru-text-primary)',
+                                          fontWeight: isAlreadyAssigned ? '600' : '500',
                                           pointerEvents: 'auto',
+                                          lineHeight: '1.5',
                                         }}
                                       >
-                                        <Typography
-                                          fontSize="sm"
-                                          cursor={
-                                            isAlreadyAssigned ? 'default' : 'pointer'
-                                          }
-                                          style={{
-                                            color: isAlreadyAssigned
-                                              ? 'var(--mukuru-primary)'
-                                              : 'var(--mukuru-text-primary)',
-                                            fontWeight: isAlreadyAssigned ? '600' : '500',
-                                            pointerEvents: 'auto',
-                                            lineHeight: '1.5',
-                                          }}
-                                        >
-                                          {perm.label}
-                                          {isAlreadyAssigned && (
-                                            <span
-                                              style={{
-                                                color: 'var(--mukuru-primary)',
-                                                fontSize: '11px',
-                                                marginLeft: '8px',
-                                                fontWeight: '600',
-                                                backgroundColor:
-                                                  'var(--mukuru-state-hover-card)',
-                                                padding: '3px 8px',
-                                                borderRadius: '6px',
-                                                border: '1px solid var(--mukuru-primary)',
-                                              }}
-                                            >
-                                              ✓ Assigned
-                                            </span>
-                                          )}
-                                        </Typography>
-                                      </Box>
-                                    </HStack>
-                                  );
-                                })}
-                              </SimpleGrid>
-                              <Box
-                                borderTop="1px"
-                                borderColor="var(--mukuru-grey-light)"
-                                mt="3"
-                              />
-                            </Box>
-                          ))}
-                        </VStack>
-                      </Box>
+                                        {perm.label}
+                                        {isAlreadyAssigned && (
+                                          <span
+                                            style={{
+                                              color: 'var(--mukuru-primary)',
+                                              fontSize: '11px',
+                                              marginLeft: '8px',
+                                              fontWeight: '600',
+                                              backgroundColor:
+                                                'var(--mukuru-state-hover-card)',
+                                              padding: '3px 8px',
+                                              borderRadius: '6px',
+                                              border: '1px solid var(--mukuru-primary)',
+                                            }}
+                                          >
+                                            ✓ Assigned
+                                          </span>
+                                        )}
+                                      </Typography>
+                                    </Box>
+                                  </HStack>
+                                );
+                              })}
+                            </SimpleGrid>
+                            <Box
+                              borderTop="1px"
+                              borderColor="var(--mukuru-grey-light)"
+                              mt="3"
+                            />
+                          </Box>
+                        ))}
+                      </VStack>
+                    </Box>
 
+                    <Box
+                      bg="var(--mukuru-state-hover)"
+                      borderRadius="lg"
+                      p="4"
+                      mb="4"
+                      border="1px"
+                      borderColor="var(--mukuru-grey-light)"
+                    >
+                      <Typography
+                        fontSize="sm"
+                        color="var(--mukuru-grey-medium)"
+                        fontWeight="500"
+                      >
+                        {selectedPermissions.size > 0 ? (
+                          <span
+                            style={{
+                              color: 'var(--mukuru-primary)',
+                              fontWeight: '600',
+                            }}
+                          >
+                            {selectedPermissions.size} permission
+                            {selectedPermissions.size !== 1 ? 's' : ''} selected
+                          </span>
+                        ) : (
+                          'No permissions selected'
+                        )}
+                      </Typography>
+                    </Box>
+
+                    <Button
+                      variant="primary"
+                      onClick={handleAddPermissionToRole}
+                      disabled={selectedPermissions.size === 0}
+                      width="full"
+                    >
+                      <Typography as="span" fontWeight="600">
+                        Add{' '}
+                        {selectedPermissions.size > 0
+                          ? `${selectedPermissions.size} `
+                          : ''}
+                        Permission{selectedPermissions.size !== 1 ? 's' : ''}
+                      </Typography>
+                    </Button>
+                  </Box>
+
+                  <HStack gap="3" justify="flex-end" mt="4">
+                    <Button variant="primary" onClick={closeManagePermissionsModal}>
+                      <Typography as="span" fontWeight="600">
+                        Close
+                      </Typography>
+                    </Button>
+                  </HStack>
+                </VStack>
+              </Box>
+            </Box>
+          )}
+
+          {/* Assign Role Modal */}
+          {showAssignRoleModal && selectedUser && (
+            <Box
+              position="fixed"
+              top="0"
+              left="0"
+              right="0"
+              bottom="0"
+              bg="rgba(0, 0, 0, 0.6)"
+              zIndex={9999}
+              display="flex"
+              alignItems="center"
+              justifyContent="center"
+              onClick={() => setShowAssignRoleModal(false)}
+              style={{
+                position: 'fixed',
+                top: 0,
+                left: 0,
+                right: 0,
+                bottom: 0,
+                zIndex: 9999,
+                backdropFilter: 'blur(8px)',
+                WebkitBackdropFilter: 'blur(8px)',
+              }}
+            >
+              <Box
+                bg="var(--mukuru-cards-white)"
+                borderRadius="xl"
+                p="8"
+                maxW="700px"
+                maxH="90vh"
+                width="90%"
+                onClick={(e) => e.stopPropagation()}
+                boxShadow="2xl"
+                overflowY="auto"
+                style={{
+                  maxHeight: '90vh',
+                  overflowY: 'auto',
+                  zIndex: 10000,
+                }}
+              >
+                <VStack gap="6" align="stretch">
+                  <HStack
+                    justify="space-between"
+                    align="center"
+                    pb="4"
+                    borderBottom="2px"
+                    borderColor="var(--mukuru-grey-light)"
+                  >
+                    <Typography
+                      fontSize="2xl"
+                      fontWeight="bold"
+                      color="var(--mukuru-text-primary)"
+                    >
+                      Assign Role
+                    </Typography>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setShowAssignRoleModal(false)}
+                      style={{
+                        minWidth: 'auto',
+                        padding: '8px',
+                      }}
+                      _hover={{ bg: 'var(--mukuru-state-hover)' }}
+                    >
+                      <IconWrapper>
+                        <FiX size={20} color="var(--mukuru-grey-medium)" />
+                      </IconWrapper>
+                    </Button>
+                  </HStack>
+
+                  <Box
+                    bg="var(--mukuru-state-hover-card)"
+                    borderRadius="lg"
+                    p="4"
+                    border="1px"
+                    borderColor="var(--mukuru-primary)"
+                  >
+                    <HStack gap="3" align="center">
+                      <Box
+                        bg="var(--mukuru-primary)"
+                        borderRadius="full"
+                        p="2"
+                        display="flex"
+                        alignItems="center"
+                        justifyContent="center"
+                      >
+                        <IconWrapper>
+                          <FiMail size={18} color="var(--mukuru-text-inverse)" />
+                        </IconWrapper>
+                      </Box>
+                      <VStack align="start" gap="0">
+                        <Typography
+                          fontSize="xs"
+                          color="var(--mukuru-text-alert)"
+                          fontWeight="600"
+                          textTransform="uppercase"
+                          letterSpacing="0.5px"
+                        >
+                          User
+                        </Typography>
+                        <Typography
+                          fontWeight="700"
+                          fontSize="md"
+                          color="var(--mukuru-text-primary)"
+                        >
+                          {selectedUser.email}
+                        </Typography>
+                        {selectedUser.name && (
+                          <Typography
+                            fontSize="sm"
+                            color="var(--mukuru-grey-medium)"
+                            mt="0.5"
+                          >
+                            {selectedUser.name}
+                          </Typography>
+                        )}
+                      </VStack>
+                    </HStack>
+                  </Box>
+
+                  <Box>
+                    <HStack justify="space-between" align="center" mb="4">
+                      <Typography
+                        fontSize="sm"
+                        fontWeight="bold"
+                        color="var(--mukuru-text-primary)"
+                        textTransform="uppercase"
+                        letterSpacing="0.5px"
+                      >
+                        Available Roles
+                      </Typography>
+                      <Tag
+                        style={{
+                          backgroundColor: 'var(--mukuru-state-hover-card)',
+                          color: 'var(--mukuru-text-primary)',
+                          padding: '4px 10px',
+                          borderRadius: '12px',
+                          fontSize: '12px',
+                          fontWeight: '600',
+                          border: '1px solid var(--mukuru-primary)',
+                        }}
+                      >
+                        {
+                          roles.filter(
+                            (r) =>
+                              r.isActive &&
+                              !selectedUser.roles.some((ur) => ur.roleId === r.id)
+                          ).length
+                        }{' '}
+                        available
+                      </Tag>
+                    </HStack>
+                    {roles.filter(
+                      (r) =>
+                        r.isActive && !selectedUser.roles.some((ur) => ur.roleId === r.id)
+                    ).length === 0 ? (
                       <Box
                         bg="var(--mukuru-state-hover)"
                         borderRadius="lg"
+                        p="6"
+                        border="1px dashed var(--mukuru-grey-light)"
+                        textAlign="center"
+                      >
+                        <Typography color="var(--mukuru-grey-medium)" fontSize="sm">
+                          No available roles to assign. All roles have been assigned to
+                          this user.
+                        </Typography>
+                      </Box>
+                    ) : (
+                      <SimpleGrid
+                        columns={1}
+                        gap="3"
+                        maxH="450px"
+                        overflowY="auto"
+                        pr="2"
+                        style={{
+                          scrollbarWidth: 'thin',
+                          scrollbarColor:
+                            'var(--mukuru-grey-light) var(--mukuru-state-hover)',
+                        }}
+                      >
+                        {roles
+                          .filter(
+                            (r) =>
+                              r.isActive &&
+                              !selectedUser.roles.some((ur) => ur.roleId === r.id)
+                          )
+                          .map((role) => (
+                            <Box
+                              key={role.id}
+                              bg="var(--mukuru-cards-white)"
+                              borderRadius="xl"
+                              p="5"
+                              border="2px"
+                              borderColor="var(--mukuru-grey-light)"
+                              cursor="pointer"
+                              position="relative"
+                              _hover={{
+                                borderColor: 'var(--mukuru-primary)',
+                                bg: 'var(--mukuru-state-hover-card)',
+                                boxShadow: '0 4px 6px -1px rgba(240, 84, 35, 0.1)',
+                              }}
+                              transition="all 0.2s ease"
+                              onClick={() => handleAssignRoleToUser(role.id)}
+                            >
+                              <Flex justify="space-between" align="start" gap="4">
+                                <VStack align="start" gap="2" flex="1" minW="0">
+                                  <Typography
+                                    fontWeight="700"
+                                    fontSize="lg"
+                                    color="var(--mukuru-text-primary)"
+                                    lineHeight="1.3"
+                                  >
+                                    {role.displayName}
+                                  </Typography>
+                                  {role.description && (
+                                    <Typography
+                                      fontSize="sm"
+                                      color="var(--mukuru-grey-medium)"
+                                      lineHeight="1.5"
+                                    >
+                                      {role.description}
+                                    </Typography>
+                                  )}
+                                  <HStack gap="2" mt="2" wrap="wrap">
+                                    <Tag
+                                      style={{
+                                        backgroundColor: 'var(--mukuru-state-hover-card)',
+                                        color: 'var(--mukuru-text-primary)',
+                                        padding: '5px 12px',
+                                        borderRadius: '8px',
+                                        fontSize: '12px',
+                                        fontWeight: '600',
+                                        border: '1px solid var(--mukuru-primary)',
+                                      }}
+                                    >
+                                      {role.permissions?.length || 0} permissions
+                                    </Tag>
+                                    <Tag
+                                      style={{
+                                        backgroundColor: 'var(--mukuru-state-hover)',
+                                        color: 'var(--mukuru-grey-medium)',
+                                        padding: '5px 12px',
+                                        borderRadius: '8px',
+                                        fontSize: '12px',
+                                        fontWeight: '500',
+                                        fontFamily: 'monospace',
+                                      }}
+                                    >
+                                      {role.name}
+                                    </Tag>
+                                  </HStack>
+                                </VStack>
+                                <Box
+                                  bg="var(--mukuru-primary)"
+                                  borderRadius="full"
+                                  p="3"
+                                  display="flex"
+                                  alignItems="center"
+                                  justifyContent="center"
+                                  flexShrink={0}
+                                  style={{
+                                    width: '40px',
+                                    height: '40px',
+                                  }}
+                                  _hover={{
+                                    bg: 'var(--mukuru-primary)',
+                                    opacity: 0.9,
+                                    transform: 'scale(1.1)',
+                                  }}
+                                  transition="all 0.2s"
+                                >
+                                  <IconWrapper>
+                                    <FiPlus
+                                      size={20}
+                                      color="var(--mukuru-text-inverse)"
+                                    />
+                                  </IconWrapper>
+                                </Box>
+                              </Flex>
+                            </Box>
+                          ))}
+                      </SimpleGrid>
+                    )}
+                  </Box>
+
+                  <HStack
+                    gap="3"
+                    justify="flex-end"
+                    pt="4"
+                    borderTop="2px"
+                    borderColor="var(--mukuru-grey-light)"
+                  >
+                    <Button
+                      variant="ghost"
+                      onClick={() => setShowAssignRoleModal(false)}
+                      style={{
+                        backgroundColor: 'var(--mukuru-white)',
+                        color: 'var(--mukuru-text-primary)',
+                        border: '1px solid var(--mukuru-grey-light)',
+                        fontWeight: '600',
+                        padding: '10px 20px',
+                        borderRadius: '8px',
+                      }}
+                      _hover={{
+                        backgroundColor: 'var(--mukuru-state-hover)',
+                        borderColor: 'var(--mukuru-grey-medium)',
+                      }}
+                    >
+                      Cancel
+                    </Button>
+                  </HStack>
+                </VStack>
+              </Box>
+            </Box>
+          )}
+
+          {/* Grant Permission Modal */}
+          {showGrantModal && selectedUser && (
+            <Box
+              position="fixed"
+              top="0"
+              left="0"
+              right="0"
+              bottom="0"
+              bg="rgba(0, 0, 0, 0.6)"
+              zIndex="1000"
+              display="flex"
+              alignItems="center"
+              justifyContent="center"
+              onClick={closeGrantModal}
+              style={{
+                backdropFilter: 'blur(8px)',
+                WebkitBackdropFilter: 'blur(8px)',
+              }}
+            >
+              <Box
+                bg="var(--mukuru-cards-white)"
+                borderRadius="xl"
+                p="6"
+                maxW="500px"
+                width="90%"
+                onClick={(e) => e.stopPropagation()}
+                boxShadow="xl"
+              >
+                <VStack gap="4" align="stretch">
+                  <HStack justify="space-between" align="center">
+                    <Typography
+                      fontSize="xl"
+                      fontWeight="bold"
+                      color="var(--mukuru-text-primary)"
+                    >
+                      Grant Permission
+                    </Typography>
+                    <Button variant="ghost" size="sm" onClick={closeGrantModal}>
+                      <IconWrapper>
+                        <FiX size={16} />
+                      </IconWrapper>
+                    </Button>
+                  </HStack>
+
+                  <Box>
+                    <Typography fontSize="sm" color="var(--mukuru-text-primary)" mb="2">
+                      User:
+                    </Typography>
+                    <Typography
+                      fontWeight="medium"
+                      fontSize="md"
+                      color="var(--mukuru-text-primary)"
+                    >
+                      {selectedUser.email}
+                    </Typography>
+                  </Box>
+
+                  <Field.Root required>
+                    <Field.Label
+                      color="var(--mukuru-text-primary)"
+                      fontWeight="medium"
+                      style={{
+                        textAlign: 'left',
+                        display: 'block',
+                        marginBottom: '8px',
+                      }}
+                    >
+                      Permission Name
+                    </Field.Label>
+                    {roles.length === 0 ? (
+                      <Box
                         p="4"
-                        mb="4"
+                        bg="var(--mukuru-state-hover)"
+                        borderRadius="md"
                         border="1px"
                         borderColor="var(--mukuru-grey-light)"
                       >
                         <Typography
                           fontSize="sm"
                           color="var(--mukuru-grey-medium)"
-                          fontWeight="500"
+                          style={{ textAlign: 'left' }}
                         >
-                          {selectedPermissions.size > 0 ? (
-                            <span
-                              style={{
-                                color: 'var(--mukuru-primary)',
-                                fontWeight: '600',
-                              }}
-                            >
-                              {selectedPermissions.size} permission
-                              {selectedPermissions.size !== 1 ? 's' : ''} selected
-                            </span>
-                          ) : (
-                            'No permissions selected'
-                          )}
+                          No roles found. Please create a role with permissions first.
                         </Typography>
                       </Box>
-
-                      <Button
-                        variant="primary"
-                        onClick={handleAddPermissionToRole}
-                        disabled={selectedPermissions.size === 0}
-                        width="full"
+                    ) : getAvailablePermissionsFromRoles().length === 0 ? (
+                      <Box
+                        p="4"
+                        bg="var(--mukuru-state-hover)"
+                        borderRadius="md"
+                        border="1px"
+                        borderColor="var(--mukuru-grey-light)"
                       >
-                        <Typography as="span" fontWeight="600">
-                          Add{' '}
-                          {selectedPermissions.size > 0
-                            ? `${selectedPermissions.size} `
-                            : ''}
-                          Permission{selectedPermissions.size !== 1 ? 's' : ''}
-                        </Typography>
-                      </Button>
-                    </Box>
-
-                    <HStack gap="3" justify="flex-end" mt="4">
-                      <Button variant="primary" onClick={closeManagePermissionsModal}>
-                        <Typography as="span" fontWeight="600">
-                          Close
-                        </Typography>
-                      </Button>
-                    </HStack>
-                  </VStack>
-                </Box>
-              </Box>
-            )}
-
-            {/* Assign Role Modal */}
-            {showAssignRoleModal && selectedUser && (
-              <Box
-                position="fixed"
-                top="0"
-                left="0"
-                right="0"
-                bottom="0"
-                bg="rgba(0, 0, 0, 0.6)"
-                zIndex={9999}
-                display="flex"
-                alignItems="center"
-                justifyContent="center"
-                onClick={() => setShowAssignRoleModal(false)}
-                style={{
-                  position: 'fixed',
-                  top: 0,
-                  left: 0,
-                  right: 0,
-                  bottom: 0,
-                  zIndex: 9999,
-                  backdropFilter: 'blur(8px)',
-                  WebkitBackdropFilter: 'blur(8px)',
-                }}
-              >
-                <Box
-                  bg="var(--mukuru-cards-white)"
-                  borderRadius="xl"
-                  p="8"
-                  maxW="700px"
-                  maxH="90vh"
-                  width="90%"
-                  onClick={(e) => e.stopPropagation()}
-                  boxShadow="2xl"
-                  overflowY="auto"
-                  style={{
-                    maxHeight: '90vh',
-                    overflowY: 'auto',
-                    zIndex: 10000,
-                  }}
-                >
-                  <VStack gap="6" align="stretch">
-                    <HStack
-                      justify="space-between"
-                      align="center"
-                      pb="4"
-                      borderBottom="2px"
-                      borderColor="var(--mukuru-grey-light)"
-                    >
-                      <Typography
-                        fontSize="2xl"
-                        fontWeight="bold"
-                        color="var(--mukuru-text-primary)"
-                      >
-                        Assign Role
-                      </Typography>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => setShowAssignRoleModal(false)}
-                        style={{
-                          minWidth: 'auto',
-                          padding: '8px',
-                        }}
-                        _hover={{ bg: 'var(--mukuru-state-hover)' }}
-                      >
-                        <IconWrapper>
-                          <FiX size={20} color="var(--mukuru-grey-medium)" />
-                        </IconWrapper>
-                      </Button>
-                    </HStack>
-
-                    <Box
-                      bg="var(--mukuru-state-hover-card)"
-                      borderRadius="lg"
-                      p="4"
-                      border="1px"
-                      borderColor="var(--mukuru-primary)"
-                    >
-                      <HStack gap="3" align="center">
-                        <Box
-                          bg="var(--mukuru-primary)"
-                          borderRadius="full"
-                          p="2"
-                          display="flex"
-                          alignItems="center"
-                          justifyContent="center"
-                        >
-                          <IconWrapper>
-                            <FiMail size={18} color="var(--mukuru-text-inverse)" />
-                          </IconWrapper>
-                        </Box>
-                        <VStack align="start" gap="0">
-                          <Typography
-                            fontSize="xs"
-                            color="var(--mukuru-text-alert)"
-                            fontWeight="600"
-                            textTransform="uppercase"
-                            letterSpacing="0.5px"
-                          >
-                            User
-                          </Typography>
-                          <Typography
-                            fontWeight="700"
-                            fontSize="md"
-                            color="var(--mukuru-text-primary)"
-                          >
-                            {selectedUser.email}
-                          </Typography>
-                          {selectedUser.name && (
-                            <Typography
-                              fontSize="sm"
-                              color="var(--mukuru-grey-medium)"
-                              mt="0.5"
-                            >
-                              {selectedUser.name}
-                            </Typography>
-                          )}
-                        </VStack>
-                      </HStack>
-                    </Box>
-
-                    <Box>
-                      <HStack justify="space-between" align="center" mb="4">
                         <Typography
                           fontSize="sm"
-                          fontWeight="bold"
-                          color="var(--mukuru-text-primary)"
-                          textTransform="uppercase"
-                          letterSpacing="0.5px"
+                          color="var(--mukuru-grey-medium)"
+                          style={{ textAlign: 'left' }}
                         >
-                          Available Roles
+                          No permissions found in existing roles. Please add permissions
+                          to roles first.
                         </Typography>
-                        <Tag
-                          style={{
-                            backgroundColor: 'var(--mukuru-state-hover-card)',
-                            color: 'var(--mukuru-text-primary)',
-                            padding: '4px 10px',
-                            borderRadius: '12px',
-                            fontSize: '12px',
-                            fontWeight: '600',
-                            border: '1px solid var(--mukuru-primary)',
-                          }}
-                        >
-                          {
-                            roles.filter(
-                              (r) =>
-                                r.isActive &&
-                                !selectedUser.roles.some((ur) => ur.roleId === r.id)
-                            ).length
-                          }{' '}
-                          available
-                        </Tag>
-                      </HStack>
-                      {roles.filter(
-                        (r) =>
-                          r.isActive &&
-                          !selectedUser.roles.some((ur) => ur.roleId === r.id)
-                      ).length === 0 ? (
-                        <Box
-                          bg="var(--mukuru-state-hover)"
-                          borderRadius="lg"
-                          p="6"
-                          border="1px dashed var(--mukuru-grey-light)"
-                          textAlign="center"
-                        >
-                          <Typography color="var(--mukuru-grey-medium)" fontSize="sm">
-                            No available roles to assign. All roles have been assigned to
-                            this user.
-                          </Typography>
-                        </Box>
-                      ) : (
-                        <SimpleGrid
-                          columns={1}
-                          gap="3"
-                          maxH="450px"
-                          overflowY="auto"
-                          pr="2"
-                          style={{
-                            scrollbarWidth: 'thin',
-                            scrollbarColor:
-                              'var(--mukuru-grey-light) var(--mukuru-state-hover)',
-                          }}
-                        >
-                          {roles
-                            .filter(
-                              (r) =>
-                                r.isActive &&
-                                !selectedUser.roles.some((ur) => ur.roleId === r.id)
-                            )
-                            .map((role) => (
-                              <Box
-                                key={role.id}
-                                bg="var(--mukuru-cards-white)"
-                                borderRadius="xl"
-                                p="5"
-                                border="2px"
-                                borderColor="var(--mukuru-grey-light)"
-                                cursor="pointer"
-                                position="relative"
-                                _hover={{
-                                  borderColor: 'var(--mukuru-primary)',
-                                  bg: 'var(--mukuru-state-hover-card)',
-                                  boxShadow: '0 4px 6px -1px rgba(240, 84, 35, 0.1)',
-                                }}
-                                transition="all 0.2s ease"
-                                onClick={() => handleAssignRoleToUser(role.id)}
-                              >
-                                <Flex justify="space-between" align="start" gap="4">
-                                  <VStack align="start" gap="2" flex="1" minW="0">
-                                    <Typography
-                                      fontWeight="700"
-                                      fontSize="lg"
-                                      color="var(--mukuru-text-primary)"
-                                      lineHeight="1.3"
-                                    >
-                                      {role.displayName}
-                                    </Typography>
-                                    {role.description && (
-                                      <Typography
-                                        fontSize="sm"
-                                        color="var(--mukuru-grey-medium)"
-                                        lineHeight="1.5"
-                                      >
-                                        {role.description}
-                                      </Typography>
-                                    )}
-                                    <HStack gap="2" mt="2" wrap="wrap">
-                                      <Tag
-                                        style={{
-                                          backgroundColor:
-                                            'var(--mukuru-state-hover-card)',
-                                          color: 'var(--mukuru-text-primary)',
-                                          padding: '5px 12px',
-                                          borderRadius: '8px',
-                                          fontSize: '12px',
-                                          fontWeight: '600',
-                                          border: '1px solid var(--mukuru-primary)',
-                                        }}
-                                      >
-                                        {role.permissions?.length || 0} permissions
-                                      </Tag>
-                                      <Tag
-                                        style={{
-                                          backgroundColor: 'var(--mukuru-state-hover)',
-                                          color: 'var(--mukuru-grey-medium)',
-                                          padding: '5px 12px',
-                                          borderRadius: '8px',
-                                          fontSize: '12px',
-                                          fontWeight: '500',
-                                          fontFamily: 'monospace',
-                                        }}
-                                      >
-                                        {role.name}
-                                      </Tag>
-                                    </HStack>
-                                  </VStack>
-                                  <Box
-                                    bg="var(--mukuru-primary)"
-                                    borderRadius="full"
-                                    p="3"
-                                    display="flex"
-                                    alignItems="center"
-                                    justifyContent="center"
-                                    flexShrink={0}
-                                    style={{
-                                      width: '40px',
-                                      height: '40px',
-                                    }}
-                                    _hover={{
-                                      bg: 'var(--mukuru-primary)',
-                                      opacity: 0.9,
-                                      transform: 'scale(1.1)',
-                                    }}
-                                    transition="all 0.2s"
-                                  >
-                                    <IconWrapper>
-                                      <FiPlus
-                                        size={20}
-                                        color="var(--mukuru-text-inverse)"
-                                      />
-                                    </IconWrapper>
-                                  </Box>
-                                </Flex>
-                              </Box>
-                            ))}
-                        </SimpleGrid>
-                      )}
-                    </Box>
-
-                    <HStack
-                      gap="3"
-                      justify="flex-end"
-                      pt="4"
-                      borderTop="2px"
-                      borderColor="var(--mukuru-grey-light)"
-                    >
-                      <Button
-                        variant="ghost"
-                        onClick={() => setShowAssignRoleModal(false)}
-                        style={{
-                          backgroundColor: 'var(--mukuru-white)',
-                          color: 'var(--mukuru-text-primary)',
-                          border: '1px solid var(--mukuru-grey-light)',
-                          fontWeight: '600',
-                          padding: '10px 20px',
-                          borderRadius: '8px',
-                        }}
-                        _hover={{
-                          backgroundColor: 'var(--mukuru-state-hover)',
-                          borderColor: 'var(--mukuru-grey-medium)',
-                        }}
-                      >
-                        Cancel
-                      </Button>
-                    </HStack>
-                  </VStack>
-                </Box>
-              </Box>
-            )}
-
-            {/* Grant Permission Modal */}
-            {showGrantModal && selectedUser && (
-              <Box
-                position="fixed"
-                top="0"
-                left="0"
-                right="0"
-                bottom="0"
-                bg="rgba(0, 0, 0, 0.6)"
-                zIndex="1000"
-                display="flex"
-                alignItems="center"
-                justifyContent="center"
-                onClick={closeGrantModal}
-                style={{
-                  backdropFilter: 'blur(8px)',
-                  WebkitBackdropFilter: 'blur(8px)',
-                }}
-              >
-                <Box
-                  bg="var(--mukuru-cards-white)"
-                  borderRadius="xl"
-                  p="6"
-                  maxW="500px"
-                  width="90%"
-                  onClick={(e) => e.stopPropagation()}
-                  boxShadow="xl"
-                >
-                  <VStack gap="4" align="stretch">
-                    <HStack justify="space-between" align="center">
-                      <Typography
-                        fontSize="xl"
-                        fontWeight="bold"
-                        color="var(--mukuru-text-primary)"
-                      >
-                        Grant Permission
-                      </Typography>
-                      <Button variant="ghost" size="sm" onClick={closeGrantModal}>
-                        <IconWrapper>
-                          <FiX size={16} />
-                        </IconWrapper>
-                      </Button>
-                    </HStack>
-
-                    <Box>
-                      <Typography fontSize="sm" color="var(--mukuru-text-primary)" mb="2">
-                        User:
-                      </Typography>
-                      <Typography
-                        fontWeight="medium"
-                        fontSize="md"
-                        color="var(--mukuru-text-primary)"
-                      >
-                        {selectedUser.email}
-                      </Typography>
-                    </Box>
-
-                    <Field.Root required>
-                      <Field.Label
-                        color="var(--mukuru-text-primary)"
-                        fontWeight="medium"
-                        style={{
-                          textAlign: 'left',
-                          display: 'block',
-                          marginBottom: '8px',
-                        }}
-                      >
-                        Permission Name
-                      </Field.Label>
-                      {roles.length === 0 ? (
-                        <Box
-                          p="4"
-                          bg="var(--mukuru-state-hover)"
-                          borderRadius="md"
-                          border="1px"
-                          borderColor="var(--mukuru-grey-light)"
-                        >
-                          <Typography
-                            fontSize="sm"
-                            color="var(--mukuru-grey-medium)"
-                            style={{ textAlign: 'left' }}
-                          >
-                            No roles found. Please create a role with permissions first.
-                          </Typography>
-                        </Box>
-                      ) : getAvailablePermissionsFromRoles().length === 0 ? (
-                        <Box
-                          p="4"
-                          bg="var(--mukuru-state-hover)"
-                          borderRadius="md"
-                          border="1px"
-                          borderColor="var(--mukuru-grey-light)"
-                        >
-                          <Typography
-                            fontSize="sm"
-                            color="var(--mukuru-grey-medium)"
-                            style={{ textAlign: 'left' }}
-                          >
-                            No permissions found in existing roles. Please add permissions
-                            to roles first.
-                          </Typography>
-                        </Box>
-                      ) : (
-                        <select
-                          value={
-                            permissionForm.resource
-                              ? `${permissionForm.permissionName}::${permissionForm.resource}`
-                              : permissionForm.permissionName
-                          }
-                          onChange={(e) => {
-                            const selected = getAvailablePermissionsFromRoles().find(
-                              (p) => {
-                                const optionValue = p.resource
-                                  ? `${p.value}::${p.resource}`
-                                  : p.value;
-                                return optionValue === e.target.value;
-                              }
-                            );
-                            if (selected) {
-                              setPermissionForm({
-                                permissionName: selected.value,
-                                resource: selected.resource || '',
-                                description: '',
-                              });
+                      </Box>
+                    ) : (
+                      <select
+                        value={
+                          permissionForm.resource
+                            ? `${permissionForm.permissionName}::${permissionForm.resource}`
+                            : permissionForm.permissionName
+                        }
+                        onChange={(e) => {
+                          const selected = getAvailablePermissionsFromRoles().find(
+                            (p) => {
+                              const optionValue = p.resource
+                                ? `${p.value}::${p.resource}`
+                                : p.value;
+                              return optionValue === e.target.value;
                             }
-                          }}
+                          );
+                          if (selected) {
+                            setPermissionForm({
+                              permissionName: selected.value,
+                              resource: selected.resource || '',
+                              description: '',
+                            });
+                          }
+                        }}
+                        style={{
+                          width: '100%',
+                          padding: '8px 12px',
+                          fontSize: '14px',
+                          borderRadius: '6px',
+                          border: '1px solid var(--mukuru-grey-light)',
+                          backgroundColor: 'var(--mukuru-cards-white)',
+                          color: 'var(--mukuru-text-primary)',
+                          textAlign: 'left',
+                        }}
+                      >
+                        <option
+                          value=""
                           style={{
-                            width: '100%',
-                            padding: '8px 12px',
-                            fontSize: '14px',
-                            borderRadius: '6px',
-                            border: '1px solid var(--mukuru-grey-light)',
-                            backgroundColor: 'var(--mukuru-cards-white)',
                             color: 'var(--mukuru-text-primary)',
+                            backgroundColor: 'var(--mukuru-cards-white)',
                             textAlign: 'left',
                           }}
                         >
-                          <option
-                            value=""
-                            style={{
-                              color: 'var(--mukuru-text-primary)',
-                              backgroundColor: 'var(--mukuru-cards-white)',
-                              textAlign: 'left',
-                            }}
-                          >
-                            Select a permission from existing roles
-                          </option>
-                          {getAvailablePermissionsFromRoles().map((perm, index) => {
-                            const optionValue = perm.resource
-                              ? `${perm.value}::${perm.resource}`
-                              : perm.value;
-                            return (
-                              <option
-                                key={`${perm.value}-${perm.resource || 'none'}-${index}`}
-                                value={optionValue}
-                                style={{
-                                  color: 'var(--mukuru-text-primary)',
-                                  backgroundColor: 'var(--mukuru-cards-white)',
-                                  textAlign: 'left',
-                                }}
-                              >
-                                {perm.label}
-                              </option>
-                            );
-                          })}
-                        </select>
-                      )}
-                    </Field.Root>
+                          Select a permission from existing roles
+                        </option>
+                        {getAvailablePermissionsFromRoles().map((perm, index) => {
+                          const optionValue = perm.resource
+                            ? `${perm.value}::${perm.resource}`
+                            : perm.value;
+                          return (
+                            <option
+                              key={`${perm.value}-${perm.resource || 'none'}-${index}`}
+                              value={optionValue}
+                              style={{
+                                color: 'var(--mukuru-text-primary)',
+                                backgroundColor: 'var(--mukuru-cards-white)',
+                                textAlign: 'left',
+                              }}
+                            >
+                              {perm.label}
+                            </option>
+                          );
+                        })}
+                      </select>
+                    )}
+                  </Field.Root>
 
-                    <Field.Root>
-                      <Field.Label
-                        color="var(--mukuru-text-primary)"
-                        fontWeight="medium"
-                        style={{
-                          textAlign: 'left',
-                          display: 'block',
-                          marginBottom: '8px',
-                        }}
-                      >
-                        Resource (Optional)
-                      </Field.Label>
-                      <Input
-                        placeholder="Resource (auto-filled from selected permission)"
-                        value={permissionForm.resource}
-                        onChange={(e) =>
-                          setPermissionForm({
-                            ...permissionForm,
-                            resource: e.target.value,
-                          })
-                        }
-                        color="var(--mukuru-text-primary)"
-                        style={{ textAlign: 'left' }}
-                      />
-                      <Typography
-                        fontSize="xs"
-                        color="var(--mukuru-grey-medium)"
-                        mt="1"
-                        style={{ textAlign: 'left' }}
-                      >
-                        Resource is automatically set from the selected permission if
-                        available, but can be overridden if needed.
-                      </Typography>
-                    </Field.Root>
+                  <Field.Root>
+                    <Field.Label
+                      color="var(--mukuru-text-primary)"
+                      fontWeight="medium"
+                      style={{
+                        textAlign: 'left',
+                        display: 'block',
+                        marginBottom: '8px',
+                      }}
+                    >
+                      Resource (Optional)
+                    </Field.Label>
+                    <Input
+                      placeholder="Resource (auto-filled from selected permission)"
+                      value={permissionForm.resource}
+                      onChange={(e) =>
+                        setPermissionForm({
+                          ...permissionForm,
+                          resource: e.target.value,
+                        })
+                      }
+                      color="var(--mukuru-text-primary)"
+                      style={{ textAlign: 'left' }}
+                    />
+                    <Typography
+                      fontSize="xs"
+                      color="var(--mukuru-grey-medium)"
+                      mt="1"
+                      style={{ textAlign: 'left' }}
+                    >
+                      Resource is automatically set from the selected permission if
+                      available, but can be overridden if needed.
+                    </Typography>
+                  </Field.Root>
 
-                    <Field.Root>
-                      <Field.Label
-                        color="var(--mukuru-text-primary)"
-                        fontWeight="medium"
-                        style={{
-                          textAlign: 'left',
-                          display: 'block',
-                          marginBottom: '8px',
-                        }}
-                      >
-                        Description (Optional)
-                      </Field.Label>
-                      <Textarea
-                        placeholder="Describe what this permission allows..."
-                        value={permissionForm.description}
-                        onChange={(e) =>
-                          setPermissionForm({
-                            ...permissionForm,
-                            description: e.target.value,
-                          })
-                        }
-                        rows={3}
-                        color="var(--mukuru-text-primary)"
-                        _placeholder={{ color: 'var(--mukuru-text-input)' }}
-                        style={{ textAlign: 'left', resize: 'vertical' }}
-                      />
-                    </Field.Root>
+                  <Field.Root>
+                    <Field.Label
+                      color="var(--mukuru-text-primary)"
+                      fontWeight="medium"
+                      style={{
+                        textAlign: 'left',
+                        display: 'block',
+                        marginBottom: '8px',
+                      }}
+                    >
+                      Description (Optional)
+                    </Field.Label>
+                    <Textarea
+                      placeholder="Describe what this permission allows..."
+                      value={permissionForm.description}
+                      onChange={(e) =>
+                        setPermissionForm({
+                          ...permissionForm,
+                          description: e.target.value,
+                        })
+                      }
+                      rows={3}
+                      color="var(--mukuru-text-primary)"
+                      _placeholder={{ color: 'var(--mukuru-text-input)' }}
+                      style={{ textAlign: 'left', resize: 'vertical' }}
+                    />
+                  </Field.Root>
 
-                    <HStack gap="3" justify="flex-end" mt="4" align="center">
-                      <Button
-                        variant="ghost"
-                        onClick={closeGrantModal}
-                        style={{
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                        }}
-                      >
-                        Cancel
-                      </Button>
-                      <Button
-                        variant="primary"
-                        onClick={handleGrantPermission}
-                        disabled={granting}
-                        bg="var(--mukuru-primary)"
-                        style={{
-                          color: 'var(--mukuru-text-inverse)',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                        }}
-                      >
-                        {granting ? 'Granting...' : 'Grant Permission'}
-                      </Button>
-                    </HStack>
-                  </VStack>
-                </Box>
+                  <HStack gap="3" justify="flex-end" mt="4" align="center">
+                    <Button
+                      variant="ghost"
+                      onClick={closeGrantModal}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                      }}
+                    >
+                      Cancel
+                    </Button>
+                    <Button
+                      variant="primary"
+                      onClick={handleGrantPermission}
+                      disabled={granting}
+                      bg="var(--mukuru-primary)"
+                      style={{
+                        color: 'var(--mukuru-text-inverse)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                      }}
+                    >
+                      {granting ? 'Granting...' : 'Grant Permission'}
+                    </Button>
+                  </HStack>
+                </VStack>
               </Box>
-            )}
+            </Box>
+          )}
         </Box>
       </Box>
     </Box>

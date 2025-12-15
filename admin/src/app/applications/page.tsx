@@ -422,8 +422,15 @@ export default function ApplicationsPage() {
                 Manage all partner and customer applications
               </Typography>
             </VStack>
-            <Button variant="primary" size="md" onClick={handleExport} disabled={exporting}>
-              <IconWrapper><FiDownload size={16} /></IconWrapper>
+            <Button
+              variant="primary"
+              size="md"
+              onClick={handleExport}
+              disabled={exporting}
+            >
+              <IconWrapper>
+                <FiDownload size={16} />
+              </IconWrapper>
               {exporting ? 'Exporting...' : 'Export'}
             </Button>
           </Flex>
@@ -436,18 +443,33 @@ export default function ApplicationsPage() {
               <AlertBar status="error" title="Error" description={error} />
             </Box>
           )}
-          <TabsRoot 
-            value={statusFilter} 
+          <TabsRoot
+            value={statusFilter}
             onValueChange={(details) => setStatusFilter(details.value)}
           >
             <TabsList>
-              {(['ALL', 'SUBMITTED', 'IN_PROGRESS', 'RISK_REVIEW', 'COMPLETE', 'DECLINED'] as const).map((filter) => {
-                const label = filter === 'ALL' ? 'All' 
-                  : filter === 'IN_PROGRESS' ? 'In Progress' 
-                  : filter === 'RISK_REVIEW' ? 'Risk Review' 
-                  : filter === 'SUBMITTED' ? 'Submitted'
-                  : filter === 'COMPLETE' ? 'Complete'
-                  : 'Declined';
+              {(
+                [
+                  'ALL',
+                  'SUBMITTED',
+                  'IN_PROGRESS',
+                  'RISK_REVIEW',
+                  'COMPLETE',
+                  'DECLINED',
+                ] as const
+              ).map((filter) => {
+                const label =
+                  filter === 'ALL'
+                    ? 'All'
+                    : filter === 'IN_PROGRESS'
+                      ? 'In Progress'
+                      : filter === 'RISK_REVIEW'
+                        ? 'Risk Review'
+                        : filter === 'SUBMITTED'
+                          ? 'Submitted'
+                          : filter === 'COMPLETE'
+                            ? 'Complete'
+                            : 'Declined';
                 return (
                   <TabsTrigger key={filter} value={filter}>
                     {label}
@@ -460,11 +482,11 @@ export default function ApplicationsPage() {
         </Box>
 
         {/* Table Section - Full Width */}
-        <Box 
-          flex="1" 
-          minH="0" 
-          px="24px" 
-          py="16px" 
+        <Box
+          flex="1"
+          minH="0"
+          px="24px"
+          py="16px"
           bg={bgColor}
           display="flex"
           flexDirection="column"
@@ -479,7 +501,7 @@ export default function ApplicationsPage() {
             </Box>
           </Flex>
 
-          <Box 
+          <Box
             flex="1"
             minH="0"
             bg={cardBg}
@@ -491,7 +513,7 @@ export default function ApplicationsPage() {
             flexDirection="column"
             className="work-queue-table-card"
           >
-              <style>{`
+            <style>{`
                 /* Make DataTable fill container */
                 .work-queue-table-card > div {
                   height: 100% !important;
@@ -583,179 +605,190 @@ export default function ApplicationsPage() {
                   display: none !important;
                 }
                 `}</style>
-                <DataTable
-                  data={filteredApplications as unknown as Record<string, unknown>[]}
-                  columns={columns as unknown as ColumnConfig<Record<string, unknown>>[]}
-                  loading={loading}
-                  emptyState={{
-                    message:
-                      applications.length === 0
-                        ? 'No applications found'
-                        : 'No applications match your search criteria',
-                    content: (
-                      <VStack gap="4">
-                        <IconWrapper>
-                          <FiSearch size={48} color="#9CA3AF" />
-                        </IconWrapper>
-                        <Typography fontSize="sm" color="mukuru.grey.medium">
-                          {applications.length === 0
-                            ? 'Applications will appear here once they are created'
-                            : 'Try adjusting your search criteria or filters'}
-                        </Typography>
-                      </VStack>
-                    ),
-                  }}
-                  showActions={true}
-                  actionColumn={{
-                    header: 'Actions',
-                    width: '200px',
-                    render: (row, _index) => {
-                      const app = row as unknown as Application;
-                      const isSubmitted = app.status === 'SUBMITTED';
-                      const isSubmitting = submittingToWorkQueue[app.id] || false;
+            <DataTable
+              data={filteredApplications as unknown as Record<string, unknown>[]}
+              columns={columns as unknown as ColumnConfig<Record<string, unknown>>[]}
+              loading={loading}
+              emptyState={{
+                message:
+                  applications.length === 0
+                    ? 'No applications found'
+                    : 'No applications match your search criteria',
+                content: (
+                  <VStack gap="4">
+                    <IconWrapper>
+                      <FiSearch size={48} color="#9CA3AF" />
+                    </IconWrapper>
+                    <Typography fontSize="sm" color="mukuru.grey.medium">
+                      {applications.length === 0
+                        ? 'Applications will appear here once they are created'
+                        : 'Try adjusting your search criteria or filters'}
+                    </Typography>
+                  </VStack>
+                ),
+              }}
+              showActions={true}
+              actionColumn={{
+                header: 'Actions',
+                width: '200px',
+                render: (row, _index) => {
+                  const app = row as unknown as Application;
+                  const isSubmitted = app.status === 'SUBMITTED';
+                  const isSubmitting = submittingToWorkQueue[app.id] || false;
 
-                      return (
-                        <div
-                          style={{
-                            display: 'flex',
-                            gap: '8px',
-                            alignItems: 'center',
-                            justifyContent: 'flex-end',
+                  return (
+                    <div
+                      style={{
+                        display: 'flex',
+                        gap: '8px',
+                        alignItems: 'center',
+                        justifyContent: 'flex-end',
+                      }}
+                    >
+                      <Tooltip content="View" showArrow variant="light">
+                        <Link
+                          href={
+                            row.id && row.id !== 'undefined' && row.id !== 'null'
+                              ? `/applications/${row.id}`
+                              : '#'
+                          }
+                          style={{ textDecoration: 'none' }}
+                          onClick={(e) => {
+                            if (!row.id || row.id === 'undefined' || row.id === 'null') {
+                              e.preventDefault();
+                              logger.warn(
+                                'Cannot navigate: application ID is missing or invalid',
+                                {
+                                  extra: { rowId: row.id },
+                                }
+                              );
+                            }
                           }}
                         >
-                          <Tooltip content="View" showArrow variant="light">
-                            <Link
-                              href={row.id && row.id !== 'undefined' && row.id !== 'null' 
-                                ? `/applications/${row.id}` 
-                                : '#'}
-                              style={{ textDecoration: 'none' }}
-                              onClick={(e) => {
-                                if (!row.id || row.id === 'undefined' || row.id === 'null') {
-                                  e.preventDefault();
-                                  logger.warn('Cannot navigate: application ID is missing or invalid', {
-                                    extra: { rowId: row.id },
-                                  });
-                                }
-                              }}
-                            >
-                              <button
-                                style={{
-                                  background: 'none',
-                                  border: 'none',
-                                  padding: '8px',
-                                  cursor: 'pointer',
-                                  color: '#E8590C',
-                                  display: 'flex',
-                                  alignItems: 'center',
-                                  justifyContent: 'center',
-                                }}
-                                aria-label="View"
-                              >
-                                <IconWrapper>
-                                  <FiEye size={16} />
-                                </IconWrapper>
-                              </button>
-                            </Link>
-                          </Tooltip>
-                          {isSubmitted && (
-                            <Tooltip
-                              content={
-                                isSubmitting ? 'Submitting...' : 'Submit to Work Queue'
+                          <button
+                            style={{
+                              background: 'none',
+                              border: 'none',
+                              padding: '8px',
+                              cursor: 'pointer',
+                              color: '#E8590C',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                            }}
+                            aria-label="View"
+                          >
+                            <IconWrapper>
+                              <FiEye size={16} />
+                            </IconWrapper>
+                          </button>
+                        </Link>
+                      </Tooltip>
+                      {isSubmitted && (
+                        <Tooltip
+                          content={
+                            isSubmitting ? 'Submitting...' : 'Submit to Work Queue'
+                          }
+                          showArrow
+                          variant="light"
+                        >
+                          <button
+                            style={{
+                              background: 'none',
+                              border: 'none',
+                              padding: '8px',
+                              cursor: isSubmitting ? 'wait' : 'pointer',
+                              color: isSubmitting ? '#9CA3AF' : '#E8590C',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              opacity: isSubmitting ? 0.6 : 1,
+                            }}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleSubmitToWorkQueue(app.id, app);
+                            }}
+                            disabled={isSubmitting}
+                            aria-label="Submit to Work Queue"
+                          >
+                            <IconWrapper>
+                              {isSubmitting ? (
+                                <Spinner size="sm" color="mukuru.buttons.primary" />
+                              ) : (
+                                <FiCheckCircle size={16} />
+                              )}
+                            </IconWrapper>
+                          </button>
+                        </Tooltip>
+                      )}
+                      <Tooltip content="Review" showArrow variant="light">
+                        <button
+                          style={{
+                            background: 'none',
+                            border: 'none',
+                            padding: '8px',
+                            cursor: 'pointer',
+                            color: '#E8590C',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                          }}
+                          onClick={async (e) => {
+                            e.stopPropagation();
+                            try {
+                              const appWithWorkItem = row as unknown as Application & {
+                                workItemId?: string;
+                              };
+                              const workItemId =
+                                appWithWorkItem.workItemId || appWithWorkItem.id;
+                              // Validate workItemId before navigating
+                              if (
+                                workItemId &&
+                                workItemId !== 'undefined' &&
+                                workItemId !== 'null'
+                              ) {
+                                window.location.href = `/review/${workItemId}`;
+                              } else {
+                                logger.warn(
+                                  'Cannot navigate to review: workItemId is missing or invalid',
+                                  {
+                                    extra: { workItemId, appId: appWithWorkItem.id },
+                                  }
+                                );
                               }
-                              showArrow
-                              variant="light"
-                            >
-                              <button
-                                style={{
-                                  background: 'none',
-                                  border: 'none',
-                                  padding: '8px',
-                                  cursor: isSubmitting ? 'wait' : 'pointer',
-                                  color: isSubmitting ? '#9CA3AF' : '#E8590C',
-                                  display: 'flex',
-                                  alignItems: 'center',
-                                  justifyContent: 'center',
-                                  opacity: isSubmitting ? 0.6 : 1,
-                                }}
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleSubmitToWorkQueue(app.id, app);
-                                }}
-                                disabled={isSubmitting}
-                                aria-label="Submit to Work Queue"
-                              >
-                                <IconWrapper>
-                                  {isSubmitting ? (
-                                    <Spinner size="sm" color="mukuru.buttons.primary" />
-                                  ) : (
-                                    <FiCheckCircle size={16} />
-                                  )}
-                                </IconWrapper>
-                              </button>
-                            </Tooltip>
-                          )}
-                          <Tooltip content="Review" showArrow variant="light">
-                            <button
-                              style={{
-                                background: 'none',
-                                border: 'none',
-                                padding: '8px',
-                                cursor: 'pointer',
-                                color: '#E8590C',
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                              }}
-                              onClick={async (e) => {
-                                e.stopPropagation();
-                                try {
-                                  const appWithWorkItem =
-                                    row as unknown as Application & {
-                                      workItemId?: string;
-                                    };
-                                  const workItemId =
-                                    appWithWorkItem.workItemId || appWithWorkItem.id;
-                                  // Validate workItemId before navigating
-                                  if (workItemId && workItemId !== 'undefined' && workItemId !== 'null') {
-                                    window.location.href = `/review/${workItemId}`;
-                                  } else {
-                                    logger.warn('Cannot navigate to review: workItemId is missing or invalid', {
-                                      extra: { workItemId, appId: appWithWorkItem.id },
-                                    });
-                                  }
-                                } catch (err) {
-                                  logger.error(err, 'Error navigating to review', {
-                                    tags: { error_type: 'navigation_error' },
-                                  });
-                                  // Only navigate to applications if row.id is valid
-                                  if (row.id && row.id !== 'undefined' && row.id !== 'null') {
-                                    window.location.href = `/applications/${row.id}`;
-                                  }
-                                }
-                              }}
-                              aria-label="Review"
-                            >
-                              <IconWrapper>
-                                <FiShield size={16} />
-                              </IconWrapper>
-                            </button>
-                          </Tooltip>
-                        </div>
-                      );
-                    },
-                  }}
-                  onRowClick={(row) => {
-                    const app = row as unknown as Application;
-                    // Check if app.id exists and is valid before navigating
-                    if (app?.id && app.id !== 'undefined' && app.id !== 'null') {
-                      window.location.href = `/applications/${app.id}`;
-                    } else {
-                      logger.warn('Cannot navigate: application ID is missing or invalid', {
-                        extra: { appId: app?.id, app },
-                      });
-                    }
-                  }}
-                />
+                            } catch (err) {
+                              logger.error(err, 'Error navigating to review', {
+                                tags: { error_type: 'navigation_error' },
+                              });
+                              // Only navigate to applications if row.id is valid
+                              if (row.id && row.id !== 'undefined' && row.id !== 'null') {
+                                window.location.href = `/applications/${row.id}`;
+                              }
+                            }
+                          }}
+                          aria-label="Review"
+                        >
+                          <IconWrapper>
+                            <FiShield size={16} />
+                          </IconWrapper>
+                        </button>
+                      </Tooltip>
+                    </div>
+                  );
+                },
+              }}
+              onRowClick={(row) => {
+                const app = row as unknown as Application;
+                // Check if app.id exists and is valid before navigating
+                if (app?.id && app.id !== 'undefined' && app.id !== 'null') {
+                  window.location.href = `/applications/${app.id}`;
+                } else {
+                  logger.warn('Cannot navigate: application ID is missing or invalid', {
+                    extra: { appId: app?.id, app },
+                  });
+                }
+              }}
+            />
           </Box>
         </Box>
       </Box>

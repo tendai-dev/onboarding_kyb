@@ -283,14 +283,24 @@ builder.Services.AddScoped<OnboardingApi.Application.Checklist.Interfaces.ICheck
 // ========================================
 builder.Services.AddScoped<OnboardingApi.Application.Notification.Interfaces.INotificationRepository, OnboardingApi.Infrastructure.Persistence.Notification.NotificationRepository>();
 builder.Services.AddScoped<OnboardingApi.Application.Notification.Interfaces.INotificationSender, OnboardingApi.Infrastructure.Services.NotificationSender>();
-builder.Services.AddScoped<OnboardingApi.Application.Notification.Interfaces.IEmailSender, OnboardingApi.Infrastructure.Services.EmailSender>();
+// Use SendGridEmailSender if API key is configured, otherwise fall back to EmailSender (logs only)
+var sendGridApiKey = builder.Configuration["SendGrid:ApiKey"] ?? builder.Configuration["SENDGRID_API_KEY"];
+if (!string.IsNullOrWhiteSpace(sendGridApiKey))
+{
+    builder.Services.AddScoped<OnboardingApi.Application.Notification.Interfaces.IEmailSender, OnboardingApi.Infrastructure.Services.SendGridEmailSender>();
+}
+else
+{
+    builder.Services.AddScoped<OnboardingApi.Application.Notification.Interfaces.IEmailSender, OnboardingApi.Infrastructure.Services.EmailSender>();
+}
 builder.Services.AddScoped<OnboardingApi.Application.Notification.Interfaces.ISmsSender, OnboardingApi.Infrastructure.Services.SmsSender>();
 builder.Services.AddScoped<OnboardingApi.Application.Notification.Interfaces.INotificationService, OnboardingApi.Infrastructure.Services.NotificationServiceImpl>();
 
 // ========================================
-// Messaging Module Repositories
+// Messaging Module Repositories & Services
 // ========================================
 builder.Services.AddScoped<OnboardingApi.Application.Messaging.Interfaces.IMessageRepository, OnboardingApi.Infrastructure.Persistence.Messaging.MessageRepository>();
+builder.Services.AddScoped<OnboardingApi.Application.Messaging.Interfaces.IMessageBroadcaster, OnboardingApi.Presentation.Services.MessageBroadcaster>();
 
 // ========================================
 // Webhook Module Services
@@ -385,6 +395,8 @@ builder.Services.AddMediatR(cfg =>
     cfg.RegisterServicesFromAssembly(typeof(OnboardingApi.Application.WorkQueue.Commands.CreateWorkItemCommand).Assembly);
     // Register Risk module handlers
     cfg.RegisterServicesFromAssembly(typeof(OnboardingApi.Application.Risk.Commands.CreateRiskAssessmentCommand).Assembly);
+    // Register EDD Signature handlers from Infrastructure layer
+    cfg.RegisterServicesFromAssembly(typeof(OnboardingApi.Infrastructure.Persistence.Risk.GetEddSignaturesQueryHandler).Assembly);
     // Register Projections module handlers
     cfg.RegisterServicesFromAssembly(typeof(OnboardingApi.Application.Projections.Queries.GetDashboardQuery).Assembly);
     // Register Document module handlers
@@ -429,6 +441,16 @@ builder.Services.AddOpenTelemetry()
 // SignalR for Real-Time Updates
 // ========================================
 builder.Services.AddSignalR();
+
+// ========================================
+// Request Size Limits - SECURITY: Prevent DoS attacks
+// ========================================
+builder.Services.Configure<Microsoft.AspNetCore.Http.Features.FormOptions>(options =>
+{
+    options.MultipartBodyLengthLimit = 10 * 1024 * 1024; // 10MB for file uploads
+    options.ValueLengthLimit = 10 * 1024 * 1024;
+    options.MultipartHeadersLengthLimit = 1024;
+});
 
 // ========================================
 // Controllers + API
@@ -526,6 +548,9 @@ if (!string.IsNullOrEmpty(builder.Configuration["Sentry:Dsn"] ?? Environment.Get
 // Prometheus metrics
 app.UseMetricServer();
 app.UseHttpMetrics();
+
+// SECURITY: Add security headers middleware (early in pipeline)
+app.UseMiddleware<OnboardingApi.Presentation.Middleware.SecurityHeadersMiddleware>();
 
 // Trace ID middleware - propagate trace ID across all services
 app.Use(async (context, next) =>

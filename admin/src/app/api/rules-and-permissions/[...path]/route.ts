@@ -37,7 +37,7 @@ async function forwardRequest(request: NextRequest, method: string) {
       process.env.PROXY_TARGET ||
       process.env.ONBOARDING_TARGET ||
       'http://localhost:8001';
-    
+
     // Roles and users go to unified API at /api/v1/roles and /api/v1/users
     const backendPath = `/api/v1${pathAfterBase}${queryString ? `?${queryString}` : ''}`;
     const backendUrl = `${UNIFIED_API_TARGET}${backendPath}`;

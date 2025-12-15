@@ -23,9 +23,13 @@ public class UsersController : ControllerBase
 
     /// <summary>
     /// Get all users
+    /// SECURITY: Requires admin authentication - user data is sensitive
     /// </summary>
     [HttpGet]
+    [Microsoft.AspNetCore.Authorization.Authorize(Policy = "AdminPolicy")] // SECURITY FIX: Require admin role
     [ProducesResponseType(typeof(List<UserDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
     public async Task<IActionResult> GetAllUsers([FromQuery] bool includePermissions = false, CancellationToken cancellationToken = default)
     {
         try
@@ -94,7 +98,9 @@ public class UsersController : ControllerBase
             var user = await _userRepository.GetByEmailAsync(userEmail, cancellationToken);
             if (user == null)
             {
-                _logger.LogWarning("User not found in database: {Email}", userEmail);
+                // SECURITY FIX: Mask PII in logs
+                _logger.LogWarning("User not found in database: {Email}", 
+                    Infrastructure.Utilities.LoggingExtensions.MaskEmail(userEmail));
                 return NotFound(new { error = "User not found" });
             }
             
@@ -210,9 +216,13 @@ public class UsersController : ControllerBase
 
     /// <summary>
     /// Get user by email
+    /// SECURITY: Requires admin authentication - user data is sensitive
     /// </summary>
     [HttpGet("by-email/{email}")]
+    [Microsoft.AspNetCore.Authorization.Authorize(Policy = "AdminPolicy")] // SECURITY FIX: Require admin role
     [ProducesResponseType(typeof(UserDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> GetUserByEmail(string email, CancellationToken cancellationToken = default)
     {
@@ -257,7 +267,9 @@ public class UsersController : ControllerBase
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error getting user by email {Email}", email);
+            // SECURITY FIX: Mask PII in logs
+            _logger.LogError(ex, "Error getting user by email {Email}", 
+                Infrastructure.Utilities.LoggingExtensions.MaskEmail(email));
             return StatusCode(500, new { error = "Failed to retrieve user" });
         }
     }

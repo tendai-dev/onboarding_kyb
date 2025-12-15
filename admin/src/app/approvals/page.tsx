@@ -1,15 +1,6 @@
 'use client';
 
-import {
-  Box,
-  SimpleGrid,
-  Flex,
-  Container,
-  Textarea,
-  VStack,
-  HStack,
-} from '@chakra-ui/react';
-// Import components directly from Mukuru package
+import { Box, Flex, Textarea, VStack, HStack, Spinner } from '@chakra-ui/react';
 import {
   Typography,
   Card,
@@ -23,29 +14,24 @@ import {
   ModalBody,
   ModalFooter,
   Tooltip,
-  ChevronRightIcon,
   Tag,
   TickIcon as CheckIcon,
   DeleteIcon,
   VisibleIcon,
 } from '@mukuru/mukuru-react-components';
 import type { ColumnConfig } from '@mukuru/mukuru-react-components';
-// Color mode - always light mode
-const useColorModeValue = <T,>(light: T, _dark: T): T => light;
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import AdminSidebar from '../../components/AdminSidebar';
 import PortalHeader from '../../components/PortalHeader';
 import { useSidebar } from '../../contexts/SidebarContext';
-import { FiCheckCircle, FiXCircle, FiClock, FiEdit, FiFilter } from 'react-icons/fi';
+import { FiCheckCircle, FiXCircle, FiRefreshCw, FiEdit2 } from 'react-icons/fi';
 import {
-  fetchPendingApprovals,
   approveWorkItemUseCase,
   declineWorkItemUseCase,
   getWorkItems,
   WorkItemDto,
-  mapWorkItemsToApplications,
-  WorkItemApplication,
 } from '../../services';
+import { getPendingApprovals } from '../../services/api/workQueueApi';
 import { logger } from '../../lib/logger';
 import { SweetAlert } from '../../utils/sweetAlert';
 import Link from 'next/link';
@@ -137,130 +123,95 @@ function mapWorkItemToApproval(workItem: WorkItemDto): Approval {
   };
 }
 
-type StatusFilter = 'ALL' | 'PENDING' | 'APPROVED' | 'REJECTED' | 'REQUIRES_CHANGES';
+type TabFilter = 'PENDING' | 'DECLINED' | 'ALL';
 
 export default function ApprovalsPage() {
   const { condensed } = useSidebar();
 
-  // Color mode values for dark/light mode support
-  const bgColor = useColorModeValue('mukuru.background.light', 'mukuru.background.dark');
-  const cardBg = useColorModeValue('mukuru.cards.white', 'mukuru.cards.dark');
-  const textColor = useColorModeValue('mukuru.text.primary', 'mukuru.text.inverse');
-  const headerBg = useColorModeValue('mukuru.cards.white', 'mukuru.cards.dark');
-  const borderColor = useColorModeValue('mukuru.grey.light', 'mukuru.grey.500');
+  // Mukuru Design System color tokens - matching work-queue page
+  const bgColor = 'mukuru.background.light';
+  const cardBg = 'mukuru.cards.white';
+  const textColor = 'mukuru.text.primary';
+  const borderColor = 'mukuru.grey.light';
+  const subtleText = 'mukuru.grey.medium';
 
-  const [approvals, setApprovals] = useState<Approval[]>([]);
   const [allApprovals, setAllApprovals] = useState<Approval[]>([]);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
-  const [statusFilter, setStatusFilter] = useState<StatusFilter>('ALL');
+  const [activeTab, setActiveTab] = useState<TabFilter>('PENDING');
   const [selectedApproval, setSelectedApproval] = useState<Approval | null>(null);
   const [approvalComment, setApprovalComment] = useState('');
   const [processing, setProcessing] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
   const [approvalModalOpen, setApprovalModalOpen] = useState(false);
 
-  // Stats calculation
-  const stats = useMemo(() => {
-    const pendingCount = allApprovals.filter((a) => a.status === 'PENDING').length;
-    const approvedCount = allApprovals.filter((a) => a.status === 'APPROVED').length;
-    const rejectedCount = allApprovals.filter((a) => a.status === 'REJECTED').length;
-    const requiresChangesCount = allApprovals.filter(
-      (a) => a.status === 'REQUIRES_CHANGES'
-    ).length;
-    return {
-      pending: pendingCount,
-      approved: approvedCount,
-      rejected: rejectedCount,
-      requiresChanges: requiresChangesCount,
-    };
-  }, [allApprovals]);
+  // Load data on mount and when refreshKey changes
+  const loadApprovals = useCallback(async () => {
+    try {
+      setLoading(true);
+      setError(null);
 
-  // Async fetchData function for DataTable
-  const fetchData = useCallback(
-    async (params: Record<string, unknown>) => {
-      try {
-        logger.debug('[Approvals Page] fetchData started');
-        setError(null);
+      const [pendingResult, declinedResult] = await Promise.all([
+        getPendingApprovals(1, 1000),
+        getWorkItems({ status: 'Declined', page: 1, pageSize: 1000 }),
+      ]);
 
-        const search = (params.search as string) || searchTerm || '';
+      const pendingApprovals = pendingResult.items.map(mapWorkItemToApproval);
+      const declinedItems = declinedResult.items.map(mapWorkItemToApproval);
+      const reviewCompletedItems = [...pendingApprovals, ...declinedItems];
+      const uniqueItems = Array.from(
+        new Map(reviewCompletedItems.map((item) => [item.id, item])).values()
+      );
 
-        logger.debug('[Approvals Page] fetchData called', {
-          statusFilter,
-          search,
-          params,
-        });
+      setAllApprovals(uniqueItems);
+    } catch (err) {
+      const errorMessage =
+        err instanceof Error ? err.message : 'Failed to load approvals';
+      logger.error(err, '[Approvals Page] Error loading approvals');
+      setError(errorMessage);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
-        // Fetch pending approvals
-        const pendingResult = await fetchPendingApprovals(1, 1000);
-        const pendingApprovals = pendingResult.items.map(mapWorkItemToApproval);
+  useEffect(() => {
+    loadApprovals();
+  }, [loadApprovals, refreshKey]);
 
-        // Fetch all work items to get approved/declined ones
-        const [allItemsResult, approvedResult, declinedResult] = await Promise.all([
-          getWorkItems({
-            page: 1,
-            pageSize: 1000,
-          }),
-          getWorkItems({
-            status: 'Completed',
-            page: 1,
-            pageSize: 1000,
-          }),
-          getWorkItems({
-            status: 'Declined',
-            page: 1,
-            pageSize: 1000,
-          }),
-        ]);
+  // Filter approvals based on tab and search
+  const filteredApprovals = useMemo(() => {
+    let filtered = allApprovals;
 
-        // Map all work items to approvals
-        const allItems = [
-          ...pendingApprovals,
-          ...allItemsResult.items.map(mapWorkItemToApproval),
-          ...approvedResult.items.map(mapWorkItemToApproval),
-          ...declinedResult.items.map(mapWorkItemToApproval),
-        ];
+    // Filter by tab
+    if (activeTab === 'PENDING') {
+      filtered = filtered.filter((item) => item.status === 'PENDING');
+    } else if (activeTab === 'DECLINED') {
+      filtered = filtered.filter((item) => item.status === 'REJECTED');
+    }
 
-        // Remove duplicates by ID
-        const uniqueItems = Array.from(
-          new Map(allItems.map((item) => [item.id, item])).values()
-        );
+    // Filter by search
+    if (searchTerm) {
+      const search = searchTerm.toLowerCase();
+      filtered = filtered.filter(
+        (item) =>
+          item.companyName.toLowerCase().includes(search) ||
+          item.applicationId.toLowerCase().includes(search) ||
+          (item.workItemNumber && item.workItemNumber.toLowerCase().includes(search))
+      );
+    }
 
-        // Filter by status
-        let filtered = uniqueItems;
-        if (statusFilter !== 'ALL') {
-          filtered = uniqueItems.filter((item) => item.status === statusFilter);
-        }
+    return filtered;
+  }, [allApprovals, activeTab, searchTerm]);
 
-        // Filter by search term
-        if (search) {
-          filtered = filtered.filter(
-            (item) =>
-              item.companyName.toLowerCase().includes(search.toLowerCase()) ||
-              item.applicationId.toLowerCase().includes(search.toLowerCase()) ||
-              (item.workItemNumber &&
-                item.workItemNumber.toLowerCase().includes(search.toLowerCase()))
-          );
-        }
-
-        setAllApprovals(uniqueItems);
-        setApprovals(filtered);
-
-        logger.debug('[Approvals Page] fetchData completed successfully', {
-          count: filtered.length,
-        });
-        return filtered as unknown as Record<string, unknown>[];
-      } catch (err) {
-        const errorMessage =
-          err instanceof Error ? err.message : 'Failed to load approvals';
-        logger.error(err, '[Approvals Page] Error in fetchData', {
-          tags: { error_type: 'fetch_data' },
-        });
-        setError(errorMessage);
-        return [];
-      }
-    },
-    [statusFilter, searchTerm]
+  // Stats
+  const stats = useMemo(
+    () => ({
+      pending: allApprovals.filter((a) => a.status === 'PENDING').length,
+      rejected: allApprovals.filter((a) => a.status === 'REJECTED').length,
+      total: allApprovals.length,
+    }),
+    [allApprovals]
   );
 
   const handleSearchChange = useCallback((query: string) => {
@@ -498,299 +449,196 @@ export default function ApprovalsPage() {
     ),
   };
 
+  // Tab component - matching work-queue page style (underline on active)
+  const Tab = ({
+    label,
+    isActive,
+    onClick,
+  }: {
+    label: string;
+    isActive: boolean;
+    onClick: () => void;
+  }) => (
+    <Box
+      as="button"
+      pb="2"
+      borderBottom="2px solid"
+      borderColor={isActive ? 'mukuru.charcoal' : 'transparent'}
+      color={isActive ? 'mukuru.charcoal' : subtleText}
+      fontWeight={isActive ? '500' : '400'}
+      fontSize="sm"
+      bg="transparent"
+      _hover={{ color: 'mukuru.charcoal' }}
+      transition="all 0.15s"
+      onClick={onClick}
+    >
+      {label}
+    </Box>
+  );
+
   return (
-    <Flex minH="100vh" bg={bgColor}>
+    <Box minH="100vh" bg={bgColor}>
       <AdminSidebar />
       <PortalHeader />
 
+      {/* Error Alert */}
+      {error && (
+        <Box position="fixed" top="100px" right="24px" zIndex={10000} maxW="400px">
+          <AlertBar
+            status="error"
+            title="Error"
+            description={error}
+            onClose={() => setError(null)}
+          />
+        </Box>
+      )}
+
       <Box
-        flex="1"
         ml={condensed ? '72px' : '280px'}
         mt="90px"
         minH="calc(100vh - 90px)"
         width={condensed ? 'calc(100% - 72px)' : 'calc(100% - 280px)'}
         bg={bgColor}
-        overflowX="hidden"
-        transition="margin-left 0.3s ease, width 0.3s ease"
+        px="8"
+        py="6"
       >
-        {/* Header Section */}
+        {/* Header */}
+        <Flex justify="space-between" align="center" mb="8">
+          <VStack align="start" gap="1">
+            <Typography fontSize="24px" fontWeight="700" color={textColor}>
+              Approvals
+            </Typography>
+            <Typography fontSize="14px" color={subtleText}>
+              Review completed cases - pending approval or declined
+            </Typography>
+          </VStack>
+          <Tooltip content="Refresh" showArrow variant="light">
+            <Box
+              as="button"
+              p="2"
+              borderRadius="md"
+              bg="transparent"
+              _hover={{ bg: 'mukuru.state.hover' }}
+              onClick={() => setRefreshKey((prev) => prev + 1)}
+            >
+              <FiRefreshCw size={18} color="var(--chakra-colors-mukuru-charcoal)" />
+            </Box>
+          </Tooltip>
+        </Flex>
+
+        {/* Tabs */}
+        <HStack gap="6" mb="6" borderBottom="1px solid" borderColor={borderColor} pb="0">
+          <Tab
+            label="Pending Approval"
+            isActive={activeTab === 'PENDING'}
+            onClick={() => setActiveTab('PENDING')}
+          />
+          <Tab
+            label="Declined"
+            isActive={activeTab === 'DECLINED'}
+            onClick={() => setActiveTab('DECLINED')}
+          />
+          <Tab
+            label="All"
+            isActive={activeTab === 'ALL'}
+            onClick={() => setActiveTab('ALL')}
+          />
+        </HStack>
+
+        {/* Search */}
+        <Flex justify="space-between" align="center" mb="6">
+          <Box w="300px">
+            <Search
+              placeholder="Search by name, ID..."
+              onSearchChange={handleSearchChange}
+            />
+          </Box>
+        </Flex>
+
+        {/* Data Table */}
         <Box
-          bg={headerBg}
-          borderBottom="1px solid"
+          bg={cardBg}
+          borderRadius="8px"
+          border="1px solid"
           borderColor={borderColor}
-          boxShadow="sm"
-          width="full"
+          overflow="hidden"
+          className="approvals-table-card"
         >
-          <Container maxW="100%" px="16px" py="12px" width="full">
-            <Flex justify="space-between" align="center" width="full">
-              <Flex direction="column" align="start" gap="4px" flex="1">
-                <Typography
-                  fontSize="28px"
-                  fontWeight="600"
-                  color={textColor}
-                  letterSpacing="-0.02em"
-                >
-                  Approvals
-                </Typography>
-                <Typography fontSize="14px" color="mukuru.grey.medium" fontWeight="400">
-                  Senior management approval workflow
-                </Typography>
-              </Flex>
-              <Button
-                variant="primary"
-                size="sm"
-                onClick={() => setRefreshKey((prev) => prev + 1)}
-                className="mukuru-primary-button"
-              >
-                <IconWrapper>
-                  <FiFilter size={16} />
-                </IconWrapper>
-                Refresh
-              </Button>
-            </Flex>
-          </Container>
-        </Box>
-
-        {/* Content Section */}
-        <Box flex="1" bg={bgColor} width="full">
-          <Container maxW="100%" px="16px" py="16px" width="full">
-            <VStack gap="12px" align="stretch" width="full">
-              {/* Error Alert */}
-              {error && (
-                <AlertBar
-                  status="error"
-                  title="Error loading approvals"
-                  description={error}
-                />
-              )}
-
-              {/* Summary Cards */}
-              <SimpleGrid columns={{ base: 1, md: 4 }} gap="4">
-                <Card bg={cardBg} p="4">
-                  <Flex gap="4" align="center">
-                    <Box
-                      bg="orange.100"
-                      borderRadius="full"
-                      width="48px"
-                      height="48px"
-                      display="flex"
-                      alignItems="center"
-                      justifyContent="center"
-                    >
-                      <IconWrapper>
-                        <FiClock size={20} color="#DD6B20" />
-                      </IconWrapper>
-                    </Box>
-                    <VStack align="start" gap="0" flex="1">
-                      <Typography fontSize="sm" color="gray.600">
-                        Pending Approval
-                      </Typography>
-                      <Typography
-                        fontSize="30px"
-                        fontWeight="bold"
-                        color="orange.600"
-                        fontFamily="Madera, sans-serif"
-                      >
-                        {stats.pending}
-                      </Typography>
-                    </VStack>
-                    <ChevronRightIcon />
-                  </Flex>
-                </Card>
-
-                <Card bg={cardBg} p="4">
-                  <Flex gap="4" align="center">
-                    <Box
-                      bg="green.100"
-                      borderRadius="full"
-                      width="48px"
-                      height="48px"
-                      display="flex"
-                      alignItems="center"
-                      justifyContent="center"
-                    >
-                      <IconWrapper>
-                        <FiCheckCircle size={20} color="#38A169" />
-                      </IconWrapper>
-                    </Box>
-                    <VStack align="start" gap="0" flex="1">
-                      <Typography fontSize="sm" color="gray.600">
-                        Approved
-                      </Typography>
-                      <Typography
-                        fontSize="30px"
-                        fontWeight="bold"
-                        color="green.600"
-                        fontFamily="Madera, sans-serif"
-                      >
-                        {stats.approved}
-                      </Typography>
-                    </VStack>
-                    <ChevronRightIcon />
-                  </Flex>
-                </Card>
-
-                <Card bg={cardBg} p="4">
-                  <Flex gap="4" align="center">
-                    <Box
-                      bg="red.100"
-                      borderRadius="full"
-                      width="48px"
-                      height="48px"
-                      display="flex"
-                      alignItems="center"
-                      justifyContent="center"
-                    >
-                      <IconWrapper>
-                        <FiXCircle size={20} color="#E53E3E" />
-                      </IconWrapper>
-                    </Box>
-                    <VStack align="start" gap="0" flex="1">
-                      <Typography fontSize="sm" color="gray.600">
-                        Rejected
-                      </Typography>
-                      <Typography
-                        fontSize="30px"
-                        fontWeight="bold"
-                        color="red.600"
-                        fontFamily="Madera, sans-serif"
-                      >
-                        {stats.rejected}
-                      </Typography>
-                    </VStack>
-                    <ChevronRightIcon />
-                  </Flex>
-                </Card>
-
-                <Card bg={cardBg} p="4">
-                  <Flex gap="4" align="center">
-                    <Box
-                      bg="blue.100"
-                      borderRadius="full"
-                      width="48px"
-                      height="48px"
-                      display="flex"
-                      alignItems="center"
-                      justifyContent="center"
-                    >
-                      <IconWrapper>
-                        <FiEdit size={20} color="#3182CE" />
-                      </IconWrapper>
-                    </Box>
-                    <VStack align="start" gap="0" flex="1">
-                      <Typography fontSize="sm" color="gray.600">
-                        Requires Changes
-                      </Typography>
-                      <Typography
-                        fontSize="30px"
-                        fontWeight="bold"
-                        color="blue.600"
-                        fontFamily="Madera, sans-serif"
-                      >
-                        {stats.requiresChanges}
-                      </Typography>
-                    </VStack>
-                    <ChevronRightIcon />
-                  </Flex>
-                </Card>
-              </SimpleGrid>
-
-              {/* Status Filter Buttons */}
-              <Flex gap="8px" mb="8px" wrap="wrap" align="center">
-                {(
-                  [
-                    'ALL',
-                    'PENDING',
-                    'APPROVED',
-                    'REJECTED',
-                    'REQUIRES_CHANGES',
-                  ] as StatusFilter[]
-                ).map((filter) => {
-                  const isActive = statusFilter === filter;
-                  return (
-                    <Button
-                      key={filter}
-                      size="sm"
-                      variant={isActive ? 'primary' : 'secondary'}
-                      onClick={() => setStatusFilter(filter)}
-                      className={isActive ? 'mukuru-primary-button' : ''}
-                      style={{
-                        ...(isActive
-                          ? {}
-                          : {
-                              backgroundColor: 'white',
-                              color: '#E8590C',
-                              borderColor: '#E8590C',
-                              borderWidth: '1px',
-                              borderStyle: 'solid',
-                            }),
-                      }}
-                    >
-                      {filter === 'ALL'
-                        ? 'All'
-                        : filter === 'REQUIRES_CHANGES'
-                          ? 'Requires Changes'
-                          : filter}
-                    </Button>
-                  );
-                })}
-              </Flex>
-
-              {/* Search Bar */}
-              <Box width="100%" maxW="800px" mb="4px">
-                <Search
-                  placeholder="Search by company name or application ID..."
-                  onSearchChange={handleSearchChange}
-                />
-              </Box>
-
-              {/* Approvals Table */}
-              <Box
-                bg={cardBg}
-                borderRadius="xl"
-                boxShadow="sm"
-                border="1px solid"
-                borderColor="mukuru.grey.light"
-                overflow="hidden"
-                color={textColor}
-                className="work-queue-table-wrapper"
-                width="100%"
-              >
-                <DataTable
-                  key={`approvals-${statusFilter}-${searchTerm}-${refreshKey}`}
-                  fetchData={fetchData}
-                  columns={columns as unknown as ColumnConfig<Record<string, unknown>>[]}
-                  tableId="approvals"
-                  showActions={true}
-                  actionColumn={
-                    actionColumn as unknown as {
-                      header?: string;
-                      width?: string;
-                      render: (
-                        row: Record<string, unknown>,
-                        index: number
-                      ) => React.ReactNode;
-                    }
-                  }
-                  emptyState={{
-                    message:
-                      approvals.length === 0
-                        ? 'No approvals found'
-                        : 'No approvals match your search criteria',
-                    content: (
-                      <VStack gap="4">
-                        <Typography fontSize="sm" color="mukuru.grey.medium">
-                          {approvals.length === 0
-                            ? 'Approvals will appear here once they are created'
-                            : 'Try adjusting your search criteria or filters'}
-                        </Typography>
-                      </VStack>
-                    ),
-                  }}
-                />
-              </Box>
-            </VStack>
-          </Container>
+          <style>{`
+            .approvals-table-card table {
+              width: 100% !important;
+              border-collapse: collapse !important;
+              table-layout: auto !important;
+            }
+            .approvals-table-card th,
+            .approvals-table-card td {
+              padding: 12px 16px !important;
+              vertical-align: middle !important;
+            }
+            .approvals-table-card thead {
+              background: var(--chakra-colors-mukuru-background-light) !important;
+            }
+            .approvals-table-card thead th {
+              font-size: 11px !important;
+              font-weight: 600 !important;
+              text-transform: uppercase !important;
+              letter-spacing: 0.5px !important;
+              color: var(--chakra-colors-mukuru-grey-mediumDark) !important;
+              border-bottom: 1px solid var(--chakra-colors-mukuru-grey-light) !important;
+              white-space: nowrap !important;
+            }
+            .approvals-table-card tbody tr {
+              border-bottom: 1px solid var(--chakra-colors-mukuru-grey-light) !important;
+            }
+            .approvals-table-card tbody tr:hover {
+              background-color: var(--chakra-colors-mukuru-state-hover) !important;
+            }
+            .approvals-table-card tbody td {
+              font-size: 13px !important;
+              color: var(--chakra-colors-mukuru-text-primary) !important;
+            }
+          `}</style>
+          <DataTable
+            data={filteredApprovals as unknown as Record<string, unknown>[]}
+            columns={columns as unknown as ColumnConfig<Record<string, unknown>>[]}
+            showActions={true}
+            actionColumn={
+              actionColumn as unknown as {
+                header?: string;
+                width?: string;
+                render: (row: Record<string, unknown>, index: number) => React.ReactNode;
+              }
+            }
+            loading={loading}
+            emptyState={{
+              message: 'No approvals found',
+              content: (
+                <VStack gap="4" py="12">
+                  <Box
+                    width="14"
+                    height="14"
+                    borderRadius="full"
+                    bg="mukuru.grey.light"
+                    display="flex"
+                    alignItems="center"
+                    justifyContent="center"
+                  >
+                    <FiCheckCircle
+                      size={28}
+                      color="var(--chakra-colors-mukuru-grey-medium)"
+                    />
+                  </Box>
+                  <Typography fontSize="sm" color={subtleText} textAlign="center">
+                    {activeTab === 'PENDING'
+                      ? 'Cases that have completed review and are awaiting approval will appear here'
+                      : activeTab === 'DECLINED'
+                        ? 'Cases that were declined after review will appear here'
+                        : 'Cases that have completed review will appear here'}
+                  </Typography>
+                </VStack>
+              ),
+            }}
+          />
         </Box>
       </Box>
 
@@ -808,34 +656,71 @@ export default function ApprovalsPage() {
         closeOnEsc={true}
       >
         <ModalHeader>
-          <Typography fontSize="lg" fontWeight="bold" color="gray.800">
+          <Typography fontSize="lg" fontWeight="600" color={textColor}>
             Review Approval Request
           </Typography>
         </ModalHeader>
         <ModalBody>
           <VStack gap="4" align="stretch">
-            <Box>
-              <Typography fontSize="sm" fontWeight="medium" color="gray.700" mb="2">
-                Company: {selectedApproval?.companyName}
-              </Typography>
-              <Typography fontSize="sm" fontWeight="medium" color="gray.700" mb="2">
-                Application: {selectedApproval?.applicationId}
-              </Typography>
-              <Typography fontSize="sm" fontWeight="medium" color="gray.700" mb="2">
-                Reason: {selectedApproval?.reason}
-              </Typography>
+            <Box
+              bg="mukuru.grey.light"
+              borderRadius="md"
+              p="4"
+              border="1px solid"
+              borderColor={borderColor}
+            >
+              <VStack align="start" gap="3">
+                <Flex justify="space-between" width="100%">
+                  <Typography fontSize="sm" color={subtleText} fontWeight="500">
+                    Company
+                  </Typography>
+                  <Typography fontSize="sm" fontWeight="600" color={textColor}>
+                    {selectedApproval?.companyName}
+                  </Typography>
+                </Flex>
+                <Flex justify="space-between" width="100%">
+                  <Typography fontSize="sm" color={subtleText} fontWeight="500">
+                    Application ID
+                  </Typography>
+                  <Typography fontSize="sm" fontWeight="600" color={textColor}>
+                    {selectedApproval?.applicationId}
+                  </Typography>
+                </Flex>
+                <Flex justify="space-between" width="100%">
+                  <Typography fontSize="sm" color={subtleText} fontWeight="500">
+                    Risk Level
+                  </Typography>
+                  <Tag
+                    variant={
+                      selectedApproval?.riskLevel === 'HIGH' ||
+                      selectedApproval?.riskLevel === 'CRITICAL'
+                        ? 'danger'
+                        : selectedApproval?.riskLevel === 'MEDIUM'
+                          ? 'warning'
+                          : 'info'
+                    }
+                  >
+                    {selectedApproval?.riskLevel}
+                  </Tag>
+                </Flex>
+              </VStack>
             </Box>
 
-            <Textarea
-              placeholder="Add your comments..."
-              value={approvalComment}
-              onChange={(e) => setApprovalComment(e.target.value)}
-              rows={3}
-            />
+            <Box>
+              <Typography fontSize="sm" color={subtleText} fontWeight="500" mb="2">
+                Comments (optional)
+              </Typography>
+              <Textarea
+                placeholder="Add your comments or reason for decision..."
+                value={approvalComment}
+                onChange={(e) => setApprovalComment(e.target.value)}
+                rows={3}
+              />
+            </Box>
           </VStack>
         </ModalBody>
         <ModalFooter>
-          <HStack justify="space-between" w="full">
+          <Flex justify="space-between" width="100%" gap="3">
             <Button
               variant="secondary"
               onClick={() => {
@@ -848,10 +733,9 @@ export default function ApprovalsPage() {
               Cancel
             </Button>
 
-            <HStack gap="2">
+            <HStack gap="3">
               <Button
-                variant="primary"
-                className="mukuru-primary-button"
+                variant="ghost"
                 onClick={() =>
                   selectedApproval &&
                   handleApproval(
@@ -869,7 +753,6 @@ export default function ApprovalsPage() {
 
               <Button
                 variant="primary"
-                className="mukuru-primary-button"
                 onClick={() =>
                   selectedApproval &&
                   handleApproval(
@@ -885,9 +768,9 @@ export default function ApprovalsPage() {
                 Approve
               </Button>
             </HStack>
-          </HStack>
+          </Flex>
         </ModalFooter>
       </Modal>
-    </Flex>
+    </Box>
   );
 }

@@ -20,7 +20,7 @@ export default function EmotionRegistry({ children }: { children: React.ReactNod
     }
     let styles = '';
     // Extract styles from the cache
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
     for (const name of names) {
       const style = (cache.inserted as any)[name];
       if (typeof style !== 'boolean' && style !== undefined) {
@@ -41,4 +41,3 @@ export default function EmotionRegistry({ children }: { children: React.ReactNod
 
   return <CacheProvider value={cache}>{children}</CacheProvider>;
 }
-

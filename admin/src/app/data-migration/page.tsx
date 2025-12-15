@@ -1,13 +1,6 @@
 'use client';
 
-import {
-  Box,
-  VStack,
-  HStack,
-  SimpleGrid,
-  Flex,
-  Spinner,
-} from '@chakra-ui/react';
+import { Box, VStack, HStack, SimpleGrid, Flex, Spinner } from '@chakra-ui/react';
 import {
   Typography,
   Button,
@@ -250,7 +243,9 @@ export default function DataMigrationPage() {
           <Flex justify="center" align="center" h="100vh">
             <VStack gap="16px">
               <Spinner size="lg" color="mukuru.buttons.primary" />
-              <Typography color="mukuru.grey.medium" fontSize="14px">Loading migration data...</Typography>
+              <Typography color="mukuru.grey.medium" fontSize="14px">
+                Loading migration data...
+              </Typography>
             </VStack>
           </Flex>
         </Box>
@@ -268,11 +263,11 @@ export default function DataMigrationPage() {
         transition="margin-left 0.3s ease"
       >
         {/* Page Header */}
-        <Box 
-          px="32px" 
-          py="24px" 
-          bg="mukuru.cards.white" 
-          borderBottom="1px solid" 
+        <Box
+          px="32px"
+          py="24px"
+          bg="mukuru.cards.white"
+          borderBottom="1px solid"
           borderColor="mukuru.grey.light"
           position="sticky"
           top="0"
@@ -280,8 +275,8 @@ export default function DataMigrationPage() {
         >
           <Flex justify="space-between" align="center">
             <HStack gap="16px" align="center">
-              <Box 
-                p="12px" 
+              <Box
+                p="12px"
                 bg="mukuru.buttons.primary"
                 borderRadius="12px"
                 boxShadow="0 4px 12px rgba(240, 84, 35, 0.25)"
@@ -289,7 +284,12 @@ export default function DataMigrationPage() {
                 <UploadIcon width="24" height="24" color="white" />
               </Box>
               <VStack align="start" gap="2px">
-                <Typography fontSize="24px" fontWeight="700" color="mukuru.text.primary" lineHeight="1.2">
+                <Typography
+                  fontSize="24px"
+                  fontWeight="700"
+                  color="mukuru.text.primary"
+                  lineHeight="1.2"
+                >
                   Data Migration
                 </Typography>
                 <Typography fontSize="14px" color="mukuru.grey.medium" fontWeight="400">
@@ -318,7 +318,6 @@ export default function DataMigrationPage() {
         {/* Content */}
         <Box px="32px" py="24px">
           <VStack gap="24px" align="stretch">
-
             {/* Error Alert */}
             {error && (
               <Box
@@ -345,17 +344,17 @@ export default function DataMigrationPage() {
             )}
 
             {/* Migration Jobs */}
-            <Box 
-              bg="white" 
-              borderRadius="16px" 
-              border="1px solid" 
+            <Box
+              bg="white"
+              borderRadius="16px"
+              border="1px solid"
               borderColor="mukuru.grey.light"
               overflow="hidden"
               boxShadow="0 1px 3px rgba(0, 0, 0, 0.05)"
             >
-              <Flex 
-                justify="space-between" 
-                align="center" 
+              <Flex
+                justify="space-between"
+                align="center"
                 p="20px"
                 borderBottom="1px solid"
                 borderColor="mukuru.grey.light"
@@ -365,7 +364,11 @@ export default function DataMigrationPage() {
                   <Box p="10px" borderRadius="10px" bg="#DBEAFE">
                     <DocumentIcon width="18" height="18" color="#2563EB" />
                   </Box>
-                  <Typography fontSize="16px" fontWeight="600" color="mukuru.text.primary">
+                  <Typography
+                    fontSize="16px"
+                    fontWeight="600"
+                    color="mukuru.text.primary"
+                  >
                     Migration Jobs
                   </Typography>
                 </HStack>
@@ -399,7 +402,11 @@ export default function DataMigrationPage() {
                       <Box p="16px" borderRadius="full" bg="#F1F5F9">
                         <UploadIcon width="32" height="32" color="#94A3B8" />
                       </Box>
-                      <Typography fontSize="15px" color="mukuru.text.primary" fontWeight="600">
+                      <Typography
+                        fontSize="15px"
+                        color="mukuru.text.primary"
+                        fontWeight="600"
+                      >
                         No migration jobs found
                       </Typography>
                       <Typography fontSize="13px" color="mukuru.grey.medium">
@@ -545,12 +552,21 @@ export default function DataMigrationPage() {
               overflow="hidden"
               boxShadow="0 1px 3px rgba(0, 0, 0, 0.05)"
             >
-              <Box p="20px" borderBottom="1px solid" borderColor="mukuru.grey.light" bg="white">
+              <Box
+                p="20px"
+                borderBottom="1px solid"
+                borderColor="mukuru.grey.light"
+                bg="white"
+              >
                 <HStack gap="12px">
                   <Box p="10px" borderRadius="10px" bg="#D1FAE5">
                     <UploadIcon width="18" height="18" color="#059669" />
                   </Box>
-                  <Typography fontSize="16px" fontWeight="600" color="mukuru.text.primary">
+                  <Typography
+                    fontSize="16px"
+                    fontWeight="600"
+                    color="mukuru.text.primary"
+                  >
                     Start New Migration
                   </Typography>
                 </HStack>
@@ -613,7 +629,11 @@ export default function DataMigrationPage() {
                         ))}
                       </select>
                       {entityTypes.length === 0 && (
-                        <Typography fontSize="11px" color="mukuru.grey.mediumDark" mt="6px">
+                        <Typography
+                          fontSize="11px"
+                          color="mukuru.grey.mediumDark"
+                          mt="6px"
+                        >
                           No entity types found. Please configure entity types first.
                         </Typography>
                       )}
@@ -635,7 +655,8 @@ export default function DataMigrationPage() {
                       <Box
                         p="12px"
                         borderRadius="8px"
-                        border="1px solid" borderColor="mukuru.grey.light"
+                        border="1px solid"
+                        borderColor="mukuru.grey.light"
                         bg="mukuru.background.light"
                       >
                         <input
@@ -672,17 +693,17 @@ export default function DataMigrationPage() {
             </Box>
 
             {/* Checklists */}
-            <Box 
-              bg="white" 
-              borderRadius="16px" 
+            <Box
+              bg="white"
+              borderRadius="16px"
               border="1px solid"
               borderColor="mukuru.grey.light"
               overflow="hidden"
               boxShadow="0 1px 3px rgba(0, 0, 0, 0.05)"
             >
-              <Flex 
-                justify="space-between" 
-                align="center" 
+              <Flex
+                justify="space-between"
+                align="center"
                 p="20px"
                 borderBottom="1px solid"
                 borderColor="mukuru.grey.light"
@@ -692,7 +713,11 @@ export default function DataMigrationPage() {
                   <Box p="10px" borderRadius="10px" bg="#FEF3C7">
                     <DocumentIcon width="18" height="18" color="#D97706" />
                   </Box>
-                  <Typography fontSize="16px" fontWeight="600" color="mukuru.text.primary">
+                  <Typography
+                    fontSize="16px"
+                    fontWeight="600"
+                    color="mukuru.text.primary"
+                  >
                     Entity Checklists
                   </Typography>
                 </HStack>
@@ -704,7 +729,6 @@ export default function DataMigrationPage() {
                 </Button>
               </Flex>
               <Box p="20px" bg="white">
-
                 <SimpleGrid columns={{ base: 1, lg: 2 }} gap="4">
                   {checklists.map((checklist) => (
                     <Box

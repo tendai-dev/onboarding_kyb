@@ -8,14 +8,13 @@ using OnboardingApi.Infrastructure.Persistence.WorkQueue;
 using MediatR;
 using OnboardingApi.Application.WorkQueue.Commands;
 using OnboardingApi.Application.WorkQueue.Interfaces;
+using OnboardingApi.Application.Notification.Interfaces;
 
 namespace OnboardingApi.Presentation.Controllers;
 
 [ApiController]
 [Route("api/v1/[controller]")]
-#if !DEBUG
-[Microsoft.AspNetCore.Authorization.Authorize]
-#endif
+[Microsoft.AspNetCore.Authorization.Authorize] // SECURITY FIX: Always require authentication
 public partial class CasesController : ControllerBase
 {
     private readonly IOnboardingCaseRepository _repository;
@@ -29,6 +28,7 @@ public partial class CasesController : ControllerBase
     private readonly IMediator _mediator;
     private readonly IWorkItemRepository _workItemRepository;
     private readonly WorkQueueDbContext _workQueueContext;
+    private readonly OnboardingApi.Application.Notification.Interfaces.INotificationService? _notificationService;
 
     public CasesController(
         IOnboardingCaseRepository repository, 
@@ -41,7 +41,8 @@ public partial class CasesController : ControllerBase
         ICurrentUser currentUser,
         IMediator mediator,
         IWorkItemRepository workItemRepository,
-        WorkQueueDbContext workQueueContext)
+        WorkQueueDbContext workQueueContext,
+        OnboardingApi.Application.Notification.Interfaces.INotificationService? notificationService = null)
     {
         _repository = repository;
         _httpClientFactory = httpClientFactory;
@@ -100,12 +101,18 @@ public partial class CasesController : ControllerBase
         {
             // PartnerId not provided, use generated one from authenticated user
             partnerId = expectedPartnerId;
-            _logger.LogInformation("PartnerId not provided in request, using generated value from authenticated user: {PartnerId}", partnerId);
+            // SECURITY FIX: Mask PII in logs
+            _logger.LogInformation("PartnerId not provided in request, using generated value from authenticated user: {PartnerId}", 
+                Infrastructure.Utilities.LoggingExtensions.MaskGuid(partnerId));
         }
 
         // Use authenticated user's email for CreatedBy (never trust request body)
         var createdBy = userEmail;
-        _logger.LogInformation("Creating case for authenticated user: {Email}, PartnerId: {PartnerId}", userEmail, partnerId);
+        // SECURITY FIX: Mask PII in logs
+        // SECURITY FIX: Mask PII in logs
+        _logger.LogInformation("Creating case for authenticated user: {Email}, PartnerId: {PartnerId}", 
+            Infrastructure.Utilities.LoggingExtensions.MaskEmail(userEmail), 
+            Infrastructure.Utilities.LoggingExtensions.MaskGuid(partnerId));
 
         // Log request structure for debugging
         _logger.LogInformation("Received CreateCaseRequest - Type: {Type}, HasApplicant: {HasApplicant}, HasBusiness: {HasBusiness}, HasMetadata: {HasMetadata}, MetadataKeys: {MetadataKeys}",
@@ -117,15 +124,18 @@ public partial class CasesController : ControllerBase
 
         // STEP 1: Get schema identifiers from headers (schema-driven forms)
         // Priority: X-Form-Config-Id > X-Entity-Type > metadata
-        var formConfigId = Request.Headers["X-Form-Config-Id"].FirstOrDefault();
-        var formVersion = Request.Headers["X-Form-Version"].FirstOrDefault();
-        var entityTypeCode = Request.Headers["X-Entity-Type"].FirstOrDefault() 
+        // SECURITY FIX: Validate and sanitize headers to prevent header injection
+        var formConfigId = SanitizeHeaderValue(Request.Headers["X-Form-Config-Id"].FirstOrDefault());
+        var formVersion = SanitizeHeaderValue(Request.Headers["X-Form-Version"].FirstOrDefault());
+        var entityTypeCode = SanitizeHeaderValue(Request.Headers["X-Entity-Type"].FirstOrDefault()) 
             ?? (request.Metadata?.ContainsKey("entity_type_code") == true 
                 ? request.Metadata["entity_type_code"]?.ToString() 
                 : null);
 
         // Generate debug ID for tracing
-        var debugId = $"{Request.Headers["X-Request-Id"].FirstOrDefault() ?? Guid.NewGuid().ToString("N").Substring(0, 16).ToUpper()}:{DateTime.UtcNow:HHmmss}";
+        // SECURITY FIX: Validate and sanitize request ID header
+        var requestId = SanitizeHeaderValue(Request.Headers["X-Request-Id"].FirstOrDefault());
+        var debugId = $"{requestId ?? Guid.NewGuid().ToString("N").Substring(0, 16).ToUpper()}:{DateTime.UtcNow:HHmmss}";
         
         _logger.LogInformation("[{DebugId}] Schema-driven form request received. FormConfigId: {FormConfigId}, Version: {Version}, EntityType: {EntityType}", 
             debugId, formConfigId ?? "none", formVersion ?? "none", entityTypeCode ?? "none");
@@ -296,7 +306,7 @@ public partial class CasesController : ControllerBase
                             name = "ValidationBypassFailed",
                             error = "Schema-driven form validation bypass failed", 
                             message = "Could not bypass hardcoded domain validation. Please ensure X-Form-Config-Id or X-Entity-Type header is correctly set.",
-                            details = ex.Message,
+                            // SECURITY FIX: Don't expose exception details in response
                             formConfigId = formConfigId,
                             entityTypeCode = entityTypeCode,
                             debug_id = debugId
@@ -316,7 +326,8 @@ public partial class CasesController : ControllerBase
             catch (InvalidOperationException ex) when (ex.Message.Contains("incomplete"))
             {
                 _logger.LogWarning("Legacy validation failed: {Error}", ex.Message);
-                return BadRequest(new { error = "Applicant details are incomplete", details = ex.Message });
+                // SECURITY FIX: Don't expose exception details
+                return BadRequest(new { error = "Applicant details are incomplete" });
             }
         }
 
@@ -330,7 +341,10 @@ public partial class CasesController : ControllerBase
         }
         entity.ClearDomainEvents();
 
-        _logger.LogInformation("Created onboarding case {CaseId} for partner {PartnerId}", entity.Id, entity.PartnerId);
+        // SECURITY FIX: Mask PII in logs
+        _logger.LogInformation("Created onboarding case {CaseId} for partner {PartnerId}", 
+            Infrastructure.Utilities.LoggingExtensions.MaskGuid(entity.Id), 
+            Infrastructure.Utilities.LoggingExtensions.MaskGuid(entity.PartnerId));
 
         // Create work item when case is submitted - this is critical and should be awaited
         // to ensure every submitted application has a work queue item
@@ -377,26 +391,40 @@ public partial class CasesController : ControllerBase
     /// Delete ALL cases/applications and their associated work items
     /// WARNING: This is a destructive operation that cannot be undone!
     /// NOTE: This route must come before [HttpDelete("{id}")] to avoid route conflicts
+    /// SECURITY: Requires admin authentication and confirmation token
     /// </summary>
     [HttpDelete("delete-all")]
-#if DEBUG
-    [Microsoft.AspNetCore.Authorization.AllowAnonymous]
-#endif
+    [Microsoft.AspNetCore.Authorization.Authorize(Policy = "AdminPolicy")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-    public async Task<IActionResult> DeleteAll(CancellationToken cancellationToken)
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> DeleteAll(
+        [FromQuery] string? confirmationToken,
+        CancellationToken cancellationToken)
     {
-#if !DEBUG
+        // SECURITY FIX: Always require authentication (removed DEBUG AllowAnonymous)
         if (!_currentUser.IsAuthenticated)
         {
             _logger.LogWarning("Delete all cases request rejected - user not authenticated");
             return Unauthorized(new { error = "Authentication required" });
         }
-#endif
+
+        // SECURITY FIX: Require confirmation token for additional safety
+        var expectedToken = _configuration["Security:DeleteAllConfirmationToken"];
+        if (string.IsNullOrEmpty(expectedToken) || confirmationToken != expectedToken)
+        {
+            // SECURITY FIX: Mask PII in logs
+            _logger.LogWarning("Delete all cases request rejected - invalid or missing confirmation token. User: {User}", 
+                Infrastructure.Utilities.LoggingExtensions.MaskEmail(_currentUser.Email));
+            return BadRequest(new { error = "Confirmation token is required and must be valid" });
+        }
 
         try
         {
-            _logger.LogWarning("User {User} is attempting to delete ALL cases/applications", _currentUser.Email);
+            // SECURITY FIX: Mask PII in logs
+            _logger.LogWarning("User {User} is attempting to delete ALL cases/applications", 
+                Infrastructure.Utilities.LoggingExtensions.MaskEmail(_currentUser.Email));
 
             // Count cases and work items before deletion
             var caseCount = await _context.OnboardingCases.CountAsync(cancellationToken);
@@ -449,8 +477,9 @@ public partial class CasesController : ControllerBase
         }
         catch (Exception ex)
         {
+            // SECURITY FIX: Never expose exception details to clients
             _logger.LogError(ex, "Error deleting all cases/applications");
-            return StatusCode(500, new { error = "Failed to delete all cases", details = ex.Message });
+            return StatusCode(500, new { error = "Internal server error", message = "An error occurred while processing the request" });
         }
     }
 
@@ -473,6 +502,21 @@ public partial class CasesController : ControllerBase
             return NotFound(new { error = "Case not found" });
         }
 
+        // SECURITY FIX: Verify resource ownership - prevent IDOR attacks
+        var userEmail = _currentUser.Email;
+        if (!string.IsNullOrWhiteSpace(userEmail))
+        {
+            var expectedPartnerId = OnboardingApi.Infrastructure.Utilities.PartnerIdGenerator.GenerateFromEmail(userEmail);
+            if (entity.PartnerId != expectedPartnerId)
+            {
+                _logger.LogWarning("Delete denied - ownership mismatch. User: {Email}, Case PartnerId: {CasePartnerId}, Expected: {ExpectedPartnerId}",
+                    Infrastructure.Utilities.LoggingExtensions.MaskEmail(userEmail),
+                    Infrastructure.Utilities.LoggingExtensions.MaskGuid(entity.PartnerId),
+                    Infrastructure.Utilities.LoggingExtensions.MaskGuid(expectedPartnerId));
+                return StatusCode(403, new { error = "Access denied", message = "This case does not belong to your account" });
+            }
+        }
+
         try
         {
             // Delete associated work item first (if it exists)
@@ -490,17 +534,17 @@ public partial class CasesController : ControllerBase
         }
         catch (Exception ex)
         {
+            // SECURITY FIX: Never expose exception details to clients
             _logger.LogError(ex, "Error deleting case {CaseId}", id);
-            return StatusCode(500, new { error = "Failed to delete case", details = ex.Message });
+            return StatusCode(500, new { error = "Internal server error", message = "An error occurred while processing the request" });
         }
     }
 
     [HttpGet("by-number/{caseNumber}")]
-#if DEBUG
-    [Microsoft.AspNetCore.Authorization.AllowAnonymous]
-#endif
+    [Microsoft.AspNetCore.Authorization.Authorize] // SECURITY FIX: Always require authentication
     [ProducesResponseType(typeof(object), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     public async Task<IActionResult> GetByCaseNumber(string caseNumber, CancellationToken cancellationToken)
     {
         _logger.LogInformation("Looking up case by number: {CaseNumber}", caseNumber);
@@ -581,10 +625,32 @@ public partial class CasesController : ControllerBase
     [HttpGet("{id}")]
     [ProducesResponseType(typeof(object), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
     public async Task<IActionResult> Get(Guid id, CancellationToken cancellationToken)
     {
+        // SECURITY FIX: Verify user is authenticated
+        if (!_currentUser.IsAuthenticated)
+        {
+            return Unauthorized(new { error = "Authentication required" });
+        }
+
         var entity = await _repository.GetByIdAsync(id, cancellationToken);
         if (entity == null) return NotFound();
+
+        // SECURITY FIX: Verify resource ownership - prevent IDOR attacks
+        var userEmail = _currentUser.Email;
+        if (!string.IsNullOrWhiteSpace(userEmail))
+        {
+            var expectedPartnerId = OnboardingApi.Infrastructure.Utilities.PartnerIdGenerator.GenerateFromEmail(userEmail);
+            if (entity.PartnerId != expectedPartnerId)
+            {
+                _logger.LogWarning("Access denied - ownership mismatch. User: {Email}, Case PartnerId: {CasePartnerId}, Expected: {ExpectedPartnerId}",
+                    Infrastructure.Utilities.LoggingExtensions.MaskEmail(userEmail),
+                    Infrastructure.Utilities.LoggingExtensions.MaskGuid(entity.PartnerId),
+                    Infrastructure.Utilities.LoggingExtensions.MaskGuid(expectedPartnerId));
+                return StatusCode(403, new { error = "Access denied", message = "This case does not belong to your account" });
+            }
+        }
         
         // Return full case details matching OnboardingCaseDto structure
         var response = new
@@ -667,6 +733,22 @@ public partial class CasesController : ControllerBase
         var entity = await _repository.GetByIdAsync(id, cancellationToken);
         if (entity == null) return NotFound();
 
+        // SECURITY FIX: Verify resource ownership for approve operation
+        var userEmail = _currentUser.Email;
+        if (!string.IsNullOrWhiteSpace(userEmail))
+        {
+            var expectedPartnerId = OnboardingApi.Infrastructure.Utilities.PartnerIdGenerator.GenerateFromEmail(userEmail);
+            // Note: Approve might be admin-only, but we still check ownership for regular users
+            // Admin users should have AdminPolicy which bypasses this check
+            if (entity.PartnerId != expectedPartnerId && !User.IsInRole("admin") && !User.IsInRole("reviewer"))
+            {
+                _logger.LogWarning("Approve denied - ownership mismatch. User: {Email}, Case PartnerId: {CasePartnerId}",
+                    Infrastructure.Utilities.LoggingExtensions.MaskEmail(userEmail),
+                    Infrastructure.Utilities.LoggingExtensions.MaskGuid(entity.PartnerId));
+                return StatusCode(403, new { error = "Access denied", message = "This case does not belong to your account" });
+            }
+        }
+
         // Use authenticated user's email instead of request body
         var approvedBy = _currentUser.Email;
         if (string.IsNullOrWhiteSpace(approvedBy))
@@ -684,7 +766,9 @@ public partial class CasesController : ControllerBase
         }
         catch (InvalidOperationException ex)
         {
-            return BadRequest(new { error = ex.Message });
+            // SECURITY FIX: Don't expose exception details
+            _logger.LogWarning(ex, "Invalid operation in case approval");
+            return BadRequest(new { error = "Invalid operation" });
         }
     }
 
@@ -702,6 +786,21 @@ public partial class CasesController : ControllerBase
 
         var entity = await _repository.GetByIdAsync(id, cancellationToken);
         if (entity == null) return NotFound();
+
+        // SECURITY FIX: Verify resource ownership for reject operation
+        var userEmail = _currentUser.Email;
+        if (!string.IsNullOrWhiteSpace(userEmail))
+        {
+            var expectedPartnerId = OnboardingApi.Infrastructure.Utilities.PartnerIdGenerator.GenerateFromEmail(userEmail);
+            // Note: Reject might be admin-only, but we still check ownership for regular users
+            if (entity.PartnerId != expectedPartnerId && !User.IsInRole("admin") && !User.IsInRole("reviewer"))
+            {
+                _logger.LogWarning("Reject denied - ownership mismatch. User: {Email}, Case PartnerId: {CasePartnerId}",
+                    Infrastructure.Utilities.LoggingExtensions.MaskEmail(userEmail),
+                    Infrastructure.Utilities.LoggingExtensions.MaskGuid(entity.PartnerId));
+                return StatusCode(403, new { error = "Access denied", message = "This case does not belong to your account" });
+            }
+        }
 
         if (string.IsNullOrWhiteSpace(request.Reason))
             return BadRequest(new { error = "Rejection reason is required" });
@@ -723,7 +822,9 @@ public partial class CasesController : ControllerBase
         }
         catch (InvalidOperationException ex)
         {
-            return BadRequest(new { error = ex.Message });
+            // SECURITY FIX: Don't expose exception details
+            _logger.LogWarning(ex, "Invalid operation in case rejection");
+            return BadRequest(new { error = "Invalid operation" });
         }
     }
 
@@ -780,20 +881,64 @@ public partial class CasesController : ControllerBase
             }
 
             await _repository.UnitOfWork.SaveChangesAsync(cancellationToken);
+            
+            // Send status update email notification (non-blocking)
+            if (_notificationService != null && !string.IsNullOrWhiteSpace(entity.Applicant?.Email))
+            {
+                _ = Task.Run(async () =>
+                {
+                    try
+                    {
+                        var applicantName = $"{entity.Applicant?.FirstName ?? ""} {entity.Applicant?.LastName ?? ""}".Trim();
+                        if (string.IsNullOrWhiteSpace(applicantName))
+                        {
+                            applicantName = entity.Applicant?.Email?.Split('@')[0] ?? "Valued Partner";
+                        }
+
+                        await _notificationService.SendEmailAsync(
+                            entity.Applicant.Email,
+                            $"Status Update - Case {entity.CaseNumber}",
+                            "status_update",
+                            new
+                            {
+                                ApplicantName = applicantName,
+                                CaseId = entity.Id.ToString(),
+                                CaseNumber = entity.CaseNumber,
+                                Status = entity.Status.ToString(),
+                                Message = request.Notes ?? $"Your application status has been updated to {entity.Status}."
+                            },
+                            OnboardingApi.Domain.Notification.ValueObjects.NotificationPriority.Medium,
+                            entity.Id.ToString(),
+                            cancellationToken);
+                        
+                        _logger.LogInformation("Status update email notification sent for case {CaseId}", entity.Id);
+                    }
+                    catch (Exception ex)
+                    {
+                        // Log error but don't fail status update
+                        _logger.LogWarning(ex, "Failed to send status update email notification for case {CaseId}", entity.Id);
+                    }
+                }, cancellationToken);
+            }
+            
             return Ok(new { case_id = entity.Id, case_number = entity.CaseNumber, status = entity.Status.ToString() });
         }
         catch (Exception ex)
         {
-            return BadRequest(new { error = ex.Message });
+            // SECURITY FIX: Don't expose exception details
+            _logger.LogError(ex, "Error updating case status");
+            return BadRequest(new { error = "Invalid operation" });
         }
     }
 
     /// <summary>
     /// Get all cases with filtering, pagination, and sorting
+    /// SECURITY: Requires authentication
     /// </summary>
     [HttpGet]
     [ProducesResponseType(typeof(object), StatusCodes.Status200OK)]
-    [Microsoft.AspNetCore.Authorization.AllowAnonymous]
+    [Microsoft.AspNetCore.Authorization.Authorize] // SECURITY FIX: Require authentication
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     public async Task<IActionResult> GetAll(
         [FromQuery] string? partnerId = null,
         [FromQuery] string? status = null,
@@ -810,6 +955,15 @@ public partial class CasesController : ControllerBase
         [FromQuery] int take = 100,
         CancellationToken cancellationToken = default)
     {
+        // SECURITY FIX: Verify user can only access their own cases (unless admin/reviewer)
+        var userEmail = _currentUser.Email;
+        if (!string.IsNullOrWhiteSpace(userEmail) && !User.IsInRole("admin") && !User.IsInRole("reviewer"))
+        {
+            var expectedPartnerId = OnboardingApi.Infrastructure.Utilities.PartnerIdGenerator.GenerateFromEmail(userEmail);
+            // Force filter by user's partner ID - prevent accessing other users' data
+            partnerId = expectedPartnerId.ToString();
+        }
+
         try
         {
             var query = _context.OnboardingCases.AsQueryable();
@@ -829,8 +983,17 @@ public partial class CasesController : ControllerBase
             }
 
             // Search term - search in case number, applicant name, business name
+            // SECURITY FIX: Validate and sanitize search term
             if (!string.IsNullOrWhiteSpace(searchTerm))
             {
+                // SECURITY: Limit search term length and sanitize
+                if (searchTerm.Length > 100)
+                {
+                    searchTerm = searchTerm.Substring(0, 100);
+                }
+                // Remove potentially dangerous characters
+                searchTerm = System.Text.RegularExpressions.Regex.Replace(searchTerm, @"[^\w\s-]", "");
+                
                 var searchLower = searchTerm.ToLower();
                 query = query.Where(c => 
                     c.CaseNumber.ToLower().Contains(searchLower) ||
@@ -910,17 +1073,20 @@ public partial class CasesController : ControllerBase
         }
         catch (Exception ex)
         {
+            // SECURITY FIX: Don't expose exception details
             _logger.LogError(ex, "Error fetching cases");
-            return StatusCode(500, new { error = "Failed to fetch cases", message = ex.Message });
+            return StatusCode(500, new { error = "Internal server error", message = "An error occurred while processing the request" });
         }
     }
 
     /// <summary>
     /// Get cases requiring attention
+    /// SECURITY: Requires authentication
     /// </summary>
     [HttpGet("attention")]
     [ProducesResponseType(typeof(object), StatusCodes.Status200OK)]
-    [Microsoft.AspNetCore.Authorization.AllowAnonymous]
+    [Microsoft.AspNetCore.Authorization.Authorize] // SECURITY FIX: Require authentication
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     public async Task<IActionResult> GetCasesRequiringAttention(
         [FromQuery] string? partnerId = null,
         CancellationToken cancellationToken = default)
@@ -959,17 +1125,20 @@ public partial class CasesController : ControllerBase
         }
         catch (Exception ex)
         {
+            // SECURITY FIX: Don't expose exception details
             _logger.LogError(ex, "Error fetching cases requiring attention");
-            return StatusCode(500, new { error = "Failed to fetch cases", message = ex.Message });
+            return StatusCode(500, new { error = "Internal server error", message = "An error occurred while processing the request" });
         }
     }
 
     /// <summary>
     /// Export cases to CSV
+    /// SECURITY: Requires authentication - exports sensitive data
     /// </summary>
     [HttpGet("export")]
     [ProducesResponseType(typeof(FileResult), StatusCodes.Status200OK)]
-    [Microsoft.AspNetCore.Authorization.AllowAnonymous]
+    [Microsoft.AspNetCore.Authorization.Authorize] // SECURITY FIX: Require authentication for data export
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     public async Task<IActionResult> ExportCases(
         [FromQuery] string? partnerId = null,
         [FromQuery] string? status = null,
@@ -978,6 +1147,15 @@ public partial class CasesController : ControllerBase
         [FromQuery] string? toDate = null,
         CancellationToken cancellationToken = default)
     {
+        // SECURITY FIX: Verify user can only export their own cases (unless admin/reviewer)
+        var userEmail = _currentUser.Email;
+        if (!string.IsNullOrWhiteSpace(userEmail) && !User.IsInRole("admin") && !User.IsInRole("reviewer"))
+        {
+            var expectedPartnerId = OnboardingApi.Infrastructure.Utilities.PartnerIdGenerator.GenerateFromEmail(userEmail);
+            // Force filter by user's partner ID - prevent exporting other users' data
+            partnerId = expectedPartnerId.ToString();
+        }
+
         try
         {
             var query = _context.OnboardingCases.AsQueryable();
@@ -1025,8 +1203,9 @@ public partial class CasesController : ControllerBase
         }
         catch (Exception ex)
         {
+            // SECURITY FIX: Don't expose exception details
             _logger.LogError(ex, "Error exporting cases");
-            return StatusCode(500, new { error = "Failed to export cases", message = ex.Message });
+            return StatusCode(500, new { error = "Internal server error", message = "An error occurred while processing the request" });
         }
     }
 }
@@ -1536,6 +1715,28 @@ public partial class CasesController
             // Don't fail case creation if work item creation fails
             _logger.LogError(ex, "Error creating work item for case {CaseId}: {Message}", entity.Id, ex.Message);
         }
+    }
+
+    /// <summary>
+    /// SECURITY FIX: Sanitize header values to prevent header injection attacks
+    /// </summary>
+    private static string? SanitizeHeaderValue(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value)) return null;
+        
+        // Remove newlines, carriage returns, and other control characters that could be used for header injection
+        value = System.Text.RegularExpressions.Regex.Replace(value, @"[\r\n\x00-\x1F]", "");
+        
+        // Limit length to prevent overly long headers
+        if (value.Length > 255)
+        {
+            value = value.Substring(0, 255);
+        }
+        
+        // Remove potentially dangerous characters
+        value = System.Text.RegularExpressions.Regex.Replace(value, @"[^\w\s\-_.@]", "");
+        
+        return value.Trim();
     }
 }
 

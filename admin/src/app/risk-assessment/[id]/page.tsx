@@ -12,16 +12,20 @@ import {
   Input,
 } from '@chakra-ui/react';
 import { Button, Typography, Tag } from '@mukuru/mukuru-react-components';
-import { FiCheck, FiArrowLeft, FiSave, FiShield, FiCheckCircle, FiAlertTriangle } from 'react-icons/fi';
+import {
+  FiCheck,
+  FiArrowLeft,
+  FiSave,
+  FiShield,
+  FiCheckCircle,
+  FiAlertTriangle,
+} from 'react-icons/fi';
 import Link from 'next/link';
 import { useState, useEffect } from 'react';
 import AdminSidebar from '../../../components/AdminSidebar';
 import PortalHeader from '../../../components/PortalHeader';
 import { useSidebar } from '../../../contexts/SidebarContext';
-import {
-  riskApiService,
-  RiskAssessmentDto,
-} from '../../../services/riskApi';
+import { riskApiService, RiskAssessmentDto } from '../../../services/riskApi';
 import { getApplications } from '../../../services/api/applicationsApi';
 import { SignNowSignatureField } from '../../../components/SignNowSignatureField';
 import { Checkbox } from '@chakra-ui/react';
@@ -31,15 +35,15 @@ import { Checkbox } from '@chakra-ui/react';
 // ============================================================================
 
 // Styled Input with Mukuru tokens
-const StyledInput = ({ 
-  value, 
-  onChange, 
-  placeholder, 
-  type = 'text' 
-}: { 
-  value: string; 
-  onChange: (value: string) => void; 
-  placeholder: string; 
+const StyledInput = ({
+  value,
+  onChange,
+  placeholder,
+  type = 'text',
+}: {
+  value: string;
+  onChange: (value: string) => void;
+  placeholder: string;
   type?: string;
 }) => (
   <Input
@@ -62,15 +66,15 @@ const StyledInput = ({
 );
 
 // Styled Textarea with Mukuru tokens
-const StyledTextarea = ({ 
-  value, 
-  onChange, 
-  placeholder, 
-  rows = 3 
-}: { 
-  value: string; 
-  onChange: (value: string) => void; 
-  placeholder: string; 
+const StyledTextarea = ({
+  value,
+  onChange,
+  placeholder,
+  rows = 3,
+}: {
+  value: string;
+  onChange: (value: string) => void;
+  placeholder: string;
   rows?: number;
 }) => (
   <Textarea
@@ -94,20 +98,31 @@ const StyledTextarea = ({
 );
 
 // Form Row - Two column layout for label and input
-const FormRow = ({ 
-  label, 
-  children, 
-  required = false 
-}: { 
-  label: string; 
-  children: React.ReactNode; 
+const FormRow = ({
+  label,
+  children,
+  required = false,
+}: {
+  label: string;
+  children: React.ReactNode;
   required?: boolean;
 }) => (
-  <Box py="16px" borderBottom="1px solid" borderColor="#E5E7EB" _last={{ borderBottom: 'none' }}>
+  <Box
+    py="16px"
+    borderBottom="1px solid"
+    borderColor="#E5E7EB"
+    _last={{ borderBottom: 'none' }}
+  >
     <SimpleGrid columns={{ base: 1, md: 2 }} gap="16px" alignItems="start">
       <Box pt="10px">
         <Typography fontSize="14px" fontWeight="600" color="#374151">
-          {label}{required && <Box as="span" color="#DC2626"> *</Box>}
+          {label}
+          {required && (
+            <Box as="span" color="#DC2626">
+              {' '}
+              *
+            </Box>
+          )}
         </Typography>
       </Box>
       <Box>{children}</Box>
@@ -117,12 +132,7 @@ const FormRow = ({
 
 // Section Header with number badge
 const SectionHeader = ({ number, title }: { number: number; title: string }) => (
-  <Flex 
-    p="16px 20px" 
-    bg="#F05423"
-    align="center"
-    gap="14px"
-  >
+  <Flex p="16px 20px" bg="#F05423" align="center" gap="14px">
     <Flex
       w="30px"
       h="30px"
@@ -143,15 +153,15 @@ const SectionHeader = ({ number, title }: { number: number; title: string }) => 
 );
 
 // Radio-style Option Card
-const OptionCard = ({ 
-  label, 
-  checked, 
-  onChange, 
-  variant = 'default' 
-}: { 
-  label: string; 
-  checked: boolean; 
-  onChange: () => void; 
+const OptionCard = ({
+  label,
+  checked,
+  onChange,
+  variant = 'default',
+}: {
+  label: string;
+  checked: boolean;
+  onChange: () => void;
   variant?: 'default' | 'success' | 'danger';
 }) => {
   const colors = {
@@ -160,10 +170,10 @@ const OptionCard = ({
     danger: { border: '#DC2626', bg: 'rgba(220, 38, 38, 0.06)', check: '#DC2626' },
   };
   const color = colors[variant];
-  
+
   return (
-    <HStack 
-      gap="12px" 
+    <HStack
+      gap="12px"
       p="12px 18px"
       borderRadius="8px"
       border="2px solid"
@@ -174,11 +184,11 @@ const OptionCard = ({
       _hover={{ borderColor: color.border }}
       onClick={onChange}
     >
-      <Box 
-        w="20px" 
-        h="20px" 
-        borderRadius="full" 
-        border="2px solid" 
+      <Box
+        w="20px"
+        h="20px"
+        borderRadius="full"
+        border="2px solid"
         borderColor={checked ? color.check : '#9CA3AF'}
         bg={checked ? color.check : 'white'}
         display="flex"
@@ -189,26 +199,28 @@ const OptionCard = ({
       >
         {checked && <FiCheck size={12} color="white" />}
       </Box>
-      <Typography fontSize="14px" fontWeight="500" color="#374151">{label}</Typography>
+      <Typography fontSize="14px" fontWeight="500" color="#374151">
+        {label}
+      </Typography>
     </HStack>
   );
 };
 
 // Checkbox Card for grid selections
-const CheckboxCard = ({ 
-  label, 
-  checked, 
-  onChange 
-}: { 
-  label: string; 
-  checked: boolean; 
+const CheckboxCard = ({
+  label,
+  checked,
+  onChange,
+}: {
+  label: string;
+  checked: boolean;
   onChange: (checked: boolean) => void;
 }) => (
-  <HStack 
-    gap="10px" 
-    p="12px 16px" 
-    borderRadius="8px" 
-    border="1.5px solid" 
+  <HStack
+    gap="10px"
+    p="12px 16px"
+    borderRadius="8px"
+    border="1.5px solid"
     borderColor={checked ? '#F05423' : '#E5E7EB'}
     bg={checked ? 'rgba(240, 84, 35, 0.04)' : 'white'}
     cursor="pointer"
@@ -216,11 +228,11 @@ const CheckboxCard = ({
     _hover={{ borderColor: '#F05423' }}
     onClick={() => onChange(!checked)}
   >
-    <Box 
-      w="18px" 
-      h="18px" 
-      borderRadius="4px" 
-      border="2px solid" 
+    <Box
+      w="18px"
+      h="18px"
+      borderRadius="4px"
+      border="2px solid"
       borderColor={checked ? '#F05423' : '#9CA3AF'}
       bg={checked ? '#F05423' : 'white'}
       display="flex"
@@ -231,13 +243,15 @@ const CheckboxCard = ({
     >
       {checked && <FiCheck size={10} color="white" />}
     </Box>
-    <Typography fontSize="13px" fontWeight="500" color="#374151">{label}</Typography>
+    <Typography fontSize="13px" fontWeight="500" color="#374151">
+      {label}
+    </Typography>
   </HStack>
 );
 
 // Recommendation section component
-const RecommendationSection = ({ 
-  title, 
+const RecommendationSection = ({
+  title,
   role,
   recommendation,
   rationale,
@@ -249,8 +263,8 @@ const RecommendationSection = ({
   onSignatureChange,
   signNowDocumentId,
   signerEmail,
-  isApproval = false
-}: { 
+  isApproval = false,
+}: {
   title: string;
   role: string;
   recommendation: 'approve' | 'decline' | '';
@@ -265,18 +279,29 @@ const RecommendationSection = ({
   signerEmail: string;
   isApproval?: boolean;
 }) => (
-  <Box 
-    bg="white" 
-    borderRadius="12px" 
-    border="1px solid" 
+  <Box
+    bg="white"
+    borderRadius="12px"
+    border="1px solid"
     borderColor="#E5E7EB"
     overflow="hidden"
     mb="20px"
   >
-    <Flex p="16px 20px" bg="#F9FAFB" borderBottom="1px solid" borderColor="#E5E7EB" justify="space-between" align="center">
+    <Flex
+      p="16px 20px"
+      bg="#F9FAFB"
+      borderBottom="1px solid"
+      borderColor="#E5E7EB"
+      justify="space-between"
+      align="center"
+    >
       <Box>
-        <Typography fontSize="15px" fontWeight="600" color="#1F2937">{title}</Typography>
-        <Typography fontSize="13px" color="#6B7280">{role}</Typography>
+        <Typography fontSize="15px" fontWeight="600" color="#1F2937">
+          {title}
+        </Typography>
+        <Typography fontSize="13px" color="#6B7280">
+          {role}
+        </Typography>
       </Box>
       {recommendation && (
         <Tag variant={recommendation === 'approve' ? 'success' : 'danger'}>
@@ -293,15 +318,25 @@ const RecommendationSection = ({
           </Typography>
           <Flex gap="16px" flexWrap="wrap">
             <OptionCard
-              label={isApproval ? 'Approval with acceptance of risks highlighted' : 'Approve'}
+              label={
+                isApproval ? 'Approval with acceptance of risks highlighted' : 'Approve'
+              }
               checked={recommendation === 'approve'}
-              onChange={() => onRecommendationChange(recommendation === 'approve' ? '' : 'approve')}
+              onChange={() =>
+                onRecommendationChange(recommendation === 'approve' ? '' : 'approve')
+              }
               variant="success"
             />
             <OptionCard
-              label={isApproval ? 'Decline as relationship not within risk appetite' : 'Decline'}
+              label={
+                isApproval
+                  ? 'Decline as relationship not within risk appetite'
+                  : 'Decline'
+              }
               checked={recommendation === 'decline'}
-              onChange={() => onRecommendationChange(recommendation === 'decline' ? '' : 'decline')}
+              onChange={() =>
+                onRecommendationChange(recommendation === 'decline' ? '' : 'decline')
+              }
               variant="danger"
             />
           </Flex>
@@ -322,7 +357,9 @@ const RecommendationSection = ({
         {/* Date and Signature */}
         <SimpleGrid columns={{ base: 1, md: 2 }} gap="20px">
           <Box>
-            <Typography fontSize="14px" fontWeight="600" color="#374151" mb="8px">Date:</Typography>
+            <Typography fontSize="14px" fontWeight="600" color="#374151" mb="8px">
+              Date:
+            </Typography>
             <Input
               type="date"
               value={date}
@@ -335,7 +372,10 @@ const RecommendationSection = ({
               fontSize="14px"
               px="14px"
               color="#1F2937"
-              _focus={{ borderColor: '#F05423', boxShadow: '0 0 0 3px rgba(240, 84, 35, 0.12)' }}
+              _focus={{
+                borderColor: '#F05423',
+                boxShadow: '0 0 0 3px rgba(240, 84, 35, 0.12)',
+              }}
               _hover={{ borderColor: '#9CA3AF' }}
             />
           </Box>
@@ -397,7 +437,9 @@ export default function EnhancedDueDiligencePage() {
   const [mitigatingFactors, setMitigatingFactors] = useState('');
 
   // Adverse Media Assessment
-  const [adverseMediaIdentified, setAdverseMediaIdentified] = useState<'yes' | 'no' | ''>('');
+  const [adverseMediaIdentified, setAdverseMediaIdentified] = useState<'yes' | 'no' | ''>(
+    ''
+  );
   const [specialInterestCategories, setSpecialInterestCategories] = useState({
     corruption: false,
     financialCrimes: false,
@@ -412,15 +454,51 @@ export default function EnhancedDueDiligencePage() {
   const [otherSources, setOtherSources] = useState('');
 
   // Recommendations (2nd line of defence)
-  const [mlroRecommendation, setMlroRecommendation] = useState<{ recommendation: 'approve' | 'decline' | ''; rationale: string; date: string; signature: string }>({ recommendation: '', rationale: '', date: '', signature: '' });
-  const [groupHeadFCRecommendation, setGroupHeadFCRecommendation] = useState<{ recommendation: 'approve' | 'decline' | ''; rationale: string; date: string; signature: string }>({ recommendation: '', rationale: '', date: '', signature: '' });
-  const [groupHeadComplianceRecommendation, setGroupHeadComplianceRecommendation] = useState<{ recommendation: 'approve' | 'decline' | ''; rationale: string; date: string; signature: string }>({ recommendation: '', rationale: '', date: '', signature: '' });
-  const [execRiskAuditRecommendation, setExecRiskAuditRecommendation] = useState<{ recommendation: 'approve' | 'decline' | ''; rationale: string; date: string; signature: string }>({ recommendation: '', rationale: '', date: '', signature: '' });
-  const [groupCounselRecommendation, setGroupCounselRecommendation] = useState<{ recommendation: 'approve' | 'decline' | ''; rationale: string; date: string; signature: string }>({ recommendation: '', rationale: '', date: '', signature: '' });
+  const [mlroRecommendation, setMlroRecommendation] = useState<{
+    recommendation: 'approve' | 'decline' | '';
+    rationale: string;
+    date: string;
+    signature: string;
+  }>({ recommendation: '', rationale: '', date: '', signature: '' });
+  const [groupHeadFCRecommendation, setGroupHeadFCRecommendation] = useState<{
+    recommendation: 'approve' | 'decline' | '';
+    rationale: string;
+    date: string;
+    signature: string;
+  }>({ recommendation: '', rationale: '', date: '', signature: '' });
+  const [groupHeadComplianceRecommendation, setGroupHeadComplianceRecommendation] =
+    useState<{
+      recommendation: 'approve' | 'decline' | '';
+      rationale: string;
+      date: string;
+      signature: string;
+    }>({ recommendation: '', rationale: '', date: '', signature: '' });
+  const [execRiskAuditRecommendation, setExecRiskAuditRecommendation] = useState<{
+    recommendation: 'approve' | 'decline' | '';
+    rationale: string;
+    date: string;
+    signature: string;
+  }>({ recommendation: '', rationale: '', date: '', signature: '' });
+  const [groupCounselRecommendation, setGroupCounselRecommendation] = useState<{
+    recommendation: 'approve' | 'decline' | '';
+    rationale: string;
+    date: string;
+    signature: string;
+  }>({ recommendation: '', rationale: '', date: '', signature: '' });
 
   // Approvals
-  const [ccoApproval, setCcoApproval] = useState<{ recommendation: 'approve' | 'decline' | ''; rationale: string; date: string; signature: string }>({ recommendation: '', rationale: '', date: '', signature: '' });
-  const [ceoApproval, setCeoApproval] = useState<{ recommendation: 'approve' | 'decline' | ''; rationale: string; date: string; signature: string }>({ recommendation: '', rationale: '', date: '', signature: '' });
+  const [ccoApproval, setCcoApproval] = useState<{
+    recommendation: 'approve' | 'decline' | '';
+    rationale: string;
+    date: string;
+    signature: string;
+  }>({ recommendation: '', rationale: '', date: '', signature: '' });
+  const [ceoApproval, setCeoApproval] = useState<{
+    recommendation: 'approve' | 'decline' | '';
+    rationale: string;
+    date: string;
+    signature: string;
+  }>({ recommendation: '', rationale: '', date: '', signature: '' });
 
   // SignNow document ID - stores the uploaded document ID
   const [signNowDocumentId, setSignNowDocumentId] = useState<string | null>(null);
@@ -447,13 +525,13 @@ export default function EnhancedDueDiligencePage() {
         if (assessmentId) {
           const assessment = await riskApiService.getRiskAssessmentById(assessmentId);
           setRiskAssessment(assessment);
-          
+
           // ENFORCEMENT: Enhanced Risk Assessment is only available for High or MediumHigh risk cases
           const riskLevel = assessment.overallRiskLevel?.toLowerCase();
           if (riskLevel !== 'high' && riskLevel !== 'mediumhigh') {
             setError(
               `Enhanced Risk Assessment is only available for High or Medium High risk cases. ` +
-              `This case is classified as ${assessment.overallRiskLevel || 'Unknown'} risk.`
+                `This case is classified as ${assessment.overallRiskLevel || 'Unknown'} risk.`
             );
             setLoading(false);
             // Redirect after a short delay to show the error message
@@ -462,13 +540,13 @@ export default function EnhancedDueDiligencePage() {
             }, 3000);
             return;
           }
-          
+
           // Restore saved EDD form data from notes if it exists
           if (assessment.notes) {
             try {
               // Check if notes contain JSON EDD data
               const savedData = JSON.parse(assessment.notes);
-              
+
               // Restore Partner/Customer Details
               if (savedData.partnerCustomerDetails) {
                 const pcd = savedData.partnerCustomerDetails;
@@ -479,7 +557,7 @@ export default function EnhancedDueDiligencePage() {
                 if (pcd.businessActivities) setBusinessActivities(pcd.businessActivities);
                 if (pcd.highRiskReasons) setHighRiskReasons(pcd.highRiskReasons);
               }
-              
+
               // Restore Mukuru Details
               if (savedData.mukuruDetails) {
                 const md = savedData.mukuruDetails;
@@ -487,7 +565,7 @@ export default function EnhancedDueDiligencePage() {
                 if (md.mukuruEntityName) setMukuruEntityName(md.mukuruEntityName);
                 if (md.products) setProducts(md.products);
               }
-              
+
               // Restore EDD Findings
               if (savedData.eddFindings) {
                 const ef = savedData.eddFindings;
@@ -495,44 +573,49 @@ export default function EnhancedDueDiligencePage() {
                 if (ef.eddOutstanding) setEddOutstanding(ef.eddOutstanding);
                 if (ef.pepExposure) setPepExposure(ef.pepExposure);
                 if (ef.ddDocuments) setDdDocuments(ef.ddDocuments);
-                if (ef.policyProcedureConcerns) setPolicyProcedureConcerns(ef.policyProcedureConcerns);
+                if (ef.policyProcedureConcerns)
+                  setPolicyProcedureConcerns(ef.policyProcedureConcerns);
                 if (ef.mitigatingFactors) setMitigatingFactors(ef.mitigatingFactors);
               }
-              
+
               // Restore Adverse Media
               if (savedData.adverseMedia) {
                 const am = savedData.adverseMedia;
-                if (am.adverseMediaIdentified) setAdverseMediaIdentified(am.adverseMediaIdentified);
-                if (am.specialInterestCategories) setSpecialInterestCategories(am.specialInterestCategories);
-                if (am.adverseMediaSummary) setAdverseMediaSummary(am.adverseMediaSummary);
+                if (am.adverseMediaIdentified)
+                  setAdverseMediaIdentified(am.adverseMediaIdentified);
+                if (am.specialInterestCategories)
+                  setSpecialInterestCategories(am.specialInterestCategories);
+                if (am.adverseMediaSummary)
+                  setAdverseMediaSummary(am.adverseMediaSummary);
                 if (am.discountingFactors) setDiscountingFactors(am.discountingFactors);
                 if (am.otherSources) setOtherSources(am.otherSources);
               }
-              
+
               // Restore Recommendations
               if (savedData.recommendations) {
                 const rec = savedData.recommendations;
                 if (rec.mlro) setMlroRecommendation(rec.mlro);
                 if (rec.groupHeadFC) setGroupHeadFCRecommendation(rec.groupHeadFC);
-                if (rec.groupHeadCompliance) setGroupHeadComplianceRecommendation(rec.groupHeadCompliance);
+                if (rec.groupHeadCompliance)
+                  setGroupHeadComplianceRecommendation(rec.groupHeadCompliance);
                 if (rec.execRiskAudit) setExecRiskAuditRecommendation(rec.execRiskAudit);
                 if (rec.groupCounsel) setGroupCounselRecommendation(rec.groupCounsel);
               }
-              
+
               // Restore Approvals
               if (savedData.approvals) {
                 const app = savedData.approvals;
                 if (app.cco) setCcoApproval(app.cco);
                 if (app.ceo) setCeoApproval(app.ceo);
               }
-              
+
               console.log('[EDD Form] Restored saved form data');
             } catch {
               // Notes are not JSON - might be plain text from manual risk assessment
               console.log('[EDD Form] Notes are not JSON EDD data, starting fresh');
             }
           }
-          
+
           // Fetch case data to pre-fill form fields if not already set from saved data
           if (assessment.caseId) {
             try {
@@ -540,7 +623,7 @@ export default function EnhancedDueDiligencePage() {
               const caseData = casesResult.items.find(
                 (c) => c.id === assessment.caseId || c.caseId === assessment.caseId
               );
-              
+
               if (caseData) {
                 // Pre-fill entity name from case data if not already set
                 if (!fullEntityName && caseData.businessLegalName) {
@@ -576,7 +659,7 @@ export default function EnhancedDueDiligencePage() {
   const generateAndUploadDocument = async (): Promise<string | null> => {
     try {
       setIsGeneratingDocument(true);
-      
+
       // Generate PDF from form data
       const response = await fetch('/api/risk-assessment/generate-pdf', {
         method: 'POST',
@@ -634,7 +717,7 @@ export default function EnhancedDueDiligencePage() {
       }
 
       const blob = await response.blob();
-      
+
       // Upload to SignNow
       const formData = new FormData();
       formData.append('file', blob, `risk-assessment-${assessmentId}.pdf`);
@@ -671,7 +754,10 @@ export default function EnhancedDueDiligencePage() {
         try {
           await generateAndUploadDocument();
         } catch (docErr) {
-          console.warn('[EDD Form] SignNow document generation failed (non-blocking):', docErr);
+          console.warn(
+            '[EDD Form] SignNow document generation failed (non-blocking):',
+            docErr
+          );
           // Continue with save - SignNow is optional
         }
       }
@@ -776,22 +862,17 @@ export default function EnhancedDueDiligencePage() {
                   </Button>
                 </Link>
               </HStack>
-              <Button
-                variant="primary"
-                onClick={handleSave}
-                disabled={saving}
-                size="md"
-              >
+              <Button variant="primary" onClick={handleSave} disabled={saving} size="md">
                 <FiSave style={{ marginRight: '8px' }} />
                 {saving ? 'Saving...' : 'Save Assessment'}
               </Button>
             </Flex>
 
             {/* Title Card */}
-            <Box 
-              bg="mukuru.cards.white" 
-              borderRadius="16px" 
-              border="1px solid" 
+            <Box
+              bg="mukuru.cards.white"
+              borderRadius="16px"
+              border="1px solid"
               borderColor="mukuru.grey.light"
               overflow="hidden"
               boxShadow="0 2px 8px rgba(0, 0, 0, 0.04)"
@@ -811,27 +892,43 @@ export default function EnhancedDueDiligencePage() {
 
             {/* Alerts */}
             {error && (
-              <Box p="16px" bg="rgba(220, 38, 38, 0.1)" borderRadius="12px" border="1px solid" borderColor="mukuru.text.error">
+              <Box
+                p="16px"
+                bg="rgba(220, 38, 38, 0.1)"
+                borderRadius="12px"
+                border="1px solid"
+                borderColor="mukuru.text.error"
+              >
                 <HStack gap="12px">
                   <FiAlertTriangle color="var(--chakra-colors-mukuru-text-error)" />
-                  <Typography fontSize="14px" color="mukuru.text.error">{error}</Typography>
+                  <Typography fontSize="14px" color="mukuru.text.error">
+                    {error}
+                  </Typography>
                 </HStack>
               </Box>
             )}
             {success && (
-              <Box p="16px" bg="rgba(16, 185, 129, 0.1)" borderRadius="12px" border="1px solid" borderColor="mukuru.text.success">
+              <Box
+                p="16px"
+                bg="rgba(16, 185, 129, 0.1)"
+                borderRadius="12px"
+                border="1px solid"
+                borderColor="mukuru.text.success"
+              >
                 <HStack gap="12px">
                   <FiCheckCircle color="var(--chakra-colors-mukuru-text-success)" />
-                  <Typography fontSize="14px" color="mukuru.text.success">{success}</Typography>
+                  <Typography fontSize="14px" color="mukuru.text.success">
+                    {success}
+                  </Typography>
                 </HStack>
               </Box>
             )}
 
             {/* Section 1: Partner/Customer Details */}
-            <Box 
-              bg="mukuru.cards.white" 
-              borderRadius="12px" 
-              border="1px solid" 
+            <Box
+              bg="mukuru.cards.white"
+              borderRadius="12px"
+              border="1px solid"
               borderColor="mukuru.grey.light"
               overflow="hidden"
             >
@@ -881,7 +978,8 @@ export default function EnhancedDueDiligencePage() {
                 </FormRow>
                 <Box py="16px">
                   <Typography fontSize="14px" fontWeight="600" color="#374151" mb="10px">
-                    The partner/customer has been identified as a high-risk customer for the following reasons:
+                    The partner/customer has been identified as a high-risk customer for
+                    the following reasons:
                   </Typography>
                   <StyledTextarea
                     value={highRiskReasons}
@@ -893,10 +991,10 @@ export default function EnhancedDueDiligencePage() {
             </Box>
 
             {/* Section 2: Mukuru Details */}
-            <Box 
-              bg="mukuru.cards.white" 
-              borderRadius="12px" 
-              border="1px solid" 
+            <Box
+              bg="mukuru.cards.white"
+              borderRadius="12px"
+              border="1px solid"
               borderColor="mukuru.grey.light"
               overflow="hidden"
             >
@@ -918,26 +1016,53 @@ export default function EnhancedDueDiligencePage() {
                 </FormRow>
                 <FormRow label="Mukuru product">
                   <SimpleGrid columns={{ base: 2, md: 3 }} gap="12px">
-                    <CheckboxCard label="DMT" checked={products.dmt} onChange={(c) => setProducts({ ...products, dmt: c })} />
-                    <CheckboxCard label="IMT" checked={products.imt} onChange={(c) => setProducts({ ...products, imt: c })} />
-                    <CheckboxCard label="EPP" checked={products.epp} onChange={(c) => setProducts({ ...products, epp: c })} />
-                    <CheckboxCard label="Wallet" checked={products.wallet} onChange={(c) => setProducts({ ...products, wallet: c })} />
-                    <CheckboxCard label="Insurance" checked={products.insurance} onChange={(c) => setProducts({ ...products, insurance: c })} />
-                    <CheckboxCard label="Bill settlement" checked={products.billSettlement} onChange={(c) => setProducts({ ...products, billSettlement: c })} />
+                    <CheckboxCard
+                      label="DMT"
+                      checked={products.dmt}
+                      onChange={(c) => setProducts({ ...products, dmt: c })}
+                    />
+                    <CheckboxCard
+                      label="IMT"
+                      checked={products.imt}
+                      onChange={(c) => setProducts({ ...products, imt: c })}
+                    />
+                    <CheckboxCard
+                      label="EPP"
+                      checked={products.epp}
+                      onChange={(c) => setProducts({ ...products, epp: c })}
+                    />
+                    <CheckboxCard
+                      label="Wallet"
+                      checked={products.wallet}
+                      onChange={(c) => setProducts({ ...products, wallet: c })}
+                    />
+                    <CheckboxCard
+                      label="Insurance"
+                      checked={products.insurance}
+                      onChange={(c) => setProducts({ ...products, insurance: c })}
+                    />
+                    <CheckboxCard
+                      label="Bill settlement"
+                      checked={products.billSettlement}
+                      onChange={(c) => setProducts({ ...products, billSettlement: c })}
+                    />
                   </SimpleGrid>
                 </FormRow>
               </Box>
             </Box>
 
             {/* Section 3: Enhanced Due Diligence Findings */}
-            <Box 
-              bg="mukuru.cards.white" 
-              borderRadius="12px" 
-              border="1px solid" 
+            <Box
+              bg="mukuru.cards.white"
+              borderRadius="12px"
+              border="1px solid"
               borderColor="mukuru.grey.light"
               overflow="hidden"
             >
-              <SectionHeader number={3} title="Enhanced Due Diligence Findings (completed by Financial Crime Compliance)" />
+              <SectionHeader
+                number={3}
+                title="Enhanced Due Diligence Findings (completed by Financial Crime Compliance)"
+              />
               <Box p="20px">
                 <FormRow label="Is the AML/CFT EDD valid and complete?">
                   <VStack align="stretch" gap="12px">
@@ -956,7 +1081,9 @@ export default function EnhancedDueDiligencePage() {
                     </HStack>
                     {eddStatus === 'incomplete' && (
                       <Box>
-                        <Typography fontSize="12px" color="#6B7280" mb="8px">If not, list what is outstanding:</Typography>
+                        <Typography fontSize="12px" color="#6B7280" mb="8px">
+                          If not, list what is outstanding:
+                        </Typography>
                         <StyledTextarea
                           value={eddOutstanding}
                           onChange={setEddOutstanding}
@@ -1005,14 +1132,17 @@ export default function EnhancedDueDiligencePage() {
             </Box>
 
             {/* Section 4: Adverse Media Assessment */}
-            <Box 
-              bg="mukuru.cards.white" 
-              borderRadius="12px" 
-              border="1px solid" 
+            <Box
+              bg="mukuru.cards.white"
+              borderRadius="12px"
+              border="1px solid"
               borderColor="mukuru.grey.light"
               overflow="hidden"
             >
-              <SectionHeader number={4} title="Adverse Media Assessment (Financial Crime)" />
+              <SectionHeader
+                number={4}
+                title="Adverse Media Assessment (Financial Crime)"
+              />
               <Box p="20px">
                 <FormRow label="Was Adverse Media identified?">
                   <HStack gap="16px">
@@ -1032,18 +1162,79 @@ export default function EnhancedDueDiligencePage() {
                 </FormRow>
                 <FormRow label="Special Interest Person / Entity Category (Dow Jones)">
                   <SimpleGrid columns={{ base: 2, md: 3 }} gap="12px">
-                    <CheckboxCard label="Corruption" checked={specialInterestCategories.corruption} onChange={(c) => setSpecialInterestCategories({ ...specialInterestCategories, corruption: c })} />
-                    <CheckboxCard label="Financial Crimes" checked={specialInterestCategories.financialCrimes} onChange={(c) => setSpecialInterestCategories({ ...specialInterestCategories, financialCrimes: c })} />
-                    <CheckboxCard label="Organised crime" checked={specialInterestCategories.organisedCrime} onChange={(c) => setSpecialInterestCategories({ ...specialInterestCategories, organisedCrime: c })} />
-                    <CheckboxCard label="Tax crime" checked={specialInterestCategories.taxCrime} onChange={(c) => setSpecialInterestCategories({ ...specialInterestCategories, taxCrime: c })} />
-                    <CheckboxCard label="Terror crime" checked={specialInterestCategories.terrorCrime} onChange={(c) => setSpecialInterestCategories({ ...specialInterestCategories, terrorCrime: c })} />
-                    <CheckboxCard label="Trafficking crime" checked={specialInterestCategories.traffickingCrime} onChange={(c) => setSpecialInterestCategories({ ...specialInterestCategories, traffickingCrime: c })} />
+                    <CheckboxCard
+                      label="Corruption"
+                      checked={specialInterestCategories.corruption}
+                      onChange={(c) =>
+                        setSpecialInterestCategories({
+                          ...specialInterestCategories,
+                          corruption: c,
+                        })
+                      }
+                    />
+                    <CheckboxCard
+                      label="Financial Crimes"
+                      checked={specialInterestCategories.financialCrimes}
+                      onChange={(c) =>
+                        setSpecialInterestCategories({
+                          ...specialInterestCategories,
+                          financialCrimes: c,
+                        })
+                      }
+                    />
+                    <CheckboxCard
+                      label="Organised crime"
+                      checked={specialInterestCategories.organisedCrime}
+                      onChange={(c) =>
+                        setSpecialInterestCategories({
+                          ...specialInterestCategories,
+                          organisedCrime: c,
+                        })
+                      }
+                    />
+                    <CheckboxCard
+                      label="Tax crime"
+                      checked={specialInterestCategories.taxCrime}
+                      onChange={(c) =>
+                        setSpecialInterestCategories({
+                          ...specialInterestCategories,
+                          taxCrime: c,
+                        })
+                      }
+                    />
+                    <CheckboxCard
+                      label="Terror crime"
+                      checked={specialInterestCategories.terrorCrime}
+                      onChange={(c) =>
+                        setSpecialInterestCategories({
+                          ...specialInterestCategories,
+                          terrorCrime: c,
+                        })
+                      }
+                    />
+                    <CheckboxCard
+                      label="Trafficking crime"
+                      checked={specialInterestCategories.traffickingCrime}
+                      onChange={(c) =>
+                        setSpecialInterestCategories({
+                          ...specialInterestCategories,
+                          traffickingCrime: c,
+                        })
+                      }
+                    />
                   </SimpleGrid>
                   <Box mt="16px">
-                    <Typography fontSize="14px" fontWeight="500" color="#374151" mb="8px">Other:</Typography>
+                    <Typography fontSize="14px" fontWeight="500" color="#374151" mb="8px">
+                      Other:
+                    </Typography>
                     <StyledInput
                       value={specialInterestCategories.other}
-                      onChange={(val) => setSpecialInterestCategories({ ...specialInterestCategories, other: val })}
+                      onChange={(val) =>
+                        setSpecialInterestCategories({
+                          ...specialInterestCategories,
+                          other: val,
+                        })
+                      }
                       placeholder="Specify other category..."
                     />
                   </Box>
@@ -1073,10 +1264,10 @@ export default function EnhancedDueDiligencePage() {
             </Box>
 
             {/* Section 5: Recommendations (2nd line of defence) */}
-            <Box 
-              bg="mukuru.cards.white" 
-              borderRadius="12px" 
-              border="1px solid" 
+            <Box
+              bg="mukuru.cards.white"
+              borderRadius="12px"
+              border="1px solid"
               borderColor="mukuru.grey.light"
               overflow="hidden"
             >
@@ -1089,10 +1280,18 @@ export default function EnhancedDueDiligencePage() {
                   rationale={mlroRecommendation.rationale}
                   date={mlroRecommendation.date}
                   signature={mlroRecommendation.signature}
-                  onRecommendationChange={(v) => setMlroRecommendation({ ...mlroRecommendation, recommendation: v })}
-                  onRationaleChange={(v) => setMlroRecommendation({ ...mlroRecommendation, rationale: v })}
-                  onDateChange={(v) => setMlroRecommendation({ ...mlroRecommendation, date: v })}
-                  onSignatureChange={(v) => setMlroRecommendation({ ...mlroRecommendation, signature: v })}
+                  onRecommendationChange={(v) =>
+                    setMlroRecommendation({ ...mlroRecommendation, recommendation: v })
+                  }
+                  onRationaleChange={(v) =>
+                    setMlroRecommendation({ ...mlroRecommendation, rationale: v })
+                  }
+                  onDateChange={(v) =>
+                    setMlroRecommendation({ ...mlroRecommendation, date: v })
+                  }
+                  onSignatureChange={(v) =>
+                    setMlroRecommendation({ ...mlroRecommendation, signature: v })
+                  }
                   signNowDocumentId={signNowDocumentId}
                   signerEmail={signerEmails.mlro}
                 />
@@ -1103,10 +1302,30 @@ export default function EnhancedDueDiligencePage() {
                   rationale={groupHeadFCRecommendation.rationale}
                   date={groupHeadFCRecommendation.date}
                   signature={groupHeadFCRecommendation.signature}
-                  onRecommendationChange={(v) => setGroupHeadFCRecommendation({ ...groupHeadFCRecommendation, recommendation: v })}
-                  onRationaleChange={(v) => setGroupHeadFCRecommendation({ ...groupHeadFCRecommendation, rationale: v })}
-                  onDateChange={(v) => setGroupHeadFCRecommendation({ ...groupHeadFCRecommendation, date: v })}
-                  onSignatureChange={(v) => setGroupHeadFCRecommendation({ ...groupHeadFCRecommendation, signature: v })}
+                  onRecommendationChange={(v) =>
+                    setGroupHeadFCRecommendation({
+                      ...groupHeadFCRecommendation,
+                      recommendation: v,
+                    })
+                  }
+                  onRationaleChange={(v) =>
+                    setGroupHeadFCRecommendation({
+                      ...groupHeadFCRecommendation,
+                      rationale: v,
+                    })
+                  }
+                  onDateChange={(v) =>
+                    setGroupHeadFCRecommendation({
+                      ...groupHeadFCRecommendation,
+                      date: v,
+                    })
+                  }
+                  onSignatureChange={(v) =>
+                    setGroupHeadFCRecommendation({
+                      ...groupHeadFCRecommendation,
+                      signature: v,
+                    })
+                  }
                   signNowDocumentId={signNowDocumentId}
                   signerEmail={signerEmails.groupHeadFC}
                 />
@@ -1117,10 +1336,30 @@ export default function EnhancedDueDiligencePage() {
                   rationale={groupHeadComplianceRecommendation.rationale}
                   date={groupHeadComplianceRecommendation.date}
                   signature={groupHeadComplianceRecommendation.signature}
-                  onRecommendationChange={(v) => setGroupHeadComplianceRecommendation({ ...groupHeadComplianceRecommendation, recommendation: v })}
-                  onRationaleChange={(v) => setGroupHeadComplianceRecommendation({ ...groupHeadComplianceRecommendation, rationale: v })}
-                  onDateChange={(v) => setGroupHeadComplianceRecommendation({ ...groupHeadComplianceRecommendation, date: v })}
-                  onSignatureChange={(v) => setGroupHeadComplianceRecommendation({ ...groupHeadComplianceRecommendation, signature: v })}
+                  onRecommendationChange={(v) =>
+                    setGroupHeadComplianceRecommendation({
+                      ...groupHeadComplianceRecommendation,
+                      recommendation: v,
+                    })
+                  }
+                  onRationaleChange={(v) =>
+                    setGroupHeadComplianceRecommendation({
+                      ...groupHeadComplianceRecommendation,
+                      rationale: v,
+                    })
+                  }
+                  onDateChange={(v) =>
+                    setGroupHeadComplianceRecommendation({
+                      ...groupHeadComplianceRecommendation,
+                      date: v,
+                    })
+                  }
+                  onSignatureChange={(v) =>
+                    setGroupHeadComplianceRecommendation({
+                      ...groupHeadComplianceRecommendation,
+                      signature: v,
+                    })
+                  }
                   signNowDocumentId={signNowDocumentId}
                   signerEmail={signerEmails.groupHeadCompliance}
                 />
@@ -1131,10 +1370,30 @@ export default function EnhancedDueDiligencePage() {
                   rationale={execRiskAuditRecommendation.rationale}
                   date={execRiskAuditRecommendation.date}
                   signature={execRiskAuditRecommendation.signature}
-                  onRecommendationChange={(v) => setExecRiskAuditRecommendation({ ...execRiskAuditRecommendation, recommendation: v })}
-                  onRationaleChange={(v) => setExecRiskAuditRecommendation({ ...execRiskAuditRecommendation, rationale: v })}
-                  onDateChange={(v) => setExecRiskAuditRecommendation({ ...execRiskAuditRecommendation, date: v })}
-                  onSignatureChange={(v) => setExecRiskAuditRecommendation({ ...execRiskAuditRecommendation, signature: v })}
+                  onRecommendationChange={(v) =>
+                    setExecRiskAuditRecommendation({
+                      ...execRiskAuditRecommendation,
+                      recommendation: v,
+                    })
+                  }
+                  onRationaleChange={(v) =>
+                    setExecRiskAuditRecommendation({
+                      ...execRiskAuditRecommendation,
+                      rationale: v,
+                    })
+                  }
+                  onDateChange={(v) =>
+                    setExecRiskAuditRecommendation({
+                      ...execRiskAuditRecommendation,
+                      date: v,
+                    })
+                  }
+                  onSignatureChange={(v) =>
+                    setExecRiskAuditRecommendation({
+                      ...execRiskAuditRecommendation,
+                      signature: v,
+                    })
+                  }
                   signNowDocumentId={signNowDocumentId}
                   signerEmail={signerEmails.execRiskAudit}
                 />
@@ -1145,10 +1404,30 @@ export default function EnhancedDueDiligencePage() {
                   rationale={groupCounselRecommendation.rationale}
                   date={groupCounselRecommendation.date}
                   signature={groupCounselRecommendation.signature}
-                  onRecommendationChange={(v) => setGroupCounselRecommendation({ ...groupCounselRecommendation, recommendation: v })}
-                  onRationaleChange={(v) => setGroupCounselRecommendation({ ...groupCounselRecommendation, rationale: v })}
-                  onDateChange={(v) => setGroupCounselRecommendation({ ...groupCounselRecommendation, date: v })}
-                  onSignatureChange={(v) => setGroupCounselRecommendation({ ...groupCounselRecommendation, signature: v })}
+                  onRecommendationChange={(v) =>
+                    setGroupCounselRecommendation({
+                      ...groupCounselRecommendation,
+                      recommendation: v,
+                    })
+                  }
+                  onRationaleChange={(v) =>
+                    setGroupCounselRecommendation({
+                      ...groupCounselRecommendation,
+                      rationale: v,
+                    })
+                  }
+                  onDateChange={(v) =>
+                    setGroupCounselRecommendation({
+                      ...groupCounselRecommendation,
+                      date: v,
+                    })
+                  }
+                  onSignatureChange={(v) =>
+                    setGroupCounselRecommendation({
+                      ...groupCounselRecommendation,
+                      signature: v,
+                    })
+                  }
                   signNowDocumentId={signNowDocumentId}
                   signerEmail={signerEmails.groupCounsel}
                 />
@@ -1156,10 +1435,10 @@ export default function EnhancedDueDiligencePage() {
             </Box>
 
             {/* Section 6: Approvals and Risk Acceptances */}
-            <Box 
-              bg="mukuru.cards.white" 
-              borderRadius="12px" 
-              border="1px solid" 
+            <Box
+              bg="mukuru.cards.white"
+              borderRadius="12px"
+              border="1px solid"
               borderColor="mukuru.grey.light"
               overflow="hidden"
             >
@@ -1172,10 +1451,16 @@ export default function EnhancedDueDiligencePage() {
                   rationale={ccoApproval.rationale}
                   date={ccoApproval.date}
                   signature={ccoApproval.signature}
-                  onRecommendationChange={(v) => setCcoApproval({ ...ccoApproval, recommendation: v })}
-                  onRationaleChange={(v) => setCcoApproval({ ...ccoApproval, rationale: v })}
+                  onRecommendationChange={(v) =>
+                    setCcoApproval({ ...ccoApproval, recommendation: v })
+                  }
+                  onRationaleChange={(v) =>
+                    setCcoApproval({ ...ccoApproval, rationale: v })
+                  }
                   onDateChange={(v) => setCcoApproval({ ...ccoApproval, date: v })}
-                  onSignatureChange={(v) => setCcoApproval({ ...ccoApproval, signature: v })}
+                  onSignatureChange={(v) =>
+                    setCcoApproval({ ...ccoApproval, signature: v })
+                  }
                   signNowDocumentId={signNowDocumentId}
                   signerEmail={signerEmails.cco}
                   isApproval
@@ -1187,10 +1472,16 @@ export default function EnhancedDueDiligencePage() {
                   rationale={ceoApproval.rationale}
                   date={ceoApproval.date}
                   signature={ceoApproval.signature}
-                  onRecommendationChange={(v) => setCeoApproval({ ...ceoApproval, recommendation: v })}
-                  onRationaleChange={(v) => setCeoApproval({ ...ceoApproval, rationale: v })}
+                  onRecommendationChange={(v) =>
+                    setCeoApproval({ ...ceoApproval, recommendation: v })
+                  }
+                  onRationaleChange={(v) =>
+                    setCeoApproval({ ...ceoApproval, rationale: v })
+                  }
                   onDateChange={(v) => setCeoApproval({ ...ceoApproval, date: v })}
-                  onSignatureChange={(v) => setCeoApproval({ ...ceoApproval, signature: v })}
+                  onSignatureChange={(v) =>
+                    setCeoApproval({ ...ceoApproval, signature: v })
+                  }
                   signNowDocumentId={signNowDocumentId}
                   signerEmail={signerEmails.ceo}
                   isApproval
@@ -1200,12 +1491,7 @@ export default function EnhancedDueDiligencePage() {
 
             {/* Save Button at Bottom */}
             <Flex justify="flex-end" pt="16px">
-              <Button
-                variant="primary"
-                onClick={handleSave}
-                disabled={saving}
-                size="md"
-              >
+              <Button variant="primary" onClick={handleSave} disabled={saving} size="md">
                 <FiSave style={{ marginRight: '8px' }} />
                 {saving ? 'Saving...' : 'Save Assessment'}
               </Button>
@@ -1216,4 +1502,3 @@ export default function EnhancedDueDiligencePage() {
     </Box>
   );
 }
-
