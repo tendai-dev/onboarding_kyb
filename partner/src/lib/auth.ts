@@ -12,6 +12,7 @@ const keycloakConfig = {
     'https://keycloak-staging.app-stg.mukuru.io/realms/mukuru',
   nextAuthUrl: process.env.NEXTAUTH_URL || 'http://localhost:3000',
   expectedRedirectUri: `${process.env.NEXTAUTH_URL || 'http://localhost:3000'}/api/auth/callback/keycloak`,
+  keycloakCallbackUri: `${process.env.NEXTAUTH_URL || 'http://localhost:3000'}/auth/callback`,
 };
 
 console.info('[NextAuth Config] Keycloak Configuration:', {
@@ -19,6 +20,7 @@ console.info('[NextAuth Config] Keycloak Configuration:', {
   issuer: keycloakConfig.issuer,
   nextAuthUrl: keycloakConfig.nextAuthUrl,
   expectedRedirectUri: keycloakConfig.expectedRedirectUri,
+  keycloakCallbackUri: keycloakConfig.keycloakCallbackUri,
   hasClientSecret: !!process.env.KEYCLOAK_CLIENT_SECRET,
 });
 
@@ -32,6 +34,8 @@ const keycloakProviderConfig: any = {
       scope: 'openid email profile',
       // Request access to the kyb-connect resource to get roles
       audience: 'resource:kyb-connect',
+      // Use /auth/callback to match Keycloak's registered redirect URI
+      redirect_uri: keycloakConfig.keycloakCallbackUri,
     },
   },
   wellKnown:
