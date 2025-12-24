@@ -6,6 +6,7 @@ using OnboardingApi.Application.Document.Interfaces;
 using OnboardingApi.Application.Document.Queries;
 using OnboardingApi.Domain.Document.ValueObjects;
 using OnboardingApi.Application.Interfaces;
+using System;
 using System.Linq;
 using DomainDocument = OnboardingApi.Domain.Document.Aggregates.Document;
 
@@ -229,7 +230,7 @@ public class DocumentsController : ControllerBase
         {
             // SECURITY FIX: Filter by user's cases unless admin/reviewer
             var userEmail = _currentUser.Email;
-            if (!string.IsNullOrWhiteSpace(userEmail) && !User.IsInRole("admin") && !User.IsInRole("reviewer"))
+            if (!string.IsNullOrWhiteSpace(userEmail) && !User.IsInRole("admin") && !User.IsInRole("Administrator") && !User.IsInRole("reviewer"))
             {
                 var userPartnerId = OnboardingApi.Infrastructure.Utilities.PartnerIdGenerator.GenerateFromEmail(userEmail);
                 // Get all case IDs for this user
@@ -291,21 +292,58 @@ public class DocumentsController : ControllerBase
     {
         try
         {
+            // Check if user is admin or reviewer first - they can access all documents
+            // Use multiple methods to check roles for compatibility
+            // Include "Administrator" which is sent by the admin portal
+            var isAdmin = _currentUser.HasRole("admin") || 
+                         _currentUser.HasRole("Admin") ||
+                         _currentUser.HasRole("Administrator") ||
+                         User.IsInRole("admin") || 
+                         User.IsInRole("Admin") ||
+                         User.IsInRole("Administrator") ||
+                         _currentUser.Roles.Any(r => r.Equals("admin", StringComparison.OrdinalIgnoreCase) || 
+                                                     r.Equals("Admin", StringComparison.OrdinalIgnoreCase) ||
+                                                     r.Equals("Administrator", StringComparison.OrdinalIgnoreCase));
+            
+            var isReviewer = _currentUser.HasRole("reviewer") || 
+                            _currentUser.HasRole("Reviewer") ||
+                            User.IsInRole("reviewer") || 
+                            User.IsInRole("Reviewer") ||
+                            _currentUser.Roles.Any(r => r.Equals("reviewer", StringComparison.OrdinalIgnoreCase) || 
+                                                        r.Equals("Reviewer", StringComparison.OrdinalIgnoreCase));
+            
+            _logger.LogDebug("Document access check - CaseId: {CaseId}, IsAdmin: {IsAdmin}, IsReviewer: {IsReviewer}, UserRoles: {Roles}",
+                Infrastructure.Utilities.LoggingExtensions.MaskGuid(caseId),
+                isAdmin,
+                isReviewer,
+                string.Join(", ", _currentUser.Roles));
+            
             // SECURITY FIX: Verify case ownership before listing documents
-            var caseEntity = await _caseRepository.GetByIdAsync(caseId);
-            if (caseEntity != null)
+            // Admins and reviewers can access all documents, regardless of case ownership
+            if (!isAdmin && !isReviewer)
             {
-                var userEmail = _currentUser.Email;
-                if (!string.IsNullOrWhiteSpace(userEmail))
+                var caseEntity = await _caseRepository.GetByIdAsync(caseId);
+                if (caseEntity != null)
                 {
-                    var expectedPartnerId = OnboardingApi.Infrastructure.Utilities.PartnerIdGenerator.GenerateFromEmail(userEmail);
-                    if (caseEntity.PartnerId != expectedPartnerId && !User.IsInRole("admin") && !User.IsInRole("reviewer"))
+                    var userEmail = _currentUser.Email;
+                    if (!string.IsNullOrWhiteSpace(userEmail))
                     {
-                        _logger.LogWarning("Document list denied - case ownership mismatch. User: {Email}, Case PartnerId: {CasePartnerId}",
-                            Infrastructure.Utilities.LoggingExtensions.MaskEmail(userEmail),
-                            Infrastructure.Utilities.LoggingExtensions.MaskGuid(caseEntity.PartnerId));
-                        return StatusCode(403, new { error = "Access denied", message = "This case does not belong to your account" });
+                        var expectedPartnerId = OnboardingApi.Infrastructure.Utilities.PartnerIdGenerator.GenerateFromEmail(userEmail);
+                        if (caseEntity.PartnerId != expectedPartnerId)
+                        {
+                            _logger.LogWarning("Document list denied - case ownership mismatch. User: {Email}, Case PartnerId: {CasePartnerId}",
+                                Infrastructure.Utilities.LoggingExtensions.MaskEmail(userEmail),
+                                Infrastructure.Utilities.LoggingExtensions.MaskGuid(caseEntity.PartnerId));
+                            return StatusCode(403, new { error = "Access denied", message = "This case does not belong to your account" });
+                        }
                     }
+                }
+                else
+                {
+                    // Case doesn't exist and user is not admin/reviewer - deny access
+                    _logger.LogWarning("Document list denied - case not found and user is not admin/reviewer. CaseId: {CaseId}",
+                        Infrastructure.Utilities.LoggingExtensions.MaskGuid(caseId));
+                    return StatusCode(403, new { error = "Access denied", message = "Case not found or access denied" });
                 }
             }
 
@@ -345,7 +383,7 @@ public class DocumentsController : ControllerBase
                 if (!string.IsNullOrWhiteSpace(userEmail))
                 {
                     var expectedPartnerId = OnboardingApi.Infrastructure.Utilities.PartnerIdGenerator.GenerateFromEmail(userEmail);
-                    if (caseEntity.PartnerId != expectedPartnerId && !User.IsInRole("admin") && !User.IsInRole("reviewer"))
+                    if (caseEntity.PartnerId != expectedPartnerId && !User.IsInRole("admin") && !User.IsInRole("Administrator") && !User.IsInRole("reviewer"))
                     {
                         _logger.LogWarning("Document access denied - ownership mismatch. User: {Email}, Document CaseId: {CaseId}",
                             Infrastructure.Utilities.LoggingExtensions.MaskEmail(userEmail),

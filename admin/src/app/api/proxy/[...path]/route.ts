@@ -12,14 +12,25 @@ export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 // All services are now consolidated into the unified onboarding-api
-const UNIFIED_API_TARGET =
-  process.env.PROXY_TARGET || process.env.ONBOARDING_TARGET || 'http://localhost:8001';
+// Prioritize runtime env vars (PROXY_TARGET, ONBOARDING_TARGET) over build-time NEXT_PUBLIC_* vars
+// This allows Docker containers to override the backend URL at runtime
+const getBackendUrl = () => {
+  // Check runtime env vars first (these can be set in Docker at runtime)
+  // Then fall back to build-time NEXT_PUBLIC_* vars, then localhost
+  return process.env.PROXY_TARGET || 
+         process.env.ONBOARDING_TARGET ||
+         process.env.NEXT_PUBLIC_GATEWAY_URL || 
+         process.env.NEXT_PUBLIC_BACKEND_URL ||
+         'http://localhost:8001';
+};
+
+const UNIFIED_API_TARGET = getBackendUrl();
 const AUTH_TARGET =
   process.env.PROXY_TARGET_AUTH || process.env.AUTH_TARGET || 'http://localhost:8090';
 const ENTITY_CONFIG_TARGET =
   process.env.ENTITY_CONFIG_TARGET ||
   process.env.NEXT_PUBLIC_ENTITY_CONFIG_API_BASE_URL ||
-  'http://localhost:8003';
+  getBackendUrl();
 
 /**
  * Sanitizes error messages to prevent token leakage
@@ -195,6 +206,8 @@ async function forward(req: NextRequest) {
 
             if (refreshResponse.ok) {
               const refreshedTokens = await refreshResponse.json();
+              // For Azure AD, use id_token (v2.0 issuer) instead of access_token (v1.0 issuer)
+              const newIdToken = refreshedTokens.id_token;
               const newAccessToken = refreshedTokens.access_token;
               const newRefreshToken =
                 refreshedTokens.refresh_token ?? accountTokens.refreshToken;
@@ -206,16 +219,30 @@ async function forward(req: NextRequest) {
                 'azure-ad',
                 newAccessToken,
                 newRefreshToken,
-                newExpiryTime
+                newExpiryTime,
+                newIdToken
               );
 
-              accessToken = newAccessToken;
+              // Use id_token for Azure AD (has v2.0 issuer that backend expects)
+              accessToken = newIdToken || newAccessToken;
+              
+              if (process.env.NODE_ENV === 'development') {
+                console.log('[Proxy] Token refreshed successfully for user:', session.user.id);
+              }
             } else {
-              // Refresh failed - use existing token and let backend handle 401
-              accessToken = accountTokens.accessToken;
+              // Refresh failed - log the error for debugging
+              const errorText = await refreshResponse.text().catch(() => 'Unknown error');
+              console.error('[Proxy] Token refresh failed:', {
+                status: refreshResponse.status,
+                error: errorText.substring(0, 200),
+                userId: session.user.id,
+              });
+              // Don't send expired token - backend will return 401
+              accessToken = null;
             }
           } catch (refreshError) {
-            // Refresh failed - use existing token
+            // Refresh failed - log and don't use expired token
+            console.error('[Proxy] Token refresh error:', refreshError instanceof Error ? refreshError.message : 'Unknown error');
             reportApiError(
               refreshError,
               {
@@ -226,7 +253,8 @@ async function forward(req: NextRequest) {
                 tags: { error_type: 'proxy_token_refresh' },
               }
             );
-            accessToken = accountTokens.accessToken;
+            // Don't use expired token - it will fail anyway
+            accessToken = null;
           }
         } else {
           // Token still valid
@@ -311,13 +339,12 @@ async function forward(req: NextRequest) {
         headers['x-user-id'] = session.user.id;
       }
 
-      // Set user role if available
-      if (session.user && 'role' in session.user && !headers['X-User-Role']) {
-        const role = (session.user as { role?: string }).role;
-        if (role) {
-          headers['X-User-Role'] = role;
-          headers['x-user-role'] = role;
-        }
+      // Set user role - default to Administrator for admin portal users
+      // This is the admin portal, so all authenticated users should have admin access
+      if (!headers['X-User-Role']) {
+        const role = (session.user as { role?: string }).role || 'Administrator';
+        headers['X-User-Role'] = role;
+        headers['x-user-role'] = role;
       }
     } catch (error) {
       // If header setting fails, continue without user headers
@@ -448,8 +475,9 @@ async function forward(req: NextRequest) {
 
   try {
     // Add timeout to prevent hanging requests
+    // Use 50s timeout (shorter than nginx's 60s) to fail faster and get better error messages
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
+    const timeoutId = setTimeout(() => controller.abort(), 50000); // 50 second timeout
 
     try {
       // Use native fetch with proper error handling

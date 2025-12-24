@@ -740,7 +740,7 @@ public partial class CasesController : ControllerBase
             var expectedPartnerId = OnboardingApi.Infrastructure.Utilities.PartnerIdGenerator.GenerateFromEmail(userEmail);
             // Note: Approve might be admin-only, but we still check ownership for regular users
             // Admin users should have AdminPolicy which bypasses this check
-            if (entity.PartnerId != expectedPartnerId && !User.IsInRole("admin") && !User.IsInRole("reviewer"))
+            if (entity.PartnerId != expectedPartnerId && !User.IsInRole("admin") && !User.IsInRole("Administrator") && !User.IsInRole("reviewer"))
             {
                 _logger.LogWarning("Approve denied - ownership mismatch. User: {Email}, Case PartnerId: {CasePartnerId}",
                     Infrastructure.Utilities.LoggingExtensions.MaskEmail(userEmail),
@@ -793,7 +793,7 @@ public partial class CasesController : ControllerBase
         {
             var expectedPartnerId = OnboardingApi.Infrastructure.Utilities.PartnerIdGenerator.GenerateFromEmail(userEmail);
             // Note: Reject might be admin-only, but we still check ownership for regular users
-            if (entity.PartnerId != expectedPartnerId && !User.IsInRole("admin") && !User.IsInRole("reviewer"))
+            if (entity.PartnerId != expectedPartnerId && !User.IsInRole("admin") && !User.IsInRole("Administrator") && !User.IsInRole("reviewer"))
             {
                 _logger.LogWarning("Reject denied - ownership mismatch. User: {Email}, Case PartnerId: {CasePartnerId}",
                     Infrastructure.Utilities.LoggingExtensions.MaskEmail(userEmail),
@@ -957,7 +957,7 @@ public partial class CasesController : ControllerBase
     {
         // SECURITY FIX: Verify user can only access their own cases (unless admin/reviewer)
         var userEmail = _currentUser.Email;
-        if (!string.IsNullOrWhiteSpace(userEmail) && !User.IsInRole("admin") && !User.IsInRole("reviewer"))
+        if (!string.IsNullOrWhiteSpace(userEmail) && !User.IsInRole("admin") && !User.IsInRole("Administrator") && !User.IsInRole("reviewer"))
         {
             var expectedPartnerId = OnboardingApi.Infrastructure.Utilities.PartnerIdGenerator.GenerateFromEmail(userEmail);
             // Force filter by user's partner ID - prevent accessing other users' data
@@ -1149,7 +1149,7 @@ public partial class CasesController : ControllerBase
     {
         // SECURITY FIX: Verify user can only export their own cases (unless admin/reviewer)
         var userEmail = _currentUser.Email;
-        if (!string.IsNullOrWhiteSpace(userEmail) && !User.IsInRole("admin") && !User.IsInRole("reviewer"))
+        if (!string.IsNullOrWhiteSpace(userEmail) && !User.IsInRole("admin") && !User.IsInRole("Administrator") && !User.IsInRole("reviewer"))
         {
             var expectedPartnerId = OnboardingApi.Infrastructure.Utilities.PartnerIdGenerator.GenerateFromEmail(userEmail);
             // Force filter by user's partner ID - prevent exporting other users' data
