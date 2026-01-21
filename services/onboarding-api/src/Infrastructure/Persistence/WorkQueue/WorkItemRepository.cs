@@ -174,6 +174,18 @@ public class WorkItemRepository : IWorkItemRepository
             }
         }
         
+        // Handle comments collection - mark new comments as Added
+        foreach (var comment in workItem.Comments)
+        {
+            var commentEntry = _context.Entry(comment);
+            
+            // If the entry is not tracked, it's a new entry and should be marked as Added
+            if (commentEntry.State == EntityState.Detached)
+            {
+                commentEntry.State = EntityState.Added;
+            }
+        }
+        
         // After marking history entries, detect changes again to ensure entity state is correct
         _context.ChangeTracker.DetectChanges();
         
@@ -333,6 +345,37 @@ public class WorkItemRepository : IWorkItemRepository
         
         _logger.LogInformation("ExecuteUpdate affected {RowsAffected} row(s) for work item {WorkItemId} approval", 
             rowsAffected, workItemId);
+        
+        return rowsAffected;
+    }
+
+    public async Task<int> UpdatePriorityAsync(
+        Guid workItemId,
+        WorkItemPriority priority,
+        string updatedBy,
+        CancellationToken cancellationToken = default)
+    {
+        // Use ExecuteUpdate to update priority directly in the database without change tracking
+        var now = DateTime.UtcNow;
+        var rowsAffected = await _context.WorkItems
+            .Where(w => w.Id == workItemId)
+            .ExecuteUpdateAsync(setters => setters
+                .SetProperty(w => w.Priority, priority)
+                .SetProperty(w => w.UpdatedAt, now)
+                .SetProperty(w => w.UpdatedBy, updatedBy),
+                cancellationToken);
+        
+        _logger.LogInformation("ExecuteUpdate affected {RowsAffected} row(s) for work item {WorkItemId} priority update to {Priority}", 
+            rowsAffected, workItemId, priority);
+        
+        // Add history entry - use current work item status, not a custom status
+        if (rowsAffected > 0)
+        {
+            // Get the current status of the work item to use in history
+            var workItem = await _context.WorkItems.AsNoTracking().FirstOrDefaultAsync(w => w.Id == workItemId, cancellationToken);
+            var currentStatus = workItem?.Status.ToString() ?? "Unknown";
+            await AddHistoryEntryAsync(workItemId, $"Priority changed to {priority}", updatedBy, currentStatus, cancellationToken);
+        }
         
         return rowsAffected;
     }

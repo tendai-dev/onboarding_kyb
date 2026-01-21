@@ -154,7 +154,11 @@ export async function generateAcknowledgementPDF(data: {
 }): Promise<Buffer> {
   // Try backend service first
   try {
-    const backendUrl = process.env.ONBOARDING_TARGET || 'http://localhost:8001';
+    // Use gateway or backend URL for production, fallback to localhost
+    const backendUrl = process.env.NEXT_PUBLIC_GATEWAY_URL ||
+                       process.env.NEXT_PUBLIC_BACKEND_URL ||
+                       process.env.ONBOARDING_TARGET ||
+                       'http://localhost:8001';
     const response = await fetch(`${backendUrl}/api/v1/documents/generate-acknowledgement`, {
       method: 'POST',
       headers: {

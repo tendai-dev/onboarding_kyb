@@ -207,8 +207,9 @@ export default function AdminApplicationDetailsPage() {
         return;
       }
 
-      // Get case ID from URL params
-      const caseId = applicationId;
+      // Get case ID from application object (UUID) or fall back to URL params
+      // The application.id contains the UUID which is what the documents API expects
+      const caseId = application?.id || applicationId;
       if (!caseId) {
         await SweetAlert.warning('Application Not Found', 'Cannot find application ID.');
         return;
@@ -420,11 +421,12 @@ export default function AdminApplicationDetailsPage() {
 
       // Try multiple matching strategies
       let doc = documents.find((d: Record<string, unknown>) => {
-        const dFileName = (d.fileName ? String(d.fileName) : '').toLowerCase();
+        // Handle both snake_case (file_name) and camelCase (fileName) from backend
+        const dFileName = (d.file_name || d.fileName ? String(d.file_name || d.fileName) : '').toLowerCase();
         const searchFileName = (fileName || '').toLowerCase();
 
         // Exact match
-        if (d.fileName === fileName || dFileName === searchFileName) return true;
+        if (d.file_name === fileName || d.fileName === fileName || dFileName === searchFileName) return true;
 
         // Partial match (filename contains search term or vice versa)
         if (dFileName.includes(searchFileName) || searchFileName.includes(dFileName))
@@ -469,7 +471,9 @@ export default function AdminApplicationDetailsPage() {
         doc = documents[0];
       }
 
-      if (!doc || !doc.storageKey) {
+      // Handle both snake_case (storage_key) and camelCase (storageKey) from backend
+      const docStorageKey = doc.storage_key || doc.storageKey;
+      if (!doc || !docStorageKey) {
         await SweetAlert.warning(
           'Document Not Found',
           `Could not find document "${fileName}" in the system. Found ${documents.length} document(s) for this application.`
@@ -480,84 +484,83 @@ export default function AdminApplicationDetailsPage() {
       // Get download URL - try multiple methods
       let downloadUrl: string | null = null;
 
-      // Method 1: Try download endpoint with storage key
-      try {
-        const downloadResponse = await fetch(
-          `/api/proxy/api/v1/documents/download/${encodeURIComponent(doc.storageKey)}`
-        );
-        if (downloadResponse.ok) {
-          const downloadData = await downloadResponse.json();
-          logger.debug('Download URL response received');
-
-          // Try all possible field names for the URL (C# serializes to camelCase by default)
-          downloadUrl =
-            downloadData.downloadUrl ||
-            downloadData.DownloadUrl ||
-            downloadData.url ||
-            downloadData.presignedUrl ||
-            downloadData.presignedDownloadUrl ||
-            downloadData.downloadURL ||
-            (typeof downloadData === 'string' ? downloadData : null) ||
-            null;
-
-          // Proxy MinIO URLs through our API to avoid CORS and signature issues
-          if (downloadUrl && doc.storageKey) {
-            // Use our proxy endpoint instead of direct MinIO URL
-            downloadUrl = `/api/proxy-document?storageKey=${encodeURIComponent(doc.storageKey)}`;
-            logger.debug('Using proxy endpoint for document', { downloadUrl });
-          } else if (downloadUrl) {
-            // If we don't have storageKey but have a URL, still proxy it
-            downloadUrl = `/api/proxy-document?url=${encodeURIComponent(downloadUrl)}`;
-            logger.debug('Using proxy endpoint with URL', { downloadUrl });
-          }
-
-          logger.debug('Extracted download URL', { downloadUrl });
-
-          // If still no URL, log the full response for debugging
-          if (!downloadUrl) {
-            logger.error(
-              new Error('Could not extract URL from response'),
-              'Failed to extract download URL',
-              {
-                tags: { error_type: 'url_extraction_error' },
-                extra: { downloadData },
-              }
-            );
-          }
-        } else {
-          const errorText = await downloadResponse.text();
-          logger.warn('Download URL request failed', {
-            tags: { warning_type: 'download_url_failed' },
-            extra: { status: downloadResponse.status, errorText },
-          });
-        }
-      } catch (err) {
-        logger.warn('Failed to get download URL from storage key', {
-          tags: { warning_type: 'storage_key_download_failed' },
-          extra: { error: err },
-        });
+      // Method 1: Use the direct download endpoint with storage key
+      // Backend endpoint: GET /api/v1/documents/direct?key={storageKey}
+      if (docStorageKey) {
+        // Use our proxy-document endpoint which handles the direct download
+        downloadUrl = `/api/proxy-document?storageKey=${encodeURIComponent(String(docStorageKey))}`;
+        logger.debug('Using direct download with storage key', { downloadUrl });
       }
 
-      // Method 2: Try download endpoint with document ID
-      if (!downloadUrl && doc.id) {
+      // Method 2: Try POST to download-url endpoint to get presigned URL
+      if (!downloadUrl && docStorageKey) {
         try {
           const downloadResponse = await fetch(
-            `/api/proxy/api/v1/documents/${doc.id}/download`
+            `/api/proxy/api/v1/documents/download-url`,
+            {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ storageKey: docStorageKey }),
+            }
           );
           if (downloadResponse.ok) {
             const downloadData = await downloadResponse.json();
-            downloadUrl =
+            logger.debug('Presigned URL response received');
+
+            // Try all possible field names for the URL
+            const presignedUrl =
+              downloadData.downloadUrl ||
+              downloadData.DownloadUrl ||
+              downloadData.url ||
+              downloadData.presignedUrl ||
+              downloadData.presignedDownloadUrl ||
+              (typeof downloadData === 'string' ? downloadData : null) ||
+              null;
+
+            if (presignedUrl) {
+              // Proxy through our API to avoid CORS issues
+              downloadUrl = `/api/proxy-document?url=${encodeURIComponent(presignedUrl)}`;
+              logger.debug('Using presigned URL via proxy', { downloadUrl });
+            }
+          } else {
+            const errorText = await downloadResponse.text();
+            logger.warn('Presigned URL request failed', {
+              tags: { warning_type: 'presigned_url_failed' },
+              extra: { status: downloadResponse.status, errorText },
+            });
+          }
+        } catch (err) {
+          logger.warn('Failed to get presigned URL', {
+            tags: { warning_type: 'presigned_url_error' },
+            extra: { error: err },
+          });
+        }
+      }
+
+      // Method 3: Fallback - try document ID based endpoint
+      if (!downloadUrl && doc.id) {
+        try {
+          const downloadResponse = await fetch(
+            `/api/proxy/api/v1/documents/download-url`,
+            {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ documentId: doc.id }),
+            }
+          );
+          if (downloadResponse.ok) {
+            const downloadData = await downloadResponse.json();
+            const presignedUrl =
               downloadData.downloadUrl ||
               downloadData.DownloadUrl ||
               downloadData.url ||
               downloadData.presignedUrl ||
               null;
 
-            // Proxy through our API
-            if (downloadUrl && doc.storageKey) {
-              downloadUrl = `/api/proxy-document?storageKey=${encodeURIComponent(doc.storageKey)}`;
-            } else if (downloadUrl) {
-              downloadUrl = `/api/proxy-document?url=${encodeURIComponent(downloadUrl)}`;
+            if (presignedUrl) {
+              downloadUrl = `/api/proxy-document?url=${encodeURIComponent(presignedUrl)}`;
+            } else if (docStorageKey) {
+              downloadUrl = `/api/proxy-document?storageKey=${encodeURIComponent(String(docStorageKey))}`;
             }
 
             logger.debug('Download URL from document ID', { downloadUrl });
@@ -565,57 +568,6 @@ export default function AdminApplicationDetailsPage() {
         } catch (err) {
           logger.warn('Failed to get download URL from document ID', {
             tags: { warning_type: 'document_id_download_failed' },
-            extra: { error: err },
-          });
-        }
-      }
-
-      // Method 3: Try download-url POST endpoint
-      if (!downloadUrl && doc.storageKey) {
-        try {
-          const downloadResponse = await fetch(
-            `/api/proxy/api/v1/documents/download-url`,
-            {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-              },
-              body: JSON.stringify({
-                storageKey: doc.storageKey,
-                bucketName: doc.bucketName || 'kyb-docs',
-              }),
-            }
-          );
-          if (downloadResponse.ok) {
-            const downloadData = await downloadResponse.json();
-            // Try all possible field names (C# serializes to camelCase)
-            downloadUrl =
-              downloadData.downloadUrl ||
-              downloadData.DownloadUrl ||
-              downloadData.url ||
-              downloadData.presignedUrl ||
-              downloadData.presignedDownloadUrl ||
-              downloadData.downloadURL ||
-              null;
-
-            // Proxy through our API
-            if (downloadUrl && doc.storageKey) {
-              downloadUrl = `/api/proxy-document?storageKey=${encodeURIComponent(doc.storageKey)}`;
-            } else if (downloadUrl) {
-              downloadUrl = `/api/proxy-document?url=${encodeURIComponent(downloadUrl)}`;
-            }
-
-            logger.debug('Download URL from POST endpoint', { downloadUrl });
-          } else {
-            const errorText = await downloadResponse.text();
-            logger.warn('POST download URL request failed', {
-              tags: { warning_type: 'post_download_failed' },
-              extra: { status: downloadResponse.status, errorText },
-            });
-          }
-        } catch (err) {
-          logger.warn('Failed to get download URL from POST endpoint', {
-            tags: { warning_type: 'post_endpoint_failed' },
             extra: { error: err },
           });
         }
@@ -631,14 +583,17 @@ export default function AdminApplicationDetailsPage() {
           }
         );
         throw new Error(
-          `Failed to get download URL for document. StorageKey: ${doc.storageKey}, DocumentId: ${doc.id}`
+          `Failed to get download URL for document. StorageKey: ${docStorageKey}, DocumentId: ${doc.id}`
         );
       }
 
-      // Open viewer
-      setViewingDocumentName(doc.fileName || fileName);
-      setViewingDocumentType(doc.type ? String(doc.type) : undefined);
-      setViewingDocumentSize(doc.sizeBytes || fileData.fileSize);
+      // Open viewer - handle both snake_case and camelCase field names
+      const docFileName = doc.file_name || doc.fileName || fileName;
+      const docType = doc.type ? String(doc.type) : undefined;
+      const docSize = doc.size_bytes || doc.sizeBytes || fileData.fileSize;
+      setViewingDocumentName(docFileName);
+      setViewingDocumentType(docType);
+      setViewingDocumentSize(docSize);
       setViewingDocumentUrl(downloadUrl);
       setDocumentViewerOpen(true);
     } catch (err) {
@@ -734,13 +689,15 @@ export default function AdminApplicationDetailsPage() {
       const projection = data;
       let metadata: Record<string, unknown> = {};
       try {
-        metadata = projection.metadataJson
-          ? typeof projection.metadataJson === 'string'
-            ? JSON.parse(projection.metadataJson)
-            : projection.metadataJson
+        // Backend returns metadata_json (snake_case), try both formats
+        const metadataRaw = projection.metadataJson || projection.metadata_json;
+        metadata = metadataRaw
+          ? typeof metadataRaw === 'string'
+            ? JSON.parse(metadataRaw)
+            : metadataRaw
           : {};
       } catch (parseError) {
-        logger.warn('Failed to parse metadataJson, using empty object', {
+        logger.warn('Failed to parse metadata_json, using empty object', {
           tags: { warning_type: 'metadata_parse_error' },
           extra: { applicationId },
         });
@@ -754,12 +711,16 @@ export default function AdminApplicationDetailsPage() {
         null) as string | null;
 
       if (entityTypeCode) {
-        // If it's a string with commas (duplicated values), take the first one
-        if (typeof entityTypeCode === 'string' && entityTypeCode.includes(',')) {
-          entityTypeCode = entityTypeCode.split(',')[0].trim();
-        }
         // Ensure it's a string and trim whitespace
         entityTypeCode = String(entityTypeCode).trim();
+        // If it's a string with commas (duplicated values), take the first one
+        if (entityTypeCode.includes(',')) {
+          entityTypeCode = entityTypeCode.split(',')[0].trim();
+        }
+        // If it's a string with spaces (duplicated values like "TEST_ENTITY TEST_ENTITY"), take the first one
+        if (entityTypeCode.includes(' ')) {
+          entityTypeCode = entityTypeCode.split(' ')[0].trim();
+        }
         // If it's empty after cleaning, set to null
         if (entityTypeCode === '') {
           entityTypeCode = null;
@@ -782,43 +743,60 @@ export default function AdminApplicationDetailsPage() {
         Cancelled: 'DECLINED',
       };
 
+      // Backend returns snake_case, handle both snake_case and camelCase field names
+      const legalName =
+        projection.business_legal_name ||
+        projection.businessLegalName ||
+        (metadata.registered_legal_name as string) ||
+        `${projection.applicant_first_name || projection.applicantFirstName || ''} ${projection.applicant_last_name || projection.applicantLastName || ''}`.trim() ||
+        'Unknown';
+
+      // Entity type should come from metadata, not the case type
+      const entityTypeDisplay =
+        (metadata.entity_type_display_name as string) ||
+        (metadata.entitytype as string) ||
+        entityTypeCode ||
+        projection.type ||
+        'Unknown';
+
+      const country =
+        projection.business_country_of_registration ||
+        projection.businessCountryOfRegistration ||
+        projection.applicant_country ||
+        projection.applicantCountry ||
+        'Unknown';
+
       const mappedApp: Application = {
         // Use projection.id (GUID) for API calls, not projection.caseId (case number string)
         id: projection.id,
-        legalName:
-          projection.businessLegalName ||
-          `${projection.applicantFirstName || ''} ${projection.applicantLastName || ''}`.trim() ||
-          'Unknown',
-        entityType:
-          projection.type || (metadata.entity_type_display_name as string) || 'Unknown',
-        country:
-          projection.businessCountryOfRegistration ||
-          projection.applicantCountry ||
-          'Unknown',
+        legalName: legalName.trim() || 'Unknown',
+        entityType: entityTypeDisplay,
+        country: country || 'Unknown',
         status: statusMap[projection.status] || 'IN PROGRESS',
-        created: projection.createdAt || new Date().toISOString(),
-        updated: projection.updatedAt || projection.createdAt || new Date().toISOString(),
-        submittedBy: projection.applicantEmail || 'Unknown',
-        riskScore: projection.riskScore || 0,
+        created: projection.created_at || projection.createdAt || new Date().toISOString(),
+        updated: projection.updated_at || projection.updatedAt || projection.created_at || projection.createdAt || new Date().toISOString(),
+        submittedBy: projection.applicant_email || projection.applicantEmail || 'Unknown',
+        riskScore: projection.risk_score || projection.riskScore || 0,
         documents: [], // Documents would need to be fetched separately
         businessInfo: {
           registrationNumber:
+            projection.business_registration_number ||
             projection.businessRegistrationNumber ||
             (metadata.registrationNumber as string) ||
             '',
-          taxId: projection.businessTaxId || (metadata.taxNumber as string) || '',
+          taxId: projection.business_tax_id || projection.businessTaxId || (metadata.taxNumber as string) || '',
           businessAddress:
-            projection.businessAddress || (metadata.businessAddress as string) || '',
-          industry: projection.businessIndustry || (metadata.industry as string) || '',
-          employees: projection.businessNumberOfEmployees || 0,
-          annualRevenue: projection.businessAnnualRevenue || 0,
+            projection.business_address || projection.businessAddress || (metadata.businessAddress as string) || '',
+          industry: projection.business_industry || projection.businessIndustry || (metadata.industry as string) || '',
+          employees: projection.business_number_of_employees || projection.businessNumberOfEmployees || 0,
+          annualRevenue: projection.business_annual_revenue || projection.businessAnnualRevenue || 0,
         },
         contactInfo: {
           primaryContact:
-            `${projection.applicantFirstName || ''} ${projection.applicantLastName || ''}`.trim(),
-          email: projection.applicantEmail || '',
-          phone: projection.applicantPhone || '',
-          address: projection.applicantAddress || '',
+            `${projection.applicant_first_name || projection.applicantFirstName || ''} ${projection.applicant_last_name || projection.applicantLastName || ''}`.trim(),
+          email: projection.applicant_email || projection.applicantEmail || '',
+          phone: projection.applicant_phone || projection.applicantPhone || '',
+          address: projection.applicant_address || projection.applicantAddress || '',
         },
       };
 
@@ -833,15 +811,19 @@ export default function AdminApplicationDetailsPage() {
           '[Application Loader] Using entity_type_code from application metadata',
           { entityTypeCode }
         );
-        await loadEntitySchema(entityTypeCode, data, true); // Enable wizard configuration
+        // Load entity schema - but don't fail the whole page if it fails
+        try {
+          await loadEntitySchema(entityTypeCode, data, true); // Enable wizard configuration
+        } catch (schemaError) {
+          // Schema loading is optional - log as warning, not error
+          logger.warn(`[Application Loader] Could not load entity schema for ${entityTypeCode}: ${schemaError instanceof Error ? schemaError.message : 'Unknown error'}`);
+        }
       } else {
-        logger.error(
-          new Error('No entity_type_code found in application metadata'),
-          '[Application Loader] Missing entity type code',
-          {
-            tags: { error_type: 'missing_entity_type_code' },
-            extra: { availableKeys: Object.keys(metadata) },
-          }
+        // Entity type code is optional - some applications may not have it
+        // This is not an error, just means we can't load the entity schema
+        logger.debug(
+          '[Application Loader] No entity_type_code in metadata - schema loading skipped',
+          { availableKeys: Object.keys(metadata) }
         );
       }
     } catch (err) {

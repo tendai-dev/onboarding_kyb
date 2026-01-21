@@ -12,6 +12,11 @@ function LoginContent() {
   const { data: session, status } = useSession();
   const [isRedirecting, setIsRedirecting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  
+  // Get current origin for displaying correct callback URLs
+  const currentOrigin = typeof window !== 'undefined' 
+    ? window.location.origin 
+    : (process.env.NEXTAUTH_URL || 'http://localhost:3000');
 
   // Check for OAuth errors in URL
   const oauthError = searchParams.get('error');
@@ -65,7 +70,7 @@ function LoginContent() {
             </Typography>
             <VStack align="start" gap={1} ml={4}>
               <Typography>
-                • Keycloak redirect URI mismatch - ensure this EXACT URI is registered in
+                • Keycloak redirect URI mismatch - ensure these EXACT URIs are registered in
                 Keycloak:
               </Typography>
               <Box
@@ -75,7 +80,9 @@ function LoginContent() {
                 fontFamily="mono"
                 fontSize="xs"
               >
-                http://localhost:3000/api/auth/callback/keycloak
+                {currentOrigin}/api/auth/callback/keycloak
+                <br />
+                {currentOrigin}/auth/callback
               </Box>
               <Typography fontSize="xs" color="mukuru.grey.medium" mt={1}>
                 In Keycloak: Clients → kyb-connect-portal → Settings → Valid Redirect URIs

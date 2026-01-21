@@ -18,11 +18,35 @@ import {
 /**
  * Get dashboard statistics
  * Maps from DashboardProjection to DashboardStats
+ * OPTIMIZED: Reuses cached dashboard projection if available to avoid duplicate API calls
  */
+let cachedDashboard: DashboardProjection | null = null;
+let cacheTimestamp: number = 0;
+const CACHE_DURATION_MS = 5000; // 5 second cache to prevent duplicate calls
+
 export async function fetchDashboardStats(partnerId?: string): Promise<DashboardStats> {
-  // The old API mapped from DashboardProjection, but our new API client already does this
-  // If we need the mapping, we should do it here in the use case layer
+  // Use cached dashboard if available and recent (prevents duplicate API calls)
+  const now = Date.now();
+  if (cachedDashboard && (now - cacheTimestamp) < CACHE_DURATION_MS) {
+    // Map from cached data
+    return {
+      totalApplications: cachedDashboard.cases.totalCases,
+      pendingReview: cachedDashboard.cases.pendingReviewCases,
+      riskReview: cachedDashboard.risk.casesRequiringManualReview,
+      completed: cachedDashboard.cases.completedCases,
+      incomplete: cachedDashboard.cases.activeCases - cachedDashboard.cases.pendingReviewCases,
+      declined: cachedDashboard.cases.rejectedCases,
+      avgProcessingTime: Number(cachedDashboard.performance.averageCompletionTimeHours / 24),
+      successRate: Number(cachedDashboard.performance.completionRate),
+    };
+  }
+
+  // Fetch fresh data
   const dashboard = await getDashboardProjection(partnerId);
+  
+  // Cache the result
+  cachedDashboard = dashboard;
+  cacheTimestamp = now;
 
   // Map backend data to frontend format
   return {
@@ -71,9 +95,23 @@ export async function fetchDailyTrends(partnerId?: string): Promise<DailyTrend[]
 
 /**
  * Get full dashboard projection
+ * OPTIMIZED: Uses cache to prevent duplicate API calls
  */
 export async function fetchDashboardProjection(
   partnerId?: string
 ): Promise<DashboardProjection> {
-  return getDashboardProjection(partnerId);
+  // Use cached dashboard if available and recent
+  const now = Date.now();
+  if (cachedDashboard && (now - cacheTimestamp) < CACHE_DURATION_MS) {
+    return cachedDashboard;
+  }
+
+  // Fetch fresh data
+  const dashboard = await getDashboardProjection(partnerId);
+  
+  // Cache the result
+  cachedDashboard = dashboard;
+  cacheTimestamp = now;
+  
+  return dashboard;
 }

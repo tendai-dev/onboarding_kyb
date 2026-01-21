@@ -119,6 +119,99 @@ export default function RootLayout({
                   document.documentElement.classList.add(theme);
                   document.documentElement.setAttribute('data-theme', theme);
                 } catch (e) {}
+                
+                // Detect failed chunk loads and force hard refresh IMMEDIATELY
+                (function() {
+                  var hasReloaded = false;
+                  var buildId = 'bUkPYARJEZWQ_xH5KGK6R';
+                  var currentBuildId = 'bUkPYARJEZWQ_xH5KGK6R';
+                  
+                  // Check if we're on a stale version immediately
+                  var urlParams = new URLSearchParams(window.location.search);
+                  var urlVersion = urlParams.get('v');
+                  if (urlVersion && urlVersion !== currentBuildId) {
+                    console.warn('[CacheBuster] Version mismatch detected. Forcing refresh...');
+                    window.location.href = window.location.href.split('?')[0] + '?v=' + currentBuildId + '&_refresh=' + Date.now();
+                    return;
+                  }
+                  
+                  // Store build ID in sessionStorage to detect stale pages
+                  try {
+                    var storedBuildId = sessionStorage.getItem('__next_build_id');
+                    if (storedBuildId && storedBuildId !== currentBuildId) {
+                      console.warn('[CacheBuster] Stale build detected. Forcing refresh...');
+                      sessionStorage.setItem('__next_build_id', currentBuildId);
+                      window.location.href = window.location.href.split('?')[0] + '?v=' + currentBuildId + '&_refresh=' + Date.now();
+                      return;
+                    }
+                    sessionStorage.setItem('__next_build_id', currentBuildId);
+                  } catch(e) {}
+                  
+                  function forceHardRefresh() {
+                    if (hasReloaded) return;
+                    hasReloaded = true;
+                    console.warn('[CacheBuster] Chunk load failure detected. Clearing cache and forcing hard refresh...');
+                    
+                    // Clear all caches
+                    if ('caches' in window) {
+                      caches.keys().then(function(names) {
+                        names.forEach(function(name) {
+                          caches.delete(name);
+                        });
+                      });
+                    }
+                    
+                    // Clear localStorage and sessionStorage
+                    try {
+                      localStorage.clear();
+                      sessionStorage.clear();
+                    } catch(e) {}
+                    
+                    // Force hard refresh with cache bypass
+                    setTimeout(function() {
+                      window.location.href = window.location.href.split('?')[0] + '?v=' + buildId + '&_refresh=' + Date.now();
+                    }, 100);
+                  }
+                  
+                  // Intercept fetch for chunk files
+                  var originalFetch = window.fetch;
+                  window.fetch = function() {
+                    var url = arguments[0];
+                    if (typeof url === 'string' && url.includes('/_next/static/chunks/')) {
+                      return originalFetch.apply(this, arguments).catch(function(error) {
+                        console.error('[CacheBuster] Failed to load chunk:', url, error);
+                        forceHardRefresh();
+                        throw error;
+                      });
+                    }
+                    return originalFetch.apply(this, arguments);
+                  };
+                  
+                  // Listen for script/style errors (immediate detection)
+                  window.addEventListener('error', function(event) {
+                    var src = event.target && (event.target.src || event.target.href);
+                    if (src && src.includes('/_next/static/chunks/')) {
+                      console.error('[CacheBuster] Resource load error:', src);
+                      forceHardRefresh();
+                    }
+                  }, true);
+                  
+                  // Also check for 500 errors in network requests
+                  var originalOpen = XMLHttpRequest.prototype.open;
+                  XMLHttpRequest.prototype.open = function() {
+                    var xhr = this;
+                    xhr.addEventListener('load', function() {
+                      if (xhr.status === 500) {
+                        var url = arguments[1] || '';
+                        if (url.includes('/_next/static/chunks/')) {
+                          console.error('[CacheBuster] 500 error for chunk:', url);
+                          forceHardRefresh();
+                        }
+                      }
+                    });
+                    return originalOpen.apply(this, arguments);
+                  };
+                })();
               })();
             `,
           }}

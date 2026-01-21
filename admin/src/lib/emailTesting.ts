@@ -71,7 +71,7 @@ export async function testAllEmailTemplates(to: string): Promise<{
     status: 'In Review',
     message: 'This is a test message.',
     adminName: 'Test Admin',
-    link: 'https://partner.mukuru.com/dashboard',
+    link: 'https://partner-mukuru.kurasika.tech/dashboard',
   };
 
   const results = {

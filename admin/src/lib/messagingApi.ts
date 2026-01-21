@@ -1,7 +1,15 @@
 /* eslint-disable security/detect-object-injection */
 // Messaging API service for connecting to backend messaging service via Next.js proxy
 
-const API_BASE = typeof window !== 'undefined' ? '' : 'http://localhost:3001'; // Use relative path in browser, absolute in SSR
+// Use NEXTAUTH_URL or NEXT_PUBLIC_APP_URL for server-side requests, relative path for client-side
+const getApiBase = () => {
+  if (typeof window !== 'undefined') {
+    return ''; // Use relative path in browser
+  }
+  // Server-side: use NEXTAUTH_URL or NEXT_PUBLIC_APP_URL, fallback to localhost
+  return process.env.NEXTAUTH_URL || process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3001';
+};
+const API_BASE = getApiBase();
 const MESSAGING_PREFIX = '/api/proxy/messaging';
 
 // MD5 implementation (matches .NET's MD5.Create().ComputeHash())

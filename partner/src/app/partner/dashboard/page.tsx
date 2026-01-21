@@ -466,53 +466,68 @@ function PartnerDashboardContent() {
 
         setLoading(true);
 
-        // If caseId is provided in URL (from submission), try to fetch it directly first
+        // OPTIMIZATION: Make parallel API calls with timeouts to speed up loading
+        // Use Promise.race to get the first successful result quickly
+        const timeout = (ms: number) => new Promise((_, reject) => setTimeout(() => reject(new Error(`Timeout after ${ms}ms`)), ms));
+        
         let found: any = null;
+        const promises: Array<Promise<any>> = [];
+
+        // If caseId is provided in URL, prioritize that
         if (caseIdFromUrl) {
           console.info('📋 Fetching case by ID:', caseIdFromUrl);
-          found = await getCaseById(caseIdFromUrl);
-          if (found) {
-            console.info('✅ Found case by ID:', found.caseId);
-          } else {
-            console.warn('⚠️ Case not found by ID, will try email search');
-          }
-        }
-
-        // PRIMARY: Try getUserApplications (more comprehensive, handles multiple cases)
-        if (!found) {
-          console.info(
-            '📧 Fetching applications using getUserApplications:',
-            currentUser.email
+          promises.push(
+            Promise.race([
+              getCaseById(caseIdFromUrl),
+              timeout(5000), // 5s timeout
+            ]).catch(err => {
+              console.warn('⚠️ getCaseById failed or timed out:', err);
+              return null;
+            })
           );
-          try {
-            const applications = await getUserApplications(currentUser.email);
-            console.info(
-              '✅ getUserApplications returned:',
-              applications.length,
-              'applications'
-            );
-            if (applications && applications.length > 0) {
-              // Get the most recent application
-              found = applications[0];
-              console.info(
-                '✅ Using first application from getUserApplications:',
-                found.caseId
-              );
-            }
-          } catch (getUserAppsError) {
-            console.warn(
-              '⚠️ getUserApplications failed, trying findUserCaseByEmail:',
-              getUserAppsError
-            );
-          }
         }
 
-        // FALLBACK: If getUserApplications didn't work, try findUserCaseByEmail
-        if (!found) {
-          console.info('📧 Fallback: Fetching case by email:', currentUser.email);
-          found = await findUserCaseByEmail(currentUser.email);
-          if (found) {
-            console.info('✅ Found case by email:', found.caseId);
+        // Try getUserApplications in parallel (with timeout)
+        console.info('📧 Fetching applications using getUserApplications:', currentUser.email);
+        promises.push(
+          Promise.race([
+            getUserApplications(currentUser.email),
+            timeout(8000), // 8s timeout
+          ]).catch(err => {
+            console.warn('⚠️ getUserApplications failed or timed out:', err);
+            return [];
+          })
+        );
+
+        // Try findUserCaseByEmail in parallel as well (with timeout)
+        console.info('📧 Fetching case by email (parallel):', currentUser.email);
+        promises.push(
+          Promise.race([
+            findUserCaseByEmail(currentUser.email),
+            timeout(5000), // 5s timeout
+          ]).catch(err => {
+            console.warn('⚠️ findUserCaseByEmail failed or timed out:', err);
+            return null;
+          })
+        );
+
+        // Wait for all promises, but use the first successful result
+        const results = await Promise.allSettled(promises);
+        
+        // Process results in priority order
+        for (const result of results) {
+          if (result.status === 'fulfilled' && result.value) {
+            if (Array.isArray(result.value) && result.value.length > 0) {
+              // getUserApplications returned an array
+              found = result.value[0];
+              console.info('✅ Found application from getUserApplications:', found.caseId);
+              break;
+            } else if (result.value && result.value.caseId) {
+              // getCaseById or findUserCaseByEmail returned a single case
+              found = result.value;
+              console.info('✅ Found case:', found.caseId);
+              break;
+            }
           }
         }
 

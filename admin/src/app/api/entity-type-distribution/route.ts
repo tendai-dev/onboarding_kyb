@@ -13,8 +13,10 @@ export async function GET(request: NextRequest) {
     const partnerId = searchParams.get('partnerId');
 
     // Build proxy URL - proxy will handle token injection and refresh
+    // Use NEXTAUTH_URL or request origin for base URL to avoid SSL issues
+    const baseUrl = process.env.NEXTAUTH_URL || request.nextUrl.origin;
     const proxyPath = `/api/proxy/api/v1/projections/entity-type-distribution${partnerId ? `?partnerId=${partnerId}` : ''}`;
-    const proxyUrl = new URL(proxyPath, request.url);
+    const proxyUrl = new URL(proxyPath, baseUrl);
 
     // Prepare headers
     const headers: HeadersInit = {

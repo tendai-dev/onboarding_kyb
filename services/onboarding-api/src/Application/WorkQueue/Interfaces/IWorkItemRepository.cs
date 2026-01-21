@@ -30,6 +30,7 @@ public interface IWorkItemRepository
     Task<int> CompleteDirectlyAsync(Guid workItemId, string completedBy, CancellationToken cancellationToken = default);
     Task<int> ApproveDirectlyAsync(Guid workItemId, Guid approverId, string approverName, CancellationToken cancellationToken = default);
     Task AddHistoryEntryAsync(Guid workItemId, string action, string performedBy, string status, CancellationToken cancellationToken = default);
+    Task<int> UpdatePriorityAsync(Guid workItemId, WorkItemPriority priority, string updatedBy, CancellationToken cancellationToken = default);
     
     // Step review methods
     Task<WorkItemStepReview?> GetStepReviewAsync(Guid workItemId, string stepId, CancellationToken cancellationToken = default);

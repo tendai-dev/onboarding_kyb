@@ -206,28 +206,16 @@ class EntityConfigApiService {
   }
 
   private async request<T>(endpoint: string, options?: RequestInit): Promise<T> {
-    // Use Next.js API route when in browser, direct URL when server-side
+    // Use the working proxy route pattern (/api/proxy/api/v1/...)
+    // This proxy handles authentication and routes to the backend correctly
     let baseUrl: string;
     let finalEndpoint: string;
 
     if (typeof window !== 'undefined') {
-      // Client-side: use Next.js API routes
-      // Requirements endpoint uses dedicated route, entity-types and wizard configurations use entity-config
-      if (endpoint.startsWith('/requirements')) {
-        baseUrl = '/api/requirements';
-        // Preserve sub-paths like /metadata, /by-code/xxx, etc.
-        finalEndpoint = endpoint.replace('/requirements', '');
-      } else if (
-        endpoint.startsWith('/wizardconfigurations') ||
-        endpoint.startsWith('/entity-types') ||
-        endpoint.startsWith('/checklists')
-      ) {
-        baseUrl = '/api/entity-config';
-        finalEndpoint = endpoint;
-      } else {
-        baseUrl = '/api/entity-config';
-        finalEndpoint = endpoint;
-      }
+      // Client-side: use the working proxy route
+      // The proxy expects /api/proxy/api/v1/... format
+      baseUrl = '/api/proxy/api/v1';
+      finalEndpoint = endpoint;
     } else {
       // Server-side: use direct backend URL
       baseUrl = `${ENTITY_CONFIG_API_BASE_URL}/api/v1`;

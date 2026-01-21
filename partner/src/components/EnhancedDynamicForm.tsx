@@ -750,6 +750,40 @@ export function EnhancedDynamicForm({
       if (Array.isArray(value) && value.length === 0) {
         return true;
       }
+      // For custom field objects (like authorizedSignatory, person fields, etc.)
+      // Check if the object has at least one required property filled
+      if (typeof value === 'object' && !Array.isArray(value) && value !== null) {
+        // For person objects (authorizedSignatory, executiveDirector, primaryContact, etc.)
+        // Check if name is filled (required for person objects)
+        if (field.type === 'custom' && (field.id === 'authorizedSignatory' || field.id === 'executiveDirector' || field.id === 'primaryContact')) {
+          const personValue = value as { name?: string; email?: string; phone?: string; position?: string; idNumber?: string };
+          if (!personValue.name || personValue.name.trim() === '') {
+            return true; // Name is required for person objects
+          }
+        }
+        // For banking details objects
+        if (field.type === 'custom' && field.id === 'bankingDetails') {
+          const bankingValue = value as { bankName?: string; accountNumber?: string; accountType?: string; branchCode?: string; accountHolder?: string };
+          if (!bankingValue.bankName || bankingValue.bankName.trim() === '' || 
+              !bankingValue.accountNumber || bankingValue.accountNumber.trim() === '') {
+            return true; // Bank name and account number are required
+          }
+        }
+        // For generic objects, check if they're empty (no properties or all properties are empty)
+        const objectKeys = Object.keys(value);
+        if (objectKeys.length === 0) {
+          return true; // Empty object
+        }
+        // Check if all properties are empty
+        const allEmpty = objectKeys.every(key => {
+          const propValue = (value as any)[key];
+          return propValue === undefined || propValue === null || propValue === '' || 
+                 (typeof propValue === 'string' && propValue.trim() === '');
+        });
+        if (allEmpty) {
+          return true; // All properties are empty
+        }
+      }
       return false;
     });
 
@@ -1106,23 +1140,71 @@ export function EnhancedDynamicForm({
               variant="primary"
               bg="mukuru.buttons.primary"
               _hover={{ bg: 'mukuru.buttons.inactive.orange' }}
-              onClick={async () => {
+              onClick={async (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                
+                console.info('🔘 Submit button clicked', {
+                  currentStep,
+                  totalSteps: config.steps.length,
+                  isStepComplete: isStepComplete(),
+                  isLoading,
+                });
+
                 if (!isStepComplete()) {
-                  console.error('Cannot submit - step not complete');
+                  console.warn('⚠️ Cannot submit - step not complete');
                   // Check which fields are missing
                   const requiredFields = currentStepConfig.fields.filter(
                     (field) => field.required
                   );
                   const missingFields = requiredFields.filter((field) => {
                     const value = formData[field.id];
-                    return (
-                      value === undefined ||
-                      value === null ||
-                      value === '' ||
-                      (typeof value === 'string' && value.trim() === '')
-                    );
+                    // Check for undefined, null, empty string, or whitespace-only strings
+                    if (value === undefined || value === null || value === '') {
+                      return true;
+                    }
+                    // For strings, check if they're just whitespace
+                    if (typeof value === 'string' && value.trim() === '') {
+                      return true;
+                    }
+                    // For arrays, check if they're empty
+                    if (Array.isArray(value) && value.length === 0) {
+                      return true;
+                    }
+                    // For custom field objects, check if they have required properties
+                    if (typeof value === 'object' && !Array.isArray(value) && value !== null) {
+                      if (field.type === 'custom' && (field.id === 'authorizedSignatory' || field.id === 'executiveDirector' || field.id === 'primaryContact')) {
+                        const personValue = value as { name?: string; email?: string; phone?: string; position?: string; idNumber?: string };
+                        if (!personValue.name || personValue.name.trim() === '') {
+                          return true;
+                        }
+                      }
+                      if (field.type === 'custom' && field.id === 'bankingDetails') {
+                        const bankingValue = value as { bankName?: string; accountNumber?: string; accountType?: string; branchCode?: string; accountHolder?: string };
+                        if (!bankingValue.bankName || bankingValue.bankName.trim() === '' || 
+                            !bankingValue.accountNumber || bankingValue.accountNumber.trim() === '') {
+                          return true;
+                        }
+                      }
+                      // Check if object is empty
+                      const objectKeys = Object.keys(value);
+                      if (objectKeys.length === 0) {
+                        return true;
+                      }
+                      const allEmpty = objectKeys.every(key => {
+                        const propValue = (value as any)[key];
+                        return propValue === undefined || propValue === null || propValue === '' || 
+                               (typeof propValue === 'string' && propValue.trim() === '');
+                      });
+                      if (allEmpty) {
+                        return true;
+                      }
+                    }
+                    return false;
                   });
+                  
                   if (missingFields.length > 0) {
+                    console.warn('❌ Missing required fields:', missingFields.map(f => ({ id: f.id, label: f.label })));
                     await SweetAlert.warning(
                       'Required Fields Missing',
                       `Please fill in the following required fields:\n${missingFields.map((f) => `- ${f.label}`).join('\n')}`
@@ -1130,8 +1212,25 @@ export function EnhancedDynamicForm({
                   }
                   return;
                 }
-                console.info('Submitting form...');
-                onSubmit();
+                
+                console.info('✅ Step is complete, calling onSubmit...');
+                try {
+                  if (typeof onSubmit === 'function') {
+                    await onSubmit();
+                  } else {
+                    console.error('❌ onSubmit is not a function:', typeof onSubmit);
+                    await SweetAlert.error(
+                      'Submission Error',
+                      'The submit handler is not properly configured. Please refresh the page and try again.'
+                    );
+                  }
+                } catch (error) {
+                  console.error('❌ Error in onSubmit handler:', error);
+                  await SweetAlert.error(
+                    'Submission Error',
+                    error instanceof Error ? error.message : 'An unexpected error occurred. Please try again.'
+                  );
+                }
               }}
               disabled={isLoading}
               loading={isLoading}

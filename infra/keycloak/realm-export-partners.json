@@ -181,10 +181,15 @@
       "directAccessGrantsEnabled": false,
       "redirectUris": [
         "http://localhost:3000/api/auth/callback/keycloak",
-        "http://localhost:3000/*"
+        "http://localhost:3000/auth/callback",
+        "http://localhost:3000/*",
+        "https://partner-mukuru.kurasika.tech/api/auth/callback/keycloak",
+        "https://partner-mukuru.kurasika.tech/auth/callback",
+        "https://partner-mukuru.kurasika.tech/*"
       ],
       "webOrigins": [
-        "http://localhost:3000"
+        "http://localhost:3000",
+        "https://partner-mukuru.kurasika.tech"
       ],
       "protocol": "openid-connect",
       "attributes": {

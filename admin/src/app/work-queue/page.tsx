@@ -90,6 +90,11 @@ export default function WorkQueuePage() {
   // Assign modal state
   const [assignModalOpen, setAssignModalOpen] = useState(false);
   const [selectedWorkItemId, setSelectedWorkItemId] = useState<string | null>(null);
+  
+  // Priority modal state
+  const [priorityModalOpen, setPriorityModalOpen] = useState(false);
+  const [priorityWorkItemId, setPriorityWorkItemId] = useState<string | null>(null);
+  const [currentPriorityValue, setCurrentPriorityValue] = useState<string>('Medium');
   const [users, setUsers] = useState<Array<{ id: string; name: string; email: string }>>(
     []
   );
@@ -1035,24 +1040,11 @@ export default function WorkQueuePage() {
                 display="flex"
                 alignItems="center"
                 justifyContent="center"
-                onClick={async (e: React.MouseEvent) => {
+                onClick={(e: React.MouseEvent) => {
                   e.stopPropagation();
-                  const priorities = ['Critical', 'High', 'Medium', 'Low'];
-                  const currentPriority = row.priority || 'Medium';
-                  const newPriority = prompt(
-                    `Update Priority (Current: ${currentPriority}):\nOptions: ${priorities.join(', ')}`,
-                    currentPriority
-                  );
-                  if (newPriority && priorities.includes(newPriority)) {
-                    const { updateWorkItemPriority } = await import(
-                      '../../services/api/workQueueApi'
-                    );
-                    await executeAction(
-                      () => updateWorkItemPriority(workItemId, newPriority),
-                      'Priority updated successfully',
-                      'Error updating priority'
-                    );
-                  }
+                  setPriorityWorkItemId(workItemId);
+                  setCurrentPriorityValue(row.priority || 'Medium');
+                  setPriorityModalOpen(true);
                 }}
               >
                 <FiFlag size={16} color="var(--chakra-colors-mukuru-grey-medium)" />
@@ -1971,6 +1963,153 @@ export default function WorkQueuePage() {
                   leftIcon={<FiUserPlus size={16} />}
                 >
                   Assign
+                </Button>
+              </HStack>
+            </Box>
+          </Box>
+        </Modal>
+
+        {/* Priority Update Modal */}
+        <Modal
+          isOpen={priorityModalOpen}
+          onClose={() => {
+            setPriorityModalOpen(false);
+            setPriorityWorkItemId(null);
+          }}
+          title=""
+          size="small"
+          closeOnBackdropClick={true}
+          closeOnEsc={true}
+        >
+          <Box>
+            {/* Header Section */}
+            <Box
+              px="24px"
+              pt="24px"
+              pb="20px"
+              borderBottom="1px solid"
+              borderColor={borderColor}
+            >
+              <HStack gap="16px" align="flex-start">
+                <Flex
+                  w="48px"
+                  h="48px"
+                  borderRadius="12px"
+                  bg="rgba(240, 84, 35, 0.1)"
+                  align="center"
+                  justify="center"
+                  flexShrink={0}
+                >
+                  <FiFlag
+                    size={24}
+                    color="var(--chakra-colors-mukuru-buttons-primary)"
+                  />
+                </Flex>
+                <VStack align="flex-start" gap="4px" flex="1">
+                  <Typography
+                    fontSize="18px"
+                    fontWeight="600"
+                    color={textColor}
+                    lineHeight="1.3"
+                  >
+                    Update Priority
+                  </Typography>
+                  <Typography fontSize="14px" color={subtleText} lineHeight="1.4">
+                    Select a priority level for this work item
+                  </Typography>
+                </VStack>
+              </HStack>
+            </Box>
+
+            {/* Body Section - Priority Options */}
+            <Box px="24px" py="24px">
+              <VStack gap="8px" align="stretch">
+                {['Critical', 'High', 'Medium', 'Low'].map((priority) => {
+                  const isSelected = priority === currentPriorityValue;
+                  const priorityColors: Record<string, { bg: string; color: string; border: string }> = {
+                    Critical: { bg: '#FEE2E2', color: '#991B1B', border: '#F87171' },
+                    High: { bg: '#FED7AA', color: '#C2410C', border: '#FB923C' },
+                    Medium: { bg: '#FEF3C7', color: '#92400E', border: '#FBBF24' },
+                    Low: { bg: '#D1FAE5', color: '#065F46', border: '#34D399' },
+                  };
+                  const colors = priorityColors[priority];
+                  return (
+                    <Box
+                      key={priority}
+                      as="button"
+                      display="flex"
+                      alignItems="center"
+                      justifyContent="space-between"
+                      w="100%"
+                      px="16px"
+                      py="12px"
+                      borderRadius="8px"
+                      border="2px solid"
+                      borderColor={isSelected ? colors.border : 'transparent'}
+                      bg={isSelected ? colors.bg : 'gray.50'}
+                      _hover={{ bg: colors.bg, borderColor: colors.border }}
+                      transition="all 0.2s"
+                      onClick={() => setCurrentPriorityValue(priority)}
+                    >
+                      <HStack gap="12px">
+                        <Box
+                          w="12px"
+                          h="12px"
+                          borderRadius="full"
+                          bg={colors.color}
+                        />
+                        <Typography
+                          fontSize="14px"
+                          fontWeight={isSelected ? '600' : '500'}
+                          color={colors.color}
+                        >
+                          {priority}
+                        </Typography>
+                      </HStack>
+                      {isSelected && <FiCheck size={18} color={colors.color} />}
+                    </Box>
+                  );
+                })}
+              </VStack>
+            </Box>
+
+            {/* Footer Section */}
+            <Box
+              px="24px"
+              py="16px"
+              borderTop="1px solid"
+              borderColor={borderColor}
+              bg={bgColor}
+            >
+              <HStack gap="12px" justify="flex-end">
+                <Button
+                  variant="secondary"
+                  onClick={() => {
+                    setPriorityModalOpen(false);
+                    setPriorityWorkItemId(null);
+                  }}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  variant="primary"
+                  onClick={async () => {
+                    if (priorityWorkItemId) {
+                      const { updateWorkItemPriority } = await import(
+                        '../../services/api/workQueueApi'
+                      );
+                      await executeAction(
+                        () => updateWorkItemPriority(priorityWorkItemId, currentPriorityValue),
+                        `Priority updated to ${currentPriorityValue}`,
+                        'Error updating priority'
+                      );
+                      setPriorityModalOpen(false);
+                      setPriorityWorkItemId(null);
+                    }
+                  }}
+                  leftIcon={<FiFlag size={16} />}
+                >
+                  Update Priority
                 </Button>
               </HStack>
             </Box>

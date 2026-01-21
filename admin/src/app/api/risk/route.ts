@@ -17,8 +17,10 @@ export async function GET(request: NextRequest) {
     const queryString = searchParams.toString();
 
     // Build proxy URL - proxy will handle token injection and refresh
+    // Use NEXTAUTH_URL or request origin for base URL to avoid SSL issues (same pattern as dashboard)
+    const baseUrl = process.env.NEXTAUTH_URL || request.nextUrl.origin;
     const proxyPath = `/api/proxy/api/v1/risk-assessments${queryString ? `?${queryString}` : ''}`;
-    const proxyUrl = new URL(proxyPath, request.url);
+    const proxyUrl = new URL(proxyPath, baseUrl);
 
     // Prepare headers
     const headers: HeadersInit = {
@@ -91,8 +93,10 @@ export async function POST(request: NextRequest) {
     const queryString = searchParams.toString();
 
     // Build proxy URL
+    // Use NEXTAUTH_URL or request origin for base URL to avoid SSL issues (same pattern as dashboard)
+    const baseUrl = process.env.NEXTAUTH_URL || request.nextUrl.origin;
     const proxyPath = `/api/proxy/api/v1/risk-assessments${queryString ? `?${queryString}` : ''}`;
-    const proxyUrl = new URL(proxyPath, request.url);
+    const proxyUrl = new URL(proxyPath, baseUrl);
 
     // Prepare headers
     const headers: HeadersInit = {

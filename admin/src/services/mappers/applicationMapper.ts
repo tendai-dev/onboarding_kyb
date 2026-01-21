@@ -9,13 +9,21 @@ import { OnboardingCaseProjection, Application } from '../dtos/application.dto';
 // Status mapping from backend to frontend
 function mapBackendStatusToFrontend(backendStatus: string): Application['status'] {
   const statusMap: Record<string, Application['status']> = {
+    // PascalCase backend statuses (original)
     Draft: 'IN_PROGRESS',
     InProgress: 'IN_PROGRESS',
     PendingReview: 'RISK_REVIEW',
     Submitted: 'SUBMITTED',
+    UnderReview: 'IN_PROGRESS',
     Approved: 'COMPLETE',
     Rejected: 'DECLINED',
     Cancelled: 'DECLINED',
+    // Uppercase frontend statuses (when synced from work queue)
+    IN_PROGRESS: 'IN_PROGRESS',
+    SUBMITTED: 'SUBMITTED',
+    RISK_REVIEW: 'RISK_REVIEW',
+    COMPLETE: 'COMPLETE',
+    DECLINED: 'DECLINED',
   };
 
   return statusMap[backendStatus] || 'IN_PROGRESS';

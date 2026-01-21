@@ -18,17 +18,69 @@ class SignalRService {
     }
 
     try {
-      // Get user info for connection
-      const user = getAuthUser();
-      const userEmail = user.email || '';
+      // Wait for session to be available before connecting
+      // This prevents connecting with undefined email
+      let user = getAuthUser();
+      let userEmail = user.email || '';
+      
+      // If email is not available, try to get it from session API
+      if (!userEmail) {
+        try {
+          const sessionResponse = await fetch('/api/auth/session');
+          if (sessionResponse.ok) {
+            const session = await sessionResponse.json();
+            userEmail = session?.user?.email || '';
+            if (userEmail) {
+              user = { ...user, email: userEmail, name: session?.user?.name || user.name };
+              console.info('[SignalR] Got user info from session API:', { email: userEmail, name: user.name });
+            }
+          }
+        } catch (error) {
+          console.warn('[SignalR] Failed to get session, will retry:', error);
+        }
+      }
+
+      // If still no email, wait a bit and retry (session might still be loading)
+      if (!userEmail) {
+        console.warn('[SignalR] No user email available yet, waiting for session...');
+        // Wait 500ms and retry once
+        await new Promise(resolve => setTimeout(resolve, 500));
+        user = getAuthUser();
+        userEmail = user.email || '';
+        
+        if (!userEmail) {
+          console.warn('[SignalR] Still no email after wait, connecting anyway (will retry on reconnect)');
+        }
+      }
 
       // Generate user ID from email (consistent with backend)
       const userId = generateUserIdFromEmail(userEmail);
 
       // Build connection URL directly to backend (bypassing Next.js proxy)
       // Next.js API routes don't support WebSocket connections, so SignalR must connect directly
-      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8001';
+      // Use the same priority as the proxy: GATEWAY_URL > BACKEND_URL > localhost
+      // In production, NEXT_PUBLIC_GATEWAY_URL or NEXT_PUBLIC_BACKEND_URL MUST be set
+      const backendUrl = 
+        process.env.NEXT_PUBLIC_GATEWAY_URL || 
+        process.env.NEXT_PUBLIC_BACKEND_URL || 
+        'http://localhost:8001';
+      
       const hubUrl = `${backendUrl}/api/v1/messages/hub`;
+      
+      // Warn if using localhost in production (misconfiguration - connection will fail)
+      if (typeof window !== 'undefined') {
+        const hostname = window.location.hostname;
+        const isProduction = hostname !== 'localhost' && hostname !== '127.0.0.1' && !hostname.startsWith('127.');
+        
+        if (isProduction && backendUrl.includes('localhost')) {
+          console.error('[SignalR] ⚠️  ERROR: Using localhost backend URL in production!');
+          console.error('[SignalR] SignalR connection will fail because backend is not accessible at localhost:8001');
+          console.error('[SignalR] Set NEXT_PUBLIC_GATEWAY_URL or NEXT_PUBLIC_BACKEND_URL environment variable');
+          console.error('[SignalR] Current hostname:', hostname);
+          console.error('[SignalR] Expected backend URL format: https://api.example.com or https://gateway.example.com');
+          console.warn('[SignalR] Messaging will work without real-time updates (polling mode)');
+        }
+      }
       
       console.info('[SignalR] Connecting to hub:', hubUrl);
       console.info('[SignalR] User info:', { userEmail, userName: user.name, userId: userId ? userId.substring(0, 8) + '...' : 'none' });

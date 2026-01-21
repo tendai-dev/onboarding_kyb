@@ -4,24 +4,51 @@ import { auth } from '@/lib/auth';
 // Tokens are stored server-side in Redis and never exposed to client
 
 // All services are now consolidated into the unified onboarding-api
-const UNIFIED_API_TARGET =
-  process.env.PROXY_TARGET || process.env.ONBOARDING_TARGET || 'http://localhost:8001';
-const AUTH_TARGET =
-  process.env.PROXY_TARGET_AUTH || process.env.AUTH_TARGET || 'http://localhost:8001';
+// Use NEXT_PUBLIC_GATEWAY_URL or NEXT_PUBLIC_BACKEND_URL for production, fallback to Docker service name
+const getBackendUrl = () => {
+  // Check for gateway URL first (for production), then backend URL, then fallback
+  // In Docker, use service name 'onboarding-api', otherwise localhost
+  const isDocker = process.env.NODE_ENV === 'production' || process.env.VERCEL !== '1';
+  const dockerFallback = isDocker ? 'http://onboarding-api:8001' : 'http://localhost:8001';
+  
+  const backendUrl = process.env.NEXT_PUBLIC_GATEWAY_URL || 
+                     process.env.PROXY_TARGET || 
+                     process.env.NEXT_PUBLIC_BACKEND_URL ||
+                     process.env.ONBOARDING_TARGET || 
+                     dockerFallback;
+  
+  // Log the backend URL being used (mask any credentials)
+  console.info('[Proxy] Backend URL resolved:', backendUrl.replace(/:[^:@]*@/, ':****@'));
+  
+  // CRITICAL: In production, warn if using localhost fallback
+  if (backendUrl.includes('localhost') && process.env.NODE_ENV === 'production') {
+    console.error('[Proxy] ⚠️  WARNING: Using localhost fallback in production!');
+    console.error('[Proxy] Set NEXT_PUBLIC_BACKEND_URL or NEXT_PUBLIC_GATEWAY_URL environment variable');
+  }
+  
+  return backendUrl;
+};
 
 function resolveUpstream(pathname: string, search: string) {
+  // IMPORTANT: Call getBackendUrl() at request time, not module load time
+  // This ensures runtime environment variables are read correctly
+  const unifiedApiTarget = getBackendUrl();
+  const authTarget =
+    process.env.PROXY_TARGET_AUTH || 
+    process.env.AUTH_TARGET || 
+    unifiedApiTarget;
+
   // All services are now consolidated into the unified onboarding-api
   // Route /api/users/* to authentication service (if separate)
-  // Everything else goes to unified API
   const afterProxy = pathname.split('/api/proxy')[1] || '';
 
   // Route /api/users/* to authentication service (if still separate)
   if (afterProxy.startsWith('/api/users')) {
-    return `${AUTH_TARGET}${afterProxy}${search}`;
+    return `${authTarget}${afterProxy}${search}`;
   }
 
   // All other routes go to unified onboarding-api
-  return `${UNIFIED_API_TARGET}${afterProxy}${search}`;
+  return `${unifiedApiTarget}${afterProxy}${search}`;
 }
 
 async function forward(req: NextRequest) {

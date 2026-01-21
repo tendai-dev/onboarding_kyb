@@ -79,22 +79,35 @@ export default function AcknowledgementPage() {
     const fetchApplicationData = async () => {
       try {
         setIsLoadingApp(true);
-        const response = await fetch(`/api/proxy/api/v1/applications/${applicationId}`, {
+        // Try by-number endpoint first (for case numbers like OBC-20251220-68499)
+        // If that fails, try as GUID
+        const isGuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(applicationId);
+        const apiUrl = isGuid 
+          ? `/api/proxy/api/v1/cases/${applicationId}`
+          : `/api/proxy/api/v1/cases/by-number/${encodeURIComponent(applicationId)}`;
+        
+        const response = await fetch(apiUrl, {
           credentials: 'include',
         });
 
         if (response.ok) {
           const data = await response.json();
+          // Backend returns snake_case: applicant.first_name, applicant.last_name, business.legal_name
+          const applicantFirstName = data.applicant?.first_name || data.applicantFirstName;
+          const applicantLastName = data.applicant?.last_name || data.applicantLastName;
+          const applicantEmail = data.applicant?.email || data.applicantEmail || '';
+          const businessLegalName = data.business?.legal_name || data.businessLegalName || data.name || 'Application';
+          
           setApplicationData({
             id: applicationId,
-            name: data.businessLegalName || data.name || 'Application',
-            applicantName: data.applicantFirstName 
-              ? `${data.applicantFirstName} ${data.applicantLastName || ''}`.trim()
+            name: businessLegalName,
+            applicantName: applicantFirstName 
+              ? `${applicantFirstName} ${applicantLastName || ''}`.trim()
               : 'Applicant',
-            applicantEmail: data.applicantEmail || '',
-            companyName: data.businessLegalName || data.name || '',
+            applicantEmail: applicantEmail,
+            companyName: businessLegalName,
             status: data.status || 'Unknown',
-            createdAt: data.createdAt || new Date().toISOString(),
+            createdAt: data.created_at || data.createdAt || new Date().toISOString(),
           });
         } else {
           // If API fails, use fallback data from auth context

@@ -655,10 +655,12 @@ function mapRequirementCodeToValue(
   applicationData: Record<string, unknown>
 ): unknown {
   const _code = requirementCode.toUpperCase();
-  const metadata = applicationData.metadataJson
-    ? typeof applicationData.metadataJson === 'string'
-      ? JSON.parse(applicationData.metadataJson)
-      : applicationData.metadataJson
+  // Handle both snake_case (metadata_json) and camelCase (metadataJson) from backend
+  const metadataRaw = applicationData.metadata_json || applicationData.metadataJson;
+  const metadata = metadataRaw
+    ? typeof metadataRaw === 'string'
+      ? JSON.parse(metadataRaw)
+      : metadataRaw
     : {};
 
   // Debug logging
@@ -686,9 +688,18 @@ function mapRequirementCodeToValue(
     // Legal name / Business name
     LEGAL_NAME: (data) =>
       data.businessLegalName ||
+      data.business_legal_name ||
       metadata.legal_name ||
       metadata.businessLegalName ||
-      `${data.applicantFirstName || ''} ${data.applicantLastName || ''}`.trim() ||
+      metadata.registered_legal_name ||
+      `${data.applicantFirstName || data.applicant_first_name || ''} ${data.applicantLastName || data.applicant_last_name || ''}`.trim() ||
+      '',
+    REGISTERED_LEGAL_NAME: (data) =>
+      metadata.registered_legal_name ||
+      data.businessLegalName ||
+      data.business_legal_name ||
+      metadata.legal_name ||
+      metadata.businessLegalName ||
       '',
 
     // Registration number
@@ -861,6 +872,22 @@ function mapRequirementCodeToValue(
       metadata.dateOfIncorporation ||
       metadata.incorporation_date ||
       metadata.incorporationDate ||
+      '',
+
+    // Document uploads - these are stored as JSON strings in metadata
+    PROOF_OF_ADDRESS: (_data) => metadata.proof_of_address || metadata.proofOfAddress || '',
+    PROOF_OF_LISTING: (_data) => metadata.proof_of_listing || metadata.proofOfListing || '',
+    CERTIFICATE_INCORPORATION: (_data) =>
+      metadata.certificate_incorporation ||
+      metadata.certificateIncorporation ||
+      metadata.certificate_of_incorporation ||
+      metadata.certificateOfIncorporation ||
+      '',
+    CERTIFICATE_OF_INCORPORATION: (_data) =>
+      metadata.certificate_of_incorporation ||
+      metadata.certificateOfIncorporation ||
+      metadata.certificate_incorporation ||
+      metadata.certificateIncorporation ||
       '',
   };
 

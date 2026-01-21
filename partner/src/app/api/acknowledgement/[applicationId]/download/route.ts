@@ -39,8 +39,17 @@ export async function GET(
         const generateAcknowledgementPDF = generateModule.generateAcknowledgementPDF;
         
         // Get application data to regenerate PDF
-        const baseUrl = process.env.NEXTAUTH_URL || request.nextUrl.origin;
-        const appResponse = await fetch(`${baseUrl}/api/proxy/api/v1/applications/${applicationId}`, {
+        // Try by-number endpoint first (for case numbers like OBC-20251220-68499)
+        // If that fails, try as GUID
+        const isGuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(applicationId);
+        const baseUrl = process.env.NODE_ENV === 'production' 
+          ? 'http://localhost:3000' 
+          : (process.env.NEXTAUTH_URL || request.nextUrl.origin);
+        const apiUrl = isGuid 
+          ? `${baseUrl}/api/proxy/api/v1/cases/${applicationId}`
+          : `${baseUrl}/api/proxy/api/v1/cases/by-number/${encodeURIComponent(applicationId)}`;
+        
+        const appResponse = await fetch(apiUrl, {
           headers: {
             Cookie: request.headers.get('cookie') || '',
           },
@@ -48,13 +57,19 @@ export async function GET(
         
         if (appResponse.ok) {
           const appData = await appResponse.json();
+          // Backend returns snake_case: applicant.first_name, applicant.last_name, business.legal_name
+          const applicantFirstName = appData.applicant?.first_name || appData.applicantFirstName;
+          const applicantLastName = appData.applicant?.last_name || appData.applicantLastName;
+          const applicantEmail = appData.applicant?.email || appData.applicantEmail || '';
+          const companyName = appData.business?.legal_name || appData.businessLegalName || appData.name || '';
+          
           const userEmail = session.user?.email || '';
           const pdfBuffer = await generateAcknowledgementPDF({
-            applicantName: appData.applicantFirstName && appData.applicantLastName
-              ? `${appData.applicantFirstName} ${appData.applicantLastName}`.trim()
-              : appData.applicantEmail || userEmail || 'Applicant',
-            applicantEmail: appData.applicantEmail || userEmail || '',
-            companyName: appData.businessLegalName || appData.name || '',
+            applicantName: applicantFirstName && applicantLastName
+              ? `${applicantFirstName} ${applicantLastName}`.trim()
+              : applicantEmail || userEmail || 'Applicant',
+            applicantEmail: applicantEmail || userEmail || '',
+            companyName: companyName,
             applicationId,
             date: new Date().toLocaleDateString('en-US', {
               year: 'numeric',

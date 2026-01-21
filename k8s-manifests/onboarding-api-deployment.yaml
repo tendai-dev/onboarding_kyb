@@ -35,6 +35,8 @@ spec:
           value: "http://keycloak.158.220.110.88.nip.io/realms/kyb-platform"
         - name: Authentication__Keycloak__Audience
           value: "account"
+        - name: Google__ClientId
+          value: "72595407836-ulropmqom2dhso8aqe4gn2f403o5hp1v.apps.googleusercontent.com"
         - name: Kafka__BootstrapServers
           value: "kafka.platform-observability.svc.cluster.local:9092"
         resources:

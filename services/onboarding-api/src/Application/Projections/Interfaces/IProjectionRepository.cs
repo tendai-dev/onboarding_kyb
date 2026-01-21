@@ -28,5 +28,22 @@ public interface IProjectionRepository
     Task<List<OnboardingCaseProjection>> GetCasesByPartnerAsync(string partnerId, CancellationToken cancellationToken = default);
 
     Task<List<OnboardingCaseProjection>> GetCasesRequiringAttentionAsync(string? partnerId = null, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Update the assignee for a case projection (syncs with work item assignment)
+    /// </summary>
+    Task<int> UpdateCaseAssigneeAsync(
+        Guid caseId, 
+        string? assignedToUserId, 
+        string? assignedToUserName, 
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Update the status for a case projection (syncs with work item status changes)
+    /// </summary>
+    Task<int> UpdateCaseStatusAsync(
+        Guid caseId, 
+        string status, 
+        CancellationToken cancellationToken = default);
 }
 

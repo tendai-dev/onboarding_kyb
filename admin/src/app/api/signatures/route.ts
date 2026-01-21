@@ -5,7 +5,11 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8001';
+// Use gateway or backend URL for production, fallback to localhost
+const API_BASE_URL = process.env.NEXT_PUBLIC_GATEWAY_URL ||
+                     process.env.NEXT_PUBLIC_BACKEND_URL ||
+                     process.env.NEXT_PUBLIC_API_URL ||
+                     'http://localhost:8001';
 
 export interface EddSignature {
   id: string;

@@ -1,8 +1,18 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { NextAuthOptions } from 'next-auth';
-import NextAuth from 'next-auth';
+import { NextAuthOptions, getServerSession } from 'next-auth';
 import KeycloakProvider from 'next-auth/providers/keycloak';
 import { RedisAdapter } from './redis-adapter';
+
+// Validate required environment variables
+if (!process.env.NEXTAUTH_SECRET) {
+  console.error('[NextAuth Config] ❌ CRITICAL: NEXTAUTH_SECRET is not set!');
+  console.error('[NextAuth Config] Generate one with: openssl rand -base64 32');
+}
+
+if (!process.env.NEXTAUTH_URL) {
+  console.warn('[NextAuth Config] ⚠️  WARNING: NEXTAUTH_URL is not set, defaulting to http://localhost:3000');
+  console.warn('[NextAuth Config] For production, set NEXTAUTH_URL to your deployed URL');
+}
 
 // Log configuration on startup for debugging
 const keycloakConfig = {
@@ -11,7 +21,10 @@ const keycloakConfig = {
     process.env.KEYCLOAK_ISSUER ||
     'https://keycloak-staging.app-stg.mukuru.io/realms/mukuru',
   nextAuthUrl: process.env.NEXTAUTH_URL || 'http://localhost:3000',
+  // Primary callback URL - NextAuth default
   expectedRedirectUri: `${process.env.NEXTAUTH_URL || 'http://localhost:3000'}/api/auth/callback/keycloak`,
+  // Alternative callback URL - custom route that processes callbacks
+  // If Keycloak redirects here, we'll process it and forward to NextAuth
   keycloakCallbackUri: `${process.env.NEXTAUTH_URL || 'http://localhost:3000'}/auth/callback`,
 };
 
@@ -22,7 +35,15 @@ console.info('[NextAuth Config] Keycloak Configuration:', {
   expectedRedirectUri: keycloakConfig.expectedRedirectUri,
   keycloakCallbackUri: keycloakConfig.keycloakCallbackUri,
   hasClientSecret: !!process.env.KEYCLOAK_CLIENT_SECRET,
+  hasNextAuthSecret: !!process.env.NEXTAUTH_SECRET,
 });
+
+// Determine which redirect URI to use
+// Allow override via environment variable, otherwise use NextAuth default
+const redirectUri = process.env.KEYCLOAK_REDIRECT_URI || keycloakConfig.expectedRedirectUri;
+
+console.info('[NextAuth Config] Using redirect_uri:', redirectUri);
+console.info('[NextAuth Config] ⚠️  Ensure this EXACT URL is registered in Keycloak!');
 
 // Build provider config - conditionally include clientSecret only if set
 const keycloakProviderConfig: any = {
@@ -34,8 +55,11 @@ const keycloakProviderConfig: any = {
       scope: 'openid email profile',
       // Request access to the kyb-connect resource to get roles
       audience: 'resource:kyb-connect',
-      // Use /auth/callback to match Keycloak's registered redirect URI
-      redirect_uri: keycloakConfig.keycloakCallbackUri,
+      // CRITICAL: Explicitly set redirect_uri to ensure it matches during token exchange
+      // NextAuth will use this in both the authorization request AND token exchange
+      // This MUST match EXACTLY what's registered in Keycloak's Valid Redirect URIs
+      // Set KEYCLOAK_REDIRECT_URI env var to override (e.g., if using /auth/callback)
+      redirect_uri: redirectUri,
     },
   },
   wellKnown:
@@ -62,6 +86,16 @@ if (
     '[NextAuth Config] Using public client (no secret, token_endpoint_auth_method: none)'
   );
 }
+
+// Increase timeout for OAuth requests (default is 3500ms, increase to 15s)
+// Configure via client property for openid-client library
+// Merge with existing client config if it exists
+keycloakProviderConfig.client = {
+  ...(keycloakProviderConfig.client || {}),
+  httpOptions: {
+    timeout: 15000, // 15 seconds
+  },
+};
 
 export const authOptions: NextAuthOptions = {
   debug: process.env.NODE_ENV === 'development', // Enable debug logging in dev
@@ -141,16 +175,42 @@ export const authOptions: NextAuthOptions = {
     },
     async redirect({ url, baseUrl }) {
       // Log redirects for debugging
-      console.info('[NextAuth] Redirect:', {
+      console.info('[NextAuth] Redirect callback:', {
         url,
         baseUrl,
         expectedBaseUrl: process.env.NEXTAUTH_URL,
       });
-      // Allows relative callback URLs
-      if (url.startsWith('/')) return `${baseUrl}${url}`;
-      // Allows callback URLs on the same origin
-      if (new URL(url).origin === baseUrl) return url;
-      return baseUrl;
+      
+      // After successful OAuth callback, redirect to dashboard
+      // NextAuth will call this after processing the callback
+      if (url.includes('/api/auth/callback') || url.includes('/auth/callback')) {
+        const dashboardUrl = `${baseUrl}/partner/dashboard`;
+        console.info('[NextAuth] ✅ Auth successful, redirecting to dashboard:', dashboardUrl);
+        return dashboardUrl;
+      }
+      
+      // If callbackUrl is provided (e.g., from signIn call), use it
+      // Otherwise default to dashboard
+      if (url && url !== baseUrl && !url.includes('/api/auth')) {
+        // Allow relative URLs
+        if (url.startsWith('/')) {
+          return `${baseUrl}${url}`;
+        }
+        // Allow same-origin URLs
+        try {
+          const urlObj = new URL(url);
+          if (urlObj.origin === baseUrl) {
+            return url;
+          }
+        } catch {
+          // Invalid URL, fall through to default
+        }
+      }
+      
+      // Default: redirect to dashboard
+      const defaultUrl = `${baseUrl}/partner/dashboard`;
+      console.info('[NextAuth] Using default redirect:', defaultUrl);
+      return defaultUrl;
     },
     // @ts-expect-error - NextAuth types don't fully support database strategy callback signatures
     async session(params: {
@@ -225,9 +285,17 @@ export const authOptions: NextAuthOptions = {
     },
   },
   // Ensure proper base URL for callbacks
-  trustHost: true, // Trust the host header (useful for development)
+  trustHost: true, // Trust the host header (useful for development and reverse proxies)
+  // CRITICAL: Set base URL - NextAuth will use this for all callback URLs
+  // This must match exactly what's registered in Keycloak
+  // NextAuth will construct callback URLs as: {url}/api/auth/callback/{provider}
+  url: keycloakConfig.nextAuthUrl,
+  // Ensure the callback URL matches what's in Keycloak
+  // Both of these should be registered in Keycloak's Valid Redirect URIs:
+  // - {NEXTAUTH_URL}/api/auth/callback/keycloak (NextAuth default)
+  // - {NEXTAUTH_URL}/auth/callback (alternative, handled by custom route)
 };
 
-// Export auth function for NextAuth v5
-// This replaces getServerSession from v4
-export const { auth } = NextAuth(authOptions);
+// Export auth function for NextAuth v4
+// Use getServerSession with authOptions
+export const auth = () => getServerSession(authOptions);

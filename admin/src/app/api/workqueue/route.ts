@@ -46,8 +46,10 @@ export async function GET(request: NextRequest) {
     const queryString = backendParams.toString();
 
     // Build proxy URL - proxy will handle token injection and refresh
+    // Use localhost for internal server-side calls to avoid SSL issues
+    const baseUrl = `http://localhost:${process.env.PORT || 3001}`;
     const proxyPath = `/api/proxy/api/v1/workqueue${queryString ? `?${queryString}` : ''}`;
-    const proxyUrl = new URL(proxyPath, request.url);
+    const proxyUrl = new URL(proxyPath, baseUrl);
 
     // Prepare headers
     const headers: HeadersInit = {
@@ -64,11 +66,12 @@ export async function GET(request: NextRequest) {
     }
 
     // Forward request through proxy (proxy handles token from httpOnly cookie)
+    // Use 50s timeout (shorter than nginx's 60s) to fail faster and get better error messages
     const response = await fetch(proxyUrl.toString(), {
       method: 'GET',
       headers,
       cache: 'no-store',
-      signal: AbortSignal.timeout(30000),
+      signal: AbortSignal.timeout(50000), // 50 seconds - shorter than nginx's 60s timeout
     });
 
     if (!response.ok) {
@@ -97,13 +100,47 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json(data);
   } catch (error) {
-    logger.error(error, '[Work Queue API Route] Error', {
-      tags: { error_type: 'workqueue_api_error' },
-    });
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    const errorStack = error instanceof Error ? error.stack : undefined;
+    
+    // Check if it's a timeout error
+    const isTimeout = errorMessage.includes('timeout') || 
+                      errorMessage.includes('aborted') ||
+                      errorMessage.includes('AbortError') ||
+                      (error instanceof Error && error.name === 'AbortError');
+
+    logger.error(
+      error instanceof Error ? error : new Error(String(error)),
+      '[Work Queue API Route] Error',
+      {
+        tags: { 
+          error_type: isTimeout ? 'workqueue_timeout_error' : 'workqueue_api_error',
+          timeout: String(isTimeout),
+        },
+        extra: {
+          name: error instanceof Error ? error.name : undefined,
+          isTimeout,
+        },
+      }
+    );
+
+    // Return 504 Gateway Timeout for timeout errors
+    if (isTimeout) {
+      return NextResponse.json(
+        {
+          error: 'Work queue request timed out',
+          message: 'The work queue request took too long to complete. This may be due to a large dataset or backend service issues.',
+          suggestion: 'Please try again in a moment, or contact support if the issue persists.',
+        },
+        { status: 504 }
+      );
+    }
 
     return NextResponse.json(
       {
-        error: error instanceof Error ? error.message : 'Internal server error',
+        error: 'Failed to fetch work queue data',
+        message: errorMessage,
+        details: process.env.NODE_ENV === 'development' ? errorStack : undefined,
       },
       { status: 500 }
     );

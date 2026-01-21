@@ -22,8 +22,10 @@ export async function GET(request: NextRequest) {
     // Build proxy URL - proxy will handle token injection and refresh
     // The backend endpoint is /api/v1/documents (from DocumentsController)
     // The proxy routes /api/proxy/api/v1/documents to the backend
+    // Use NEXTAUTH_URL for base URL to ensure correct routing in Docker
+    const baseUrl = process.env.NEXTAUTH_URL || request.nextUrl.origin;
     const proxyPath = `/api/proxy/api/v1/documents${queryString ? `?${queryString}` : ''}`;
-    const proxyUrl = new URL(proxyPath, request.url);
+    const proxyUrl = new URL(proxyPath, baseUrl);
 
     // Prepare headers
     const headers: HeadersInit = {

@@ -852,15 +852,17 @@ public partial class CasesController : ControllerBase
 
         try
         {
-            // Map frontend status to domain status
-            var domainStatus = request.Status.ToUpper() switch
+            // Map frontend status to domain status (normalize to uppercase and handle various formats)
+            var normalizedStatus = request.Status.ToUpper().Replace("_", " ").Trim();
+            var domainStatus = normalizedStatus switch
             {
                 "SUBMITTED" => Domain.Aggregates.OnboardingStatus.Submitted,
-                "IN PROGRESS" or "INPROGRESS" => Domain.Aggregates.OnboardingStatus.UnderReview,
-                "RISK REVIEW" => Domain.Aggregates.OnboardingStatus.UnderReview,
-                "COMPLETE" or "APPROVED" => Domain.Aggregates.OnboardingStatus.Approved,
-                "DECLINED" or "REJECTED" => Domain.Aggregates.OnboardingStatus.Rejected,
+                "IN PROGRESS" or "INPROGRESS" or "IN-PROGRESS" => Domain.Aggregates.OnboardingStatus.UnderReview,
+                "RISK REVIEW" or "RISKREVIEW" or "RISK-REVIEW" or "PENDING REVIEW" or "PENDINGREVIEW" => Domain.Aggregates.OnboardingStatus.UnderReview,
+                "COMPLETE" or "APPROVED" or "COMPLETED" => Domain.Aggregates.OnboardingStatus.Approved,
+                "DECLINED" or "REJECTED" or "DECLINE" or "REJECT" => Domain.Aggregates.OnboardingStatus.Rejected,
                 "INCOMPLETE" or "DRAFT" => Domain.Aggregates.OnboardingStatus.Draft,
+                "ADDITIONAL INFO REQUIRED" or "ADDITIONALINFOREQUIRED" => Domain.Aggregates.OnboardingStatus.AdditionalInfoRequired,
                 _ => throw new ArgumentException($"Invalid status: {request.Status}")
             };
 
@@ -873,11 +875,30 @@ public partial class CasesController : ControllerBase
             {
                 entity.Reject(updatedBy, request.Reason ?? "No reason provided");
             }
+            else if (domainStatus == Domain.Aggregates.OnboardingStatus.UnderReview)
+            {
+                // Transition to UnderReview/InProgress - use SetStatus for flexible admin transitions
+                // StartRiskReview has strict status checks, but admins should be able to set any status
+                entity.SetStatus(Domain.Aggregates.OnboardingStatus.UnderReview, updatedBy, request.Notes ?? "Status changed to In Progress");
+            }
+            else if (domainStatus == Domain.Aggregates.OnboardingStatus.Submitted)
+            {
+                // Use SetStatus for flexible admin transitions
+                entity.SetStatus(Domain.Aggregates.OnboardingStatus.Submitted, updatedBy, request.Notes ?? "Status changed to Submitted");
+            }
+            else if (domainStatus == Domain.Aggregates.OnboardingStatus.AdditionalInfoRequired)
+            {
+                entity.RequestAdditionalInfo(updatedBy, request.Notes ?? "Additional information required");
+            }
+            else if (domainStatus == Domain.Aggregates.OnboardingStatus.Draft)
+            {
+                // Transition back to Draft/Incomplete - direct status update
+                // This is typically used when an application needs to be returned to the applicant for corrections
+                entity.SetStatus(Domain.Aggregates.OnboardingStatus.Draft, updatedBy, request.Notes ?? "Application marked as incomplete");
+            }
             else
             {
-                // For other statuses, we might need additional domain methods
-                // For now, just update the status directly (this might need domain method)
-                return BadRequest(new { error = $"Status update to {request.Status} requires specific endpoint" });
+                return BadRequest(new { error = $"Status update to {request.Status} is not supported" });
             }
 
             await _repository.UnitOfWork.SaveChangesAsync(cancellationToken);
@@ -1718,6 +1739,65 @@ public partial class CasesController
     }
 
     /// <summary>
+    /// Admin endpoint to fix PartnerId for a case
+    /// This is used to correct cases that were created with wrong PartnerId (e.g., UUID v5 instead of MD5)
+    /// </summary>
+    [HttpPatch("{caseId}/fix-partner-id")]
+    [Microsoft.AspNetCore.Authorization.AllowAnonymous] // Temporarily allow anonymous for data fix - remove after use
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> FixPartnerId(string caseId, [FromBody] FixPartnerIdRequest request, CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(request?.Email))
+        {
+            return BadRequest(new { error = "Email is required to generate correct PartnerId" });
+        }
+
+        // Generate the correct PartnerId from email using MD5
+        var correctPartnerId = Infrastructure.Utilities.PartnerIdGenerator.GenerateFromEmail(request.Email);
+
+        // Find the case by ID or case number
+        OnboardingCase? caseEntity = null;
+        
+        if (Guid.TryParse(caseId, out var caseGuid))
+        {
+            caseEntity = await _context.OnboardingCases.FirstOrDefaultAsync(c => c.Id == caseGuid, cancellationToken);
+        }
+        
+        if (caseEntity == null)
+        {
+            // Try by case number
+            caseEntity = await _context.OnboardingCases.FirstOrDefaultAsync(c => c.CaseNumber == caseId, cancellationToken);
+        }
+
+        if (caseEntity == null)
+        {
+            return NotFound(new { error = $"Case not found: {caseId}" });
+        }
+
+        var oldPartnerId = caseEntity.PartnerId;
+        
+        // Update the PartnerId using domain method
+        caseEntity.FixPartnerId(correctPartnerId, "system-data-fix");
+        await _context.SaveChangesAsync(cancellationToken);
+
+        _logger.LogInformation(
+            "Fixed PartnerId for case {CaseId} ({CaseNumber}): {OldPartnerId} -> {NewPartnerId} (email: {Email})",
+            caseEntity.Id, caseEntity.CaseNumber, oldPartnerId, correctPartnerId, request.Email);
+
+        return Ok(new
+        {
+            success = true,
+            caseId = caseEntity.Id,
+            caseNumber = caseEntity.CaseNumber,
+            oldPartnerId = oldPartnerId.ToString(),
+            newPartnerId = correctPartnerId.ToString(),
+            email = request.Email
+        });
+    }
+
+    /// <summary>
     /// SECURITY FIX: Sanitize header values to prevent header injection attacks
     /// </summary>
     private static string? SanitizeHeaderValue(string? value)
@@ -1771,6 +1851,11 @@ public class AddressRequest
     public string State { get; set; } = string.Empty;
     public string PostalCode { get; set; } = string.Empty;
     public string Country { get; set; } = string.Empty;
+}
+
+public class FixPartnerIdRequest
+{
+    public string Email { get; set; } = string.Empty;
 }
 
 

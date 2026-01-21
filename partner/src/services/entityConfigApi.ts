@@ -2,10 +2,32 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 // SECURITY: All API calls go through the proxy which injects tokens from Redis
 // Use the proxy endpoint instead of direct API calls
-const ENTITY_CONFIG_API_BASE_URL =
-  typeof window !== 'undefined'
-    ? '/api/proxy' // Use proxy endpoint in browser (tokens injected server-side)
-    : process.env.NEXT_PUBLIC_ENTITY_CONFIG_API_BASE_URL || 'http://localhost:8003';
+// Use NEXTAUTH_URL or NEXT_PUBLIC_APP_URL for server-side, relative path for client-side
+const getEntityConfigBaseUrl = () => {
+  if (typeof window !== 'undefined') {
+    return '/api/proxy'; // Use proxy endpoint in browser (tokens injected server-side)
+  }
+  // Server-side: use gateway/backend URL, then entity config URL, fallback to Docker service name
+  // In Docker, use service name 'onboarding-api', otherwise localhost
+  const isDocker = process.env.NODE_ENV === 'production' || process.env.VERCEL !== '1';
+  const dockerFallback = isDocker ? 'http://onboarding-api:8001' : 'http://localhost:8001';
+  
+  const baseUrl = process.env.NEXT_PUBLIC_GATEWAY_URL ||
+                  process.env.NEXT_PUBLIC_BACKEND_URL ||
+                  process.env.PROXY_TARGET ||
+                  process.env.ONBOARDING_TARGET ||
+                  process.env.NEXT_PUBLIC_ENTITY_CONFIG_API_BASE_URL ||
+                  dockerFallback;
+  
+  // CRITICAL: In production, warn if using localhost fallback
+  if (baseUrl.includes('localhost') && process.env.NODE_ENV === 'production') {
+    console.error('[EntityConfigApi] ⚠️  WARNING: Using localhost fallback in production!');
+    console.error('[EntityConfigApi] Set NEXT_PUBLIC_BACKEND_URL or NEXT_PUBLIC_GATEWAY_URL environment variable');
+  }
+  
+  return baseUrl;
+};
+const ENTITY_CONFIG_API_BASE_URL = getEntityConfigBaseUrl();
 
 // Types matching the backend DTOs
 export interface EntityType {

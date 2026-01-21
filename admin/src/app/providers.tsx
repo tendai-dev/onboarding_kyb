@@ -5,8 +5,9 @@ import { MukuruComponentProvider } from '@mukuru/mukuru-react-components';
 import { ErrorBoundary } from '../components/ErrorBoundary';
 import { SentryInit } from './sentry-init';
 import { SidebarProvider } from '../contexts/SidebarContext';
+import { SessionGuard } from '../components/SessionGuard';
 import EmotionRegistry from '@/lib/emotion-registry';
-import { useState, useEffect } from 'react';
+import { useEffect } from 'react';
 
 /**
  * Root Providers Component
@@ -22,48 +23,16 @@ import { useState, useEffect } from 'react';
  * which includes ChakraProvider internally.
  */
 export function Providers({ children }: { children: React.ReactNode }) {
-  const [mounted, setMounted] = useState(false);
-
-  // Ensure we're on the client side before rendering providers
+  // Log when Providers component renders
   useEffect(() => {
-    setMounted(true);
+    console.log('[Providers] Component mounted/rendered', {
+      timestamp: new Date().toISOString(),
+      userAgent: typeof window !== 'undefined' ? window.navigator.userAgent : 'server',
+    });
   }, []);
 
-  // Show a simple loading state until mounted to avoid hydration issues
-  if (!mounted) {
-    return (
-      <div
-        style={{
-          minHeight: '100vh',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          backgroundColor: 'var(--mukuru-background-light)',
-          fontFamily: "'Madera', 'Helvetica Neue', 'Arial', sans-serif",
-        }}
-      >
-        <div
-          style={{
-            width: '48px',
-            height: '48px',
-            border: '4px solid var(--mukuru-grey-light)',
-            borderTop: '4px solid var(--mukuru-buttons-primary)',
-            borderRadius: '50%',
-            animation: 'spin 1s linear infinite',
-          }}
-        />
-        <style>
-          {`
-            @keyframes spin {
-              0% { transform: rotate(0deg); }
-              100% { transform: rotate(360deg); }
-            }
-          `}
-        </style>
-      </div>
-    );
-  }
-
+  // Render immediately - removed mounted check to prevent blank page
+  // Providers will handle client-side initialization internally
   return (
     <EmotionRegistry>
       <SessionProvider
@@ -79,7 +48,9 @@ export function Providers({ children }: { children: React.ReactNode }) {
         >
           <ErrorBoundary>
             <SidebarProvider>
-              {children}
+              <SessionGuard>
+                {children}
+              </SessionGuard>
               {/* SentryInit doesn't need Suspense - it's just a side effect */}
               <SentryInit />
             </SidebarProvider>

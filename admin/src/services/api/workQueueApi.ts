@@ -797,10 +797,14 @@ export async function getPendingApprovals(
 
 /**
  * Create work item for a case
+ * Uses the sync/case/{caseId} endpoint which:
+ * - Checks if case exists and is in Submitted status
+ * - Returns existing work item if one already exists (with friendly message)
+ * - Creates new work item if none exists
  */
 export async function createWorkItemForCase(
   caseId: string
-): Promise<{ workItemId: string }> {
+): Promise<{ workItemId: string; alreadyExists?: boolean }> {
   // Validate caseId is a valid GUID format
   const guidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
   if (!caseId || !guidRegex.test(caseId)) {
@@ -809,15 +813,13 @@ export async function createWorkItemForCase(
 
   console.log('[WorkQueue API] Creating work item for case:', { caseId });
 
-  // Backend uses JsonNamingPolicy.SnakeCaseLower, so send case_id
-  const response = await fetch(`${API_BASE_URL}/api/workqueue/create-for-case`, {
+  // Use the correct backend endpoint: /api/v1/workqueue/sync/case/{caseId}
+  // The Next.js proxy route will forward /api/workqueue/sync/case/{caseId} to the backend
+  const response = await fetch(`${API_BASE_URL}/api/workqueue/sync/case/${caseId}`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
     },
-    body: JSON.stringify({
-      case_id: caseId, // snake_case - what backend JSON policy expects
-    }),
   });
 
   if (!response.ok) {
@@ -841,12 +843,21 @@ export async function createWorkItemForCase(
     } catch (e) {
       console.error('[WorkQueue API] Failed to parse error response:', e);
     }
-    throw new Error(errorMessage);
+    const error = new Error(errorMessage) as Error & { status?: number };
+    error.status = response.status;
+    throw error;
   }
 
   const data = await response.json();
-  console.log('[WorkQueue API] Work item created:', data);
-  return { workItemId: data.workItemId || data.work_item_id || data.id };
+  console.log('[WorkQueue API] Work item response:', data);
+  
+  // Backend returns { message: "Work item already exists...", workItemId: "..." } if already exists
+  const alreadyExists = data.message?.includes('already exists');
+  
+  return { 
+    workItemId: data.workItemId || data.work_item_id || data.id,
+    alreadyExists 
+  };
 }
 
 /**

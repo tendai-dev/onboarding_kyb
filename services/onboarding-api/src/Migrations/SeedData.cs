@@ -580,7 +580,8 @@ public static class SeedData
                 (Guid.Parse("660e8400-e29b-41d4-a716-446655440005"), "david@mukuru.com", "David Isenegger"),
                 (Guid.Parse("660e8400-e29b-41d4-a716-446655440006"), "nishan@mukuru.com", "Nishan Sing"),
                 (Guid.Parse("660e8400-e29b-41d4-a716-446655440007"), "dougal@mukuru.com", "Dougal Bennett"),
-                (Guid.Parse("660e8400-e29b-41d4-a716-446655440008"), "andy@mukuru.com", "Andy Jury")
+                (Guid.Parse("660e8400-e29b-41d4-a716-446655440008"), "andy@mukuru.com", "Andy Jury"),
+                (Guid.Parse("660e8400-e29b-41d4-a716-446655440009"), "lizl@mukuru.com", "Lizl")
             };
 
                 users = new List<User>();
@@ -653,6 +654,10 @@ public static class SeedData
             // Andy Jury - High-Risk Signatory
             var andy = users.First(u => u.Email == "andy@mukuru.com");
             andy.AssignRole(roleIds["high-risk-signatory-amlco-mlro"], "high-risk-signatory-amlco-mlro", "High Risk Signatory / AMLCO / MLRO (Corridor Specific)");
+
+            // Lizl - Full Admin Access (Head of Compliance)
+            var lizl = users.First(u => u.Email == "lizl@mukuru.com");
+            lizl.AssignRole(roleIds["head-of-compliance"], "head-of-compliance", "Head of Compliance");
 
             // Save role assignments - handle concurrency exception by using SQL
             try
@@ -927,6 +932,10 @@ public static class SeedData
         // Andy Jury - High-Risk Signatory
         var andy = users.First(u => u.Email == "andy@mukuru.com");
         await InsertUserRoleAssignment(context, andy.Id, roleIds["high-risk-signatory-amlco-mlro"], "high-risk-signatory-amlco-mlro", "High Risk Signatory / AMLCO / MLRO (Corridor Specific)");
+
+        // Lizl - Full Admin Access (Head of Compliance)
+        var lizl = users.First(u => u.Email == "lizl@mukuru.com");
+        await InsertUserRoleAssignment(context, lizl.Id, roleIds["head-of-compliance"], "head-of-compliance", "Head of Compliance");
 
         logger.LogInformation("Inserted role assignments via SQL for all users");
     }

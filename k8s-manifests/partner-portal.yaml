@@ -1,0 +1,161 @@
+---
+# Partner Portal Deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: partner-portal
+  namespace: business-onboarding
+  labels:
+    app: partner-portal
+    tier: frontend
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: partner-portal
+  template:
+    metadata:
+      labels:
+        app: partner-portal
+    spec:
+      containers:
+      - name: partner-portal
+        image: partner-portal:latest
+        imagePullPolicy: Always
+        ports:
+        - containerPort: 3000
+          name: http
+        env:
+        - name: NODE_ENV
+          value: "production"
+        - name: NEXTAUTH_URL
+          value: "https://partner-mukuru.kurasika.tech"
+        - name: NEXT_PUBLIC_API_GATEWAY_URL
+          valueFrom:
+            configMapKeyRef:
+              name: partner-portal-config
+              key: api-gateway-url
+        - name: NEXT_PUBLIC_API_BASE_URL
+          valueFrom:
+            configMapKeyRef:
+              name: partner-portal-config
+              key: api-base-url
+        - name: NEXT_PUBLIC_GATEWAY_URL
+          valueFrom:
+            configMapKeyRef:
+              name: partner-portal-config
+              key: api-gateway-url
+        - name: NEXT_PUBLIC_BACKEND_URL
+          valueFrom:
+            configMapKeyRef:
+              name: partner-portal-config
+              key: api-gateway-url
+        - name: KEYCLOAK_ISSUER
+          valueFrom:
+            configMapKeyRef:
+              name: partner-portal-config
+              key: keycloak-issuer
+        - name: KEYCLOAK_CLIENT_ID
+          valueFrom:
+            configMapKeyRef:
+              name: partner-portal-config
+              key: keycloak-client-id
+        - name: NEXTAUTH_SECRET
+          valueFrom:
+            secretKeyRef:
+              name: partner-portal-secrets
+              key: nextauth-secret
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "100m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+        livenessProbe:
+          httpGet:
+            path: /api/health
+            port: 3000
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 5
+        readinessProbe:
+          httpGet:
+            path: /api/health
+            port: 3000
+          initialDelaySeconds: 5
+          periodSeconds: 5
+          timeoutSeconds: 3
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: partner-portal
+  namespace: business-onboarding
+  labels:
+    app: partner-portal
+spec:
+  selector:
+    app: partner-portal
+  ports:
+  - port: 80
+    targetPort: 3000
+    name: http
+  type: ClusterIP
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: partner-portal-config
+  namespace: business-onboarding
+data:
+  api-gateway-url: "https://api-mukuru.kurasika.tech"
+  api-base-url: "https://api-mukuru.kurasika.tech"
+  keycloak-issuer: "https://keycloak-staging.app-stg.mukuru.io/realms/mukuru"
+  keycloak-client-id: "kyb-connect-portal"
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: partner-portal-secrets
+  namespace: business-onboarding
+type: Opaque
+stringData:
+  nextauth-secret: "CHANGE_ME_IN_PRODUCTION"
+---
+# Ingress for partner-mukuru.kurasika.tech
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: partner-portal-ingress
+  namespace: business-onboarding
+  annotations:
+    nginx.ingress.kubernetes.io/proxy-body-size: "10m"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "60"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "60"
+    # Ensure proper MIME types for static files
+    nginx.ingress.kubernetes.io/configuration-snippet: |
+      location ~* \.(js)$ {
+        add_header Content-Type application/javascript;
+      }
+      location ~* \.(css)$ {
+        add_header Content-Type text/css;
+      }
+    cert-manager.io/cluster-issuer: "letsencrypt-prod"
+spec:
+  ingressClassName: nginx
+  tls:
+  - hosts:
+    - partner-mukuru.kurasika.tech
+    secretName: partner-portal-tls
+  rules:
+  - host: partner-mukuru.kurasika.tech
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: partner-portal
+            port:
+              number: 80

@@ -5821,36 +5821,35 @@
     ]
   },
   "packageFolders": {
-    "/Users/mukurusystemsadministrator/.nuget/packages/": {}
+    "/root/.nuget/packages/": {}
   },
   "project": {
     "version": "1.0.0",
     "restore": {
-      "projectUniqueName": "/Users/mukurusystemsadministrator/Desktop/Archive/services/onboarding-api/src/Infrastructure/OnboardingApi.Infrastructure.csproj",
+      "projectUniqueName": "/root/onboarding_kyc/services/onboarding-api/src/Infrastructure/OnboardingApi.Infrastructure.csproj",
       "projectName": "OnboardingApi.Infrastructure",
-      "projectPath": "/Users/mukurusystemsadministrator/Desktop/Archive/services/onboarding-api/src/Infrastructure/OnboardingApi.Infrastructure.csproj",
-      "packagesPath": "/Users/mukurusystemsadministrator/.nuget/packages/",
-      "outputPath": "/Users/mukurusystemsadministrator/Desktop/Archive/services/onboarding-api/src/Infrastructure/obj/",
+      "projectPath": "/root/onboarding_kyc/services/onboarding-api/src/Infrastructure/OnboardingApi.Infrastructure.csproj",
+      "packagesPath": "/root/.nuget/packages/",
+      "outputPath": "/root/onboarding_kyc/services/onboarding-api/src/Infrastructure/obj/",
       "projectStyle": "PackageReference",
       "configFilePaths": [
-        "/Users/mukurusystemsadministrator/.nuget/NuGet/NuGet.Config"
+        "/root/.nuget/NuGet/NuGet.Config"
       ],
       "originalTargetFrameworks": [
         "net8.0"
       ],
       "sources": {
-        "/opt/homebrew/Cellar/dotnet/9.0.8/libexec/library-packs": {},
         "https://api.nuget.org/v3/index.json": {}
       },
       "frameworks": {
         "net8.0": {
           "targetAlias": "net8.0",
           "projectReferences": {
-            "/Users/mukurusystemsadministrator/Desktop/Archive/services/onboarding-api/src/Application/OnboardingApi.Application.csproj": {
-              "projectPath": "/Users/mukurusystemsadministrator/Desktop/Archive/services/onboarding-api/src/Application/OnboardingApi.Application.csproj"
+            "/root/onboarding_kyc/services/onboarding-api/src/Application/OnboardingApi.Application.csproj": {
+              "projectPath": "/root/onboarding_kyc/services/onboarding-api/src/Application/OnboardingApi.Application.csproj"
             },
-            "/Users/mukurusystemsadministrator/Desktop/Archive/services/onboarding-api/src/Domain/OnboardingApi.Domain.csproj": {
-              "projectPath": "/Users/mukurusystemsadministrator/Desktop/Archive/services/onboarding-api/src/Domain/OnboardingApi.Domain.csproj"
+            "/root/onboarding_kyc/services/onboarding-api/src/Domain/OnboardingApi.Domain.csproj": {
+              "projectPath": "/root/onboarding_kyc/services/onboarding-api/src/Domain/OnboardingApi.Domain.csproj"
             }
           }
         }
@@ -5864,8 +5863,7 @@
         "enableAudit": "true",
         "auditLevel": "low",
         "auditMode": "direct"
-      },
-      "SdkAnalysisLevel": "9.0.100"
+      }
     },
     "frameworks": {
       "net8.0": {
@@ -5957,22 +5955,12 @@
         ],
         "assetTargetFallback": true,
         "warn": true,
-        "downloadDependencies": [
-          {
-            "name": "Microsoft.AspNetCore.App.Ref",
-            "version": "[8.0.19, 8.0.19]"
-          },
-          {
-            "name": "Microsoft.NETCore.App.Ref",
-            "version": "[8.0.19, 8.0.19]"
-          }
-        ],
         "frameworkReferences": {
           "Microsoft.NETCore.App": {
             "privateAssets": "all"
           }
         },
-        "runtimeIdentifierGraphPath": "/opt/homebrew/Cellar/dotnet/9.0.8/libexec/sdk/9.0.109/PortableRuntimeIdentifierGraph.json"
+        "runtimeIdentifierGraphPath": "/root/.dotnet/sdk/8.0.415/PortableRuntimeIdentifierGraph.json"
       }
     }
   }

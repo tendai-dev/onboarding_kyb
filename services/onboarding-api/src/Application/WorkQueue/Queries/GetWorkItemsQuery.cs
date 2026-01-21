@@ -867,6 +867,17 @@ public class GetStepReviewStatusQueryHandler : IRequestHandler<GetStepReviewStat
         }
         catch (Exception ex)
         {
+            // Handle missing table gracefully - return empty result instead of failing
+            // This allows the application to work even if migrations haven't been run yet
+            if (ex.Message.Contains("does not exist") || 
+                ex.Message.Contains("relation") && ex.Message.Contains("work_item_step_reviews"))
+            {
+                _logger.LogWarning(
+                    "Step review table does not exist yet. Returning empty result. Migration may need to be applied. WorkItemId={WorkItemId}",
+                    request.WorkItemId);
+                return GetStepReviewStatusResult.Successful(new Dictionary<string, StepReviewStatusDto>());
+            }
+            
             _logger.LogError(ex, "Error getting step review status for WorkItemId={WorkItemId}", request.WorkItemId);
             return GetStepReviewStatusResult.Failed(ex.Message);
         }

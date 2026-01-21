@@ -252,6 +252,54 @@ public class OnboardingCase
     
     public void ClearDomainEvents() => _domainEvents.Clear();
     
+    /// <summary>
+    /// Set status directly - used for admin status transitions that don't have specific domain methods
+    /// </summary>
+    public void SetStatus(OnboardingStatus newStatus, string updatedBy, string? notes = null)
+    {
+        var oldStatus = Status;
+        Status = newStatus;
+        UpdatedAt = DateTime.UtcNow;
+        UpdatedBy = updatedBy;
+        
+        if (!string.IsNullOrWhiteSpace(notes))
+        {
+            Metadata["status_change_notes"] = notes;
+        }
+        Metadata["status_changed_at"] = DateTime.UtcNow.ToString("O");
+        Metadata["status_changed_from"] = oldStatus.ToString();
+        
+        AddDomainEvent(new OnboardingCaseUpdatedEvent(
+            Id,
+            CaseNumber,
+            $"StatusChanged:{oldStatus}->{newStatus}",
+            DateTime.UtcNow
+        ));
+    }
+    
+    /// <summary>
+    /// Fix PartnerId for data migration purposes
+    /// This is used to correct cases that were created with wrong PartnerId (e.g., UUID v5 instead of MD5)
+    /// </summary>
+    public void FixPartnerId(Guid correctPartnerId, string fixedBy)
+    {
+        var oldPartnerId = PartnerId;
+        PartnerId = correctPartnerId;
+        UpdatedAt = DateTime.UtcNow;
+        UpdatedBy = fixedBy;
+        
+        Metadata["partner_id_fixed_at"] = DateTime.UtcNow.ToString("O");
+        Metadata["partner_id_fixed_by"] = fixedBy;
+        Metadata["partner_id_old_value"] = oldPartnerId.ToString();
+        
+        AddDomainEvent(new OnboardingCaseUpdatedEvent(
+            Id,
+            CaseNumber,
+            "PartnerIdFixed",
+            DateTime.UtcNow
+        ));
+    }
+    
     private void AddDomainEvent(IDomainEvent domainEvent) => _domainEvents.Add(domainEvent);
     
     private static string GenerateCaseNumber()

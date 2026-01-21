@@ -4,6 +4,7 @@ using MapsterMapper;
 using MediatR;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.OpenApi.Models;
 using OnboardingApi.Application.Behaviors;
 using OnboardingApi.Application.Commands;
@@ -22,6 +23,7 @@ using Serilog;
 using Serilog.Events;
 using Serilog.Sinks.Elasticsearch;
 using StackExchange.Redis;
+using Npgsql;
 // using Shared.Sentry; // Shared project not referenced - Sentry configured directly below
 
 var builder = WebApplication.CreateBuilder(args);
@@ -66,6 +68,14 @@ Log.Logger = new LoggerConfiguration()
 builder.Host.UseSerilog();
 
 // ========================================
+// Npgsql Configuration - Enable Dynamic JSON for Dictionary<string, object>
+// ========================================
+// Enable dynamic JSON serialization for Dictionary<string, object> to JSONB columns
+// This is required for Npgsql 8.0+ when saving Dictionary types to JSONB
+// For Npgsql 8.0+, we configure it per data source in the UseNpgsql options
+// See NotificationDbContext configuration below for the implementation
+
+// ========================================
 // Database (PostgreSQL + EF Core)
 // ========================================
 builder.Services.AddDbContext<OnboardingDbContext>(options =>
@@ -79,6 +89,8 @@ builder.Services.AddDbContext<OnboardingDbContext>(options =>
                 maxRetryDelay: TimeSpan.FromSeconds(10),
                 errorCodesToAdd: null);
         });
+    // Suppress ManyServiceProvidersCreatedWarning - this is expected with multiple DbContexts
+    options.ConfigureWarnings(w => w.Ignore(CoreEventId.ManyServiceProvidersCreatedWarning));
 });
 
 // ========================================
@@ -97,6 +109,7 @@ builder.Services.AddDbContext<OnboardingApi.Infrastructure.Persistence.Audit.Aud
             // Use audit schema
             npgsqlOptions.MigrationsHistoryTable("__EFMigrationsHistory", "audit");
         });
+    options.ConfigureWarnings(w => w.Ignore(CoreEventId.ManyServiceProvidersCreatedWarning));
 });
 
 // ========================================
@@ -115,6 +128,7 @@ builder.Services.AddDbContext<OnboardingApi.Infrastructure.Persistence.Checklist
             // Use checklist schema
             npgsqlOptions.MigrationsHistoryTable("__EFMigrationsHistory", "checklist");
         });
+    options.ConfigureWarnings(w => w.Ignore(CoreEventId.ManyServiceProvidersCreatedWarning));
 });
 
 // ========================================
@@ -122,17 +136,22 @@ builder.Services.AddDbContext<OnboardingApi.Infrastructure.Persistence.Checklist
 // ========================================
 builder.Services.AddDbContext<OnboardingApi.Infrastructure.Persistence.Notification.NotificationDbContext>(options =>
 {
-    options.UseNpgsql(
-        builder.Configuration.GetConnectionString("PostgreSQL") ?? builder.Configuration.GetConnectionString("Notification:PostgreSQL"),
-        npgsqlOptions =>
-        {
-            npgsqlOptions.EnableRetryOnFailure(
-                maxRetryCount: 5,
-                maxRetryDelay: TimeSpan.FromSeconds(10),
-                errorCodesToAdd: null);
-            // Use notification schema
-            npgsqlOptions.MigrationsHistoryTable("__EFMigrationsHistory", "notification");
-        });
+    var connectionString = builder.Configuration.GetConnectionString("PostgreSQL") ?? builder.Configuration.GetConnectionString("Notification:PostgreSQL");
+    // Configure data source with dynamic JSON enabled for Dictionary<string, object> support
+    var dataSourceBuilder = new NpgsqlDataSourceBuilder(connectionString ?? "");
+    dataSourceBuilder.EnableDynamicJson();
+    var dataSource = dataSourceBuilder.Build();
+    
+    options.UseNpgsql(dataSource, npgsqlOptions =>
+    {
+        npgsqlOptions.EnableRetryOnFailure(
+            maxRetryCount: 5,
+            maxRetryDelay: TimeSpan.FromSeconds(10),
+            errorCodesToAdd: null);
+        // Use notification schema
+        npgsqlOptions.MigrationsHistoryTable("__EFMigrationsHistory", "notification");
+    });
+    options.ConfigureWarnings(w => w.Ignore(CoreEventId.ManyServiceProvidersCreatedWarning));
 });
 
 // ========================================
@@ -151,6 +170,7 @@ builder.Services.AddDbContext<OnboardingApi.Infrastructure.Persistence.Messaging
             // Use messaging schema
             npgsqlOptions.MigrationsHistoryTable("__EFMigrationsHistory", "messaging");
         });
+    options.ConfigureWarnings(w => w.Ignore(CoreEventId.ManyServiceProvidersCreatedWarning));
 });
 
 // ========================================
@@ -169,6 +189,7 @@ builder.Services.AddDbContext<OnboardingApi.Infrastructure.Persistence.EntityCon
             // Use entity_configuration schema
             npgsqlOptions.MigrationsHistoryTable("__EFMigrationsHistory", "entity_configuration");
         });
+    options.ConfigureWarnings(w => w.Ignore(CoreEventId.ManyServiceProvidersCreatedWarning));
 });
 
 // ========================================
@@ -187,6 +208,7 @@ builder.Services.AddDbContext<OnboardingApi.Infrastructure.Persistence.WorkQueue
             // Use work_queue schema
             npgsqlOptions.MigrationsHistoryTable("__EFMigrationsHistory", "work_queue");
         });
+    options.ConfigureWarnings(w => w.Ignore(CoreEventId.ManyServiceProvidersCreatedWarning));
 });
 
 // ========================================
@@ -205,6 +227,7 @@ builder.Services.AddDbContext<OnboardingApi.Infrastructure.Persistence.Risk.Risk
             // Use risk schema
             npgsqlOptions.MigrationsHistoryTable("__EFMigrationsHistory", "risk");
         });
+    options.ConfigureWarnings(w => w.Ignore(CoreEventId.ManyServiceProvidersCreatedWarning));
 });
 
 // ========================================
@@ -223,6 +246,7 @@ builder.Services.AddDbContext<OnboardingApi.Infrastructure.Persistence.Projectio
             // Use projections schema
             npgsqlOptions.MigrationsHistoryTable("__EFMigrationsHistory", "projections");
         });
+    options.ConfigureWarnings(w => w.Ignore(CoreEventId.ManyServiceProvidersCreatedWarning));
 });
 
 // ========================================
@@ -241,6 +265,7 @@ builder.Services.AddDbContext<OnboardingApi.Infrastructure.Persistence.Document.
             // Use document schema
             npgsqlOptions.MigrationsHistoryTable("__EFMigrationsHistory", "document");
         });
+    options.ConfigureWarnings(w => w.Ignore(CoreEventId.ManyServiceProvidersCreatedWarning));
 });
 
 // ========================================

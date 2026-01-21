@@ -76,6 +76,14 @@ async function forwardRequest(request: NextRequest, method: string) {
     // Forward request directly to backend (bypassing proxy route to avoid internal fetch issues)
     // Get access token from session for authentication
     let accessToken: string | null = null;
+    
+    logger.debug('[Rules-and-Permissions Route] Session info', {
+      hasSession: !!session,
+      hasUser: !!session?.user,
+      userId: session?.user?.id,
+      userEmail: session?.user?.email,
+    });
+    
     if (session?.user?.id) {
       try {
         const { getAccountTokensFromNextAuth } = await import('@/lib/redis-session');
@@ -83,14 +91,19 @@ async function forwardRequest(request: NextRequest, method: string) {
           session.user.id,
           'azure-ad'
         );
+        logger.debug('[Rules-and-Permissions Route] Token lookup result', {
+          hasAccountTokens: !!accountTokens,
+          hasAccessToken: !!accountTokens?.accessToken,
+          tokenLength: accountTokens?.accessToken?.length,
+        });
         if (accountTokens?.accessToken) {
           accessToken = accountTokens.accessToken;
         }
       } catch (error) {
-        logger.debug('[Rules-and-Permissions Route] Could not get access token', {
-          error,
-        });
+        logger.error('[Rules-and-Permissions Route] Could not get access token: ' + (error instanceof Error ? error.message : String(error)));
       }
+    } else {
+      logger.warn('[Rules-and-Permissions Route] No user ID in session - cannot retrieve token');
     }
 
     // Add authorization header if we have a token

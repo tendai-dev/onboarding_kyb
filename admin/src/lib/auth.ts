@@ -25,23 +25,27 @@ if (missingVars.length > 0) {
 }
 
 // Log Azure AD configuration for debugging
-if (process.env.NODE_ENV === 'development') {
-  const issuer =
-    process.env.NEXT_PUBLIC_AZURE_AD_ISSUER ||
-    `https://login.microsoftonline.com/${process.env.AZURE_AD_TENANT_ID}/v2.0`;
+// Always log in production too to help debug OAuth issues
+const issuer =
+  process.env.NEXT_PUBLIC_AZURE_AD_ISSUER ||
+  `https://login.microsoftonline.com/${process.env.AZURE_AD_TENANT_ID}/v2.0`;
 
-  console.info('[NextAuth Config] Azure AD Configuration:', {
-    clientId: process.env.AZURE_AD_CLIENT_ID,
-    tenantId: process.env.AZURE_AD_TENANT_ID,
-    issuer,
-    nextAuthUrl: process.env.NEXTAUTH_URL,
-    expectedCallbackUrl: `${process.env.NEXTAUTH_URL}/api/auth/callback/azure-ad`,
-    hasClientSecret: !!process.env.AZURE_AD_CLIENT_SECRET,
-  });
-}
+const nextAuthUrl = process.env.NEXTAUTH_URL || process.env.NEXT_PUBLIC_APP_URL || 'https://admin-mukuru.kurasika.tech';
+const expectedCallbackUrl = `${nextAuthUrl}/api/auth/callback/azure-ad`;
+
+console.info('[NextAuth Config] Azure AD Configuration:', {
+  clientId: process.env.AZURE_AD_CLIENT_ID,
+  tenantId: process.env.AZURE_AD_TENANT_ID,
+  issuer,
+  nextAuthUrl,
+  expectedCallbackUrl,
+  hasClientSecret: !!process.env.AZURE_AD_CLIENT_SECRET,
+  hasNextAuthUrl: !!process.env.NEXTAUTH_URL,
+  hasNextPublicAppUrl: !!process.env.NEXT_PUBLIC_APP_URL,
+});
 
 export const authOptions: NextAuthOptions = {
-  debug: process.env.NODE_ENV === 'development', // Enable debug logging in development
+  debug: true, // Enable debug logging to diagnose OAuth errors
   adapter: RedisAdapter(), // Use Redis adapter for database strategy
   providers: [
     AzureADProvider({
@@ -55,12 +59,16 @@ export const authOptions: NextAuthOptions = {
         `https://login.microsoftonline.com/${process.env.AZURE_AD_TENANT_ID}/v2.0`,
       authorization: {
         params: {
-          // Using only the absolute minimum permissions that don't require admin consent:
+          // OAuth scopes for Azure AD authentication:
           // - openid: Sign users in (Delegated, no admin consent)
           // - email: View users' email address (Delegated, no admin consent)
-          // Note: Removed 'profile' and 'offline_access' as they may require admin consent
-          // depending on Azure AD app registration settings
-          scope: 'openid email',
+          // - profile: Access user's basic profile (Delegated, no admin consent)
+          // - offline_access: Get refresh tokens for token renewal
+          // Note: Removed api://{clientId}/.default as it requires API to be exposed in Azure AD
+          scope: 'openid email profile offline_access',
+          // NOTE: Do NOT set redirect_uri explicitly - NextAuth v5 constructs it automatically from the 'url' config
+          // The redirect URI will be: {NEXTAUTH_URL}/api/auth/callback/azure-ad
+          // Ensure this exact URL is registered in Azure AD app registration
         },
       },
       profile(profile: unknown) {
@@ -222,9 +230,30 @@ export const authOptions: NextAuthOptions = {
     },
     async redirect({ url, baseUrl }: { url?: unknown; baseUrl?: unknown }) {
       // Handle redirect after successful authentication
+      // Use NEXTAUTH_URL if set, otherwise use baseUrl from NextAuth (which detects from request)
+      const nextAuthUrl = process.env.NEXTAUTH_URL || process.env.NEXT_PUBLIC_APP_URL;
+      let baseUrlStr = nextAuthUrl || String(baseUrl || 'http://localhost:3001');
+      
+      // CRITICAL: If baseUrl contains localhost but we have a production URL in env, use production URL
+      if (baseUrlStr.includes('localhost') || baseUrlStr.includes('127.0.0.1')) {
+        if (nextAuthUrl && !nextAuthUrl.includes('localhost')) {
+          baseUrlStr = nextAuthUrl;
+          logger.debug('NextAuth redirect: Replaced localhost baseUrl with production URL', {
+            originalBaseUrl: String(baseUrl || ''),
+            productionUrl: baseUrlStr,
+          });
+        }
+      }
+      
       const urlStr = String(url || '');
-      const baseUrlStr = String(baseUrl || '');
-      logger.debug('NextAuth redirect callback', { url: urlStr, baseUrl: baseUrlStr });
+      
+      logger.debug('NextAuth redirect callback', { 
+        url: urlStr, 
+        baseUrl: baseUrlStr,
+        nextAuthUrl,
+        hasNextAuthUrl: !!nextAuthUrl,
+        detectedBaseUrl: String(baseUrl || ''),
+      });
 
       // If url is the sign-in page, redirect to dashboard instead
       if (urlStr === `${baseUrlStr}/` || urlStr === baseUrlStr || urlStr === '/') {
@@ -237,10 +266,20 @@ export const authOptions: NextAuthOptions = {
         return `${baseUrlStr}${urlStr}`;
       }
 
-      // If url is on the same origin, allow it
+      // If url is on the same origin, allow it (but check for localhost)
       try {
         const urlObj = new URL(urlStr);
-        if (urlObj.origin === baseUrlStr) {
+        const baseUrlObj = new URL(baseUrlStr);
+        
+        // If callbackUrl contains localhost, replace with production domain
+        if (urlObj.origin.includes('localhost') || urlObj.origin.includes('127.0.0.1')) {
+          if (nextAuthUrl && !nextAuthUrl.includes('localhost')) {
+            const prodUrl = new URL(nextAuthUrl);
+            return `${prodUrl.origin}${urlObj.pathname}${urlObj.search}`;
+          }
+        }
+        
+        if (urlObj.origin === baseUrlObj.origin) {
           return urlStr;
         }
       } catch {
@@ -256,7 +295,8 @@ export const authOptions: NextAuthOptions = {
     error: '/', // Redirect errors back to sign-in page
   },
   events: {
-    async signIn({ user, account, profile: _profile }: unknown) {
+    async signIn(params: { user?: unknown; account?: unknown; profile?: unknown }) {
+      const { user, account, profile: _profile } = params;
       if (process.env.NODE_ENV === 'development') {
         const userObj = user as Record<string, unknown>;
         const accountObj = account as Record<string, unknown>;
@@ -279,17 +319,55 @@ export const authOptions: NextAuthOptions = {
         typeof message === 'string' ? message : String(message || 'Unknown error');
       const errorInstance = error instanceof Error ? error : new Error(messageStr);
 
+      // Enhanced logging for OAuth callback errors
+      const isOAuthCallbackError = 
+        messageStr.includes('OAuthCallbackError') || 
+        messageStr.includes('OAuth') ||
+        errorObj?.type === 'OAuthCallbackError';
+
+      const errorDetails = {
+        message: messageStr,
+        errorType: errorObj?.type,
+        errorStack: errorObj?.stack,
+        ...(isOAuthCallbackError && {
+          // Include OAuth-specific diagnostics
+          expectedCallbackUrl,
+          nextAuthUrl,
+          hasNextAuthUrl: !!process.env.NEXTAUTH_URL,
+          hasNextPublicAppUrl: !!process.env.NEXT_PUBLIC_APP_URL,
+          azureAdClientId: process.env.AZURE_AD_CLIENT_ID,
+          azureAdTenantId: process.env.AZURE_AD_TENANT_ID,
+          troubleshooting: {
+            step1: 'Verify redirect URI in Azure AD matches exactly:',
+            redirectUri: expectedCallbackUrl,
+            step2: 'Check Azure Portal → App registrations → Authentication → Redirect URIs',
+            step3: 'Ensure NEXTAUTH_URL environment variable is set correctly',
+            currentNextAuthUrl: nextAuthUrl,
+          },
+        }),
+      };
+
       logger.error(errorInstance, '[NextAuth] Error event', {
-        tags: { error_type: 'nextauth_error_event' },
+        tags: { 
+          error_type: 'nextauth_error_event',
+          ...(isOAuthCallbackError && { error_category: 'oauth_callback' }),
+        },
         extra: {
-          message: messageStr,
-          errorType: errorObj?.type,
-          errorStack: errorObj?.stack,
+          ...errorDetails,
+          isOAuthCallbackError,
         },
       });
+      
       reportError(errorInstance, {
-        tags: { error_type: 'nextauth_error', operation: 'nextauth_error_event' },
-        extra: { message: messageStr, errorType: errorObj?.type },
+        tags: { 
+          error_type: 'nextauth_error', 
+          operation: 'nextauth_error_event',
+          ...(isOAuthCallbackError && { error_category: 'oauth_callback' }),
+        },
+        extra: {
+          ...errorDetails,
+          isOAuthCallbackError,
+        },
         level: 'error',
       });
     },
@@ -313,7 +391,14 @@ export const authOptions: NextAuthOptions = {
     },
   },
   // Ensure proper base URL for callbacks
-  trustHost: true, // Trust the host header (useful for development)
+  // trustHost must be true in production when behind a reverse proxy
+  // The url config below ensures correct callback URLs
+  trustHost: true,
+  // CRITICAL: Set base URL - NextAuth will use this for all callback URLs
+  // This must match exactly what's registered in Azure AD
+  // For production: https://admin-mukuru.kurasika.tech
+  // For local development: http://localhost:3001
+  url: nextAuthUrl,
 };
 
 // Export auth function for NextAuth v5 beta

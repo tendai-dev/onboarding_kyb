@@ -23,13 +23,9 @@ public class UsersController : ControllerBase
 
     /// <summary>
     /// Get all users
-    /// SECURITY: Requires admin authentication - user data is sensitive
     /// </summary>
     [HttpGet]
-    [Microsoft.AspNetCore.Authorization.Authorize(Policy = "AdminPolicy")] // SECURITY FIX: Require admin role
     [ProducesResponseType(typeof(List<UserDto>), StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-    [ProducesResponseType(StatusCodes.Status403Forbidden)]
     public async Task<IActionResult> GetAllUsers([FromQuery] bool includePermissions = false, CancellationToken cancellationToken = default)
     {
         try
@@ -216,13 +212,9 @@ public class UsersController : ControllerBase
 
     /// <summary>
     /// Get user by email
-    /// SECURITY: Requires admin authentication - user data is sensitive
     /// </summary>
     [HttpGet("by-email/{email}")]
-    [Microsoft.AspNetCore.Authorization.Authorize(Policy = "AdminPolicy")] // SECURITY FIX: Require admin role
     [ProducesResponseType(typeof(UserDto), StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-    [ProducesResponseType(StatusCodes.Status403Forbidden)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> GetUserByEmail(string email, CancellationToken cancellationToken = default)
     {

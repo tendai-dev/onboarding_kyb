@@ -8,8 +8,34 @@ export async function getRedisClient() {
     return redisClient;
   }
 
-  const redisUrl = process.env.REDIS_URL || 'redis://localhost:6379';
-  redisClient = createClient({ url: redisUrl });
+  // Determine Redis URL - prefer environment variable, then try Docker service name, then localhost
+  let redisUrl = process.env.REDIS_URL;
+  
+  if (!redisUrl) {
+    // In Docker containers, use service name 'redis'
+    // In production or when REDIS_URL is not set, try Docker service name first
+    if (process.env.NODE_ENV === 'production' || process.env.VERCEL !== '1') {
+      redisUrl = 'redis://redis:6379';
+    } else {
+      redisUrl = 'redis://localhost:6379';
+    }
+  }
+  
+  console.info('[Redis] Connecting to Redis:', redisUrl.replace(/:[^:@]*@/, ':****@')); // Mask password if present
+  
+  redisClient = createClient({ 
+    url: redisUrl,
+    socket: {
+      connectTimeout: 10000, // Increase timeout to 10 seconds
+      reconnectStrategy: (retries) => {
+        if (retries > 10) {
+          console.error('[Redis] Max reconnection attempts reached');
+          return new Error('Max reconnection attempts reached');
+        }
+        return Math.min(retries * 100, 3000);
+      }
+    }
+  });
 
   redisClient.on('error', (err) => console.error('Redis Client Error', err));
   redisClient.on('connect', () => console.info('Redis Client Connected'));

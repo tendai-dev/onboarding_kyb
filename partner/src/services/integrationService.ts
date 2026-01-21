@@ -5,15 +5,29 @@
  * SECURITY: All API calls go through the proxy which injects tokens from Redis
  */
 
-const CHECKLIST_API_BASE_URL =
-  typeof window !== 'undefined'
-    ? '/api/proxy' // Use proxy endpoint in browser (tokens injected server-side)
-    : process.env.NEXT_PUBLIC_CHECKLIST_API_BASE_URL || 'http://localhost:8093';
+// Use gateway/backend URL for server-side, relative path for client-side
+const getChecklistBaseUrl = () => {
+  if (typeof window !== 'undefined') {
+    return '/api/proxy'; // Use proxy endpoint in browser (tokens injected server-side)
+  }
+  return process.env.NEXT_PUBLIC_GATEWAY_URL ||
+         process.env.NEXT_PUBLIC_BACKEND_URL ||
+         process.env.NEXT_PUBLIC_CHECKLIST_API_BASE_URL ||
+         'http://localhost:8001';
+};
 
-const WORK_QUEUE_API_BASE_URL =
-  typeof window !== 'undefined'
-    ? '/api/proxy' // Use proxy endpoint in browser (tokens injected server-side)
-    : process.env.NEXT_PUBLIC_WORK_QUEUE_API_BASE_URL || 'http://localhost:8094';
+const getWorkQueueBaseUrl = () => {
+  if (typeof window !== 'undefined') {
+    return '/api/proxy'; // Use proxy endpoint in browser (tokens injected server-side)
+  }
+  return process.env.NEXT_PUBLIC_GATEWAY_URL ||
+         process.env.NEXT_PUBLIC_BACKEND_URL ||
+         process.env.NEXT_PUBLIC_WORK_QUEUE_API_BASE_URL ||
+         'http://localhost:8001';
+};
+
+const CHECKLIST_API_BASE_URL = getChecklistBaseUrl();
+const WORK_QUEUE_API_BASE_URL = getWorkQueueBaseUrl();
 
 export interface ChecklistItemUpdate {
   checklistId: string;

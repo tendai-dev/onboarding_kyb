@@ -25,16 +25,27 @@ export async function GET(
     
     // Try to fetch work item using the proxy (which handles authentication)
     // The proxy will route to the backend workqueue API
-    const proxyBase = process.env.NEXTAUTH_URL || 'http://localhost:3000';
-    const url = `${proxyBase}/api/proxy/api/v1/workqueue?applicationId=${encodedCaseId}`;
+    // Use http://localhost:3000 for internal server-side calls to avoid SSL errors
+    const internalBaseUrl = process.env.NODE_ENV === 'production' 
+      ? 'http://localhost:3000' 
+      : (process.env.NEXTAUTH_URL || 'http://localhost:3000');
+    const url = `${internalBaseUrl}/api/proxy/api/v1/workqueue?applicationId=${encodedCaseId}`;
     console.log('[WorkItem API] Fetching from proxy:', url);
+
+    // CRITICAL: Forward cookies for session-based authentication
+    // The proxy uses auth() which reads from httpOnly cookies
+    const cookieHeader = request.headers.get('cookie');
+    const headers: HeadersInit = {
+      'Content-Type': 'application/json',
+    };
+    if (cookieHeader) {
+      headers['Cookie'] = cookieHeader;
+    }
 
     const response = await fetch(url, {
       method: 'GET',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      credentials: 'include', // Include session cookie for proxy authentication
+      headers,
+      cache: 'no-store',
     });
 
     console.log('[WorkItem API] Response status:', response.status);
@@ -42,6 +53,11 @@ export async function GET(
     if (!response.ok) {
       if (response.status === 404) {
         console.log('[WorkItem API] Work item not found (404)');
+        return NextResponse.json({ workItem: null }, { status: 200 });
+      }
+      // Handle authentication errors gracefully (401/403)
+      if (response.status === 401 || response.status === 403) {
+        console.warn('[WorkItem API] Authentication error, returning null workItem');
         return NextResponse.json({ workItem: null }, { status: 200 });
       }
       // Handle service unavailable errors gracefully

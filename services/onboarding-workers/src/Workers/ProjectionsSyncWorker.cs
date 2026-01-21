@@ -68,6 +68,12 @@ public class ProjectionsSyncWorker : BackgroundService
 
             using var client = _httpClientFactory.CreateClient();
             client.Timeout = TimeSpan.FromSeconds(60);
+            
+            // Add internal service authentication headers for development mode
+            client.DefaultRequestHeaders.Add("X-User-Email", "system@internal.service");
+            client.DefaultRequestHeaders.Add("X-User-Name", "Projections Sync Worker");
+            client.DefaultRequestHeaders.Add("X-User-Role", "System");
+            client.DefaultRequestHeaders.Add("X-Internal-Service", "true");
 
             // Use incremental sync (only sync new/updated cases)
             var syncUrl = $"{apiBaseUrl}/api/v1/sync?forceFullSync=false";

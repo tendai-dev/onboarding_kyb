@@ -5887,54 +5887,54 @@ export default function ReviewPage() {
           />
 
           {/* Modal */}
-          <Box
-            position="fixed"
-            top="50%"
-            left="50%"
-            transform="translate(-50%, -50%)"
-            bg="mukuru.cards.white"
-            borderRadius="16px"
-            boxShadow="0 20px 60px rgba(0, 0, 0, 0.2)"
-            zIndex={9999}
-            w="90%"
-            maxW="560px"
-            maxH="85vh"
-            overflow="hidden"
-            display="flex"
-            flexDirection="column"
+          <div
+            style={{
+              position: 'fixed',
+              top: '50%',
+              left: '50%',
+              transform: 'translate(-50%, -50%)',
+              borderRadius: '16px',
+              boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
+              zIndex: 9999,
+              width: '90%',
+              maxWidth: '520px',
+              maxHeight: '80vh',
+              overflow: 'hidden',
+              display: 'flex',
+              flexDirection: 'column',
+              background: '#FFFFFF',
+              backgroundColor: '#FFFFFF',
+              opacity: 1,
+            }}
+            className="comments-modal-container"
           >
             {/* Header */}
-            <Box
-              p="24px"
-              borderBottom="1px solid"
-              borderColor="mukuru.grey.light"
-              bg="mukuru.background.light"
-            >
+            <div style={{ padding: '20px 24px', borderBottom: '1px solid #EEEEEE', backgroundColor: '#FFFFFF' }}>
               <HStack justify="space-between" align="center">
-                <HStack gap="16px">
+                <HStack gap="14px">
                   <Box
-                    w="48px"
-                    h="48px"
+                    className="comments-modal-header-icon"
+                    w="44px"
+                    h="44px"
                     borderRadius="12px"
-                    bg="rgba(240, 84, 35, 0.08)"
                     display="flex"
                     alignItems="center"
                     justifyContent="center"
                   >
                     <FiMessageSquare
-                      size={24}
-                      color="var(--chakra-colors-mukuru-buttons-primary)"
+                      size={22}
+                      color="#F05423"
                     />
                   </Box>
                   <VStack align="start" gap="2px">
                     <Typography
                       fontSize="18px"
                       fontWeight="600"
-                      color="mukuru.text.primary"
+                      color="#1A1A1A"
                     >
                       Comments
                     </Typography>
-                    <Typography fontSize="13px" color="mukuru.grey.medium">
+                    <Typography fontSize="13px" color="#888888">
                       {comments.length} {comments.length === 1 ? 'comment' : 'comments'}
                     </Typography>
                   </VStack>
@@ -5942,48 +5942,47 @@ export default function ReviewPage() {
                 <Box
                   as="button"
                   onClick={() => setCommentsModalOpen(false)}
-                  w="36px"
-                  h="36px"
-                  borderRadius="10px"
-                  bg="mukuru.background.light"
+                  w="32px"
+                  h="32px"
+                  borderRadius="8px"
+                  bg="transparent"
                   display="flex"
                   alignItems="center"
                   justifyContent="center"
                   cursor="pointer"
-                  _hover={{ bg: 'mukuru.grey.light' }}
+                  transition="all 0.2s"
+                  _hover={{ bg: '#F5F5F5' }}
                 >
-                  <FiX size={20} color="var(--chakra-colors-mukuru-grey-mediumDark)" />
+                  <FiX size={20} color="mukuru.grey.medium" />
                 </Box>
               </HStack>
-            </Box>
+            </div>
 
             {/* Content */}
-            <Box flex="1" overflowY="auto" p="24px">
+            <div style={{ flex: 1, overflowY: 'auto', padding: '24px', minHeight: '200px', background: '#FFFFFF', backgroundColor: '#FFFFFF' }}>
               {comments.length === 0 ? (
-                <Flex
-                  direction="column"
-                  align="center"
-                  justify="center"
-                  py="48px"
-                  gap="20px"
-                >
-                  <Box
-                    w="72px"
-                    h="72px"
-                    borderRadius="16px"
-                    bg="mukuru.background.light"
-                    display="flex"
-                    alignItems="center"
-                    justifyContent="center"
-                  >
-                    <FiMessageSquare
-                      size={32}
-                      color="var(--chakra-colors-mukuru-grey-medium)"
-                    />
-                  </Box>
-                  <VStack gap="8px" maxW="280px">
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '60px 0', gap: '16px', background: '#FFFFFF', backgroundColor: '#FFFFFF' }}>
+                  <div style={{ width: '80px', height: '80px', borderRadius: '50%', backgroundColor: '#F5F5F5', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <svg
+                      width="36"
+                      height="36"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      xmlns="http://www.w3.org/2000/svg"
+                    >
+                      <path
+                        d="M21 15C21 15.5304 20.7893 16.0391 20.4142 16.4142C20.0391 16.7893 19.5304 17 19 17H7L3 21V5C3 4.46957 3.21071 3.96086 3.58579 3.58579C3.96086 3.21071 4.46957 3 5 3H19C19.5304 3 20.0391 3.21071 20.4142 3.58579C20.7893 3.96086 21 4.46957 21 5V15Z"
+                        fill="#E0E0E0"
+                        stroke="#9E9E9E"
+                        strokeWidth="2"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      />
+                    </svg>
+                  </div>
+                  <VStack gap="8px" maxW="320px">
                     <Typography
-                      fontSize="16px"
+                      fontSize="17px"
                       fontWeight="600"
                       color="mukuru.text.primary"
                     >
@@ -5993,12 +5992,12 @@ export default function ReviewPage() {
                       fontSize="14px"
                       color="mukuru.grey.medium"
                       textAlign="center"
-                      lineHeight="1.5"
+                      lineHeight="1.6"
                     >
                       Be the first to add a comment to this work item
                     </Typography>
                   </VStack>
-                </Flex>
+                </div>
               ) : (
                 <VStack align="stretch" gap="16px">
                   {comments.map((comment: unknown, idx: number) => {
@@ -6073,15 +6072,10 @@ export default function ReviewPage() {
                   })}
                 </VStack>
               )}
-            </Box>
+            </div>
 
             {/* Footer - Add Comment */}
-            <Box
-              p="24px"
-              borderTop="1px solid"
-              borderColor="mukuru.grey.light"
-              bg="mukuru.cards.white"
-            >
+            <div style={{ padding: '24px', borderTop: '1px solid #EEEEEE', backgroundColor: '#FFFFFF' }}>
               <VStack align="stretch" gap="16px">
                 <Typography fontSize="14px" fontWeight="600" color="mukuru.text.primary">
                   Add Comment
@@ -6091,69 +6085,81 @@ export default function ReviewPage() {
                   onChange={(e) => setNewComment(e.target.value)}
                   placeholder="Write your comment here..."
                   rows={3}
-                  borderRadius="10px"
+                  borderRadius="12px"
                   border="1px solid"
-                  borderColor="mukuru.grey.light"
+                  borderColor="#E5E5E5"
                   p="14px"
                   fontSize="14px"
                   color="mukuru.text.primary"
-                  bg="mukuru.cards.white"
-                  _placeholder={{ color: 'mukuru.grey.medium' }}
+                  bg="#FAFAFA"
+                  resize="none"
+                  _placeholder={{ color: '#9CA3AF' }}
                   _focus={{
-                    borderColor: 'mukuru.buttons.primary',
-                    boxShadow: '0 0 0 2px rgba(240, 84, 35, 0.15)',
+                    borderColor: '#F05423',
+                    boxShadow: '0 0 0 3px rgba(240, 84, 35, 0.1)',
+                    bg: 'white',
+                  }}
+                  _hover={{
+                    borderColor: '#D1D5DB',
                   }}
                 />
                 <HStack justify="flex-end" gap="12px">
-                  <Button
-                    variant="secondary"
+                  <Box
+                    as="button"
                     onClick={() => {
                       setNewComment('');
                       setCommentsModalOpen(false);
                     }}
-                    size="md"
-                    style={{
-                      height: '44px',
-                      padding: '0 24px',
-                      borderRadius: '10px',
-                      border: '1px solid #E9E9EA',
-                      background: 'white',
-                    }}
+                    h="42px"
+                    px="20px"
+                    borderRadius="10px"
+                    border="1px solid #E0E0E0"
+                    bg="white"
+                    cursor="pointer"
+                    transition="all 0.2s"
+                    display="flex"
+                    alignItems="center"
+                    justifyContent="center"
+                    _hover={{ bg: '#F9F9F9', borderColor: '#D0D0D0' }}
                   >
                     <Typography
                       fontSize="14px"
                       fontWeight="500"
-                      color="mukuru.text.primary"
+                      color="#444444"
                     >
                       Cancel
                     </Typography>
-                  </Button>
-                  <Button
-                    variant="primary"
-                    onClick={handleAddComment}
-                    disabled={actionLoading || !newComment.trim()}
-                    loading={actionLoading}
-                    className="mukuru-primary-button"
-                    size="md"
-                    style={{
-                      height: '44px',
-                      padding: '0 24px',
-                      borderRadius: '10px',
-                      background: 'var(--chakra-colors-mukuru-buttons-primary)',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '8px',
+                  </Box>
+                  <Box
+                    as="button"
+                    onClick={actionLoading || !newComment.trim() ? undefined : handleAddComment}
+                    aria-disabled={actionLoading || !newComment.trim()}
+                    h="42px"
+                    px="20px"
+                    borderRadius="10px"
+                    bg={actionLoading || !newComment.trim() ? '#FFCBB8' : '#F05423'}
+                    cursor={actionLoading || !newComment.trim() ? 'not-allowed' : 'pointer'}
+                    transition="all 0.2s"
+                    display="flex"
+                    alignItems="center"
+                    justifyContent="center"
+                    gap="8px"
+                    opacity={actionLoading || !newComment.trim() ? 0.7 : 1}
+                    pointerEvents={actionLoading || !newComment.trim() ? 'none' : 'auto'}
+                    _hover={{
+                      bg: actionLoading || !newComment.trim() ? '#FFCBB8' : '#E04A1F',
+                      transform: actionLoading || !newComment.trim() ? 'none' : 'translateY(-1px)',
                     }}
                   >
-                    <FiSend size={16} color="white" />
+                    <FiSend size={15} color="white" />
                     <Typography fontSize="14px" fontWeight="500" color="white">
                       Post Comment
                     </Typography>
-                  </Button>
+                  </Box>
                 </HStack>
               </VStack>
-            </Box>
-          </Box>
+            </div>
+          </div>
         </>
       )}
 

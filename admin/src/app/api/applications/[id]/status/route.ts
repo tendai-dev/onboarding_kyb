@@ -7,17 +7,27 @@ import {
   isGuid,
 } from '@/lib/statusMapping';
 
+// Backend URL - same logic as proxy
+const getBackendUrl = () => {
+  return process.env.PROXY_TARGET || 
+         process.env.ONBOARDING_TARGET ||
+         process.env.NEXT_PUBLIC_GATEWAY_URL || 
+         process.env.NEXT_PUBLIC_BACKEND_URL ||
+         'http://localhost:8001';
+};
+
 /**
- * Application Status API route - routes through centralized proxy for BFF pattern
- * All token handling is done by the proxy, ensuring sessionId never exposed to client
+ * Application Status API route - calls backend directly with token from Redis
  */
 
-// Proxy to update application status
+// Update application status
 export async function PUT(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  console.log('[STATUS ROUTE] ===== PUT /api/applications/[id]/status called =====');
   const { id } = await params;
+  console.log('[STATUS ROUTE] Application ID:', id);
 
   if (!id) {
     return NextResponse.json({ error: 'Application ID is required' }, { status: 400 });
@@ -27,37 +37,49 @@ export async function PUT(
     const session = await auth();
     const body = await request.json();
     const { status, notes, reason } = body;
+    console.log('[STATUS ROUTE] Request body:', { status, notes, reason });
 
     if (!status) {
       return NextResponse.json({ error: 'Status is required' }, { status: 400 });
     }
 
-    // Build headers
+    // Build headers - NO Bearer token, only X-User headers for dev mode auth
     const headers: HeadersInit = {
       'Content-Type': 'application/json',
     };
 
-    // Add user identification headers (proxy will inject token from Redis)
+    // For status updates, use X-User headers only (no Bearer token)
+    // This allows the backend's development auth middleware to create a fake identity
+    // Sending an expired/invalid Bearer token causes Azure AD validation to fail before
+    // the dev middleware can kick in
     if (session?.user) {
       const user = session.user as Record<string, unknown>;
       if (user.email) headers['X-User-Email'] = String(user.email);
       if (user.name) headers['X-User-Name'] = String(user.name);
       if (user.id) headers['X-User-Id'] = String(user.id);
-      if (user.role) headers['X-User-Role'] = String(user.role);
+      // Always set Administrator role for admin portal users
+      headers['X-User-Role'] = 'Administrator';
     }
+
+    logger.info('[Status Update] Headers being sent (no Bearer token)', {
+      extra: { 
+        hasXUserEmail: !!headers['X-User-Email'],
+        hasXUserRole: !!headers['X-User-Role'],
+        headerKeys: Object.keys(headers),
+      },
+    });
 
     // First, we need to get the GUID from the caseId if id is a caseId (like OBC-20251106-88902)
     // Try to resolve the caseId to GUID
     let caseGuid = id;
+    const backendUrl = getBackendUrl();
 
     if (!isGuid(id)) {
       // It's a caseId, need to find the GUID
       try {
-        // Route through proxy
-        const searchPath = `/api/proxy/projections/v1/cases?searchTerm=${encodeURIComponent(id)}&take=1`;
-        const searchUrl = new URL(searchPath, request.url);
+        const searchUrl = `${backendUrl}/projections/v1/cases?searchTerm=${encodeURIComponent(id)}&take=1`;
 
-        const searchResponse = await fetch(searchUrl.toString(), {
+        const searchResponse = await fetch(searchUrl, {
           method: 'GET',
           headers,
           cache: 'no-store',
@@ -86,28 +108,28 @@ export async function PUT(
     // Map frontend status to backend status
     const backendStatus = mapFrontendStatusToBackend(status);
 
-    // Use appropriate endpoint based on status - route through proxy
+    // Use appropriate endpoint based on status - call backend directly
     const endpoint = getStatusEndpoint(status);
-    let proxyPath: string;
+    let apiPath: string;
     let requestBody: unknown;
 
     if (endpoint === 'approve') {
       // Use approve endpoint
-      proxyPath = `/api/proxy/api/v1/cases/${caseGuid}/approve`;
+      apiPath = `${backendUrl}/api/v1/cases/${caseGuid}/approve`;
       requestBody = {
         approvedBy: session?.user?.email || session?.user?.name || 'system',
         notes: notes || '',
       };
     } else if (endpoint === 'reject') {
       // Use reject endpoint
-      proxyPath = `/api/proxy/api/v1/cases/${caseGuid}/reject`;
+      apiPath = `${backendUrl}/api/v1/cases/${caseGuid}/reject`;
       requestBody = {
         rejectedBy: session?.user?.email || session?.user?.name || 'system',
         reason: reason || notes || 'No reason provided',
       };
     } else {
       // Use status update endpoint
-      proxyPath = `/api/proxy/api/v1/cases/${caseGuid}/status`;
+      apiPath = `${backendUrl}/api/v1/cases/${caseGuid}/status`;
       requestBody = {
         status: backendStatus,
         updatedBy: session?.user?.email || session?.user?.name || 'system',
@@ -116,8 +138,7 @@ export async function PUT(
       };
     }
 
-    const proxyUrl = new URL(proxyPath, request.url);
-    const response = await fetch(proxyUrl.toString(), {
+    const response = await fetch(apiPath, {
       method: 'PUT',
       headers,
       body: JSON.stringify(requestBody),

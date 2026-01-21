@@ -134,8 +134,19 @@ export default function CustomerMessagesPage() {
     currentThreadRef.current = currentThread;
   }, [currentConversationId, currentApplicationId, currentThread]);
 
-  // Initialize SignalR connection - only once on mount
+  // Initialize SignalR connection - wait for session to be loaded
   useEffect(() => {
+    // Wait for session to be loaded before connecting SignalR
+    if (sessionStatus === 'loading') {
+      console.info('[Messages] Session is loading, waiting for SignalR connection...');
+      return;
+    }
+
+    if (!session?.user?.email) {
+      console.warn('[Messages] No user session available, skipping SignalR connection');
+      return;
+    }
+
     const initSignalR = async () => {
       try {
         await signalRService.connect();
@@ -459,7 +470,7 @@ export default function CustomerMessagesPage() {
     };
 
     initSignalR();
-  }, []); // Only run once on mount
+  }, [sessionStatus, session?.user?.email]); // Only run once on mount
 
   // Join/leave thread when selection changes
   useEffect(() => {
@@ -839,9 +850,14 @@ export default function CustomerMessagesPage() {
             }
           } catch (error) {
             // Thread doesn't exist yet, will be created on first message
-            console.info(
-              '[Messages] No thread exists for application, will be created on first message'
-            );
+            const errorMessage = error instanceof Error ? error.message : String(error);
+            if (errorMessage.includes('404') || errorMessage.includes('not found')) {
+              console.info(
+                '[Messages] No thread exists yet for application, will be created on first message'
+              );
+            } else {
+              console.warn('[Messages] Error checking for thread:', errorMessage);
+            }
           }
         } else if (apps.length === 0) {
           console.warn(

@@ -1,8 +1,7 @@
 'use client';
 
-import { Box, Container, Flex, HStack, Icon } from '@chakra-ui/react';
+import { Box, Container, Flex, HStack } from '@chakra-ui/react';
 import { Button, Typography, MukuruLogo } from '@/lib/mukuruImports';
-import { FiArrowRight } from 'react-icons/fi';
 import Link from 'next/link';
 import { signOut } from 'next-auth/react';
 
@@ -11,6 +10,7 @@ interface PartnerHeaderProps {
   showNewApplication?: boolean;
   showBackButton?: boolean;
   disableNewApplication?: boolean;
+  hideNewApplication?: boolean; // New prop to hide the button completely
 }
 
 export function PartnerHeader({
@@ -18,6 +18,7 @@ export function PartnerHeader({
   showNewApplication = true,
   showBackButton = true,
   disableNewApplication = false,
+  hideNewApplication = false,
 }: PartnerHeaderProps) {
   return (
     <Box bg="white" borderBottom="1px" borderColor="mukuru.grey.light" py="4">
@@ -83,12 +84,11 @@ export function PartnerHeader({
                 Logout
               </Typography>
             </Button>
-            {showNewApplication && (
+            {showNewApplication && !hideNewApplication && (
               <Link href={disableNewApplication ? '#' : '/partner/application/enhanced'}>
                 <Button
                   size="sm"
                   variant="primary"
-                  leftIcon={<Icon as={FiArrowRight} />}
                   bg="mukuru.buttons.primary"
                   _hover={{ bg: 'mukuru.buttons.inactive.orange' }}
                   disabled={disableNewApplication}
@@ -105,7 +105,7 @@ export function PartnerHeader({
                     fontSize="sm"
                     fontWeight="medium"
                   >
-                    → New Application
+                    New Application
                   </Typography>
                 </Button>
               </Link>

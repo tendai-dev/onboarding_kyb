@@ -154,19 +154,33 @@ export default function ApplicationsPage() {
       // Import the function dynamically
       const { createWorkItemForCase } = await import('../../services/api/workQueueApi');
 
-      // Create work item for this case
+      // Create work item for this case (or get existing one)
       const result = await createWorkItemForCase(applicationId);
 
-      logger.info('[Applications] Successfully created work item', {
-        caseId: applicationId,
-        workItemId: result.workItemId,
-      });
+      // Check if work item already existed
+      if (result.alreadyExists) {
+        logger.info('[Applications] Work item already exists for case', {
+          caseId: applicationId,
+          workItemId: result.workItemId,
+        });
 
-      setToast({
-        title: 'Success',
-        description: `Application "${application.companyName || applicationId}" has been submitted to work queue.`,
-        type: 'success',
-      });
+        setToast({
+          title: 'Already in Work Queue',
+          description: `Application "${application.companyName || applicationId}" is already in the work queue.`,
+          type: 'info',
+        });
+      } else {
+        logger.info('[Applications] Successfully created work item', {
+          caseId: applicationId,
+          workItemId: result.workItemId,
+        });
+
+        setToast({
+          title: 'Success',
+          description: `Application "${application.companyName || applicationId}" has been submitted to work queue.`,
+          type: 'success',
+        });
+      }
 
       // Reload applications to refresh the list
       await loadApplications();
@@ -192,14 +206,14 @@ export default function ApplicationsPage() {
       ) {
         setToast({
           title: 'Already in Work Queue',
-          description: `Application "${application.companyName || applicationId}" already has a work item.`,
+          description: `Application "${application.companyName || applicationId}" is already in the work queue.`,
           type: 'info',
         });
       } else if (errorStatus === 404) {
-        // 404 could mean case doesn't exist, route not found, or case not in Submitted status
+        // 404 means case doesn't exist
         setToast({
           title: 'Not Found',
-          description: `Could not create work item. The application may not exist, may not be in Submitted status, or the backend service may not be running.`,
+          description: `Application "${application.companyName || applicationId}" was not found. It may have been deleted.`,
           type: 'error',
         });
       } else if (errorMessage.includes('not in Submitted status')) {

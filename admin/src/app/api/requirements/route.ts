@@ -18,19 +18,18 @@ export async function GET(request: NextRequest) {
     const searchParams = request.nextUrl.searchParams;
     const queryString = searchParams.toString();
 
-    // Base route only handles /api/requirements (no sub-paths)
-    // Sub-paths like /metadata are handled by [...path]/route.ts
-    const proxyPath = `/api/proxy/api/v1/requirements${queryString ? `?${queryString}` : ''}`;
-    const proxyUrl = new URL(proxyPath, request.url);
+    // Call backend directly instead of going through proxy to avoid nginx loop
+    const backendUrl = process.env.PROXY_TARGET || process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8001';
+    const apiUrl = `${backendUrl}/api/v1/requirements${queryString ? `?${queryString}` : ''}`;
 
-    logger.debug('[Requirements API Route] Proxying to', { url: proxyUrl.toString() });
+    logger.debug('[Requirements API Route] Calling backend directly', { url: apiUrl });
 
     // Prepare headers
     const headers: HeadersInit = {
       'Content-Type': 'application/json',
     };
 
-    // Add user identification headers (proxy will inject token from Redis)
+    // Add user identification headers
     if (session?.user) {
       const user = session.user as Record<string, unknown>;
       if (user.email) headers['X-User-Email'] = String(user.email);
@@ -39,8 +38,8 @@ export async function GET(request: NextRequest) {
       if (user.role) headers['X-User-Role'] = String(user.role);
     }
 
-    // Forward request through proxy (proxy handles token from httpOnly cookie)
-    const response = await fetch(proxyUrl.toString(), {
+    // Call backend directly
+    const response = await fetch(apiUrl, {
       method: 'GET',
       headers,
       cache: 'no-store',

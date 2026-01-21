@@ -13,8 +13,10 @@ export async function GET(request: NextRequest) {
     const partnerId = searchParams.get('partnerId');
 
     // Build proxy URL - proxy will handle token injection and refresh
+    // Use NEXTAUTH_URL or request origin for base URL to avoid SSL issues
+    const baseUrl = process.env.NEXTAUTH_URL || request.nextUrl.origin;
     const proxyPath = `/api/proxy/api/v1/projections/dashboard${partnerId ? `?partnerId=${partnerId}` : ''}`;
-    const proxyUrl = new URL(proxyPath, request.url);
+    const proxyUrl = new URL(proxyPath, baseUrl);
 
     // Forward request to proxy with user identification headers
     const headers: HeadersInit = {
@@ -37,11 +39,12 @@ export async function GET(request: NextRequest) {
     }
 
     // Forward request through proxy (proxy handles token from httpOnly cookie)
+    // Use 50s timeout (shorter than nginx's 60s) to fail faster and get better error messages
     const response = await fetch(proxyUrl.toString(), {
       method: 'GET',
       headers,
       cache: 'no-store',
-      signal: AbortSignal.timeout(30000), // Increased timeout to 30 seconds
+      signal: AbortSignal.timeout(50000), // 50 seconds - shorter than nginx's 60s timeout
     });
 
     if (!response.ok) {
@@ -226,17 +229,39 @@ export async function GET(request: NextRequest) {
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
     const errorStack = error instanceof Error ? error.stack : undefined;
+    
+    // Check if it's a timeout error
+    const isTimeout = errorMessage.includes('timeout') || 
+                      errorMessage.includes('aborted') ||
+                      errorMessage.includes('AbortError') ||
+                      (error instanceof Error && error.name === 'AbortError');
 
     logger.error(
       error instanceof Error ? error : new Error(String(error)),
       'Dashboard API route error',
       {
-        tags: { error_type: 'api_route_error' },
+        tags: { 
+          error_type: isTimeout ? 'api_timeout_error' : 'api_route_error',
+          timeout: String(isTimeout),
+        },
         extra: {
           name: error instanceof Error ? error.name : undefined,
+          isTimeout,
         },
       }
     );
+
+    // Return 504 Gateway Timeout for timeout errors
+    if (isTimeout) {
+      return NextResponse.json(
+        {
+          error: 'Dashboard request timed out',
+          message: 'The dashboard data request took too long to complete. This may be due to a large dataset or backend service issues.',
+          suggestion: 'Please try again in a moment, or contact support if the issue persists.',
+        },
+        { status: 504 }
+      );
+    }
 
     return NextResponse.json(
       {

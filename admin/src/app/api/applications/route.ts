@@ -82,8 +82,10 @@ export async function GET(request: NextRequest) {
     // Build proxy URL - proxy will handle token injection and refresh
     // The backend endpoint is /api/v1/projections/cases (from ProjectionsController)
     // The proxy routes /api/proxy/api/v1/projections/cases to the backend
+    // Use NEXTAUTH_URL or request origin for base URL to avoid SSL issues (same pattern as dashboard)
+    const baseUrl = process.env.NEXTAUTH_URL || request.nextUrl.origin;
     const proxyPath = `/api/proxy/api/v1/projections/cases${queryString ? `?${queryString}` : ''}`;
-    const proxyUrl = new URL(proxyPath, request.url);
+    const proxyUrl = new URL(proxyPath, baseUrl);
 
     // Prepare headers
     const headers: HeadersInit = {
@@ -119,7 +121,7 @@ export async function GET(request: NextRequest) {
         try {
           // Build fallback URL to direct cases API (use same converted params)
           const fallbackPath = `/api/proxy/api/v1/cases${queryString ? `?${queryString}` : ''}`;
-          const fallbackUrl = new URL(fallbackPath, request.url);
+          const fallbackUrl = new URL(fallbackPath, baseUrl);
 
           const fallbackResponse = await fetch(fallbackUrl.toString(), {
             method: 'GET',
@@ -455,7 +457,7 @@ export async function GET(request: NextRequest) {
         // Try fallback to direct cases API to ensure we show cases even if projections are empty
         try {
           const fallbackPath = `/api/proxy/api/v1/cases${queryString ? `?${queryString}` : ''}`;
-          const fallbackUrl = new URL(fallbackPath, request.url);
+          const fallbackUrl = new URL(fallbackPath, baseUrl);
 
           const fallbackResponse = await fetch(fallbackUrl.toString(), {
             method: 'GET',

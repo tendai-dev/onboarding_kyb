@@ -23,8 +23,10 @@ async function forwardRequest(request: NextRequest, method: string) {
     const queryString = searchParams.toString();
 
     // Build proxy URL - proxy will handle token injection and refresh
+    // For internal server-side calls, use localhost to avoid SSL issues
+    const baseUrl = `http://localhost:${process.env.PORT || 3001}`;
     const proxyPath = `/api/proxy/api/v1/workqueue${pathAfterWorkqueue}${queryString ? `?${queryString}` : ''}`;
-    const proxyUrl = new URL(proxyPath, request.url);
+    const proxyUrl = new URL(proxyPath, baseUrl);
 
     // Prepare headers
     const headers: HeadersInit = {

@@ -31,7 +31,11 @@ export async function POST(request: NextRequest) {
     }
 
     // Redirect to backend API - backend handles all SendGrid configuration
-    const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || process.env.NEXT_PUBLIC_ONBOARDING_API_BASE_URL || 'http://localhost:8001';
+    // Use gateway or backend URL for production, fallback to localhost
+    const backendUrl = process.env.NEXT_PUBLIC_GATEWAY_URL ||
+                       process.env.NEXT_PUBLIC_BACKEND_URL ||
+                       process.env.NEXT_PUBLIC_ONBOARDING_API_BASE_URL ||
+                       'http://localhost:8001';
     const response = await fetch(`${backendUrl}/api/v1/notifications`, {
       method: 'POST',
       headers: {

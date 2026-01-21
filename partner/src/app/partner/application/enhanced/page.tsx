@@ -39,6 +39,7 @@ import {
 } from '@/services/entityConfigApi';
 import { uploadFilesToDocumentService } from '@/lib/documentUpload';
 import { getIconComponent, getEntityTypeIcon } from '@/utils/iconUtils';
+import { SweetAlert } from '@/utils/sweetAlert';
 
 const MotionBox = motion.create(Box);
 
@@ -889,17 +890,20 @@ export default function EnhancedNewPartnerApplicationPage() {
     setIsSubmitting(true);
     console.info('🎯 Starting submission process...');
 
+    // Show loading indicator
+    SweetAlert.loading('Submitting Application', 'Please wait while we process your application...');
+
     try {
       // DYNAMIC VALIDATION: Validate based ONLY on the Entity Configuration Service requirements
       // that are actually being used in the form (from entityConfig.steps)
 
       if (!entityConfig || !entityConfig.steps || entityConfig.steps.length === 0) {
         console.error('❌ Cannot validate: entityConfig is missing or has no steps');
-        showToast({
-          status: 'error',
-          title: 'Validation Error',
-          description: 'Form configuration is missing. Please refresh and try again.',
-        });
+        SweetAlert.close();
+        await SweetAlert.error(
+          'Validation Error',
+          'Form configuration is missing. Please refresh and try again.'
+        );
         setIsSubmitting(false);
         return;
       }
@@ -1005,11 +1009,11 @@ export default function EnhancedNewPartnerApplicationPage() {
           }
         );
 
-        showToast({
-          status: 'error',
-          title: 'Submission Failed',
-          description: `Please complete all required fields: ${missingFieldsList}`,
-        });
+        SweetAlert.close();
+        await SweetAlert.warning(
+          'Submission Failed',
+          `Please complete all required fields:\n${missingFieldsList}`
+        );
         setIsSubmitting(false); // Reset submitting state so button is enabled again
         return;
       }
@@ -2097,12 +2101,9 @@ export default function EnhancedNewPartnerApplicationPage() {
             } catch (uploadError) {
               console.error('❌ Error uploading files to Document Service:', uploadError);
               // Don't fail the entire submission - files can be uploaded later
-              showToast({
-                status: 'error',
-                title: 'File Upload Warning',
-                description:
-                  'Case created successfully, but some files failed to upload. You can upload them later.',
-              });
+              // Note: SweetAlert will be closed by the success handler above
+              // This toast is just for additional info, but we'll show it after success modal
+              console.warn('⚠️ Some files failed to upload, but case was created successfully');
             }
           } else {
             // Log why files were not uploaded
@@ -2112,12 +2113,8 @@ export default function EnhancedNewPartnerApplicationPage() {
               console.warn(
                 '⚠️ Cannot upload files - case GUID is missing from API response'
               );
-              showToast({
-                status: 'error',
-                title: 'File Upload Error',
-                description:
-                  'Case created successfully, but files could not be uploaded because case ID is missing. Please contact support.',
-              });
+              // Note: This will be logged but won't show a separate error since success modal is shown
+              console.warn('Case created successfully, but files could not be uploaded because case ID is missing');
             } else {
               console.warn('⚠️ Cannot upload files - unknown reason');
             }
@@ -2182,44 +2179,40 @@ export default function EnhancedNewPartnerApplicationPage() {
               'Case created successfully. Check console for any background operation errors.',
           });
 
-          showToast({
-            status: 'success',
-            title: 'Application Submitted Successfully',
-            description: `Your application has been submitted. Case ID: ${createdCaseId}. Redirecting to dashboard...`,
-          });
-
-          // Wait longer to ensure all background operations complete
-          // This gives time to see any errors from file uploads or sync operations
-          console.info(
-            '⏳ Waiting 4 seconds before redirect to allow background operations to complete...'
+          // Close loading indicator and show success confirmation
+          SweetAlert.close();
+          
+          // Show success confirmation modal
+          await SweetAlert.success(
+            'Application Submitted Successfully!',
+            `Your application has been submitted successfully.\n\nCase ID: ${createdCaseId}\n\nYou will be redirected to your dashboard shortly.`
           );
-          setTimeout(async () => {
-            console.info('✅ Redirecting to dashboard now');
+
+          // Send welcome email notification (non-blocking)
+          try {
+            const { sendWelcomeNotification } = await import('@/lib/notificationService');
+            const applicantName = applicationData.applicant?.first_name && applicationData.applicant?.last_name
+              ? `${applicationData.applicant.first_name} ${applicationData.applicant.last_name}`.trim()
+              : applicationData.applicant?.first_name || applicationData.applicant?.last_name || currentUser?.name || 'Valued Partner';
             
-            // Send welcome email notification (non-blocking)
-            try {
-              const { sendWelcomeNotification } = await import('@/lib/notificationService');
-              const applicantName = applicationData.applicant?.first_name && applicationData.applicant?.last_name
-                ? `${applicationData.applicant.first_name} ${applicationData.applicant.last_name}`.trim()
-                : applicationData.applicant?.first_name || applicationData.applicant?.last_name || currentUser?.name || 'Valued Partner';
-              
-              sendWelcomeNotification({
-                to: finalUserEmail || userEmail || currentUser?.email || '',
-                applicantName: applicantName,
-                caseId: caseGuid || createdCaseId,
-                caseNumber: createdCaseId,
-                link: `${window.location.origin}/partner/dashboard`,
-              }).catch((error) => {
-                // Log error but don't block user flow
-                console.warn('Failed to send welcome email:', error);
-              });
-            } catch (error) {
+            sendWelcomeNotification({
+              to: finalUserEmail || userEmail || currentUser?.email || '',
+              applicantName: applicantName,
+              caseId: caseGuid || createdCaseId,
+              caseNumber: createdCaseId,
+              link: `${window.location.origin}/partner/dashboard`,
+            }).catch((error) => {
               // Log error but don't block user flow
-              console.warn('Error importing notification service:', error);
-            }
-            
-            window.location.href = `/partner/dashboard?submitted=true&caseId=${createdCaseId}`;
-          }, 4000); // Increased from 2s to 4s to see any late errors
+              console.warn('Failed to send welcome email:', error);
+            });
+          } catch (error) {
+            // Log error but don't block user flow
+            console.warn('Error importing notification service:', error);
+          }
+
+          // Redirect to dashboard after showing success message
+          console.info('✅ Redirecting to dashboard now');
+          window.location.href = `/partner/dashboard?submitted=true&caseId=${createdCaseId}`;
           return;
         } else {
           // Handle error response - DO NOT SILENTLY FAIL
@@ -2308,22 +2301,21 @@ export default function EnhancedNewPartnerApplicationPage() {
             },
           });
 
+          // Close loading indicator
+          SweetAlert.close();
+
           // Show very clear error message for 503
           if (response.status === 503) {
-            showToast({
-              status: 'error',
-              title: '❌ Backend Service Not Running',
-              description:
-                'The kyb-case-api service must be started on port 8001 to submit applications. Run: docker-compose up -d kyb-case-api. Your form has been saved as a draft.',
-            });
+            await SweetAlert.error(
+              '❌ Backend Service Not Running',
+              'The kyb-case-api service must be started on port 8001 to submit applications. Run: docker-compose up -d kyb-case-api. Your form has been saved as a draft.'
+            );
           } else {
-            showToast({
-              status: 'error',
-              title: errorMessage,
-              description:
-                errorDetails ||
-                'Please try again later or contact support if the problem persists.',
-            });
+            await SweetAlert.error(
+              errorMessage,
+              errorDetails ||
+                'Please try again later or contact support if the problem persists.'
+            );
           }
 
           // Create error with message for re-throwing (will be caught by outer catch)
@@ -2345,6 +2337,9 @@ export default function EnhancedNewPartnerApplicationPage() {
           });
         }
 
+        // Close loading indicator
+        SweetAlert.close();
+
         // Check if it's a connection/service unavailable error
         const isServiceUnavailable =
           apiError?.status === 503 ||
@@ -2363,21 +2358,17 @@ export default function EnhancedNewPartnerApplicationPage() {
             console.warn('Failed to save draft:', saveError);
           }
 
-          showToast({
-            status: 'error',
-            title: 'Service Unavailable',
-            description:
-              'The backend service is not running. Your form has been saved locally. Please start the backend service and try again.',
-          });
+          await SweetAlert.error(
+            'Service Unavailable',
+            'The backend service is not running. Your form has been saved locally. Please start the backend service and try again.'
+          );
         } else if (!apiError?.details) {
-          // Only show toast if not already shown above
-          showToast({
-            status: 'error',
-            title: 'Submission Failed',
-            description:
-              apiError?.message ||
-              'Failed to submit application. Please check your connection and try again.',
-          });
+          // Only show error if not already shown above
+          await SweetAlert.error(
+            'Submission Failed',
+            apiError?.message ||
+              'Failed to submit application. Please check your connection and try again.'
+          );
         }
 
         // DO NOT redirect - let user see the error and retry
@@ -2401,23 +2392,22 @@ export default function EnhancedNewPartnerApplicationPage() {
         error?.message?.includes('ECONNREFUSED') ||
         error?.message?.includes('fetch failed');
 
-      // Only show toast if not already shown in inner catch blocks
+      // Close loading indicator if still open
+      SweetAlert.close();
+
+      // Only show error if not already shown in inner catch blocks
       if (isServiceUnavailable && !error?.details) {
-        showToast({
-          status: 'error',
-          title: 'Service Unavailable',
-          description:
-            "The backend service is not running. Your form data has been saved locally. Please start the backend service (kyb-case-api on port 8001) using 'docker-compose up -d kyb-case-api' and try submitting again.",
-        });
+        await SweetAlert.error(
+          'Service Unavailable',
+          "The backend service is not running. Your form data has been saved locally. Please start the backend service (kyb-case-api on port 8001) using 'docker-compose up -d kyb-case-api' and try submitting again."
+        );
       } else if (!error?.details) {
-        showToast({
-          status: 'error',
-          title: 'Submission Failed',
-          description:
-            error instanceof Error
-              ? error.message
-              : 'Failed to submit application. Please try again.',
-        });
+        await SweetAlert.error(
+          'Submission Failed',
+          error instanceof Error
+            ? error.message
+            : 'Failed to submit application. Please try again.'
+        );
       }
     } finally {
       setIsSubmitting(false);
@@ -2577,7 +2567,7 @@ export default function EnhancedNewPartnerApplicationPage() {
   if (!selectedEntityType) {
     return (
       <Box minH="100vh" bg="mukuru.background.light">
-        <PartnerHeader />
+        <PartnerHeader hideNewApplication={true} showBackButton={false} />
         <Container maxW="7xl" py="12">
           <VStack gap="8" align="stretch">
             <VStack gap="4" align="center" textAlign="center">
@@ -2805,8 +2795,50 @@ export default function EnhancedNewPartnerApplicationPage() {
   }
 
   return (
-    <Box minH="100vh" bg="mukuru.background.light">
-      <PartnerHeader />
+    <Box minH="100vh" bg="mukuru.background.light" position="relative">
+      {/* Loading Overlay */}
+      {isSubmitting && (
+        <Box
+          position="fixed"
+          top="0"
+          left="0"
+          right="0"
+          bottom="0"
+          bg="rgba(0, 0, 0, 0.5)"
+          zIndex={9998}
+          display="flex"
+          alignItems="center"
+          justifyContent="center"
+        >
+          <Box
+            bg="white"
+            borderRadius="xl"
+            p="8"
+            boxShadow="2xl"
+            maxW="400px"
+            textAlign="center"
+          >
+            <Spinner
+              color="mukuru.buttons.primary"
+              size="xl"
+              mb="4"
+            />
+            <Typography
+              fontSize="lg"
+              fontWeight="semibold"
+              color="mukuru.text.primary"
+              mb="2"
+            >
+              Submitting Application
+            </Typography>
+            <Typography fontSize="sm" color="mukuru.text.primary">
+              Please wait while we process your application...
+            </Typography>
+          </Box>
+        </Box>
+      )}
+
+      <PartnerHeader hideNewApplication={true} showBackButton={false} />
       <Container maxW="6xl" py="8">
         <VStack gap="8" align="stretch">
           {toastState && (

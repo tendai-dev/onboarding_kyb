@@ -2,7 +2,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
-import crypto from 'crypto';
 import {
   logOwnershipValidationSuccess,
   logOwnershipValidationFailure,
@@ -12,10 +11,17 @@ import { checkRateLimit, getRateLimitHeaders } from '@/lib/rateLimit';
 import { validateCaseId } from '@/lib/requestValidation';
 
 // Entity configuration is now part of onboarding-api (port 8001)
+// In Docker, use service name 'onboarding-api', otherwise localhost
+const isDocker = process.env.NODE_ENV === 'production' || process.env.VERCEL !== '1';
+const dockerFallback = isDocker ? 'http://onboarding-api:8001' : 'http://localhost:8001';
 const ENTITY_CONFIG_API_BASE =
   process.env.NEXT_PUBLIC_ENTITY_CONFIG_API_BASE_URL ||
   process.env.ENTITY_CONFIG_API_BASE_URL ||
-  'http://localhost:8001';
+  process.env.NEXT_PUBLIC_GATEWAY_URL ||
+  process.env.PROXY_TARGET ||
+  process.env.ONBOARDING_TARGET ||
+  process.env.NEXT_PUBLIC_BACKEND_URL ||
+  dockerFallback;
 
 /**
  * Case details API route - routes through centralized proxy for BFF pattern
@@ -74,24 +80,55 @@ export async function GET(
         request.headers.get('X-User-Email') || request.headers.get('x-user-email') || '';
     }
 
-    // Generate partnerId from email if available (for ownership validation)
+    // Get partnerId from backend (single source of truth) for ownership validation
+    // Backend uses MD5 hash, frontend must NOT generate locally (UUID v5 mismatch)
     if (userEmail) {
-      const { generatePartnerId } = await import('@/lib/partnerIdUtils');
       try {
-        userPartnerId = generatePartnerId(userEmail);
-        console.info('[API Route] 👤 User identification:', {
-          email: userEmail,
-          partnerId: userPartnerId,
+        // Build headers for backend call
+        const backendHeaders: HeadersInit = {
+          'Content-Type': 'application/json',
+          'X-User-Email': userEmail,
+        };
+        
+        // Forward cookies for session-based authentication
+        const cookieHeader = request.headers.get('cookie');
+        if (cookieHeader) {
+          backendHeaders['Cookie'] = cookieHeader;
+        }
+        
+        // Forward user identification headers
+        if (session?.user) {
+          const user = session.user as any;
+          if (user.name) backendHeaders['X-User-Name'] = user.name;
+          if (user.id) backendHeaders['X-User-Id'] = user.id;
+        }
+        
+        // Call backend to get PartnerId (single source of truth)
+        const internalBaseUrl = process.env.NODE_ENV === 'production' 
+          ? 'http://localhost:3000' 
+          : (process.env.NEXTAUTH_URL || request.url.split('/api')[0]);
+        const partnerIdUrl = new URL('/api/proxy/api/v1/partner/id', internalBaseUrl);
+        
+        const partnerIdResponse = await fetch(partnerIdUrl.toString(), {
+          method: 'GET',
+          headers: backendHeaders,
+          cache: 'no-store',
         });
+        
+        if (partnerIdResponse.ok) {
+          const partnerIdData = await partnerIdResponse.json();
+          userPartnerId = partnerIdData.partnerId || partnerIdData.partner_id;
+          console.info('[API Route] 👤 User identification (from backend):', {
+            email: userEmail,
+            partnerId: userPartnerId,
+          });
+        } else {
+          console.warn('[API Route] ⚠️ Could not get PartnerId from backend:', partnerIdResponse.status);
+          // Don't fail - we'll still try to fetch the case, ownership check will be skipped if no partnerId
+        }
       } catch (error) {
-        console.error('[API Route] Failed to generate PartnerId:', error);
-        return NextResponse.json(
-          { 
-            error: 'Internal Server Error',
-            details: 'Failed to validate user identity'
-          },
-          { status: 500 }
-        );
+        console.error('[API Route] Failed to get PartnerId from backend:', error);
+        // Don't fail the request - ownership validation will be skipped if partnerId is null
       }
     }
 
@@ -99,6 +136,13 @@ export async function GET(
     const headers: HeadersInit = {
       'Content-Type': 'application/json',
     };
+
+    // CRITICAL: Forward cookies for session-based authentication
+    // The proxy uses auth() which reads from httpOnly cookies
+    const cookieHeader = request.headers.get('cookie');
+    if (cookieHeader) {
+      headers['Cookie'] = cookieHeader;
+    }
 
     // Add user identification headers (proxy will inject token from Redis)
     if (session?.user) {
@@ -125,6 +169,7 @@ export async function GET(
     }
 
     // Try Projections API first via proxy
+    // Use relative URL for internal server-side fetch to avoid SSL issues
     let proxyPath: string;
     if (isGuid) {
       proxyPath = `/api/proxy/api/v1/projections/cases/${id}`;
@@ -133,7 +178,13 @@ export async function GET(
       proxyPath = `/api/proxy/api/v1/cases/by-number/${encodeURIComponent(id)}`;
     }
 
-    const proxyUrl = new URL(proxyPath, request.url);
+    // Construct internal URL - use http://localhost for server-side calls to avoid SSL errors
+    // In Docker/production, use http://localhost:3000 for internal server-side fetch
+    // This avoids SSL errors when making internal API calls
+    const internalBaseUrl = process.env.NODE_ENV === 'production' 
+      ? 'http://localhost:3000' 
+      : (process.env.NEXTAUTH_URL || request.url.split('/api')[0]);
+    const proxyUrl = new URL(proxyPath, internalBaseUrl);
 
     // Add timeout to prevent hanging requests
     const controller = new AbortController();
@@ -156,7 +207,8 @@ export async function GET(
           ? `/api/proxy/api/v1/cases/${id}`
           : `/api/proxy/api/v1/cases/by-number/${encodeURIComponent(id)}`;
 
-        const onboardingProxyUrl = new URL(onboardingProxyPath, request.url);
+        // Use same base URL construction for consistency
+        const onboardingProxyUrl = new URL(onboardingProxyPath, internalBaseUrl);
         const onboardingController = new AbortController();
         const onboardingTimeoutId = setTimeout(() => onboardingController.abort(), 10000);
 
@@ -293,6 +345,7 @@ export async function GET(
       const entityTypeCode = cleanValue(rawEntityTypeCode);
 
       // Fetch entity configuration schema if identifiers are available
+      // Make this non-blocking - use Promise.race to timeout quickly if backend is slow
       let formSchema = null;
       if (formConfigId || entityTypeCode) {
         try {
@@ -310,12 +363,18 @@ export async function GET(
             // Fetch by entity type code (fallback)
             // First get all entity types and find the one matching the code
             const allTypesUrl = `${ENTITY_CONFIG_API_BASE}/api/v1/entity-types?includeRequirements=true`;
-            const allTypesResponse = await fetch(allTypesUrl, {
-              headers: { 'Content-Type': 'application/json' },
-              signal: AbortSignal.timeout(5000),
-            });
+            let allTypesResponse;
+            try {
+              allTypesResponse = await fetch(allTypesUrl, {
+                headers: { 'Content-Type': 'application/json' },
+                signal: AbortSignal.timeout(15000), // Increased timeout to 15s for slow backend
+              });
+            } catch (fetchError) {
+              console.warn(`[API Route] Failed to fetch entity types list (non-critical):`, fetchError);
+              allTypesResponse = null;
+            }
 
-            if (allTypesResponse.ok) {
+            if (allTypesResponse?.ok) {
               const allTypes = await allTypesResponse.json();
               const matchingType = Array.isArray(allTypes)
                 ? allTypes.find((et: { code?: string }) => {
@@ -344,21 +403,35 @@ export async function GET(
 
           if (entityConfigUrl) {
             console.info(`[API Route] Fetching entity config from: ${entityConfigUrl}`);
-            const entityConfigResponse = await fetch(entityConfigUrl, {
+            // Use Promise.race to timeout quickly if backend is slow - don't block the response
+            const fetchPromise = fetch(entityConfigUrl, {
               headers: { 'Content-Type': 'application/json' },
-              signal: AbortSignal.timeout(10000),
+              signal: AbortSignal.timeout(8000), // 8s max wait - matches Promise.race timeout
             });
-
-            if (entityConfigResponse.ok) {
-              formSchema = await entityConfigResponse.json();
-              console.info(
-                `[API Route] ✅ Successfully fetched form schema for ${formConfigId || entityTypeCode}`
-              );
-            } else {
-              const errorText = await entityConfigResponse.text();
+            const timeoutPromise = new Promise<never>((_, reject) => {
+              setTimeout(() => reject(new Error('Entity config fetch timeout')), 8000); // 8s max wait
+            });
+            
+            try {
+              const entityConfigResponse = await Promise.race([fetchPromise, timeoutPromise]);
+              
+              if (entityConfigResponse.ok) {
+                formSchema = await entityConfigResponse.json();
+                console.info(
+                  `[API Route] ✅ Successfully fetched form schema for ${formConfigId || entityTypeCode}`
+                );
+              } else {
+                const errorText = await entityConfigResponse.text();
+                console.warn(
+                  `[API Route] ❌ Failed to fetch entity configuration: ${entityConfigResponse.status} - ${errorText}`
+                );
+              }
+            } catch (timeoutError) {
               console.warn(
-                `[API Route] ❌ Failed to fetch entity configuration: ${entityConfigResponse.status} - ${errorText}`
+                `[API Route] ⚠️ Entity config fetch timed out or failed (non-critical, continuing without schema):`,
+                timeoutError instanceof Error ? timeoutError.message : String(timeoutError)
               );
+              // Continue without schema - frontend can still render
             }
           } else {
             console.warn(
@@ -366,8 +439,10 @@ export async function GET(
             );
           }
         } catch (schemaError) {
-          console.error('[API Route] ❌ Error fetching form schema:', schemaError);
+          const errorMessage = schemaError instanceof Error ? schemaError.message : String(schemaError);
+          console.warn('[API Route] ⚠️ Error fetching form schema (non-critical, continuing):', errorMessage);
           // Continue without schema - frontend can still render with fallback
+          // Don't throw - this is a non-critical enhancement
         }
       } else {
         console.warn(

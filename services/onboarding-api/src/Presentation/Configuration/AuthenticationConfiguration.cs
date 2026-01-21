@@ -189,6 +189,21 @@ public static class AuthenticationConfiguration
                 OnAuthenticationFailed = context =>
                 {
                     var logger = context.HttpContext.RequestServices.GetRequiredService<ILogger<Program>>();
+                    var env = context.HttpContext.RequestServices.GetRequiredService<IWebHostEnvironment>();
+                    
+                    // In development mode, if development headers are present, don't fail authentication
+                    // The DevelopmentAuthMiddleware will handle authentication
+                    if (env.IsDevelopment())
+                    {
+                        var hasDevHeaders = !string.IsNullOrEmpty(context.HttpContext.Request.Headers["X-User-Email"].FirstOrDefault());
+                        if (hasDevHeaders)
+                        {
+                            logger.LogDebug("Azure AD Authentication failed in development, but development headers present - allowing to continue");
+                            context.NoResult(); // Don't fail, let DevelopmentAuthMiddleware handle it
+                            return Task.CompletedTask;
+                        }
+                    }
+                    
                     logger.LogError(context.Exception, "Azure AD Authentication failed");
                     return Task.CompletedTask;
                 },

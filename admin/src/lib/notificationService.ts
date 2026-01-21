@@ -39,7 +39,7 @@ export async function sendStatusUpdateEmail(
             status: options.status,
             message: options.message,
             adminName: options.adminName,
-            link: options.link || `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3001'}/applications/${options.caseId}`,
+            link: options.link || `${process.env.NEXTAUTH_URL || process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3001'}/applications/${options.caseId}`,
           }
         ),
       { maxRetries: 3 }

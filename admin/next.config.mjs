@@ -10,6 +10,7 @@ const require = createRequire(import.meta.url);
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  output: 'standalone',
   images: {
     remotePatterns: [
       {
@@ -22,7 +23,7 @@ const nextConfig = {
       },
     ],
   },
-  webpack: (config, { webpack }) => {
+  webpack: (config, { webpack, dev, isServer }) => {
     config.resolve.alias = {
       ...config.resolve.alias,
       // Use our compatibility shim instead of the direct anatomy module
@@ -55,12 +56,29 @@ const nextConfig = {
       '@mukuru/mukuru-react-components/dist/configs/themes/switch.recipe.js'
     ] = require.resolve('./src/lib/empty-switch-recipe.js');
 
+    // Disable HMR (Hot Module Replacement) in production to prevent WebSocket connection errors
+    if (!dev && !isServer) {
+      // Remove HMR plugin in production
+      config.plugins = config.plugins.filter(
+        (plugin) => plugin.constructor.name !== 'HotModuleReplacementPlugin'
+      );
+    }
+
     return config;
   },
   // Performance optimizations
   compress: true,
   poweredByHeader: false,
   reactStrictMode: true,
+  // Disable development features in production
+  // This prevents HMR WebSocket connections in production builds
+  ...(process.env.NODE_ENV === 'production' && {
+    // Ensure production mode is enforced
+    devIndicators: {
+      buildActivity: false,
+      buildActivityPosition: 'bottom-right',
+    },
+  }),
   // Enable experimental features for better performance
   experimental: {
     optimizePackageImports: [

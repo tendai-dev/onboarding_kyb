@@ -3,36 +3,37 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import {
   Box,
-  Container,
   VStack,
   HStack,
   SimpleGrid,
-  Flex,
   Circle,
   Switch as ChakraSwitch,
-  Separator,
   Spinner,
   Icon,
-  useDisclosure,
 } from '@chakra-ui/react';
 import {
   Button,
   Typography,
-  Card,
-  MukuruLogo,
   AlertBar,
   Input,
-  Modal,
-  ModalBody,
-  ModalFooter,
-  PhoneInput,
 } from '@/lib/mukuruImports';
-import Link from 'next/link';
 import { PartnerHeader } from '@/components/PartnerHeader';
 import { useState, useEffect } from 'react';
 import { Formik, Form, Field } from 'formik';
 import * as Yup from 'yup';
-import { FiCheckCircle, FiXCircle, FiInfo, FiX, FiLogOut } from 'react-icons/fi';
+import {
+  FiCheckCircle,
+  FiXCircle,
+  FiInfo,
+  FiX,
+  FiLogOut,
+  FiUser,
+  FiBell,
+  FiSettings,
+  FiDownload,
+  FiMail,
+  FiEdit2,
+} from 'react-icons/fi';
 import { getAuthUser, getInitials } from '@/lib/auth/session';
 import { useSession, signOut } from 'next-auth/react';
 import {
@@ -40,17 +41,12 @@ import {
   updateUserProfile,
   getNotificationPreferences,
   updateNotificationPreferences,
-  changePassword,
   downloadUserData,
-  deleteUserAccount,
   getUserCaseSummary,
   type UserProfile,
   type UserPreferences,
-  type ChangePasswordRequest,
 } from '@/lib/api';
 import { useRequireAuth } from '@/hooks/useRequireAuth';
-
-// MotionBox removed - not used
 
 const profileSchema = Yup.object().shape({
   firstName: Yup.string().required('First name is required'),
@@ -63,42 +59,27 @@ const profileSchema = Yup.object().shape({
 
 export default function PartnerProfilePage() {
   useRequireAuth();
-  const {
-    open: isPasswordDialogOpen,
-    onOpen: onPasswordDialogOpen,
-    onClose: onPasswordDialogClose,
-  } = useDisclosure();
-  const {
-    open: isDeleteDialogOpen,
-    onOpen: onDeleteDialogOpen,
-    onClose: onDeleteDialogClose,
-  } = useDisclosure();
-
-  const handleDeleteDialogClose = () => {
-    setDeleteConfirmation('');
-    setDeleteReason('');
-    onDeleteDialogClose();
-  };
 
   const [isEditing, setIsEditing] = useState(false);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [profile, setProfile] = useState<UserProfile | null>(null);
+  const [originalProfile, setOriginalProfile] = useState<UserProfile | null>(null); // Store original for cancel
   const [notifications, setNotifications] = useState<UserPreferences>({
     emailNotifications: true,
     smsNotifications: false,
     statusUpdates: true,
     marketingCommunications: false,
   });
+  const [originalNotifications, setOriginalNotifications] = useState<UserPreferences>({
+    emailNotifications: true,
+    smsNotifications: false,
+    statusUpdates: true,
+    marketingCommunications: false,
+  }); // Store original for cancel
   const [caseSummary, setCaseSummary] = useState<any>(null);
-  const [selectedCountryCode, setSelectedCountryCode] = useState<string>('GB'); // Default to GB (+44)
-  const [passwordForm, setPasswordForm] = useState<ChangePasswordRequest>({
-    currentPassword: '',
-    newPassword: '',
-    confirmPassword: '',
-  });
-  const [deleteReason, setDeleteReason] = useState('');
-  const [deleteConfirmation, setDeleteConfirmation] = useState('');
+  const [selectedCountryCode, setSelectedCountryCode] = useState<string>('+27'); // Default to South Africa
+  const [formResetKey, setFormResetKey] = useState<number>(0); // Key to force form reset on cancel
   const [toastState, setToastState] = useState<{
     status: 'success' | 'error' | 'info';
     title: string;
@@ -129,7 +110,9 @@ export default function PartnerProfilePage() {
 
         if (isMounted) {
           setProfile(profileData);
+          setOriginalProfile(JSON.parse(JSON.stringify(profileData))); // Deep copy for cancel
           setNotifications(prefs);
+          setOriginalNotifications(JSON.parse(JSON.stringify(prefs))); // Deep copy for cancel
           setCaseSummary(summary);
         }
       } catch (error) {
@@ -157,17 +140,30 @@ export default function PartnerProfilePage() {
   const handleSaveProfile = async (values: Record<string, unknown>) => {
     setSaving(true);
     try {
+      // Validate phone number if provided
+      const phoneValue = values.phone as string | undefined;
+      if (phoneValue && phoneValue.trim() && !/^[\d\s\-\+\(\)]+$/.test(phoneValue.trim())) {
+        showToast({
+          status: 'error',
+          title: 'Invalid phone number',
+          description: 'Please enter a valid phone number.',
+        });
+        setSaving(false);
+        return;
+      }
+
       const updated = await updateUserProfile({
         firstName: values.firstName as string,
         lastName: values.lastName as string,
         middleName: values.middleName as string | undefined,
-        phone: values.phone as string | undefined,
+        phone: phoneValue?.trim() || undefined,
         country: values.country as string | undefined,
         companyName: values.companyName as string | undefined,
         preferences: notifications,
       });
 
       setProfile(updated);
+      setOriginalProfile(JSON.parse(JSON.stringify(updated))); // Update original
       setIsEditing(false);
       showToast({
         status: 'success',
@@ -176,10 +172,18 @@ export default function PartnerProfilePage() {
       });
     } catch (error: any) {
       console.error('Failed to save profile:', error);
+      const errorMessage = error.message || 'Could not update profile. Please try again.';
+      const is401 = errorMessage.includes('401') || errorMessage.includes('Unauthorized');
+      const is500 = errorMessage.includes('500') || errorMessage.includes('Internal Server Error');
+      
       showToast({
         status: 'error',
-        title: 'Failed to save',
-        description: error.message || 'Could not update profile. Please try again.',
+        title: is401 ? 'Authentication required' : is500 ? 'Server error' : 'Failed to save',
+        description: is401 
+          ? 'Your session may have expired. Please refresh the page and try again.'
+          : is500
+          ? 'A server error occurred. Please try again in a moment.'
+          : errorMessage,
       });
     } finally {
       setSaving(false);
@@ -205,35 +209,6 @@ export default function PartnerProfilePage() {
         status: 'error',
         title: 'Failed to update',
         description: error.message || 'Could not update preferences. Please try again.',
-      });
-    }
-  };
-
-  const handleChangePassword = async () => {
-    if (passwordForm.newPassword !== passwordForm.confirmPassword) {
-      showToast({
-        status: 'error',
-        title: 'Passwords do not match',
-      });
-      return;
-    }
-
-    try {
-      const result = await changePassword(passwordForm);
-      if (result.success) {
-        showToast({
-          status: 'success',
-          title: 'Password changed',
-          description: 'Your password has been updated successfully.',
-        });
-        onPasswordDialogClose();
-        setPasswordForm({ currentPassword: '', newPassword: '', confirmPassword: '' });
-      }
-    } catch (error: any) {
-      showToast({
-        status: 'error',
-        title: 'Failed to change password',
-        description: error.message || 'Could not change password. Please try again.',
       });
     }
   };
@@ -283,30 +258,6 @@ export default function PartnerProfilePage() {
     }
   };
 
-  const handleDeleteAccount = async () => {
-    try {
-      const result = await deleteUserAccount({ reason: deleteReason });
-      if (result.success) {
-        showToast({
-          status: 'success',
-          title: 'Account deleted',
-          description: 'Your account has been permanently deleted.',
-        });
-        // Logout and redirect
-        setTimeout(() => {
-          handleLogout();
-        }, 2000);
-      }
-    } catch (error: any) {
-      showToast({
-        status: 'error',
-        title: 'Failed to delete account',
-        description:
-          error.message || 'Could not delete your account. Please contact support.',
-      });
-    }
-  };
-
   // Get user from NextAuth session (like admin does)
   const { data: session } = useSession();
   const sessionUser = session?.user;
@@ -336,64 +287,45 @@ export default function PartnerProfilePage() {
 
   // User object removed - not used
 
-  if (loading) {
+  // Toast notification component
+  const ToastNotification = () => {
+    if (!toastState) return null;
     return (
       <Box
-        minH="100vh"
-        bg="mukuru.background.light"
-        display="flex"
-        alignItems="center"
-        justifyContent="center"
+        position="fixed"
+        top="20px"
+        right="20px"
+        zIndex={9999}
+        maxW="380px"
+        borderRadius="12px"
+        bg="white"
+        boxShadow="0 8px 30px rgba(0, 0, 0, 0.12)"
+        overflow="hidden"
+        animation="slideIn 0.3s ease-out"
       >
-        <VStack gap="5">
-          <Spinner size="xl" color="mukuru.buttons.primary" />
-          <Typography color="mukuru.text.primary" fontSize="lg" fontWeight="500">
-            Loading profile...
-          </Typography>
-        </VStack>
-      </Box>
-    );
-  }
-
-  // Do not block the page if there is no application; render profile with auth data
-
-  return (
-    <Box minH="100vh" bg="mukuru.background.light" position="relative">
-      <PartnerHeader />
-      {/* Toast Notification */}
-      {toastState && (
         <Box
-          position="fixed"
-          top="4"
-          right="4"
-          zIndex={9999}
-          maxW="400px"
-          borderRadius="lg"
-          bg="white"
-          border="1px solid"
-          borderColor={
+          h="4px"
+          w="100%"
+          bg={
             toastState.status === 'success'
-              ? 'mukuru.text.success'
+              ? 'green.500'
               : toastState.status === 'error'
-                ? 'mukuru.text.error'
+                ? 'red.500'
                 : 'mukuru.teal'
           }
-          boxShadow="0 4px 12px rgba(0, 0, 0, 0.1)"
-          overflow="hidden"
-        >
-          <Box
-            h="4px"
-            w="100%"
-            bg={
-              toastState.status === 'success'
-                ? 'mukuru.text.success'
-                : toastState.status === 'error'
-                  ? 'mukuru.text.error'
-                  : 'mukuru.teal'
-            }
-          />
-          <Box p="4">
-            <HStack gap="3" align="start">
+        />
+        <Box p="4">
+          <HStack gap="3" align="start">
+            <Circle
+              size="32px"
+              bg={
+                toastState.status === 'success'
+                  ? 'green.50'
+                  : toastState.status === 'error'
+                    ? 'red.50'
+                    : 'teal.50'
+              }
+            >
               <Icon
                 as={
                   toastState.status === 'success'
@@ -404,106 +336,122 @@ export default function PartnerProfilePage() {
                 }
                 color={
                   toastState.status === 'success'
-                    ? 'mukuru.text.success'
+                    ? 'green.500'
                     : toastState.status === 'error'
-                      ? 'mukuru.text.error'
-                      : 'mukuru.teal'
+                      ? 'red.500'
+                      : 'teal.500'
                 }
-                boxSize="5"
-                flexShrink={0}
-                mt="0.5"
+                boxSize="4"
               />
-              <VStack align="start" gap="1" flex="1">
-                <Typography fontWeight="semibold" fontSize="sm" color="mukuru.text.primary">
-                  {toastState.title}
+            </Circle>
+            <VStack align="start" gap="0" flex="1">
+              <Typography fontWeight="600" fontSize="sm" color="gray.900">
+                {toastState.title}
+              </Typography>
+              {toastState.description && (
+                <Typography fontSize="xs" color="gray.500" mt="1">
+                  {toastState.description}
                 </Typography>
-                {toastState.description && (
-                  <Typography fontSize="sm" color="mukuru.grey.mediumDark">
-                    {toastState.description}
-                  </Typography>
-                )}
-              </VStack>
-              <Button
-                size="sm"
-                variant="ghost"
-                onClick={() => setToastState(null)}
-                minW="auto"
-                px="2"
-              >
-                <Icon as={FiX} boxSize="3" />
-              </Button>
-            </HStack>
-          </Box>
+              )}
+            </VStack>
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={() => setToastState(null)}
+              minW="auto"
+              p="1"
+              borderRadius="full"
+            >
+              <Icon as={FiX} boxSize="16px" color="gray.400" />
+            </Button>
+          </HStack>
         </Box>
-      )}
-      <Container maxW="6xl" py={{ base: 6, md: 10 }} px={{ base: 4, md: 6, lg: 8 }}>
-        <VStack gap={{ base: 6, md: 8 }} align="stretch" width="100%">
-          {/* Page Header */}
-          <VStack align="start" gap="3" mb={{ base: 2, md: 4 }} width="100%">
-            <Typography fontSize="3xl" fontWeight="bold" color="mukuru.text.primary">
-              Profile Settings
-            </Typography>
-            <Typography color="mukuru.grey.mediumDark" fontSize="md" mt="0">
-              Manage your account information and preferences
-            </Typography>
-          </VStack>
+      </Box>
+    );
+  };
 
-          {/* Profile Information */}
-          <Card
-            bg="mukuru.cards.white"
-            width="100%"
-            minH="auto"
-            borderRadius="lg"
-            boxShadow="0 2px 8px rgba(0, 0, 0, 0.08)"
-            overflow="visible"
-            borderColor="mukuru.grey.light"
-            borderWidth="1px"
-            style={{ height: 'auto', minHeight: 'auto', maxHeight: 'none' }}
-            css={{
-              height: 'auto !important',
-              minHeight: 'auto !important',
-              maxHeight: 'none !important',
-            }}
-          >
-            <Box p={{ base: 5, md: 6 }} borderBottom="1px" borderColor="mukuru.grey.light" bg="mukuru.cards.white">
-              <Flex
-                justify="space-between"
-                align={{ base: 'start', md: 'center' }}
-                flexWrap={{ base: 'wrap', md: 'nowrap' }}
-                gap="4"
-              >
-                <VStack align="start" gap="2" flex="1" minW="0">
-                  <Typography fontSize="xl" fontWeight="bold" color="mukuru.text.primary">
-                    Personal Information
+  if (loading) {
+    return (
+      <Box minH="100vh" bg="gray.50" display="flex" alignItems="center" justifyContent="center">
+        <VStack gap="4">
+          <Spinner size="xl" color="orange.500" />
+          <Typography color="gray.600" fontSize="md">Loading your profile...</Typography>
+        </VStack>
+      </Box>
+    );
+  }
+
+  return (
+    <Box minH="100vh" bg="gray.50">
+      <PartnerHeader />
+      <ToastNotification />
+      
+      <Box maxW="900px" mx="auto" py={{ base: 6, md: 8 }} px={{ base: 4, md: 6 }} w="100%">
+        <VStack gap="6" align="stretch" w="100%">
+          {/* Profile Header with Avatar */}
+          <Box bg="white" borderRadius="xl" overflow="hidden" boxShadow="sm" border="1px solid" borderColor="gray.100" w="100%">
+            <Box
+              h="100px"
+              bgGradient="linear(135deg, #f76834 0%, #ff8c5a 100%)"
+              position="relative"
+            />
+            <Box px="6" pb="6" mt="-50px" position="relative">
+              <HStack gap="5" align="flex-end" flexWrap={{ base: 'wrap', md: 'nowrap' }}>
+                <Circle
+                  size="100px"
+                  bg="white"
+                  border="4px solid white"
+                  boxShadow="0 4px 12px rgba(0,0,0,0.1)"
+                >
+                  <Circle
+                    size="92px"
+                    bgGradient="linear(135deg, #f76834 0%, #ff8c5a 100%)"
+                    color="white"
+                  >
+                    <Typography fontSize="2xl" fontWeight="bold">
+                      {getInitials(userName)}
+                    </Typography>
+                  </Circle>
+                </Circle>
+                <VStack align="start" gap="1" flex="1" pb="2">
+                  <Typography fontSize="xl" fontWeight="bold" color="gray.900">
+                    {userName}
                   </Typography>
-                  <Typography fontSize="sm" color="mukuru.grey.mediumDark" mt="0">
-                    Your account details from Keycloak
+                  <Typography fontSize="sm" color="gray.500">
+                    {userEmail}
                   </Typography>
                 </VStack>
                 {!isEditing && (
                   <Button
-                    size="md"
                     variant="primary"
-                    className="mukuru-primary-button"
+                    size="sm"
                     onClick={() => setIsEditing(true)}
-                    flexShrink={0}
-                    px="6"
+                    className="mukuru-primary-button"
+                    leftIcon={<Icon as={FiEdit2} boxSize="16px" />}
                   >
                     Edit Profile
                   </Button>
                 )}
-              </Flex>
+              </HStack>
+            </Box>
+          </Box>
+
+          {/* Personal Information Card */}
+          <Box bg="white" borderRadius="xl" boxShadow="sm" border="1px solid" borderColor="gray.100" overflow="hidden" w="100%">
+            <Box px="6" py="5" borderBottom="1px solid" borderColor="gray.100" bg="gray.50">
+              <VStack align="start" gap="2">
+                <Typography fontSize="xl" fontWeight="600" color="gray.900">
+                  Profile Settings
+                </Typography>
+                <Typography fontSize="sm" color="gray.500">
+                  Manage your account information and preferences
+                </Typography>
+              </VStack>
             </Box>
 
-            <Box
-              p={{ base: 5, md: 6, lg: 8 }}
-              width="100%"
-              display="block"
-              visibility="visible"
-              bg="mukuru.cards.white"
-            >
+            <Box p="6">
               <Formik
-                key={`form-${givenName}-${familyName}-${userEmail}`}
+                key={`form-${givenName}-${familyName}-${userEmail}-${formResetKey}`}
                 initialValues={{
                   firstName: profile?.firstName || givenName || '',
                   lastName: profile?.lastName || familyName || '',
@@ -536,7 +484,18 @@ export default function PartnerProfilePage() {
                   }
                   return (
                     <Form style={{ width: '100%' }}>
-                      <VStack gap={{ base: 4, md: 6 }} align="stretch" width="100%">
+                      <VStack gap="6" align="stretch" width="100%">
+                        {/* Personal Information Section */}
+                        <Box>
+                          <VStack align="start" gap="1" mb="4">
+                            <Typography fontSize="md" fontWeight="600" color="gray.900">
+                              Personal Information
+                            </Typography>
+                            <Typography fontSize="sm" color="gray.500">
+                              Your account details from Keycloak
+                            </Typography>
+                          </VStack>
+                          <VStack gap={{ base: 4, md: 5 }} align="stretch" width="100%">
                         {/* Name Fields */}
                         <SimpleGrid
                           columns={{ base: 1, md: 2 }}
@@ -651,39 +610,235 @@ export default function PartnerProfilePage() {
                             >
                               Phone Number
                             </Typography>
-                            <Box className="phone-input-wrapper" width="100%">
-                              <Field name="phone">
-                                {({ field }: { field: Record<string, unknown> }) => (
-                                  <PhoneInput
-                                    value={(field.value as string) || ''}
-                                    onChange={(
-                                      val: string | React.ChangeEvent<HTMLInputElement>
-                                    ) => {
-                                      const stringValue =
-                                        typeof val === 'string' ? val : val.target.value;
-                                      const onChange = field.onChange as
-                                        | ((
-                                            e: React.ChangeEvent<HTMLInputElement>
-                                          ) => void)
-                                        | undefined;
-                                      onChange?.({
-                                        target: { value: stringValue },
-                                      } as React.ChangeEvent<HTMLInputElement>);
-                                    }}
-                                    onCountryCodeChange={(countryCode: string) => {
-                                      if (
-                                        countryCode &&
-                                        countryCode !== selectedCountryCode
-                                      ) {
-                                        setSelectedCountryCode(countryCode);
+                            <Field name="phone">
+                              {({ field, form }: { field: Record<string, unknown>; form: any }) => (
+                                <HStack gap="0" width="100%">
+                                  <select
+                                    value={selectedCountryCode}
+                                    onChange={(e) => {
+                                      setSelectedCountryCode(e.target.value);
+                                      // Update phone field to include new country code
+                                      const currentPhone = (field.value as string) || '';
+                                      const phoneWithoutCode = currentPhone.replace(/^\+\d+\s*/, '');
+                                      if (phoneWithoutCode) {
+                                        form.setFieldValue('phone', `${e.target.value} ${phoneWithoutCode}`);
                                       }
                                     }}
                                     disabled={!isEditing}
-                                    placeholder="Enter phone number"
+                                    style={{
+                                      width: '110px',
+                                      minWidth: '110px',
+                                      padding: '10px 8px',
+                                      borderRadius: '6px 0 0 6px',
+                                      border: '1px solid #e2e8f0',
+                                      borderRight: 'none',
+                                      background: isEditing ? '#fff' : '#f9fafb',
+                                      color: '#1a202c',
+                                      fontSize: '14px',
+                                      height: '44px',
+                                      cursor: isEditing ? 'pointer' : 'not-allowed',
+                                    }}
+                                  >
+                                    {/* Africa */}
+                                    <option value="+27">🇿🇦 +27</option>
+                                    <option value="+213">��🇿 +213</option>
+                                    <option value="+244">🇦🇴 +244</option>
+                                    <option value="+229">�🇯 +229</option>
+                                    <option value="+267">🇧🇼 +267</option>
+                                    <option value="+226">🇧🇫 +226</option>
+                                    <option value="+257">🇧🇮 +257</option>
+                                    <option value="+238">🇨🇻 +238</option>
+                                    <option value="+237">🇨🇲 +237</option>
+                                    <option value="+236">🇨🇫 +236</option>
+                                    <option value="+235">�🇩 +235</option>
+                                    <option value="+269">🇰�🇲 +269</option>
+                                    <option value="+243">🇨� +243</option>
+                                    <option value="+242">🇨🇬 +242</option>
+                                    <option value="+225">🇨🇮 +225</option>
+                                    <option value="+253">🇩🇯 +253</option>
+                                    <option value="+20">🇪🇬 +20</option>
+                                    <option value="+240">🇬🇶 +240</option>
+                                    <option value="+291">🇪🇷 +291</option>
+                                    <option value="+268">🇸�🇿 +268</option>
+                                    <option value="+251">🇪🇹 +251</option>
+                                    <option value="+241">🇬🇦 +241</option>
+                                    <option value="+220">🇬🇲 +220</option>
+                                    <option value="+233">🇬🇭 +233</option>
+                                    <option value="+224">🇬🇳 +224</option>
+                                    <option value="+245">🇬� +245</option>
+                                    <option value="+254">🇰🇪 +254</option>
+                                    <option value="+266">🇱🇸 +266</option>
+                                    <option value="+231">🇱🇷 +231</option>
+                                    <option value="+218">�� +218</option>
+                                    <option value="+261">🇲🇬 +261</option>
+                                    <option value="+265">🇲🇼 +265</option>
+                                    <option value="+223">🇲🇱 +223</option>
+                                    <option value="+222">🇲🇷 +222</option>
+                                    <option value="+230">�🇺 +230</option>
+                                    <option value="+212">🇲🇦 +212</option>
+                                    <option value="+258">🇲🇿 +258</option>
+                                    <option value="+264">🇳� +264</option>
+                                    <option value="+227">🇳🇪 +227</option>
+                                    <option value="+234">🇳🇬 +234</option>
+                                    <option value="+250">🇷🇼 +250</option>
+                                    <option value="+239">🇸🇹 +239</option>
+                                    <option value="+221">🇸🇳 +221</option>
+                                    <option value="+248">🇸� +248</option>
+                                    <option value="+232">�🇱 +232</option>
+                                    <option value="+252">🇸🇴 +252</option>
+                                    <option value="+211">🇸🇸 +211</option>
+                                    <option value="+249">🇸🇩 +249</option>
+                                    <option value="+255">🇹🇿 +255</option>
+                                    <option value="+228">🇹🇬 +228</option>
+                                    <option value="+216">🇹🇳 +216</option>
+                                    <option value="+256">🇺🇬 +256</option>
+                                    <option value="+260">🇿🇲 +260</option>
+                                    <option value="+263">🇿🇼 +263</option>
+                                    {/* Europe */}
+                                    <option value="+355">🇦🇱 +355</option>
+                                    <option value="+376">🇦🇩 +376</option>
+                                    <option value="+43">🇦🇹 +43</option>
+                                    <option value="+375">🇧🇾 +375</option>
+                                    <option value="+32">🇧🇪 +32</option>
+                                    <option value="+387">🇧🇦 +387</option>
+                                    <option value="+359">🇧🇬 +359</option>
+                                    <option value="+385">🇭🇷 +385</option>
+                                    <option value="+357">🇨🇾 +357</option>
+                                    <option value="+420">🇨🇿 +420</option>
+                                    <option value="+45">🇩🇰 +45</option>
+                                    <option value="+372">🇪🇪 +372</option>
+                                    <option value="+358">🇫🇮 +358</option>
+                                    <option value="+33">🇫🇷 +33</option>
+                                    <option value="+49">🇩🇪 +49</option>
+                                    <option value="+30">🇬🇷 +30</option>
+                                    <option value="+36">🇭🇺 +36</option>
+                                    <option value="+354">🇮🇸 +354</option>
+                                    <option value="+353">🇮🇪 +353</option>
+                                    <option value="+39">🇮🇹 +39</option>
+                                    <option value="+371">🇱🇻 +371</option>
+                                    <option value="+423">🇱🇮 +423</option>
+                                    <option value="+370">🇱🇹 +370</option>
+                                    <option value="+352">🇱🇺 +352</option>
+                                    <option value="+356">🇲🇹 +356</option>
+                                    <option value="+373">🇲🇩 +373</option>
+                                    <option value="+377">🇲🇨 +377</option>
+                                    <option value="+382">🇲🇪 +382</option>
+                                    <option value="+31">🇳🇱 +31</option>
+                                    <option value="+389">🇲🇰 +389</option>
+                                    <option value="+47">🇳🇴 +47</option>
+                                    <option value="+48">🇵🇱 +48</option>
+                                    <option value="+351">🇵🇹 +351</option>
+                                    <option value="+40">🇷🇴 +40</option>
+                                    <option value="+7">🇷🇺 +7</option>
+                                    <option value="+378">🇸🇲 +378</option>
+                                    <option value="+381">🇷🇸 +381</option>
+                                    <option value="+421">🇸🇰 +421</option>
+                                    <option value="+386">🇸🇮 +386</option>
+                                    <option value="+34">🇪🇸 +34</option>
+                                    <option value="+46">🇸🇪 +46</option>
+                                    <option value="+41">🇨🇭 +41</option>
+                                    <option value="+380">🇺🇦 +380</option>
+                                    <option value="+44">🇬🇧 +44</option>
+                                    <option value="+379">🇻🇦 +379</option>
+                                    {/* Americas */}
+                                    <option value="+1">🇺🇸 +1</option>
+                                    <option value="+54">🇦🇷 +54</option>
+                                    <option value="+591">🇧🇴 +591</option>
+                                    <option value="+55">🇧🇷 +55</option>
+                                    <option value="+56">🇨🇱 +56</option>
+                                    <option value="+57">🇨🇴 +57</option>
+                                    <option value="+506">🇨🇷 +506</option>
+                                    <option value="+53">🇨🇺 +53</option>
+                                    <option value="+593">🇪🇨 +593</option>
+                                    <option value="+503">🇸🇻 +503</option>
+                                    <option value="+502">🇬🇹 +502</option>
+                                    <option value="+509">🇭🇹 +509</option>
+                                    <option value="+504">🇭🇳 +504</option>
+                                    <option value="+52">🇲🇽 +52</option>
+                                    <option value="+505">🇳🇮 +505</option>
+                                    <option value="+507">🇵🇦 +507</option>
+                                    <option value="+595">🇵🇾 +595</option>
+                                    <option value="+51">🇵🇪 +51</option>
+                                    <option value="+598">🇺🇾 +598</option>
+                                    <option value="+58">🇻🇪 +58</option>
+                                    {/* Asia */}
+                                    <option value="+93">🇦🇫 +93</option>
+                                    <option value="+374">🇦🇲 +374</option>
+                                    <option value="+994">🇦🇿 +994</option>
+                                    <option value="+973">🇧🇭 +973</option>
+                                    <option value="+880">🇧🇩 +880</option>
+                                    <option value="+975">🇧🇹 +975</option>
+                                    <option value="+673">🇧🇳 +673</option>
+                                    <option value="+855">🇰🇭 +855</option>
+                                    <option value="+86">🇨🇳 +86</option>
+                                    <option value="+995">🇬🇪 +995</option>
+                                    <option value="+852">🇭🇰 +852</option>
+                                    <option value="+91">🇮🇳 +91</option>
+                                    <option value="+62">🇮🇩 +62</option>
+                                    <option value="+98">🇮🇷 +98</option>
+                                    <option value="+964">🇮🇶 +964</option>
+                                    <option value="+972">🇮� +972</option>
+                                    <option value="+81">🇯🇵 +81</option>
+                                    <option value="+962">🇯🇴 +962</option>
+                                    <option value="+7">🇰🇿 +7</option>
+                                    <option value="+965">🇰🇼 +965</option>
+                                    <option value="+996">🇰🇬 +996</option>
+                                    <option value="+856">🇱🇦 +856</option>
+                                    <option value="+961">🇱🇧 +961</option>
+                                    <option value="+853">🇲🇴 +853</option>
+                                    <option value="+60">🇲🇾 +60</option>
+                                    <option value="+960">🇲🇻 +960</option>
+                                    <option value="+976">�🇲� +976</option>
+                                    <option value="+95">🇲🇲 +95</option>
+                                    <option value="+977">🇳🇵 +977</option>
+                                    <option value="+850">🇰🇵 +850</option>
+                                    <option value="+968">🇴🇲 +968</option>
+                                    <option value="+92">🇵🇰 +92</option>
+                                    <option value="+970">🇵🇸 +970</option>
+                                    <option value="+63">🇵🇭 +63</option>
+                                    <option value="+974">🇶🇦 +974</option>
+                                    <option value="+966">🇸🇦 +966</option>
+                                    <option value="+65">🇸🇬 +65</option>
+                                    <option value="+82">🇰🇷 +82</option>
+                                    <option value="+94">🇱🇰 +94</option>
+                                    <option value="+963">🇸🇾 +963</option>
+                                    <option value="+886">🇹�🇼 +886</option>
+                                    <option value="+992">🇹🇯 +992</option>
+                                    <option value="+66">🇹🇭 +66</option>
+                                    <option value="+670">🇹🇱 +670</option>
+                                    <option value="+90">🇹🇷 +90</option>
+                                    <option value="+993">🇹🇲 +993</option>
+                                    <option value="+971">🇦🇪 +971</option>
+                                    <option value="+998">🇺🇿 +998</option>
+                                    <option value="+84">🇻🇳 +84</option>
+                                    <option value="+967">🇾🇪 +967</option>
+                                    {/* Oceania */}
+                                    <option value="+61">🇦🇺 +61</option>
+                                    <option value="+679">🇫🇯 +679</option>
+                                    <option value="+64">🇳🇿 +64</option>
+                                    <option value="+675">🇵🇬 +675</option>
+                                    <option value="+685">🇼🇸 +685</option>
+                                    <option value="+677">🇸🇧 +677</option>
+                                    <option value="+676">🇹🇴 +676</option>
+                                    <option value="+678">🇻🇺 +678</option>
+                                  </select>
+                                  <Input
+                                    type="tel"
+                                    value={((field.value as string) || '').replace(/^\+\d+\s*/, '')}
+                                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+                                      const phoneNumber = e.target.value.replace(/[^\d\s]/g, '');
+                                      form.setFieldValue('phone', phoneNumber ? `${selectedCountryCode} ${phoneNumber}` : '');
+                                    }}
+                                    readOnly={!isEditing}
+                                    placeholder="82 123 4567"
+                                    style={{
+                                      borderRadius: '0 6px 6px 0',
+                                      borderLeft: 'none',
+                                    }}
                                   />
-                                )}
-                              </Field>
-                            </Box>
+                                </HStack>
+                              )}
+                            </Field>
                             {errors.phone && touched.phone && (
                               <Typography color="mukuru.text.error" fontSize="xs" mt="1">
                                 {String(errors.phone)}
@@ -691,13 +846,21 @@ export default function PartnerProfilePage() {
                             )}
                           </Box>
                         </SimpleGrid>
+                        </VStack>
+                        </Box>
 
-                        <Separator borderColor="mukuru.grey.light" my={{ base: 4, md: 6 }} />
-
+                        {/* Company Information Section */}
+                        <Box>
+                          <VStack align="start" gap="1" mb="4">
+                            <Typography fontSize="md" fontWeight="600" color="gray.900">
+                              Company Information
+                            </Typography>
+                          </VStack>
+                          <VStack gap={{ base: 4, md: 5 }} align="stretch" width="100%">
                         {/* Company & Location Fields */}
                         <SimpleGrid
                           columns={{ base: 1, md: 2 }}
-                          gap={{ base: 4, md: 6 }}
+                          gap={{ base: 4, md: 5 }}
                           width="100%"
                         >
                           <Box width="100%">
@@ -744,12 +907,19 @@ export default function PartnerProfilePage() {
                                     style={{
                                       width: '100%',
                                       padding: '12px 16px',
+                                      paddingRight: '40px',
                                       borderRadius: '6px',
                                       border: '1px solid var(--mukuru-grey-light)',
                                       background: 'var(--mukuru-white)',
                                       color: 'var(--mukuru-text-primary)',
                                       fontSize: '16px',
                                       height: '44px',
+                                      minWidth: '200px',
+                                      appearance: 'none',
+                                      backgroundImage: 'url("data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' width=\'12\' height=\'12\' viewBox=\'0 0 12 12\'%3E%3Cpath fill=\'%23333\' d=\'M6 9L1 4h10z\'/%3E%3C/svg%3E")',
+                                      backgroundRepeat: 'no-repeat',
+                                      backgroundPosition: 'right 12px center',
+                                      backgroundSize: '12px',
                                     }}
                                   >
                                     <option value="South Africa">South Africa</option>
@@ -794,24 +964,38 @@ export default function PartnerProfilePage() {
                             )}
                           </Field>
                         </Box>
+                        </VStack>
+                        </Box>
 
                         {isEditing && (
                           <HStack
                             gap="3"
-                            pt={{ base: 4, md: 6 }}
+                            pt="6"
                             justify="flex-end"
                             width="100%"
                             flexWrap={{ base: 'wrap', sm: 'nowrap' }}
-                            borderTop="1px"
-                            borderColor="mukuru.grey.light"
-                            mt="4"
+                            borderTop="1px solid"
+                            borderColor="gray.200"
+                            mt="6"
                           >
                             <Button
                               variant="secondary"
-                              onClick={() => setIsEditing(false)}
+                              onClick={() => {
+                                // Reset to original values
+                                if (originalProfile) {
+                                  setProfile(JSON.parse(JSON.stringify(originalProfile)));
+                                }
+                                if (originalNotifications) {
+                                  setNotifications(JSON.parse(JSON.stringify(originalNotifications)));
+                                }
+                                setIsEditing(false);
+                                // Reset form by forcing re-render with new key
+                                setFormResetKey(prev => prev + 1);
+                              }}
                               size="md"
                               width={{ base: '100%', sm: 'auto' }}
                               px="6"
+                              disabled={saving}
                             >
                               Cancel
                             </Button>
@@ -823,6 +1007,7 @@ export default function PartnerProfilePage() {
                               size="md"
                               width={{ base: '100%', sm: 'auto' }}
                               px="6"
+                              disabled={saving}
                             >
                               Save Changes
                             </Button>
@@ -834,49 +1019,28 @@ export default function PartnerProfilePage() {
                 }}
               </Formik>
             </Box>
-          </Card>
+          </Box>
 
           {/* Notification Preferences */}
-          <Card
-            bg="mukuru.cards.white"
-            width="100%"
-            minH="auto"
-            borderRadius="lg"
-            boxShadow="0 2px 8px rgba(0, 0, 0, 0.08)"
-            overflow="visible"
-            borderColor="mukuru.grey.light"
-            borderWidth="1px"
-            style={{ height: 'auto', minHeight: 'auto', maxHeight: 'none' }}
-            css={{
-              height: 'auto !important',
-              minHeight: 'auto !important',
-              maxHeight: 'none !important',
-            }}
-          >
-            <Box
-              p={{ base: 5, md: 6 }}
-              borderBottom="1px"
-              borderColor="mukuru.grey.light"
-              bg="mukuru.cards.white"
-            >
-              <VStack align="start" gap="2">
-                <Typography fontSize="xl" fontWeight="bold" color="mukuru.text.primary">
-                  Notification Preferences
-                </Typography>
-                <Typography fontSize="sm" color="mukuru.grey.mediumDark" mt="0">
-                  Choose how you want to receive updates about your application
-                </Typography>
-              </VStack>
+          <Box bg="white" borderRadius="xl" boxShadow="sm" border="1px solid" borderColor="gray.100" overflow="hidden" w="100%">
+            <Box px="6" py="5" borderBottom="1px solid" borderColor="gray.100" bg="gray.50">
+              <HStack gap="3">
+                <Circle size="40px" bg="blue.50">
+                  <Icon as={FiBell} color="blue.500" boxSize="5" />
+                </Circle>
+                <VStack align="start" gap="0">
+                  <Typography fontSize="lg" fontWeight="600" color="gray.900">
+                    Notification Preferences
+                  </Typography>
+                  <Typography fontSize="sm" color="gray.500">
+                    Choose how you want to receive updates
+                  </Typography>
+                </VStack>
+              </HStack>
             </Box>
 
-            <Box
-              p={{ base: 5, md: 6, lg: 8 }}
-              width="100%"
-              display="block"
-              visibility="visible"
-              bg="mukuru.cards.white"
-            >
-              <VStack gap="0" align="stretch" width="100%">
+            <Box p="6">
+              <VStack gap="0" align="stretch">
                 <HStack
                   justify="space-between"
                   align="center"
@@ -978,351 +1142,127 @@ export default function PartnerProfilePage() {
                 </HStack>
               </VStack>
             </Box>
-          </Card>
+          </Box>
 
           {/* Account Actions */}
-          <Card
-            bg="mukuru.cards.white"
-            width="100%"
-            minH="auto"
-            borderRadius="lg"
-            boxShadow="0 2px 8px rgba(0, 0, 0, 0.08)"
-            overflow="visible"
-            borderColor="mukuru.grey.light"
-            borderWidth="1px"
-            style={{ height: 'auto', minHeight: 'auto', maxHeight: 'none' }}
-            css={{
-              height: 'auto !important',
-              minHeight: 'auto !important',
-              maxHeight: 'none !important',
-            }}
-          >
-            <Box
-              p={{ base: 5, md: 6 }}
-              borderBottom="1px"
-              borderColor="mukuru.grey.light"
-              bg="mukuru.cards.white"
-            >
-              <Typography fontSize="xl" fontWeight="bold" color="mukuru.text.primary">
-                Account Actions
-              </Typography>
+          <Box bg="white" borderRadius="xl" boxShadow="sm" border="1px solid" borderColor="gray.100" overflow="hidden" w="100%">
+            <Box px="6" py="5" borderBottom="1px solid" borderColor="gray.100" bg="gray.50">
+              <HStack gap="3">
+                <Circle size="40px" bg="purple.50">
+                  <Icon as={FiSettings} color="purple.500" boxSize="5" />
+                </Circle>
+                <VStack align="start" gap="0">
+                  <Typography fontSize="lg" fontWeight="600" color="gray.900">
+                    Account Actions
+                  </Typography>
+                  <Typography fontSize="sm" color="gray.500">
+                    Manage your account settings
+                  </Typography>
+                </VStack>
+              </HStack>
             </Box>
 
-            <Box
-              p={{ base: 5, md: 6, lg: 8 }}
-              width="100%"
-              display="block"
-              visibility="visible"
-              bg="mukuru.cards.white"
-            >
-              <VStack gap="0" align="stretch" width="100%">
-                {/* Change Password Row */}
-                <HStack
-                  justify="space-between"
-                  align="center"
-                  width="100%"
-                  py={{ base: 4, md: 5 }}
-                  borderBottom="1px"
-                  borderColor="mukuru.grey.light"
-                  flexWrap={{ base: 'wrap', sm: 'nowrap' }}
-                  gap={{ base: 3, sm: 0 }}
-                >
-                  <VStack align="start" gap="1" flex="1" minW="0" pr={{ base: 0, sm: 4 }}>
-                    <Typography fontWeight="600" color="mukuru.text.primary" fontSize="md">
-                      Change Password
-                    </Typography>
-                    <Typography fontSize="sm" color="mukuru.grey.mediumDark" mt="0">
-                      Update your account password
-                    </Typography>
-                  </VStack>
-                  <Box flexShrink={0}>
-                    <Button
-                      variant="primary"
-                      className="mukuru-primary-button"
-                      size="md"
-                      onClick={onPasswordDialogOpen}
-                      px="6"
-                    >
-                      Change
-                    </Button>
+            <Box p="6">
+              <VStack gap="4" align="stretch">
+                {/* Action Items Grid */}
+                <SimpleGrid columns={{ base: 1, md: 2 }} gap="4">
+                  {/* Download Data */}
+                  <Box
+                    p="4"
+                    borderRadius="lg"
+                    border="1px solid"
+                    borderColor="gray.200"
+                    bg="white"
+                    _hover={{ borderColor: 'orange.300', bg: 'orange.50' }}
+                    transition="all 0.2s"
+                    cursor="pointer"
+                    onClick={handleDownloadData}
+                  >
+                    <HStack gap="3">
+                      <Circle size="40px" bg="gray.100">
+                        <Icon as={FiDownload} color="gray.600" boxSize="5" />
+                      </Circle>
+                      <VStack align="start" gap="0" flex="1">
+                        <Typography fontWeight="600" color="gray.900" fontSize="sm">
+                          Download Data
+                        </Typography>
+                        <Typography fontSize="xs" color="gray.500">
+                          Export your application data
+                        </Typography>
+                      </VStack>
+                    </HStack>
                   </Box>
-                </HStack>
 
-                {/* Marketing Communications Row */}
-                <HStack
-                  justify="space-between"
-                  align="center"
-                  width="100%"
-                  py={{ base: 4, md: 5 }}
-                  borderBottom="1px"
-                  borderColor="mukuru.grey.light"
-                  flexWrap={{ base: 'wrap', sm: 'nowrap' }}
-                  gap={{ base: 3, sm: 0 }}
-                >
-                  <VStack align="start" gap="1" flex="1" minW="0" pr={{ base: 0, sm: 4 }}>
-                    <Typography fontWeight="600" color="mukuru.text.primary" fontSize="md">
-                      Marketing Communications
-                    </Typography>
-                    <Typography fontSize="sm" color="mukuru.grey.mediumDark" mt="0">
-                      Receive news and updates about Mukuru services
-                    </Typography>
-                  </VStack>
-                  <Box flexShrink={0}>
-                    <ChakraSwitch.Root
-                      checked={notifications.marketingCommunications}
-                      onCheckedChange={(details) =>
-                        handleNotificationChange(
-                          'marketingCommunications',
-                          details.checked
-                        )
-                      }
-                      size="md"
-                    >
-                      <ChakraSwitch.HiddenInput />
-                      <ChakraSwitch.Control>
-                        <ChakraSwitch.Thumb />
-                      </ChakraSwitch.Control>
-                    </ChakraSwitch.Root>
+                  {/* Logout */}
+                  <Box
+                    p="4"
+                    borderRadius="lg"
+                    border="1px solid"
+                    borderColor="gray.200"
+                    bg="white"
+                    _hover={{ borderColor: 'orange.300', bg: 'orange.50' }}
+                    transition="all 0.2s"
+                    cursor="pointer"
+                    onClick={handleLogout}
+                  >
+                    <HStack gap="3">
+                      <Circle size="40px" bg="gray.100">
+                        <Icon as={FiLogOut} color="gray.600" boxSize="5" />
+                      </Circle>
+                      <VStack align="start" gap="0" flex="1">
+                        <Typography fontWeight="600" color="gray.900" fontSize="sm">
+                          Logout
+                        </Typography>
+                        <Typography fontSize="xs" color="gray.500">
+                          Sign out of your account
+                        </Typography>
+                      </VStack>
+                    </HStack>
                   </Box>
-                </HStack>
 
-                {/* Download Data Row */}
-                <HStack
-                  justify="space-between"
-                  align="center"
-                  width="100%"
-                  py={{ base: 4, md: 5 }}
-                  borderBottom="1px"
-                  borderColor="mukuru.grey.light"
-                  flexWrap={{ base: 'wrap', sm: 'nowrap' }}
-                  gap={{ base: 3, sm: 0 }}
-                >
-                  <VStack align="start" gap="1" flex="1" minW="0" pr={{ base: 0, sm: 4 }}>
-                    <Typography fontWeight="600" color="mukuru.text.primary" fontSize="md">
-                      Download Data
-                    </Typography>
-                    <Typography fontSize="sm" color="mukuru.grey.mediumDark" mt="0">
-                      Download a copy of your application data
-                    </Typography>
-                  </VStack>
-                  <Box flexShrink={0}>
-                    <Button
-                      variant="primary"
-                      className="mukuru-primary-button"
-                      size="md"
-                      onClick={handleDownloadData}
-                      px="6"
-                    >
-                      Download
-                    </Button>
-                  </Box>
-                </HStack>
-
-                {/* Logout Row */}
-                <HStack
-                  justify="space-between"
-                  align="center"
-                  width="100%"
-                  py={{ base: 4, md: 5 }}
-                  borderBottom="1px"
-                  borderColor="mukuru.grey.light"
-                  flexWrap={{ base: 'wrap', sm: 'nowrap' }}
-                  gap={{ base: 3, sm: 0 }}
-                >
-                  <VStack align="start" gap="1" flex="1" minW="0" pr={{ base: 0, sm: 4 }}>
-                    <Typography fontWeight="600" color="mukuru.text.primary" fontSize="md">
-                      Logout
-                    </Typography>
-                    <Typography fontSize="sm" color="mukuru.grey.mediumDark" mt="0">
-                      Sign out of your account
-                    </Typography>
-                  </VStack>
-                  <Box flexShrink={0}>
-                    <Button
-                      variant="primary"
-                      className="mukuru-primary-button"
-                      size="md"
-                      onClick={handleLogout}
-                      px="6"
-                    >
-                      <HStack gap="2">
-                        <Icon as={FiLogOut} color="white" boxSize="4" />
-                        <Typography color="white" fontWeight="500">Logout</Typography>
+                  {/* Marketing Communications */}
+                  <Box
+                    p="4"
+                    borderRadius="lg"
+                    border="1px solid"
+                    borderColor="gray.200"
+                    bg="white"
+                  >
+                    <HStack gap="3" justify="space-between">
+                      <HStack gap="3" flex="1">
+                        <Circle size="40px" bg="gray.100">
+                          <Icon as={FiMail} color="gray.600" boxSize="5" />
+                        </Circle>
+                        <VStack align="start" gap="0" flex="1">
+                          <Typography fontWeight="600" color="gray.900" fontSize="sm">
+                            Marketing
+                          </Typography>
+                          <Typography fontSize="xs" color="gray.500">
+                            Receive news & updates
+                          </Typography>
+                        </VStack>
                       </HStack>
-                    </Button>
+                      <ChakraSwitch.Root
+                        checked={notifications.marketingCommunications}
+                        onCheckedChange={(details) =>
+                          handleNotificationChange('marketingCommunications', details.checked)
+                        }
+                        size="md"
+                      >
+                        <ChakraSwitch.HiddenInput />
+                        <ChakraSwitch.Control>
+                          <ChakraSwitch.Thumb />
+                        </ChakraSwitch.Control>
+                      </ChakraSwitch.Root>
+                    </HStack>
                   </Box>
-                </HStack>
-
-                {/* Delete Account Row */}
-                <HStack
-                  justify="space-between"
-                  align="center"
-                  width="100%"
-                  py={{ base: 4, md: 5 }}
-                  borderWidth="2px"
-                  borderColor="mukuru.text.error"
-                  borderRadius="md"
-                  px={{ base: 4, md: 5 }}
-                  bg="rgba(239, 68, 68, 0.02)"
-                  flexWrap={{ base: 'wrap', sm: 'nowrap' }}
-                  gap={{ base: 3, sm: 0 }}
-                  mt="4"
-                >
-                  <VStack align="start" gap="1" flex="1" minW="0" pr={{ base: 0, sm: 4 }}>
-                    <Typography fontWeight="600" color="mukuru.text.error" fontSize="md">
-                      Delete Account
-                    </Typography>
-                    <Typography fontSize="sm" color="mukuru.grey.mediumDark" mt="0">
-                      Permanently delete your account and all data
-                    </Typography>
-                  </VStack>
-                  <Box flexShrink={0}>
-                    <Button
-                      variant="primary"
-                      className="mukuru-primary-button"
-                      size="md"
-                      onClick={onDeleteDialogOpen}
-                      bg="mukuru.text.error"
-                      _hover={{ bg: 'mukuru.text.error.dark' }}
-                      px="6"
-                    >
-                      Delete
-                    </Button>
-                  </Box>
-                </HStack>
+                </SimpleGrid>
               </VStack>
             </Box>
-          </Card>
+          </Box>
 
-          {/* Change Password Modal */}
-          <Modal
-            isOpen={isPasswordDialogOpen}
-            onClose={onPasswordDialogClose}
-            title="Change Password"
-          >
-            <ModalBody>
-              <VStack gap="5" align="stretch">
-                <VStack align="start" gap="2">
-                  <Typography fontSize="sm" fontWeight="600" color="mukuru.text.primary">
-                    Current Password
-                  </Typography>
-                  <Input
-                    type="password"
-                    value={passwordForm.currentPassword}
-                    onChange={(e) =>
-                      setPasswordForm({
-                        ...passwordForm,
-                        currentPassword: e.target.value,
-                      })
-                    }
-                    placeholder="Enter current password"
-                  />
-                </VStack>
-                <VStack align="start" gap="2">
-                  <Typography fontSize="sm" fontWeight="600" color="mukuru.text.primary">
-                    New Password
-                  </Typography>
-                  <Input
-                    type="password"
-                    value={passwordForm.newPassword}
-                    onChange={(e) =>
-                      setPasswordForm({ ...passwordForm, newPassword: e.target.value })
-                    }
-                    placeholder="Enter new password"
-                  />
-                </VStack>
-                <VStack align="start" gap="2">
-                  <Typography fontSize="sm" fontWeight="600" color="mukuru.text.primary">
-                    Confirm New Password
-                  </Typography>
-                  <Input
-                    type="password"
-                    value={passwordForm.confirmPassword}
-                    onChange={(e) =>
-                      setPasswordForm({
-                        ...passwordForm,
-                        confirmPassword: e.target.value,
-                      })
-                    }
-                    placeholder="Confirm new password"
-                  />
-                </VStack>
-              </VStack>
-            </ModalBody>
-            <ModalFooter>
-              <HStack gap="3" width="100%" justify="flex-end">
-                <Button variant="secondary" onClick={onPasswordDialogClose} size="md">
-                  Cancel
-                </Button>
-                <Button
-                  variant="primary"
-                  className="mukuru-primary-button"
-                  onClick={handleChangePassword}
-                  size="md"
-                >
-                  Change Password
-                </Button>
-              </HStack>
-            </ModalFooter>
-          </Modal>
-
-          {/* Delete Account Modal */}
-          <Modal
-            isOpen={isDeleteDialogOpen}
-            onClose={handleDeleteDialogClose}
-            title="Delete Account"
-          >
-            <ModalBody>
-              <VStack gap="5" align="stretch">
-                <AlertBar
-                  status="error"
-                  title="Warning"
-                  description="This action cannot be undone. All your data will be permanently deleted."
-                />
-                <VStack align="start" gap="2">
-                  <Typography fontSize="sm" fontWeight="600" color="mukuru.text.primary">
-                    Reason (optional)
-                  </Typography>
-                  <Input
-                    value={deleteReason}
-                    onChange={(e) => setDeleteReason(e.target.value)}
-                    placeholder="Why are you deleting your account?"
-                  />
-                </VStack>
-                <VStack align="start" gap="2">
-                  <Typography fontSize="sm" fontWeight="600" color="mukuru.text.error">
-                    Type "DELETE" to confirm
-                  </Typography>
-                  <Input
-                    value={deleteConfirmation}
-                    onChange={(e) => setDeleteConfirmation(e.target.value)}
-                    placeholder="Type DELETE to confirm"
-                  />
-                </VStack>
-              </VStack>
-            </ModalBody>
-            <ModalFooter>
-              <HStack gap="3" width="100%" justify="flex-end">
-                <Button variant="secondary" onClick={handleDeleteDialogClose} size="md">
-                  Cancel
-                </Button>
-                <Button
-                  onClick={handleDeleteAccount}
-                  variant="primary"
-                  className="mukuru-primary-button"
-                  size="md"
-                  disabled={deleteConfirmation !== 'DELETE'}
-                  bg="mukuru.text.error"
-                  _hover={{ bg: 'mukuru.text.error.dark' }}
-                  opacity={deleteConfirmation !== 'DELETE' ? 0.5 : 1}
-                >
-                  Delete Account
-                </Button>
-              </HStack>
-            </ModalFooter>
-          </Modal>
         </VStack>
-      </Container>
+      </Box>
     </Box>
   );
 }

@@ -31,37 +31,54 @@ const VERIFICATION_TOKEN_TTL = 24 * 60 * 60; // 24 hours
 export function RedisAdapter(): Adapter {
   // Helper function to get user by ID (used by multiple methods)
   const getUserById = async (id: string): Promise<AdapterUser | null> => {
-    const client = await getRedisClient();
-    const key = `${USER_PREFIX}${id}`;
-    const data = await client.get(key);
-    if (!data) return null;
-    return JSON.parse(data) as AdapterUser;
+    try {
+      const client = await getRedisClient();
+      const key = `${USER_PREFIX}${id}`;
+      const data = await client.get(key);
+      if (!data) return null;
+      return JSON.parse(data) as AdapterUser;
+    } catch (error) {
+      console.error('[RedisAdapter] Error getting user by ID:', error);
+      // Don't throw - return null to allow auth to continue without Redis if needed
+      return null;
+    }
   };
 
   return {
     // User operations
     async createUser(user: Omit<AdapterUser, 'id'>): Promise<AdapterUser> {
-      const client = await getRedisClient();
-      const userId = `user-${Date.now()}-${Math.random().toString(36).substring(7)}`;
-      const adapterUser: AdapterUser = {
-        ...user,
-        id: userId,
-        emailVerified: user.emailVerified || null,
-      };
+      try {
+        const client = await getRedisClient();
+        const userId = `user-${Date.now()}-${Math.random().toString(36).substring(7)}`;
+        const adapterUser: AdapterUser = {
+          ...user,
+          id: userId,
+          emailVerified: user.emailVerified || null,
+        };
 
-      const key = `${USER_PREFIX}${userId}`;
-      await client.setEx(key, USER_TTL, JSON.stringify(adapterUser));
+        const key = `${USER_PREFIX}${userId}`;
+        await client.setEx(key, USER_TTL, JSON.stringify(adapterUser));
 
-      // Also index by email for getUserByEmail
-      if (user.email) {
-        const emailKey = `${USER_PREFIX}email:${user.email}`;
-        await client.setEx(emailKey, USER_TTL, userId);
+        // Also index by email for getUserByEmail
+        if (user.email) {
+          const emailKey = `${USER_PREFIX}email:${user.email}`;
+          await client.setEx(emailKey, USER_TTL, userId);
+        }
+
+        if (process.env.NODE_ENV === 'development') {
+          console.info('[RedisAdapter] Created user', { userId, email: user.email });
+        }
+        return adapterUser;
+      } catch (error) {
+        console.error('[RedisAdapter] Error creating user:', error);
+        // Still create user object to allow auth to continue
+        const userId = `user-${Date.now()}-${Math.random().toString(36).substring(7)}`;
+        return {
+          ...user,
+          id: userId,
+          emailVerified: user.emailVerified || null,
+        };
       }
-
-      if (process.env.NODE_ENV === 'development') {
-        console.info('[RedisAdapter] Created user', { userId, email: user.email });
-      }
-      return adapterUser;
     },
 
     async getUser(id: string): Promise<AdapterUser | null> {
@@ -144,51 +161,62 @@ export function RedisAdapter(): Adapter {
     async createSession(
       session: Omit<AdapterSession, 'expires'> & { expires: Date }
     ): Promise<AdapterSession> {
-      const client = await getRedisClient();
-      const key = `${SESSION_PREFIX}${session.sessionToken}`;
-      const sessionData = {
-        ...session,
-        expires: session.expires.toISOString(),
-      };
-      // Calculate TTL from expires date
-      const ttl = Math.max(
-        0,
-        Math.floor((session.expires.getTime() - Date.now()) / 1000)
-      );
-      await client.setEx(key, ttl, JSON.stringify(sessionData));
-      if (process.env.NODE_ENV === 'development') {
-        console.info('[RedisAdapter] Created session', {
-          sessionToken: session.sessionToken,
-          userId: session.userId,
-        });
+      try {
+        const client = await getRedisClient();
+        const key = `${SESSION_PREFIX}${session.sessionToken}`;
+        const sessionData = {
+          ...session,
+          expires: session.expires.toISOString(),
+        };
+        // Calculate TTL from expires date
+        const ttl = Math.max(
+          0,
+          Math.floor((session.expires.getTime() - Date.now()) / 1000)
+        );
+        await client.setEx(key, ttl, JSON.stringify(sessionData));
+        if (process.env.NODE_ENV === 'development') {
+          console.info('[RedisAdapter] Created session', {
+            sessionToken: session.sessionToken,
+            userId: session.userId,
+          });
+        }
+        return session;
+      } catch (error) {
+        console.error('[RedisAdapter] Error creating session:', error);
+        // Still return session to allow auth to continue
+        return session;
       }
-      return session;
     },
 
     async getSessionAndUser(
       sessionToken: string
     ): Promise<{ session: AdapterSession; user: AdapterUser } | null> {
-      const client = await getRedisClient();
-      const key = `${SESSION_PREFIX}${sessionToken}`;
-      const sessionData = await client.get(key);
-      if (!sessionData) return null;
+      try {
+        const client = await getRedisClient();
+        const key = `${SESSION_PREFIX}${sessionToken}`;
+        const sessionData = await client.get(key);
+        if (!sessionData) return null;
 
-      const session = JSON.parse(sessionData) as {
-        expires: string;
-        userId: string;
-        [key: string]: unknown;
-      };
-      const adapterSession: AdapterSession = {
-        ...session,
-        expires: new Date(session.expires),
-        userId: session.userId,
-        sessionToken,
-      };
+        const session = JSON.parse(sessionData) as {
+          expires: string;
+          userId: string;
+          [key: string]: unknown;
+        };
+        const adapterSession: AdapterSession = {
+          ...session,
+          expires: new Date(session.expires),
+          userId: session.userId,
+          sessionToken,
+        };
 
-      const user = await getUserById(adapterSession.userId);
-      if (!user) return null;
+        const user = await getUserById(adapterSession.userId);
+        if (!user) return null;
 
-      return { session: adapterSession, user };
+        return { session: adapterSession, user };
+      } catch (error) {
+        console.error('[RedisAdapter] Error getting session and user:', error);
+        return null;
+      }
     },
 
     async updateSession(

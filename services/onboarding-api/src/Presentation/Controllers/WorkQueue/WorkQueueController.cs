@@ -1,6 +1,7 @@
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using OnboardingApi.Application.Projections.Interfaces;
 using OnboardingApi.Application.WorkQueue.Commands;
 using OnboardingApi.Application.WorkQueue.Queries;
 using OnboardingApi.Application.WorkQueue.Interfaces;
@@ -19,17 +20,20 @@ public class WorkQueueController : ControllerBase
     private readonly ILogger<WorkQueueController> _logger;
     private readonly IWorkItemRepository _workItemRepository;
     private readonly IOnboardingCaseRepository _caseRepository;
+    private readonly IProjectionRepository _projectionRepository;
     
     public WorkQueueController(
         IMediator mediator, 
         ILogger<WorkQueueController> logger,
         IWorkItemRepository workItemRepository,
-        IOnboardingCaseRepository caseRepository)
+        IOnboardingCaseRepository caseRepository,
+        IProjectionRepository projectionRepository)
     {
         _mediator = mediator;
         _logger = logger;
         _workItemRepository = workItemRepository;
         _caseRepository = caseRepository;
+        _projectionRepository = projectionRepository;
     }
     
     /// <summary>
@@ -129,15 +133,23 @@ public class WorkQueueController : ControllerBase
     }
     
     /// <summary>
-    /// Get work item by ID
+    /// Get work item by ID (also supports lookup by application ID as fallback)
     /// </summary>
     [HttpGet("{id:guid}")]
     [ProducesResponseType(typeof(WorkItemDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> GetWorkItemById(Guid id)
     {
+        // First try to find by work item ID
         var query = new GetWorkItemByIdQuery(id);
         var result = await _mediator.Send(query);
+        
+        // If not found, try to find by application ID as fallback
+        if (result == null)
+        {
+            var appQuery = new GetWorkItemByApplicationIdQuery(id);
+            result = await _mediator.Send(appQuery);
+        }
         
         if (result == null)
             return NotFound(new { message = $"Work item not found: {id}" });
@@ -258,6 +270,43 @@ public class WorkQueueController : ControllerBase
             return BadRequest(new { message = result.ErrorMessage });
         
         return Ok(new { message = "Work item unassigned successfully" });
+    }
+    
+    /// <summary>
+    /// Update work item priority
+    /// </summary>
+    [HttpPost("{id:guid}/update-priority")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> UpdatePriority(Guid id, [FromBody] UpdatePriorityRequest request)
+    {
+        try
+        {
+            // Parse priority first
+            if (!Enum.TryParse<WorkItemPriority>(request.Priority, true, out var priority))
+            {
+                return BadRequest(new { error = $"Invalid priority: {request.Priority}. Valid values: Low, Medium, High, Critical" });
+            }
+
+            var currentUserId = GetCurrentUserIdString();
+            
+            // Use direct update to avoid concurrency issues
+            var rowsAffected = await _workItemRepository.UpdatePriorityAsync(id, priority, currentUserId, HttpContext.RequestAborted);
+            
+            if (rowsAffected == 0)
+                return NotFound(new { error = $"Work item {id} not found" });
+
+            _logger.LogInformation("Work item {WorkItemId} priority updated to {Priority} by {UserId}", 
+                id, priority, currentUserId);
+
+            return Ok(new { message = "Priority updated successfully", priority = priority.ToString() });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error updating priority for work item {WorkItemId}", id);
+            return StatusCode(500, new { error = "Failed to update priority", details = ex.Message });
+        }
     }
     
     /// <summary>
@@ -671,6 +720,206 @@ public class WorkQueueController : ControllerBase
             return StatusCode(500, new { error = "Failed to create work item", details = ex.Message });
         }
     }
+
+    /// <summary>
+    /// Sync all work item assignments to case projections (backfill existing assignments)
+    /// </summary>
+    [HttpPost("sync/assignments")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    public async Task<IActionResult> SyncAssignmentsToCaseProjections(CancellationToken cancellationToken)
+    {
+        try
+        {
+            _logger.LogInformation("Starting sync of work item assignments to case projections...");
+            
+            // Get all work items that have assignments
+            var allWorkItems = await _workItemRepository.GetAllAsync(
+                status: null,
+                assignedTo: null,
+                riskLevel: null,
+                country: null,
+                isOverdue: null,
+                searchTerm: null,
+                cancellationToken);
+            
+            var syncedCount = 0;
+            var failedCount = 0;
+            var skippedCount = 0;
+            var syncedItems = new List<object>();
+            
+            foreach (var workItem in allWorkItems)
+            {
+                // Only sync items that have an assignment
+                if (workItem.AssignedTo == null)
+                {
+                    skippedCount++;
+                    continue;
+                }
+                
+                try
+                {
+                    var rowsAffected = await _projectionRepository.UpdateCaseAssigneeAsync(
+                        workItem.ApplicationId,
+                        workItem.AssignedTo.ToString(),
+                        workItem.AssignedToName,
+                        cancellationToken);
+                    
+                    if (rowsAffected > 0)
+                    {
+                        syncedCount++;
+                        syncedItems.Add(new 
+                        { 
+                            workItemId = workItem.Id, 
+                            applicationId = workItem.ApplicationId,
+                            assignedTo = workItem.AssignedToName 
+                        });
+                        _logger.LogInformation(
+                            "Synced assignment for case {CaseId}: {AssignedTo}",
+                            workItem.ApplicationId, workItem.AssignedToName);
+                    }
+                    else
+                    {
+                        // Case projection might not exist
+                        skippedCount++;
+                        _logger.LogWarning(
+                            "Case projection not found for ApplicationId {ApplicationId}",
+                            workItem.ApplicationId);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    failedCount++;
+                    _logger.LogError(ex, 
+                        "Failed to sync assignment for case {CaseId}",
+                        workItem.ApplicationId);
+                }
+            }
+            
+            _logger.LogInformation(
+                "Assignment sync completed: {SyncedCount} synced, {SkippedCount} skipped, {FailedCount} failed",
+                syncedCount, skippedCount, failedCount);
+            
+            return Ok(new 
+            { 
+                message = "Assignment sync completed",
+                syncedCount,
+                skippedCount,
+                failedCount,
+                syncedItems
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error syncing assignments to case projections");
+            return StatusCode(500, new { error = "Failed to sync assignments", details = ex.Message });
+        }
+    }
+
+    /// <summary>
+    /// Sync all work item statuses to case projections (backfill existing statuses)
+    /// </summary>
+    [HttpPost("sync/statuses")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    public async Task<IActionResult> SyncStatusesToCaseProjections(CancellationToken cancellationToken)
+    {
+        try
+        {
+            _logger.LogInformation("Starting sync of work item statuses to case projections...");
+            
+            // Get all work items
+            var allWorkItems = await _workItemRepository.GetAllAsync(
+                status: null,
+                assignedTo: null,
+                riskLevel: null,
+                country: null,
+                isOverdue: null,
+                searchTerm: null,
+                cancellationToken);
+            
+            var syncedCount = 0;
+            var failedCount = 0;
+            var skippedCount = 0;
+            var syncedItems = new List<object>();
+            
+            foreach (var workItem in allWorkItems)
+            {
+                // Map work item status to case projection status (frontend expected values)
+                string? caseStatus = workItem.Status switch
+                {
+                    WorkItemStatus.New => null, // Keep as SUBMITTED
+                    WorkItemStatus.Assigned => null, // Keep as SUBMITTED
+                    WorkItemStatus.InProgress => "IN_PROGRESS",
+                    WorkItemStatus.PendingApproval => "RISK_REVIEW",
+                    WorkItemStatus.Approved => "COMPLETE",
+                    WorkItemStatus.Completed => "COMPLETE",
+                    WorkItemStatus.Declined => "DECLINED",
+                    WorkItemStatus.Cancelled => "DECLINED",
+                    _ => null
+                };
+                
+                if (caseStatus == null)
+                {
+                    skippedCount++;
+                    continue;
+                }
+                
+                try
+                {
+                    var rowsAffected = await _projectionRepository.UpdateCaseStatusAsync(
+                        workItem.ApplicationId,
+                        caseStatus,
+                        cancellationToken);
+                    
+                    if (rowsAffected > 0)
+                    {
+                        syncedCount++;
+                        syncedItems.Add(new 
+                        { 
+                            workItemId = workItem.Id, 
+                            applicationId = workItem.ApplicationId,
+                            workItemStatus = workItem.Status.ToString(),
+                            caseStatus = caseStatus
+                        });
+                        _logger.LogInformation(
+                            "Synced status for case {CaseId}: {WorkItemStatus} -> {CaseStatus}",
+                            workItem.ApplicationId, workItem.Status, caseStatus);
+                    }
+                    else
+                    {
+                        skippedCount++;
+                        _logger.LogWarning(
+                            "Case projection not found for ApplicationId {ApplicationId}",
+                            workItem.ApplicationId);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    failedCount++;
+                    _logger.LogError(ex, 
+                        "Failed to sync status for case {CaseId}",
+                        workItem.ApplicationId);
+                }
+            }
+            
+            _logger.LogInformation(
+                "Status sync completed: {SyncedCount} synced, {SkippedCount} skipped, {FailedCount} failed",
+                syncedCount, skippedCount, failedCount);
+            
+            return Ok(new 
+            { 
+                message = "Status sync completed",
+                syncedCount,
+                skippedCount,
+                failedCount,
+                syncedItems
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error syncing statuses to case projections");
+            return StatusCode(500, new { error = "Failed to sync statuses", details = ex.Message });
+        }
+    }
 }
 
 // Request DTOs
@@ -690,4 +939,5 @@ public record CompleteWorkItemRequest(string? Notes);
 public record DeclineWorkItemRequest(string Reason);
 public record AddCommentRequest(string Text);
 public record UpdateStepReviewStatusRequest(string Field, bool Value, string? Notes = null);
+public record UpdatePriorityRequest(string Priority);
 

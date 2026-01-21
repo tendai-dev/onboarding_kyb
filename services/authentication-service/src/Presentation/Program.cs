@@ -116,6 +116,48 @@ builder.Services.AddAuthentication("Bearer")
                 return Task.CompletedTask;
             }
         };
+    })
+    // Google authentication for users signing in with Google
+    .AddJwtBearer("Google", options =>
+    {
+        var googleClientId = builder.Configuration["Google:ClientId"];
+        
+        options.Authority = "https://accounts.google.com";
+        options.RequireHttpsMetadata = !builder.Environment.IsDevelopment();
+        
+        options.TokenValidationParameters = new Microsoft.IdentityModel.Tokens.TokenValidationParameters
+        {
+            ValidateIssuerSigningKey = true,
+            ValidateIssuer = true,
+            ValidIssuers = new[]
+            {
+                "https://accounts.google.com",
+                "accounts.google.com"
+            },
+            ValidateAudience = true,
+            ValidAudience = googleClientId,
+            ValidateLifetime = true,
+            ClockSkew = TimeSpan.FromMinutes(5)
+        };
+
+        options.Events = new Microsoft.AspNetCore.Authentication.JwtBearer.JwtBearerEvents
+        {
+            OnTokenValidated = context =>
+            {
+                if (context.Principal is { } principal)
+                {
+                    var identity = principal.Identities.First();
+                    identity.AddClaim(new System.Security.Claims.Claim("token_source", "google"));
+                    
+                    // In development, auto-assign business-user role
+                    if (builder.Environment.IsDevelopment())
+                    {
+                        identity.AddClaim(new System.Security.Claims.Claim(System.Security.Claims.ClaimTypes.Role, "business-user"));
+                    }
+                }
+                return Task.CompletedTask;
+            }
+        };
     });
 
 builder.Services.AddAuthorization(options =>
@@ -130,7 +172,7 @@ builder.Services.AddAuthorization(options =>
     {
         // Production: require authentication from either scheme
         options.DefaultPolicy = new Microsoft.AspNetCore.Authorization.AuthorizationPolicyBuilder()
-            .AddAuthenticationSchemes("Keycloak", "AzureAD")
+            .AddAuthenticationSchemes("Keycloak", "AzureAD", "Google")
             .RequireAuthenticatedUser()
             .Build();
     }

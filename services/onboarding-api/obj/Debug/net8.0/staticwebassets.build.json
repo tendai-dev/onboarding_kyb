@@ -1,13 +1,13 @@
 {
   "Version": 1,
-  "Hash": "rp3uckwKgAZMNZiKXgIDRcarqnugBrqP09uvttNJatA=",
+  "Hash": "gCR9oUUPuTrQVcot42ts/tJ8sCC1hB2NTvG2NzIwqmE=",
   "Source": "OnboardingApi",
   "BasePath": "_content/OnboardingApi",
   "Mode": "Default",
   "ManifestType": "Build",
   "ReferencedProjectsConfiguration": [
     {
-      "Identity": "/Users/mukurusystemsadministrator/Desktop/Archive/services/onboarding-api/src/Presentation/OnboardingApi.Presentation.csproj",
+      "Identity": "/root/onboarding_kyc/services/onboarding-api/src/Presentation/OnboardingApi.Presentation.csproj",
       "Version": 2,
       "Source": "OnboardingApi.Presentation",
       "GetPublishAssetsTargets": "ComputeReferencedStaticWebAssetsPublishManifest;GetCurrentProjectPublishStaticWebAssetItems",
@@ -19,6 +19,5 @@
     }
   ],
   "DiscoveryPatterns": [],
-  "Assets": [],
-  "Endpoints": []
+  "Assets": []
 }

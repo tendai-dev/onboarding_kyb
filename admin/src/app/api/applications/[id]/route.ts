@@ -44,15 +44,15 @@ export async function GET(
 
     // Try to get by GUID first (if id is a GUID format)
     // Use the projections API search endpoint which works for both caseId and GUID
-    // Route through proxy
-    const searchPath = `/api/proxy/projections/v1/cases?searchTerm=${encodeURIComponent(id)}&take=10`;
-    const searchUrl = new URL(searchPath, request.url);
+    // Call backend directly to avoid SSL issues with self-referencing proxy calls
+    const backendUrl = process.env.PROXY_TARGET || process.env.ONBOARDING_TARGET || process.env.NEXT_PUBLIC_GATEWAY_URL || 'http://localhost:8001';
+    const searchUrl = `${backendUrl}/api/v1/projections/cases?searchTerm=${encodeURIComponent(id)}&take=10`;
 
-    logger.debug('[Admin Application Details] Searching projections API via proxy', {
-      url: searchUrl.toString(),
+    logger.debug('[Admin Application Details] Searching projections API directly', {
+      url: searchUrl,
     });
 
-    const response = await fetch(searchUrl.toString(), {
+    const response = await fetch(searchUrl, {
       method: 'GET',
       headers,
       cache: 'no-store',
@@ -119,13 +119,12 @@ export async function GET(
       try {
         logger.debug(
           '[Admin Application Details] Not found in projections, trying onboarding API by GUID',
-          { path: `/api/proxy/api/v1/cases/${id}` }
+          { path: `${backendUrl}/api/v1/cases/${id}` }
         );
 
-        // Route through proxy
-        const onboardingPath = `/api/proxy/api/v1/cases/${id}`;
-        const onboardingUrl = new URL(onboardingPath, request.url);
-        const onboardingResponse = await fetch(onboardingUrl.toString(), {
+        // Call backend directly to avoid SSL issues
+        const onboardingUrl = `${backendUrl}/api/v1/cases/${id}`;
+        const onboardingResponse = await fetch(onboardingUrl, {
           method: 'GET',
           headers,
           cache: 'no-store',
@@ -272,13 +271,12 @@ export async function GET(
     if (!isGuid(id) || !foundInProjections) {
       try {
         logger.debug('[Admin Application Details] Trying onboarding API by case number', {
-          path: `/api/proxy/api/v1/cases/by-number/${id}`,
+          path: `${backendUrl}/api/v1/cases/by-number/${id}`,
         });
 
-        // Route through proxy
-        const onboardingPath = `/api/proxy/api/v1/cases/by-number/${encodeURIComponent(id)}`;
-        const onboardingUrl = new URL(onboardingPath, request.url);
-        const onboardingResponse = await fetch(onboardingUrl.toString(), {
+        // Call backend directly to avoid SSL issues
+        const onboardingUrl = `${backendUrl}/api/v1/cases/by-number/${encodeURIComponent(id)}`;
+        const onboardingResponse = await fetch(onboardingUrl, {
           method: 'GET',
           headers,
           cache: 'no-store',

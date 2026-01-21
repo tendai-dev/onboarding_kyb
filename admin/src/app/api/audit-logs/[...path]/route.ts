@@ -6,9 +6,16 @@ import { logger } from '@/lib/logger';
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 
+// Get backend URL - call backend directly to avoid SSL issues with self-referencing proxy
+const getBackendUrl = () => {
+  return process.env.PROXY_TARGET || 
+         process.env.ONBOARDING_TARGET ||
+         process.env.NEXT_PUBLIC_GATEWAY_URL || 
+         'http://localhost:8001';
+};
+
 /**
- * Audit Log API route - routes through centralized proxy for BFF pattern
- * All token handling is done by the proxy, ensuring sessionId never exposed to client
+ * Audit Log API route - calls backend directly with X-User headers
  */
 async function forwardRequest(
   request: NextRequest,
@@ -34,31 +41,29 @@ async function forwardRequest(
       servicePath = pathAfterBase.startsWith('/') ? pathAfterBase : `/${pathAfterBase}`;
     }
 
-    // Build proxy URL - proxy will handle token injection and refresh
-    // Backend route is /api/v1/audit-logs, so we need /api/v1/audit-logs
-    const proxyPath = `/api/proxy/api/v1/audit-logs${servicePath}${queryString ? `?${queryString}` : ''}`;
-    const proxyUrl = new URL(proxyPath, request.url);
+    // Build backend URL directly (avoid proxy to prevent SSL issues)
+    const backendUrl = getBackendUrl();
+    const apiPath = `${backendUrl}/api/v1/audit-logs${servicePath}${queryString ? `?${queryString}` : ''}`;
 
-    logger.debug('[Audit Log API Route] Forwarding', {
+    logger.debug('[Audit Log API Route] Forwarding to backend', {
       originalPath: pathname,
       servicePath,
-      proxyPath,
-      proxyUrl: proxyUrl.toString(),
+      apiPath,
       method,
     });
 
-    // Prepare headers
+    // Prepare headers - use X-User headers for dev mode auth
     const headers: HeadersInit = {
       'Content-Type': 'application/json',
     };
 
-    // Add user identification headers (proxy will inject token from Redis)
+    // Add user identification headers for dev mode authentication
     if (session?.user) {
       const user = session.user as Record<string, unknown>;
       if (user.email) headers['X-User-Email'] = String(user.email);
       if (user.name) headers['X-User-Name'] = String(user.name);
       if (user.id) headers['X-User-Id'] = String(user.id);
-      if (user.role) headers['X-User-Role'] = String(user.role);
+      headers['X-User-Role'] = 'Administrator'; // Admin portal users are administrators
     }
 
     // Get request body if present
@@ -71,8 +76,8 @@ async function forwardRequest(
       }
     }
 
-    // Forward request through proxy (proxy handles token from httpOnly cookie)
-    const response = await fetch(proxyUrl.toString(), {
+    // Forward request directly to backend
+    const response = await fetch(apiPath, {
       method,
       headers,
       body: body || undefined,

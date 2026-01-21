@@ -6,7 +6,15 @@
 
 import { OnboardingCaseProjection, PagedResult } from '../dtos/application.dto';
 
-const API_BASE_URL = typeof window !== 'undefined' ? '' : 'http://localhost:3001';
+// Use NEXTAUTH_URL or NEXT_PUBLIC_APP_URL for server-side requests, relative path for client-side
+const getApiBaseUrl = () => {
+  if (typeof window !== 'undefined') {
+    return ''; // Use relative path in browser
+  }
+  // Server-side: use NEXTAUTH_URL or NEXT_PUBLIC_APP_URL, fallback to localhost
+  return process.env.NEXTAUTH_URL || process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3001';
+};
+const API_BASE_URL = getApiBaseUrl();
 
 // Helper function to convert snake_case to camelCase
 function snakeToCamel(str: string): string {

@@ -5,7 +5,14 @@
 
 import { DashboardStats, DailyTrend, DashboardProjection } from '../dtos/dashboard.dto';
 
-const API_BASE_URL = typeof window !== 'undefined' ? '' : 'http://localhost:3001';
+// Use NEXTAUTH_URL or NEXT_PUBLIC_APP_URL for server-side requests, relative path for client-side
+const getApiBaseUrl = () => {
+  if (typeof window !== 'undefined') {
+    return ''; // Use relative path in browser
+  }
+  // Server-side: use NEXTAUTH_URL or NEXT_PUBLIC_APP_URL, fallback to localhost
+  return process.env.NEXTAUTH_URL || process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3001';
+};
 
 /**
  * Get dashboard statistics
@@ -16,7 +23,7 @@ export async function getDashboardStats(partnerId?: string): Promise<DashboardSt
     params.append('partnerId', partnerId);
   }
 
-  const response = await fetch(`${API_BASE_URL}/api/dashboard?${params.toString()}`, {
+  const response = await fetch(`${getApiBaseUrl()}/api/dashboard?${params.toString()}`, {
     method: 'GET',
     headers: {
       'Content-Type': 'application/json',
@@ -46,7 +53,7 @@ export async function getEntityTypeDistribution(
   }
 
   const response = await fetch(
-    `${API_BASE_URL}/api/entity-type-distribution?${params.toString()}`,
+    `${getApiBaseUrl()}/api/entity-type-distribution?${params.toString()}`,
     {
       method: 'GET',
       headers: {
@@ -75,7 +82,7 @@ export async function getDailyTrends(partnerId?: string): Promise<DailyTrend[]> 
     params.append('partnerId', partnerId);
   }
 
-  const response = await fetch(`${API_BASE_URL}/api/trends?${params.toString()}`, {
+  const response = await fetch(`${getApiBaseUrl()}/api/trends?${params.toString()}`, {
     method: 'GET',
     headers: {
       'Content-Type': 'application/json',
@@ -107,7 +114,7 @@ export async function getApplicationTrends(
     params.append('partnerId', partnerId);
   }
 
-  const response = await fetch(`${API_BASE_URL}/api/trends?${params.toString()}`, {
+  const response = await fetch(`${getApiBaseUrl()}/api/trends?${params.toString()}`, {
     method: 'GET',
     headers: {
       'Content-Type': 'application/json',
@@ -136,7 +143,7 @@ export async function getDashboardProjection(
     params.append('partnerId', partnerId);
   }
 
-  const response = await fetch(`${API_BASE_URL}/api/dashboard?${params.toString()}`, {
+  const response = await fetch(`${getApiBaseUrl()}/api/dashboard?${params.toString()}`, {
     method: 'GET',
     headers: {
       'Content-Type': 'application/json',

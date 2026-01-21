@@ -115,11 +115,27 @@ export default function ApplicationDetailsPage() {
         }
 
         // Normalize entity type code to match database format
-        const normalizedCode = cleanedCode
-          .toLowerCase()
-          .replace(/\s+/g, '_')
-          .replace('business', 'company')
-          .replace('individual', 'sole_proprietor');
+        // Map common entity type names to database codes
+        const entityTypeMapping: Record<string, string> = {
+          'business': 'PRIVATE_COMPANY',
+          'company': 'PRIVATE_COMPANY',
+          'private_company': 'PRIVATE_COMPANY',
+          'public_company': 'PUBLIC_COMPANY',
+          'individual': 'SOLE_PROPRIETORSHIP',
+          'sole_proprietor': 'SOLE_PROPRIETORSHIP',
+          'sole_proprietorship': 'SOLE_PROPRIETORSHIP',
+          'ngo': 'NGO',
+          'non-profit': 'NGO',
+          'nonprofit': 'NGO',
+          'trust': 'TRUST',
+          'government': 'GOVERNMENT_ENTITY',
+          'government_entity': 'GOVERNMENT_ENTITY',
+          'association': 'ASSOCIATION',
+          'supranational': 'SUPRANATIONAL',
+        };
+
+        const lowerCode = cleanedCode.toLowerCase().replace(/\s+/g, '_');
+        const normalizedCode = entityTypeMapping[lowerCode] || lowerCode.toUpperCase();
 
         console.info(
           `[Frontend] Looking up entity config for code: "${normalizedCode}" (original: "${rawCode}")`
@@ -136,12 +152,15 @@ export default function ApplicationDetailsPage() {
           setEntityTypeConfig(config);
           setFormSchema(config); // Also set formSchema so the form renders
         } else {
-          // If not found by code, try searching in the list
+          // If not found by code, try searching in the list with flexible matching
           const entities = await entityConfigApiService.getEntityTypes(false, true);
           const foundConfig = entities.find(
             (e) =>
-              e.code.toLowerCase() === normalizedCode ||
-              e.displayName?.toLowerCase() === application.entityType.toLowerCase()
+              e.code.toLowerCase() === normalizedCode.toLowerCase() ||
+              e.code.toLowerCase().includes(lowerCode) ||
+              lowerCode.includes(e.code.toLowerCase()) ||
+              e.displayName?.toLowerCase() === application.entityType.toLowerCase() ||
+              e.displayName?.toLowerCase().includes(application.entityType.toLowerCase())
           );
 
           if (foundConfig) {
@@ -149,6 +168,16 @@ export default function ApplicationDetailsPage() {
             setEntityTypeConfig(foundConfig);
             setFormSchema(foundConfig); // Also set formSchema so the form renders
           } else {
+            // Default to PRIVATE_COMPANY if no match found for "Business" type
+            if (application.entityType.toLowerCase() === 'business') {
+              const defaultConfig = entities.find(e => e.code === 'PRIVATE_COMPANY');
+              if (defaultConfig) {
+                console.info('Using PRIVATE_COMPANY as default for Business type:', defaultConfig);
+                setEntityTypeConfig(defaultConfig);
+                setFormSchema(defaultConfig);
+                return;
+              }
+            }
             console.warn(
               'No entity configuration found in database for entity type:',
               application.entityType,
@@ -1134,7 +1163,7 @@ export default function ApplicationDetailsPage() {
 
   return (
     <Box minH="100vh" bg="mukuru.background.light">
-      <PartnerHeader />
+      <PartnerHeader hideNewApplication={true} showBackButton={false} />
       {/* Wizard Header */}
       <Box bg="mukuru.cards.white" boxShadow="sm" position="sticky" top="0" zIndex="10">
         <Container maxW="4xl" py="6">

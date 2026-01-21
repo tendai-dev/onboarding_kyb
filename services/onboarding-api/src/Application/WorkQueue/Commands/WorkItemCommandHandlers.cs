@@ -1,5 +1,6 @@
 using MediatR;
 using Microsoft.Extensions.Logging;
+using OnboardingApi.Application.Projections.Interfaces;
 using OnboardingApi.Application.WorkQueue.Interfaces;
 using OnboardingApi.Domain.WorkQueue.Aggregates;
 using OnboardingApi.Domain.WorkQueue.ValueObjects;
@@ -56,11 +57,16 @@ public class CreateWorkItemCommandHandler : IRequestHandler<CreateWorkItemComman
 public class AssignWorkItemCommandHandler : IRequestHandler<AssignWorkItemCommand, AssignWorkItemResult>
 {
     private readonly IWorkItemRepository _repository;
+    private readonly IProjectionRepository _projectionRepository;
     private readonly ILogger<AssignWorkItemCommandHandler> _logger;
 
-    public AssignWorkItemCommandHandler(IWorkItemRepository repository, ILogger<AssignWorkItemCommandHandler> logger)
+    public AssignWorkItemCommandHandler(
+        IWorkItemRepository repository, 
+        IProjectionRepository projectionRepository,
+        ILogger<AssignWorkItemCommandHandler> logger)
     {
         _repository = repository;
+        _projectionRepository = projectionRepository;
         _logger = logger;
     }
 
@@ -68,6 +74,7 @@ public class AssignWorkItemCommandHandler : IRequestHandler<AssignWorkItemComman
     {
         const int maxRetries = 3;
         int attempt = 0;
+        Guid? applicationId = null;
         
         while (attempt < maxRetries)
         {
@@ -88,6 +95,7 @@ public class AssignWorkItemCommandHandler : IRequestHandler<AssignWorkItemComman
                 // Store values before assignment for history
                 var previousAssignee = workItem.AssignedToName;
                 var currentStatus = workItem.Status.ToString();
+                applicationId = workItem.ApplicationId;
                 
                 // Use ExecuteUpdate to update the work item directly in the database
                 // This bypasses change tracking and avoids concurrency issues
@@ -112,6 +120,30 @@ public class AssignWorkItemCommandHandler : IRequestHandler<AssignWorkItemComman
                     request.AssignedByUserId,
                     currentStatus,
                     cancellationToken);
+                
+                // Sync assignment to case projection so Applications screen shows same assignee
+                if (applicationId.HasValue)
+                {
+                    try
+                    {
+                        await _projectionRepository.UpdateCaseAssigneeAsync(
+                            applicationId.Value,
+                            request.AssignedToUserId.ToString(),
+                            request.AssignedToUserName,
+                            cancellationToken);
+                        
+                        _logger.LogInformation(
+                            "Synced assignment to case projection: CaseId={CaseId}, AssignedTo={AssignedTo}",
+                            applicationId.Value, request.AssignedToUserName);
+                    }
+                    catch (Exception ex)
+                    {
+                        // Log but don't fail the work item assignment if projection sync fails
+                        _logger.LogWarning(ex, 
+                            "Failed to sync assignment to case projection for CaseId={CaseId}. Work item assignment succeeded.",
+                            applicationId.Value);
+                    }
+                }
                 
                 _logger.LogInformation(
                     "Work item {WorkItemId} assigned to user {UserId} ({UserName}) on attempt {Attempt}",
@@ -152,10 +184,17 @@ public class AssignWorkItemCommandHandler : IRequestHandler<AssignWorkItemComman
 public class UnassignWorkItemCommandHandler : IRequestHandler<UnassignWorkItemCommand, UnassignWorkItemResult>
 {
     private readonly IWorkItemRepository _repository;
+    private readonly IProjectionRepository _projectionRepository;
+    private readonly ILogger<UnassignWorkItemCommandHandler> _logger;
 
-    public UnassignWorkItemCommandHandler(IWorkItemRepository repository)
+    public UnassignWorkItemCommandHandler(
+        IWorkItemRepository repository,
+        IProjectionRepository projectionRepository,
+        ILogger<UnassignWorkItemCommandHandler> logger)
     {
         _repository = repository;
+        _projectionRepository = projectionRepository;
+        _logger = logger;
     }
 
     public async Task<UnassignWorkItemResult> Handle(UnassignWorkItemCommand request, CancellationToken cancellationToken)
@@ -166,9 +205,32 @@ public class UnassignWorkItemCommandHandler : IRequestHandler<UnassignWorkItemCo
             if (workItem == null)
                 return UnassignWorkItemResult.Failed("Work item not found");
 
+            var applicationId = workItem.ApplicationId;
+            
             workItem.Unassign(request.UnassignedByUserId);
             await _repository.UpdateAsync(workItem, cancellationToken);
             await _repository.SaveChangesAsync(cancellationToken);
+            
+            // Sync unassignment to case projection
+            try
+            {
+                await _projectionRepository.UpdateCaseAssigneeAsync(
+                    applicationId,
+                    null,
+                    null,
+                    cancellationToken);
+                
+                _logger.LogInformation(
+                    "Synced unassignment to case projection: CaseId={CaseId}",
+                    applicationId);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, 
+                    "Failed to sync unassignment to case projection for CaseId={CaseId}. Work item unassignment succeeded.",
+                    applicationId);
+            }
+            
             return UnassignWorkItemResult.Successful();
         }
         catch (Exception ex)
@@ -181,13 +243,16 @@ public class UnassignWorkItemCommandHandler : IRequestHandler<UnassignWorkItemCo
 public class StartReviewCommandHandler : IRequestHandler<StartReviewCommand, StartReviewResult>
 {
     private readonly IWorkItemRepository _repository;
+    private readonly IProjectionRepository _projectionRepository;
     private readonly ILogger<StartReviewCommandHandler> _logger;
 
     public StartReviewCommandHandler(
         IWorkItemRepository repository,
+        IProjectionRepository projectionRepository,
         ILogger<StartReviewCommandHandler> logger)
     {
         _repository = repository;
+        _projectionRepository = projectionRepository;
         _logger = logger;
     }
 
@@ -195,6 +260,7 @@ public class StartReviewCommandHandler : IRequestHandler<StartReviewCommand, Sta
     {
         const int maxRetries = 3;
         int attempt = 0;
+        Guid? applicationId = null;
         
         while (attempt < maxRetries)
         {
@@ -213,6 +279,8 @@ public class StartReviewCommandHandler : IRequestHandler<StartReviewCommand, Sta
 
                 if (workItem.Status != WorkItemStatus.Assigned)
                     return StartReviewResult.Failed($"Cannot start review from status: {workItem.Status}");
+
+                applicationId = workItem.ApplicationId;
 
                 // Use ExecuteUpdate to update the work item directly in the database
                 // This bypasses change tracking and avoids concurrency issues
@@ -235,6 +303,23 @@ public class StartReviewCommandHandler : IRequestHandler<StartReviewCommand, Sta
                     request.ReviewedByUserId,
                     WorkItemStatus.InProgress.ToString(),
                     cancellationToken);
+                
+                // Sync status to case projection: InProgress -> "IN_PROGRESS" (frontend expected value)
+                if (applicationId.HasValue)
+                {
+                    try
+                    {
+                        await _projectionRepository.UpdateCaseStatusAsync(
+                            applicationId.Value,
+                            "IN_PROGRESS",
+                            cancellationToken);
+                        _logger.LogInformation("Synced status to case projection: CaseId={CaseId}, Status=IN_PROGRESS", applicationId.Value);
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogWarning(ex, "Failed to sync status to case projection for CaseId={CaseId}", applicationId.Value);
+                    }
+                }
                 
                 _logger.LogInformation(
                     "Work item {WorkItemId} review started by {UserId} on attempt {Attempt}",
@@ -401,13 +486,16 @@ public class ApproveWorkItemCommandHandler : IRequestHandler<ApproveWorkItemComm
 public class CompleteWorkItemCommandHandler : IRequestHandler<CompleteWorkItemCommand, CompleteWorkItemResult>
 {
     private readonly IWorkItemRepository _repository;
+    private readonly IProjectionRepository _projectionRepository;
     private readonly ILogger<CompleteWorkItemCommandHandler> _logger;
 
     public CompleteWorkItemCommandHandler(
         IWorkItemRepository repository,
+        IProjectionRepository projectionRepository,
         ILogger<CompleteWorkItemCommandHandler> logger)
     {
         _repository = repository;
+        _projectionRepository = projectionRepository;
         _logger = logger;
     }
 
@@ -415,6 +503,7 @@ public class CompleteWorkItemCommandHandler : IRequestHandler<CompleteWorkItemCo
     {
         const int maxRetries = 3;
         int attempt = 0;
+        Guid? applicationId = null;
         
         while (attempt < maxRetries)
         {
@@ -433,6 +522,8 @@ public class CompleteWorkItemCommandHandler : IRequestHandler<CompleteWorkItemCo
 
                 if (workItem.RequiresApproval && workItem.Status != WorkItemStatus.Approved)
                     return CompleteWorkItemResult.Failed("Work item must be approved before completion");
+
+                applicationId = workItem.ApplicationId;
 
                 // Use ExecuteUpdate to complete the work item directly in the database
                 // This bypasses change tracking and avoids concurrency issues with owned collections
@@ -455,6 +546,23 @@ public class CompleteWorkItemCommandHandler : IRequestHandler<CompleteWorkItemCo
                     request.CompletedByUserId,
                     WorkItemStatus.Completed.ToString(),
                     cancellationToken);
+                
+                // Sync status to case projection: Completed -> "COMPLETE" (frontend expected value)
+                if (applicationId.HasValue)
+                {
+                    try
+                    {
+                        await _projectionRepository.UpdateCaseStatusAsync(
+                            applicationId.Value,
+                            "COMPLETE",
+                            cancellationToken);
+                        _logger.LogInformation("Synced status to case projection: CaseId={CaseId}, Status=COMPLETE", applicationId.Value);
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogWarning(ex, "Failed to sync status to case projection for CaseId={CaseId}", applicationId.Value);
+                    }
+                }
                 
                 _logger.LogInformation(
                     "Work item {WorkItemId} completed by {UserId} on attempt {Attempt}",
@@ -494,10 +602,17 @@ public class CompleteWorkItemCommandHandler : IRequestHandler<CompleteWorkItemCo
 public class DeclineWorkItemCommandHandler : IRequestHandler<DeclineWorkItemCommand, DeclineWorkItemResult>
 {
     private readonly IWorkItemRepository _repository;
+    private readonly IProjectionRepository _projectionRepository;
+    private readonly ILogger<DeclineWorkItemCommandHandler> _logger;
 
-    public DeclineWorkItemCommandHandler(IWorkItemRepository repository)
+    public DeclineWorkItemCommandHandler(
+        IWorkItemRepository repository,
+        IProjectionRepository projectionRepository,
+        ILogger<DeclineWorkItemCommandHandler> logger)
     {
         _repository = repository;
+        _projectionRepository = projectionRepository;
+        _logger = logger;
     }
 
     public async Task<DeclineWorkItemResult> Handle(DeclineWorkItemCommand request, CancellationToken cancellationToken)
@@ -508,9 +623,26 @@ public class DeclineWorkItemCommandHandler : IRequestHandler<DeclineWorkItemComm
             if (workItem == null)
                 return DeclineWorkItemResult.Failed("Work item not found");
 
+            var applicationId = workItem.ApplicationId;
+
             workItem.Decline(request.DeclinedByUserId, request.Reason);
             await _repository.UpdateAsync(workItem, cancellationToken);
             await _repository.SaveChangesAsync(cancellationToken);
+            
+            // Sync status to case projection: Declined -> "DECLINED" (frontend expected value)
+            try
+            {
+                await _projectionRepository.UpdateCaseStatusAsync(
+                    applicationId,
+                    "DECLINED",
+                    cancellationToken);
+                _logger.LogInformation("Synced status to case projection: CaseId={CaseId}, Status=DECLINED", applicationId);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Failed to sync status to case projection for CaseId={CaseId}", applicationId);
+            }
+            
             return DeclineWorkItemResult.Successful();
         }
         catch (Exception ex)

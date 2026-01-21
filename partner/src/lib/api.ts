@@ -48,7 +48,16 @@ export type DashboardSummary = {
 
 // Route via Next.js proxy to avoid CORS
 // Proxy will automatically inject tokens from Redis based on session cookie
-const API_BASE = process.env.NEXT_PUBLIC_API_BASE || 'http://localhost:3000/api/proxy';
+// Use NEXTAUTH_URL or NEXT_PUBLIC_APP_URL for server-side, relative path for client-side
+const getApiBase = () => {
+  if (typeof window !== 'undefined') {
+    return '/api/proxy'; // Use relative path in browser
+  }
+  // Server-side: use NEXTAUTH_URL or NEXT_PUBLIC_APP_URL, fallback to localhost
+  const baseUrl = process.env.NEXTAUTH_URL || process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+  return `${baseUrl}/api/proxy`;
+};
+const API_BASE = getApiBase();
 const MESSAGING_PREFIX = '/api/v1'; // Messaging is part of unified onboarding-api
 
 // Tokens are no longer accessed from localStorage - proxy handles authentication
@@ -775,18 +784,28 @@ export async function findUserCaseByEmail(email: string): Promise<UserCase | nul
       }
       const caseApiResult = await apiGet<{
         items: Array<{
-          caseId: string;
-          caseNumber: string;
+          case_id?: string;
+          caseId?: string;
+          case_number?: string;
+          caseNumber?: string;
           type: string;
           status: string;
-          partnerId: string;
+          partner_id?: string;
+          partnerId?: string;
+          applicant_first_name?: string;
           applicantFirstName?: string;
+          applicant_last_name?: string;
           applicantLastName?: string;
+          applicant_email?: string;
           applicantEmail?: string;
+          applicant_country?: string;
           applicantCountry?: string;
+          business_legal_name?: string;
           businessLegalName?: string;
-          createdAt: string;
-          updatedAt: string;
+          created_at?: string;
+          createdAt?: string;
+          updated_at?: string;
+          updatedAt?: string;
         }>;
         totalCount: number;
       }>(fallbackUrl);
@@ -938,28 +957,36 @@ export async function findUserCaseByEmail(email: string): Promise<UserCase | nul
       // OR if any case has a PartnerId that matches (even if our generation was approximate)
       if (userPartnerId && caseApiResult?.items && caseApiResult.items.length > 0) {
         // Check if any case has a matching PartnerId (case-insensitive)
+        // Backend uses snake_case, so check both formats
         const partnerIdMatch = caseApiResult.items.find(
-          (c) => c.partnerId && c.partnerId.toLowerCase() === userPartnerId.toLowerCase()
+          (c) => {
+            const itemPartnerId = c.partner_id || c.partnerId;
+            return itemPartnerId && itemPartnerId.toLowerCase() === userPartnerId.toLowerCase();
+          }
         );
 
         if (partnerIdMatch) {
           // Found case with matching PartnerId - this is the user's case
-          const caseId = partnerIdMatch.caseNumber || partnerIdMatch.caseId;
+          // Backend uses snake_case, so extract with fallbacks
+          const applicationGuid = partnerIdMatch.case_id || partnerIdMatch.caseId || '';
+          const caseNumber = partnerIdMatch.case_number || partnerIdMatch.caseNumber || applicationGuid;
+          const partnerId = partnerIdMatch.partner_id || partnerIdMatch.partnerId || '';
           console.info(
-            `✅ Found case by PartnerId match: ${caseId} (partnerId: ${partnerIdMatch.partnerId})`
+            `✅ Found case by PartnerId match: GUID=${applicationGuid}, caseNumber=${caseNumber} (partnerId: ${partnerId})`
           );
           return {
-            caseId: caseId,
+            id: applicationGuid,
+            caseId: caseNumber,
             type: partnerIdMatch.type,
             status: partnerIdMatch.status,
-            partnerId: partnerIdMatch.partnerId,
-            applicantFirstName: partnerIdMatch.applicantFirstName,
-            applicantLastName: partnerIdMatch.applicantLastName,
-            applicantEmail: partnerIdMatch.applicantEmail,
-            country: partnerIdMatch.applicantCountry,
-            businessLegalName: partnerIdMatch.businessLegalName,
-            createdAt: partnerIdMatch.createdAt,
-            updatedAt: partnerIdMatch.updatedAt,
+            partnerId: partnerId,
+            applicantFirstName: partnerIdMatch.applicant_first_name || partnerIdMatch.applicantFirstName,
+            applicantLastName: partnerIdMatch.applicant_last_name || partnerIdMatch.applicantLastName,
+            applicantEmail: partnerIdMatch.applicant_email || partnerIdMatch.applicantEmail,
+            country: partnerIdMatch.applicant_country || partnerIdMatch.applicantCountry,
+            businessLegalName: partnerIdMatch.business_legal_name || partnerIdMatch.businessLegalName,
+            createdAt: partnerIdMatch.created_at || partnerIdMatch.createdAt,
+            updatedAt: partnerIdMatch.updated_at || partnerIdMatch.updatedAt,
           };
         }
 
@@ -967,22 +994,26 @@ export async function findUserCaseByEmail(email: string): Promise<UserCase | nul
         // (Backend validates ownership, so if PartnerId filter returned results, they're valid)
         if (fallbackUrl.includes('partnerId=')) {
           const matchingCase = caseApiResult.items[0];
-          const caseId = matchingCase.caseNumber || matchingCase.caseId;
+          // Backend uses snake_case, so extract with fallbacks
+          const applicationGuid = matchingCase.case_id || matchingCase.caseId || '';
+          const caseNumber = matchingCase.case_number || matchingCase.caseNumber || applicationGuid;
+          const partnerId = matchingCase.partner_id || matchingCase.partnerId || '';
           console.info(
-            `✅ Found case by PartnerId query: ${caseId} (partnerId: ${matchingCase.partnerId}, query used: ${userPartnerId})`
+            `✅ Found case by PartnerId query: GUID=${applicationGuid}, caseNumber=${caseNumber} (partnerId: ${partnerId}, query used: ${userPartnerId})`
           );
           return {
-            caseId: caseId,
+            id: applicationGuid,
+            caseId: caseNumber,
             type: matchingCase.type,
             status: matchingCase.status,
-            partnerId: matchingCase.partnerId,
-            applicantFirstName: matchingCase.applicantFirstName,
-            applicantLastName: matchingCase.applicantLastName,
-            applicantEmail: matchingCase.applicantEmail,
-            country: matchingCase.applicantCountry,
-            businessLegalName: matchingCase.businessLegalName,
-            createdAt: matchingCase.createdAt,
-            updatedAt: matchingCase.updatedAt,
+            partnerId: partnerId,
+            applicantFirstName: matchingCase.applicant_first_name || matchingCase.applicantFirstName,
+            applicantLastName: matchingCase.applicant_last_name || matchingCase.applicantLastName,
+            applicantEmail: matchingCase.applicant_email || matchingCase.applicantEmail,
+            country: matchingCase.applicant_country || matchingCase.applicantCountry,
+            businessLegalName: matchingCase.business_legal_name || matchingCase.businessLegalName,
+            createdAt: matchingCase.created_at || matchingCase.createdAt,
+            updatedAt: matchingCase.updated_at || matchingCase.updatedAt,
           };
         }
       }
@@ -992,16 +1023,20 @@ export async function findUserCaseByEmail(email: string): Promise<UserCase | nul
       const normalizedSearchEmail = email.toLowerCase().trim();
 
       // Find case where applicant email matches
+      // Backend uses snake_case, so check both formats
       const matchingCase = caseApiResult?.items?.find((c) => {
-        if (!c.applicantEmail) return false;
+        const caseEmail = c.applicant_email || c.applicantEmail;
+        if (!caseEmail) return false;
 
         // Normalize case email (trim and lowercase)
-        const normalizedCaseEmail = c.applicantEmail.toLowerCase().trim();
+        const normalizedCaseEmail = caseEmail.toLowerCase().trim();
         const emailMatch = normalizedCaseEmail === normalizedSearchEmail;
 
         if (emailMatch) {
+          const caseNumber = c.case_number || c.caseNumber || c.case_id || c.caseId;
+          const partnerId = c.partner_id || c.partnerId;
           console.info(
-            `✅ Found matching case by email: ${c.caseNumber || c.caseId} (email: ${c.applicantEmail}, partnerId: ${c.partnerId})`
+            `✅ Found matching case by email: ${caseNumber} (email: ${caseEmail}, partnerId: ${partnerId})`
           );
           return true;
         }
@@ -1010,13 +1045,17 @@ export async function findUserCaseByEmail(email: string): Promise<UserCase | nul
 
       // If no exact email match, log all available emails for debugging
       if (!matchingCase && caseApiResult?.items && caseApiResult.items.length > 0) {
-        const availableEmails = caseApiResult.items.slice(0, 10).map((c) => ({
-          caseNumber: c.caseNumber || c.caseId,
-          email: c.applicantEmail,
-          emailNormalized: c.applicantEmail?.toLowerCase().trim(),
-          searchEmailNormalized: normalizedSearchEmail,
-          matches: c.applicantEmail?.toLowerCase().trim() === normalizedSearchEmail,
-        }));
+        const availableEmails = caseApiResult.items.slice(0, 10).map((c) => {
+          const caseEmail = c.applicant_email || c.applicantEmail;
+          const caseNumber = c.case_number || c.caseNumber || c.case_id || c.caseId;
+          return {
+            caseNumber: caseNumber,
+            email: caseEmail,
+            emailNormalized: caseEmail?.toLowerCase().trim(),
+            searchEmailNormalized: normalizedSearchEmail,
+            matches: caseEmail?.toLowerCase().trim() === normalizedSearchEmail,
+          };
+        });
         console.warn(
           `⚠️ No exact email match found. Search email: "${email}" (normalized: "${normalizedSearchEmail}"). Available cases:`,
           availableEmails
@@ -1025,33 +1064,41 @@ export async function findUserCaseByEmail(email: string): Promise<UserCase | nul
         // Also log the raw email values for debugging
         console.info(
           'Raw email values from API:',
-          caseApiResult.items.slice(0, 5).map((c) => ({
-            caseNumber: c.caseNumber || c.caseId,
-            applicantEmail: c.applicantEmail,
-            applicantEmailType: typeof c.applicantEmail,
-            applicantEmailLength: c.applicantEmail?.length,
-            applicantEmailCharCodes: c.applicantEmail
-              ?.split('')
-              .map((char) => char.charCodeAt(0)),
-          }))
+          caseApiResult.items.slice(0, 5).map((c) => {
+            const caseEmail = c.applicant_email || c.applicantEmail;
+            const caseNumber = c.case_number || c.caseNumber || c.case_id || c.caseId;
+            return {
+              caseNumber: caseNumber,
+              applicantEmail: caseEmail,
+              applicantEmailType: typeof caseEmail,
+              applicantEmailLength: caseEmail?.length,
+              applicantEmailCharCodes: caseEmail
+                ?.split('')
+                .map((char: string) => char.charCodeAt(0)),
+            };
+          })
         );
       }
 
       if (matchingCase) {
-        const caseId = matchingCase.caseNumber || matchingCase.caseId;
-        console.info('✅ Found case in case API:', caseId);
+        // Backend uses snake_case, so extract with fallbacks
+        const applicationGuid = matchingCase.case_id || matchingCase.caseId || '';
+        const caseNumber = matchingCase.case_number || matchingCase.caseNumber || applicationGuid;
+        const partnerId = matchingCase.partner_id || matchingCase.partnerId || '';
+        console.info('✅ Found case in case API:', caseNumber);
         return {
-          caseId: caseId, // Use caseNumber if available, otherwise caseId
+          id: applicationGuid,
+          caseId: caseNumber, // Use caseNumber if available, otherwise caseId
           type: matchingCase.type,
           status: matchingCase.status,
-          partnerId: matchingCase.partnerId,
-          applicantFirstName: matchingCase.applicantFirstName,
-          applicantLastName: matchingCase.applicantLastName,
-          applicantEmail: matchingCase.applicantEmail,
-          country: matchingCase.applicantCountry,
-          businessLegalName: matchingCase.businessLegalName,
-          createdAt: matchingCase.createdAt,
-          updatedAt: matchingCase.updatedAt,
+          partnerId: partnerId,
+          applicantFirstName: matchingCase.applicant_first_name || matchingCase.applicantFirstName,
+          applicantLastName: matchingCase.applicant_last_name || matchingCase.applicantLastName,
+          applicantEmail: matchingCase.applicant_email || matchingCase.applicantEmail,
+          country: matchingCase.applicant_country || matchingCase.applicantCountry,
+          businessLegalName: matchingCase.business_legal_name || matchingCase.businessLegalName,
+          createdAt: matchingCase.created_at || matchingCase.createdAt,
+          updatedAt: matchingCase.updated_at || matchingCase.updatedAt,
         };
       } else {
         console.warn(
@@ -1061,9 +1108,9 @@ export async function findUserCaseByEmail(email: string): Promise<UserCase | nul
           console.info(
             'Available cases (first 5):',
             caseApiResult.items.slice(0, 5).map((c) => ({
-              caseNumber: c.caseNumber,
-              email: c.applicantEmail,
-              partnerId: c.partnerId,
+              caseNumber: c.case_number || c.caseNumber,
+              email: c.applicant_email || c.applicantEmail,
+              partnerId: c.partner_id || c.partnerId,
             }))
           );
         } else {
@@ -1445,9 +1492,22 @@ export async function getThreadByApplication(applicationId: string) {
 
   // Get thread - if it doesn't exist (404), the calling code will handle it gracefully
   // Thread will be created automatically on first message
-  return apiGet<MessageThreadDto>(
-    `${MESSAGING_PREFIX}/messages/threads/application/${encodeURIComponent(applicationGuid)}`
-  );
+  try {
+    return await apiGet<MessageThreadDto>(
+      `${MESSAGING_PREFIX}/messages/threads/application/${encodeURIComponent(applicationGuid)}`
+    );
+  } catch (error) {
+    // Check if this is a 404 (thread doesn't exist yet)
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    if (errorMessage.includes('404') || errorMessage.includes('not found') || (error as any)?.isNotFound) {
+      // Thread doesn't exist yet - this is expected and will be created on first message
+      const notFoundError = new Error(`No thread found for application: ${applicationGuid}`);
+      (notFoundError as any).isNotFound = true;
+      throw notFoundError;
+    }
+    // Re-throw other errors
+    throw error;
+  }
 }
 
 export async function getThreadMessages(threadId: string, page = 1, pageSize = 50) {
@@ -1671,6 +1731,7 @@ export type ApplicationDocument = {
  * @param email - Optional email to use. If not provided, will try to get from session.
  */
 export async function getUserApplications(email?: string): Promise<UserCase[]> {
+  console.info('[getUserApplications] 🆕 NEW VERSION: Using PartnerId-based lookup');
   try {
     let userEmail = email;
 
@@ -1701,10 +1762,11 @@ export async function getUserApplications(email?: string): Promise<UserCase[]> {
       return [];
     }
 
-    // Get PartnerId from backend
+    // Get PartnerId from backend (single source of truth) - same as findUserCaseByEmail
+    // PartnerId is the PRIMARY ownership identifier (indexed in database)
     let userPartnerId: string | null = null;
     try {
-      console.info('[getUserApplications] Getting PartnerId from backend...');
+      // PRIMARY: Get PartnerId from backend endpoint (single source of truth)
       const partnerIdResponse = await apiGet<{
         email: string;
         partnerId: string;
@@ -1713,30 +1775,69 @@ export async function getUserApplications(email?: string): Promise<UserCase[]> {
 
       if (partnerIdResponse && partnerIdResponse.partnerId) {
         userPartnerId = partnerIdResponse.partnerId;
-        console.info('[getUserApplications] Got PartnerId:', userPartnerId);
+        console.info(
+          `[getUserApplications] ✅ Got PartnerId from backend: ${userPartnerId} for email: ${userEmail}`
+        );
       }
     } catch (error) {
-      console.warn('[getUserApplications] Could not get PartnerId from backend:', error);
+      console.warn(
+        '[getUserApplications] ⚠️ Could not get PartnerId from backend endpoint, will use email search:',
+        error
+      );
     }
 
-    // Query by PartnerId if available, otherwise by email
-    const params = new URLSearchParams({ take: '50' });
+    // PRIMARY METHOD: Query by PartnerId (ownership identifier) - most reliable
+    // This is indexed in the database and is the correct way to find user's cases
+    let filteredItems: any[] = [];
+    
     if (userPartnerId) {
-      params.append('partnerId', userPartnerId);
-      console.info('[getUserApplications] Querying by PartnerId:', userPartnerId);
-    } else if (userEmail) {
-      params.append('searchTerm', userEmail);
-      console.info('[getUserApplications] Querying by email:', userEmail);
-    } else {
-      console.warn('[getUserApplications] No email or PartnerId available');
-      return []; // No email available, return empty
+      try {
+        // Try projections API with PartnerId first
+        const params = new URLSearchParams({ take: '50' });
+        params.append('partnerId', userPartnerId);
+        console.info('[getUserApplications] Querying projections by PartnerId:', userPartnerId);
+        
+        const projectionsUrl = `/api/v1/projections/cases?${params.toString()}`;
+        const projectionsResult = await apiGet<{ items: Array<any> }>(projectionsUrl);
+        
+        if (projectionsResult?.items && projectionsResult.items.length > 0) {
+          filteredItems = projectionsResult.items;
+          console.info(
+            '[getUserApplications] Found',
+            filteredItems.length,
+            'cases from projections API by PartnerId'
+          );
+        } else {
+          // If projections API returned no results, try case API directly
+          console.info('[getUserApplications] No results from projections API, trying case API by PartnerId...');
+          const caseApiUrl = `/api/v1/cases?partnerId=${encodeURIComponent(userPartnerId)}&take=50&sortBy=createdAt&sortDirection=desc`;
+          const caseApiResult = await apiGet<{ items: Array<any> }>(caseApiUrl);
+          
+          if (caseApiResult?.items && caseApiResult.items.length > 0) {
+            filteredItems = caseApiResult.items;
+            console.info(
+              '[getUserApplications] Found',
+              filteredItems.length,
+              'cases from case API by PartnerId'
+            );
+          }
+        }
+      } catch (error) {
+        console.warn('[getUserApplications] PartnerId query failed, falling back to email search:', error);
+      }
     }
 
-    const apiUrl = `/api/v1/projections/cases?${params.toString()}`;
-    console.info('[getUserApplications] Calling API:', apiUrl);
+    // FALLBACK: If PartnerId query didn't work or returned no results, use email search
+    if (filteredItems.length === 0) {
+      console.info('[getUserApplications] Using email search as fallback');
+      const params = new URLSearchParams({ take: '50' });
+      params.append('searchTerm', userEmail);
+      console.info('[getUserApplications] Querying by email (fallback):', userEmail);
+      
+      const apiUrl = `/api/v1/projections/cases?${params.toString()}`;
+      console.info('[getUserApplications] Calling API:', apiUrl);
 
-    const result = await apiGet<{
-      items: Array<{
+      type ProjectionItem = {
         id?: string;
         Id?: string;
         caseId: string;
@@ -1759,205 +1860,116 @@ export async function getUserApplications(email?: string): Promise<UserCase[]> {
         metadataJson?: string;
         businessLegalName?: string;
         businessCountryOfRegistration?: string;
-      }>;
-    }>(apiUrl);
+      };
+      type ProjectionResult = { items: Array<ProjectionItem> };
 
-    console.info(
-      '[getUserApplications] Projections API response:',
-      result?.items?.length || 0,
-      'items'
-    );
+      const result = await apiGet<ProjectionResult>(apiUrl);
 
-    let filteredItems = result?.items || [];
-
-    // If projections API returned no results, try case API directly
-    if (filteredItems.length === 0) {
       console.info(
-        '[getUserApplications] No results from projections API, trying case API...'
+        '[getUserApplications] Projections API response:',
+        result?.items?.length || 0,
+        'items'
       );
-      try {
-        // First try with PartnerId filter
-        let caseApiResult: { items?: Array<any> } | null = null;
-        if (userPartnerId) {
-          try {
-            const caseApiUrl = `/api/v1/cases?partnerId=${encodeURIComponent(userPartnerId)}&take=50&sortBy=createdAt&sortDirection=desc`;
-            console.info(
-              '[getUserApplications] Trying case API with PartnerId:',
-              caseApiUrl
-            );
-            caseApiResult = await apiGet<{
-              items: Array<{
-                case_id?: string; // Backend uses snake_case
-                caseId?: string; // Fallback
-                case_number?: string; // Backend uses snake_case
-                caseNumber?: string; // Fallback
-                type: string;
-                status: string;
-                partner_id?: string; // Backend uses snake_case
-                partnerId?: string; // Fallback
-                applicant_first_name?: string; // Backend uses snake_case
-                applicantFirstName?: string; // Fallback
-                applicant_last_name?: string; // Backend uses snake_case
-                applicantLastName?: string; // Fallback
-                applicant_email?: string; // Backend uses snake_case
-                applicantEmail?: string; // Fallback
-                applicant_country?: string; // Backend uses snake_case
-                applicantCountry?: string; // Fallback
-                business_legal_name?: string; // Backend uses snake_case
-                businessLegalName?: string; // Fallback
-                created_at?: string; // Backend uses snake_case
-                createdAt?: string; // Fallback
-                updated_at?: string; // Backend uses snake_case
-                updatedAt?: string; // Fallback
-              }>;
-            }>(caseApiUrl);
-            console.info(
-              '[getUserApplications] Case API with PartnerId returned:',
-              caseApiResult?.items?.length || 0,
-              'items'
-            );
-            if (caseApiResult?.items && caseApiResult.items.length > 0) {
+
+      filteredItems = result?.items || [];
+
+      // If projections API returned no results, try case API directly with email search
+      if (filteredItems.length === 0) {
+        console.info(
+          '[getUserApplications] No results from projections API, trying case API with email search...'
+        );
+        try {
+          // Try case API with email search
+          const allCasesUrl = `/api/v1/cases?searchTerm=${encodeURIComponent(userEmail)}&take=50&sortBy=createdAt&sortDirection=desc`;
+          console.info(
+            '[getUserApplications] Trying case API with email search:',
+            allCasesUrl
+          );
+          const caseApiResult = await apiGet<{
+            items: Array<{
+              case_id?: string;
+              caseId?: string;
+              case_number?: string;
+              caseNumber?: string;
+              type: string;
+              status: string;
+              partner_id?: string;
+              partnerId?: string;
+              applicant_first_name?: string;
+              applicantFirstName?: string;
+              applicant_last_name?: string;
+              applicantLastName?: string;
+              applicant_email?: string;
+              applicantEmail?: string;
+              applicant_country?: string;
+              applicantCountry?: string;
+              business_legal_name?: string;
+              businessLegalName?: string;
+              created_at?: string;
+              createdAt?: string;
+              updated_at?: string;
+              updatedAt?: string;
+            }>;
+          }>(allCasesUrl);
+          console.info(
+            '[getUserApplications] Case API returned:',
+            caseApiResult?.items?.length || 0,
+            'items'
+          );
+
+          if (caseApiResult?.items && caseApiResult.items.length > 0) {
+            // Log first item structure for debugging
+            if (caseApiResult.items.length > 0) {
               console.info(
-                '[getUserApplications] Raw Case API response (first item):',
+                '[getUserApplications] Case API response structure (first item):',
                 JSON.stringify(caseApiResult.items[0], null, 2)
               );
             }
-          } catch (error) {
-            console.warn('[getUserApplications] Case API with PartnerId failed:', error);
-          }
-        }
 
-        // If no results with PartnerId, try getting all cases
-        if (!caseApiResult?.items || caseApiResult.items.length === 0) {
-          try {
-            const allCasesUrl = `/api/v1/cases?take=50&sortBy=createdAt&sortDirection=desc`;
-            console.info(
-              '[getUserApplications] Trying case API without filter to get all cases:',
-              allCasesUrl
-            );
-            caseApiResult = await apiGet<{
-              items: Array<{
-                case_id?: string; // Backend uses snake_case
-                caseId?: string; // Fallback
-                case_number?: string; // Backend uses snake_case
-                caseNumber?: string; // Fallback
-                type: string;
-                status: string;
-                partner_id?: string; // Backend uses snake_case
-                partnerId?: string; // Fallback
-                applicant_first_name?: string; // Backend uses snake_case
-                applicantFirstName?: string; // Fallback
-                applicant_last_name?: string; // Backend uses snake_case
-                applicantLastName?: string; // Fallback
-                applicant_email?: string; // Backend uses snake_case
-                applicantEmail?: string; // Fallback
-                applicant_country?: string; // Backend uses snake_case
-                applicantCountry?: string; // Fallback
-                business_legal_name?: string; // Backend uses snake_case
-                businessLegalName?: string; // Fallback
-                created_at?: string; // Backend uses snake_case
-                createdAt?: string; // Fallback
-                updated_at?: string; // Backend uses snake_case
-                updatedAt?: string; // Fallback
-              }>;
-            }>(allCasesUrl);
-            console.info(
-              '[getUserApplications] Case API (all cases) returned:',
-              caseApiResult?.items?.length || 0,
-              'items'
-            );
-            if (caseApiResult?.items && caseApiResult.items.length > 0) {
-              console.info(
-                '[getUserApplications] Raw Case API response (all cases, first item):',
-                JSON.stringify(caseApiResult.items[0], null, 2)
-              );
-            }
-          } catch (error) {
-            console.warn('[getUserApplications] Case API (all cases) failed:', error);
-          }
-        }
-
-        if (caseApiResult?.items && caseApiResult.items.length > 0) {
-          // Log first item structure for debugging
-          if (caseApiResult.items.length > 0) {
-            console.info(
-              '[getUserApplications] Case API response structure (first item):',
-              JSON.stringify(caseApiResult.items[0], null, 2)
-            );
-          }
-
-          // SECURITY: Filter by PartnerId or email - NEVER return unmatched cases
-          let caseFilteredItems: any[] = [];
-          if (userPartnerId) {
-            const partnerIdMatches = caseApiResult.items.filter((item: any) => {
-              // Backend uses snake_case, so prioritize that
-              const itemPartnerId = item.partner_id || item.partnerId || item.PartnerId;
-              return itemPartnerId?.toLowerCase() === userPartnerId?.toLowerCase();
-            });
-            if (partnerIdMatches.length > 0) {
-              caseFilteredItems = partnerIdMatches;
+            // SECURITY: Filter by PartnerId first (ownership), then by email as fallback
+            let caseFilteredItems = caseApiResult.items;
+            if (userPartnerId) {
+              // Filter by PartnerId (ownership check) - most reliable
+              const normalizedUserPartnerId = userPartnerId.toLowerCase().trim();
+              caseFilteredItems = caseApiResult.items.filter((item: any) => {
+                const itemPartnerId = item.partner_id || item.partnerId || item.PartnerId;
+                if (itemPartnerId) {
+                  return itemPartnerId.toLowerCase().trim() === normalizedUserPartnerId;
+                }
+                return false;
+              });
               console.info(
                 '[getUserApplications] Found',
                 caseFilteredItems.length,
                 'cases matching PartnerId'
               );
-            } else if (userEmail) {
-              // No PartnerId match, try email as fallback
-              const emailMatches = caseApiResult.items.filter((item: any) => {
-                // Backend uses snake_case, so prioritize that
-                const itemEmail =
-                  item.applicant_email || item.applicantEmail || item.ApplicantEmail;
-                return itemEmail?.toLowerCase() === userEmail.toLowerCase();
-              });
-              if (emailMatches.length > 0) {
-                caseFilteredItems = emailMatches;
+              
+              // If no PartnerId matches, fall back to email match
+              if (caseFilteredItems.length === 0) {
+                console.warn('[getUserApplications] No PartnerId matches, falling back to email filter');
+                const itemEmail = (item: any) => item.applicant_email || item.applicantEmail || item.ApplicantEmail;
+                caseFilteredItems = caseApiResult.items.filter((item: any) => {
+                  const email = itemEmail(item);
+                  return email?.toLowerCase() === userEmail.toLowerCase();
+                });
                 console.info(
                   '[getUserApplications] Found',
                   caseFilteredItems.length,
-                  'cases matching email'
+                  'cases matching email (fallback)'
                 );
-              } else {
-                // SECURITY: No matches found - return empty array, NOT all cases
-                console.warn(
-                  '[getUserApplications] No PartnerId or email match found - returning empty array for security'
-                );
-                caseFilteredItems = [];
               }
             } else {
-              // SECURITY: No email available - return empty array
-              console.warn(
-                '[getUserApplications] No email available - returning empty array for security'
-              );
-              caseFilteredItems = [];
-            }
-          } else if (userEmail) {
-            const emailMatches = caseApiResult.items.filter((item: any) => {
-              // Backend uses snake_case, so prioritize that
-              const itemEmail =
-                item.applicant_email || item.applicantEmail || item.ApplicantEmail;
-              return itemEmail?.toLowerCase() === userEmail.toLowerCase();
-            });
-            if (emailMatches.length > 0) {
-              caseFilteredItems = emailMatches;
+              // No PartnerId available, filter by email only
+              caseFilteredItems = caseApiResult.items.filter((item: any) => {
+                const itemEmail = item.applicant_email || item.applicantEmail || item.ApplicantEmail;
+                return itemEmail?.toLowerCase() === userEmail.toLowerCase();
+              });
               console.info(
                 '[getUserApplications] Found',
                 caseFilteredItems.length,
                 'cases matching email'
               );
-            } else {
-              // SECURITY: No email match - return empty array
-              console.warn(
-                '[getUserApplications] No email match found - returning empty array for security'
-              );
-              caseFilteredItems = [];
             }
-          } else {
-            // SECURITY: No filter criteria - return empty array
-            console.error(
-              '[getUserApplications] No filter criteria available - returning empty array for security'
-            );
-            caseFilteredItems = [];
-          }
 
           // Map case API results to UserCase format
           // NOTE: In Cases API, caseId IS the application GUID (Id.ToString())
@@ -2029,27 +2041,44 @@ export async function getUserApplications(email?: string): Promise<UserCase[]> {
       } catch (error) {
         console.warn('[getUserApplications] Case API fallback failed:', error);
       }
-    } else {
-      // Filter by PartnerId if available, otherwise by email
-      if (userPartnerId) {
-        filteredItems = result.items.filter(
-          (item) => item.partnerId?.toLowerCase() === userPartnerId?.toLowerCase()
-        );
-        console.info(
-          '[getUserApplications] Filtered by PartnerId:',
-          filteredItems.length,
-          'items'
-        );
-      } else if (userEmail) {
-        filteredItems = result.items.filter(
-          (item) => item.applicantEmail?.toLowerCase() === userEmail.toLowerCase()
-        );
-        console.info(
-          '[getUserApplications] Filtered by email:',
-          filteredItems.length,
-          'items'
-        );
       }
+    }
+
+    // If we got items from PartnerId query, filter by PartnerId to ensure ownership
+    if (filteredItems.length > 0 && userPartnerId) {
+      const normalizedUserPartnerId = userPartnerId.toLowerCase().trim();
+      filteredItems = filteredItems.filter((item: any) => {
+        const itemPartnerId = item.partnerId || item.partner_id || item.PartnerId;
+        if (itemPartnerId) {
+          const matches = itemPartnerId.toLowerCase().trim() === normalizedUserPartnerId;
+          if (!matches) {
+            console.warn(
+              `[getUserApplications] Filtered out case ${item.caseId} - PartnerId mismatch: ${itemPartnerId} vs ${userPartnerId}`
+            );
+          }
+          return matches;
+        }
+        // If no PartnerId on item, allow it (might be from email search)
+        return true;
+      });
+      console.info(
+        '[getUserApplications] Filtered by PartnerId:',
+        filteredItems.length,
+        'items'
+      );
+    } else if (filteredItems.length > 0) {
+      // No PartnerId available, filter by email
+      filteredItems = filteredItems.filter(
+        (item: any) => {
+          const itemEmail = item.applicantEmail || item.applicant_email || item.ApplicantEmail;
+          return itemEmail?.toLowerCase() === userEmail.toLowerCase();
+        }
+      );
+      console.info(
+        '[getUserApplications] Filtered by email:',
+        filteredItems.length,
+        'items'
+      );
     }
 
     if (filteredItems.length === 0) {

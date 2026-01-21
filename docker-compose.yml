@@ -15,6 +15,7 @@ services:
       - "5433:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
+      - ./scripts/init-multiple-databases.sh:/docker-entrypoint-initdb.d/init-multiple-databases.sh
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres"]
       interval: 10s
@@ -115,6 +116,7 @@ services:
       - ASPNETCORE_ENVIRONMENT=Development
       - ASPNETCORE_URLS=http://0.0.0.0:8001
       - Authentication__Enabled=false
+      - Google__ClientId=72595407836-ulropmqom2dhso8aqe4gn2f403o5hp1v.apps.googleusercontent.com
       - ConnectionStrings__PostgreSQL=Host=postgres;Database=kyb_case;Username=kyb;Password=kyb_password
       - ConnectionStrings__Redis=redis:6379
       - Outbox__PollIntervalMs=300
@@ -181,10 +183,74 @@ services:
       retries: 3
 
   # Frontend Applications
-  # NOTE: Admin Portal and Partner Portal run outside Docker
-  # Run them manually in terminal:
-  #   - Admin Portal: cd admin && npm run dev (runs on http://localhost:3001)
-  #   - Partner Portal: cd partner && npm run dev (runs on http://localhost:3000)
+  admin-portal:
+    build: ./admin
+    container_name: admin-portal
+    ports:
+      - "3001:3001"
+    environment:
+      - NODE_ENV=production
+      - NEXTAUTH_URL=https://admin-mukuru.kurasika.tech
+      - NEXTAUTH_SECRET=FW6irYS1Ds7vbd0I1isPGgtPulZ+WHg4qsoVX76JP84=
+      - AZURE_AD_CLIENT_ID=66879744-7f08-4acd-9a4d-b90da1ee0e59
+      - AZURE_AD_CLIENT_SECRET=jfV8Q~rBbKe7SU3sKUf0buPdAVQkS_QNn4ul~bxk
+      - AZURE_AD_TENANT_ID=dd5a90ad-b0ae-463b-bef5-5bae77f1adf2
+      - NEXT_PUBLIC_AZURE_AD_ISSUER=https://login.microsoftonline.com/dd5a90ad-b0ae-463b-bef5-5bae77f1adf2/v2.0
+      - NEXT_PUBLIC_GATEWAY_URL=http://onboarding-api:8001
+      - PROJECTIONS_API_BASE_URL=http://onboarding-api:8001
+      - NEXT_PUBLIC_PROJECTIONS_API_BASE_URL=http://onboarding-api:8001
+      - NEXT_PUBLIC_MESSAGING_API_BASE_URL=http://onboarding-api:8001
+      - NEXT_PUBLIC_AUDIT_LOG_API_BASE_URL=http://onboarding-api:8001
+      - NEXT_PUBLIC_RISK_API_BASE_URL=http://onboarding-api:8001
+      - PROXY_TARGET=http://onboarding-api:8001
+      - ONBOARDING_TARGET=http://onboarding-api:8001
+      - NEXT_PUBLIC_BACKEND_URL=http://onboarding-api:8001
+      - NEXT_PUBLIC_APP_URL=https://admin-mukuru.kurasika.tech
+      - REDIS_URL=redis://redis:6379
+    depends_on:
+      - onboarding-api
+      - redis
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:3001"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Partner Portal - Business partner onboarding interface
+  partner-portal:
+    build: ./partner
+    container_name: partner-portal
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - NEXTAUTH_URL=https://partner-mukuru.kurasika.tech
+      - NEXTAUTH_SECRET=Q1mgFAqg4lYD1GRr5TKdfGloEa8bn16UUXSaVr3JMjE=
+      - KEYCLOAK_ISSUER=https://keycloak-staging.app-stg.mukuru.io/realms/mukuru
+      - KEYCLOAK_CLIENT_ID=kyb-connect-portal
+      - KEYCLOAK_CLIENT_SECRET=
+      - REDIS_URL=redis://redis:6379
+      - NEXT_PUBLIC_API_GATEWAY_URL=http://onboarding-gateway:80
+      - NEXT_PUBLIC_API_BASE_URL=http://onboarding-gateway:80
+      - NEXT_PUBLIC_BACKEND_URL=http://onboarding-api:8001
+      - NEXT_PUBLIC_APP_URL=https://partner-mukuru.kurasika.tech
+      - PROXY_TARGET=http://onboarding-api:8001
+      - NEXT_PUBLIC_GATEWAY_URL=http://onboarding-api:8001
+      - POSTGRES_HOST=postgres
+      - POSTGRES_PORT=5432
+      - POSTGRES_DB=kyb_case
+      - POSTGRES_USER=kyb
+      - POSTGRES_PASSWORD=kyb_password
+    depends_on:
+      - onboarding-api
+      - redis
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:3000"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
 
 volumes:
   postgres_data:

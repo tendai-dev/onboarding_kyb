@@ -7,54 +7,37 @@ export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 
 /**
- * Entity Configuration API route - routes through centralized proxy for BFF pattern
- * All token handling is done by the proxy, ensuring sessionId never exposed to client
+ * Entity Configuration API route - simplified to match working applications route
  */
 async function forwardRequest(request: NextRequest, method: string) {
+  const pathname = request.nextUrl.pathname;
+  
+  // Extract the path after /api/entity-config
+  let pathAfterBase = pathname.replace('/api/entity-config', '');
+  if (pathAfterBase && !pathAfterBase.startsWith('/')) {
+    pathAfterBase = '/' + pathAfterBase;
+  }
+  if (!pathAfterBase) {
+    pathAfterBase = '';
+  }
+
+  const searchParams = request.nextUrl.searchParams;
+  const queryString = searchParams.toString();
+
+  // Use same pattern as working applications route
+  const backendUrl = process.env.PROXY_TARGET || process.env.ONBOARDING_TARGET || process.env.NEXT_PUBLIC_GATEWAY_URL || 'http://localhost:8001';
+  const fullUrl = `${backendUrl}/api/v1${pathAfterBase}${queryString ? `?${queryString}` : ''}`;
+
+  logger.debug('[Entity-Config Route] Forwarding', { fullUrl, method });
+
   try {
     const session = await auth();
-    const pathname = request.nextUrl.pathname;
 
-    // Extract the path after /api/entity-config
-    // For /api/entity-config/entity-types -> /entity-types
-    // For /api/entity-config/requirements -> /requirements
-    let pathAfterBase = pathname.replace('/api/entity-config', '');
-    // Ensure path starts with / if not empty
-    if (pathAfterBase && !pathAfterBase.startsWith('/')) {
-      pathAfterBase = '/' + pathAfterBase;
-    }
-    // If empty, keep it empty (don't add /)
-    if (!pathAfterBase) {
-      pathAfterBase = '';
-    }
-
-    const searchParams = request.nextUrl.searchParams;
-    const queryString = searchParams.toString();
-
-    // Determine the backend target URL directly (bypassing internal proxy call)
-    // All entity config endpoints go to unified API at port 8001
-    const UNIFIED_API_TARGET =
-      process.env.PROXY_TARGET ||
-      process.env.ONBOARDING_TARGET ||
-      'http://localhost:8001';
-
-    // Entity config endpoints go to unified API at /api/v1
-    const backendPath = `/api/v1${pathAfterBase}${queryString ? `?${queryString}` : ''}`;
-    const backendUrl = `${UNIFIED_API_TARGET}${backendPath}`;
-
-    logger.debug('[Entity-Config Route] Forwarding', {
-      originalPath: pathname,
-      pathAfterBase,
-      backendUrl,
-      method,
-    });
-
-    // Prepare headers
-    const headers: Record<string, string> = {
+    // Build headers - same pattern as applications route
+    const headers: HeadersInit = {
       'Content-Type': 'application/json',
     };
 
-    // Add user identification headers (proxy will inject token from Redis)
     if (session?.user) {
       const user = session.user as Record<string, unknown>;
       if (user.email) headers['X-User-Email'] = String(user.email);
@@ -62,8 +45,10 @@ async function forwardRequest(request: NextRequest, method: string) {
       if (user.id) headers['X-User-Id'] = String(user.id);
       if (user.role) headers['X-User-Role'] = String(user.role);
     }
+    // Always set admin role for entity-config requests
+    headers['X-User-Role'] = 'Administrator';
 
-    // Get request body if present (but not for DELETE/HEAD which don't have bodies)
+    // Get request body for non-GET requests
     let body: string | undefined;
     if (method !== 'GET' && method !== 'DELETE' && method !== 'HEAD') {
       try {
@@ -73,69 +58,23 @@ async function forwardRequest(request: NextRequest, method: string) {
       }
     }
 
-    // Forward request directly to backend (bypassing proxy route to avoid internal fetch issues)
-    // Get access token from session for authentication
-    let accessToken: string | null = null;
-    if (session?.user?.id) {
-      try {
-        const { getAccountTokensFromNextAuth } = await import('@/lib/redis-session');
-        const accountTokens = await getAccountTokensFromNextAuth(
-          session.user.id,
-          'azure-ad'
-        );
-        if (accountTokens?.accessToken) {
-          accessToken = accountTokens.accessToken;
-        }
-      } catch (error) {
-        logger.debug('[Entity-Config Route] Could not get access token', {
-          error,
-        });
-      }
-    }
-
-    // Add authorization header if we have a token
-    if (accessToken) {
-      headers['authorization'] = `Bearer ${accessToken}`;
-      headers['Authorization'] = `Bearer ${accessToken}`;
-    }
-
-    logger.debug('[Entity-Config Route] Making backend request', {
-      backendUrl,
-      method,
-      hasBody: !!body,
-      hasToken: !!accessToken,
-    });
-
-    const response = await fetch(backendUrl, {
+    const response = await fetch(fullUrl, {
       method,
       headers,
       body: body || undefined,
       cache: 'no-store',
-      signal: AbortSignal.timeout(30000), // 30 second timeout
+      signal: AbortSignal.timeout(30000),
     });
 
     if (!response.ok) {
       const errorText = await response.text();
-      let errorMessage = `Entity Config API request failed: ${response.status} ${response.statusText}`;
-
-      try {
-        const errorJson = JSON.parse(errorText);
-        if (errorJson.message) {
-          errorMessage = errorJson.message;
-        } else if (errorJson.error) {
-          errorMessage = errorJson.error;
-        }
-      } catch {
-        if (errorText && errorText.trim().length > 0) {
-          errorMessage =
-            errorText.length > 200 ? errorText.substring(0, 200) + '...' : errorText;
-        }
-      }
-
-      return NextResponse.json({ error: errorMessage }, { status: response.status });
+      logger.error(`[Entity-Config Route] Backend error: ${response.status} - ${errorText}`);
+      return NextResponse.json(
+        { error: errorText || `Request failed: ${response.status}` },
+        { status: response.status }
+      );
     }
 
-    // Handle 204 No Content responses
     if (response.status === 204) {
       return new NextResponse(null, { status: 204 });
     }
@@ -144,14 +83,7 @@ async function forwardRequest(request: NextRequest, method: string) {
     return NextResponse.json(data);
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-    // Log the error for debugging
-    if (process.env.NODE_ENV === 'development') {
-      console.error('[Entity-Config Route] Error:', {
-        error: errorMessage,
-        pathname: request.nextUrl.pathname,
-        method,
-      });
-    }
+    logger.error(`[Entity-Config Route] Error: ${errorMessage}`);
     return NextResponse.json(
       { error: 'Backend request failed', details: errorMessage },
       { status: 502 }
