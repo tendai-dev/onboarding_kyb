@@ -171,8 +171,10 @@ public class MessagesController : ControllerBase
     public async Task<IActionResult> MarkAsRead(Guid messageId)
     {
         var currentUserId = GetCurrentUserId();
+        var currentUserRole = GetCurrentUserRole();
+        var isAdmin = currentUserRole is UserRole.Admin or UserRole.ComplianceManager or UserRole.Reviewer;
         
-        var command = new MarkMessageAsReadCommand(messageId, currentUserId);
+        var command = new MarkMessageAsReadCommand(messageId, currentUserId, isAdmin);
         var result = await _mediator.Send(command);
         
         if (!result.Success)
@@ -190,8 +192,10 @@ public class MessagesController : ControllerBase
     public async Task<IActionResult> DeleteMessage(Guid messageId)
     {
         var currentUserId = GetCurrentUserId();
+        var currentUserRole = GetCurrentUserRole();
+        var isAdmin = currentUserRole is UserRole.Admin or UserRole.ComplianceManager or UserRole.Reviewer;
         
-        var command = new DeleteMessageCommand(messageId, currentUserId);
+        var command = new DeleteMessageCommand(messageId, currentUserId, isAdmin);
         var result = await _mediator.Send(command);
         
         if (!result.Success)
@@ -270,6 +274,25 @@ public class MessagesController : ControllerBase
             return BadRequest(new { message = result.ErrorMessage });
         
         return Ok(result);
+    }
+    
+    /// <summary>
+    /// Refresh thread metadata from projections (fixes missing applicant names)
+    /// </summary>
+    [HttpPost("threads/refresh-metadata")]
+    [ProducesResponseType(typeof(RefreshThreadMetadataResult), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> RefreshThreadMetadata([FromBody] RefreshThreadMetadataRequest? request = null)
+    {
+        _logger.LogInformation("Refreshing thread metadata for thread {ThreadId}", request?.ThreadId?.ToString() ?? "all");
+        
+        var command = new RefreshThreadMetadataCommand(request?.ThreadId);
+        var result = await _mediator.Send(command);
+        
+        if (!result.Success)
+            return BadRequest(new { message = result.ErrorMessage });
+        
+        return Ok(new { success = true, threadsUpdated = result.ThreadsUpdated });
     }
     
     /// <summary>
@@ -497,5 +520,10 @@ public record ForwardMessageRequest
     public Guid ToApplicationId { get; init; }
     public Guid? ToReceiverId { get; init; }
     public string? AdditionalContent { get; init; }
+}
+
+public record RefreshThreadMetadataRequest
+{
+    public Guid? ThreadId { get; init; }
 }
 

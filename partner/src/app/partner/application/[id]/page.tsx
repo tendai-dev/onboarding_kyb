@@ -2,7 +2,7 @@
 /* eslint-disable security/detect-object-injection */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { useParams, useRouter } from 'next/navigation';
-import { Box, Container, VStack, HStack, Flex, Circle, Spinner } from '@chakra-ui/react';
+import { Box, Container, VStack, HStack, Flex, Circle, Spinner, useToast } from '@chakra-ui/react';
 import {
   Button,
   Typography,
@@ -41,6 +41,7 @@ export default function ApplicationDetailsPage() {
   // Protect this route - redirects to login if not authenticated
   useRequireAuth();
   const { user: authUser, isLoading: authLoading } = useAuth();
+  const toast = useToast();
 
   const params = useParams();
   const router = useRouter();
@@ -200,28 +201,39 @@ export default function ApplicationDetailsPage() {
     }
   }, [application, formSchema]);
 
-  // Fetch wizard configuration for the entity type
+  // Use wizard configuration from formSchema (fetched with case details) or fetch separately as fallback
   useEffect(() => {
-    const fetchWizardConfiguration = async () => {
+    const loadWizardConfiguration = async () => {
+      // First, check if wizard configuration is already included in formSchema (from API response)
+      // This ensures we use the exact config that was used when the case was created
+      if (formSchema?.wizardConfiguration) {
+        console.info('✅ Using wizard configuration from API response (matches case version):', {
+          steps: formSchema.wizardConfiguration.steps?.length || 0,
+          activeSteps: formSchema.wizardConfiguration.steps?.filter((s: { isActive: boolean }) => s.isActive).length || 0,
+        });
+        setWizardConfiguration(formSchema.wizardConfiguration);
+        return;
+      }
+
+      // Fallback: fetch wizard configuration separately if not included in API response
       if (!formSchema?.id && !application?.formConfigId) {
         return;
       }
 
       try {
-        // Use formConfigId (entity type ID) from application or formSchema
         const entityTypeId = application?.formConfigId || formSchema?.id;
         if (!entityTypeId) {
           console.info('No entity type ID available for wizard configuration');
           return;
         }
 
-        console.info('Fetching wizard configuration for entity type:', entityTypeId);
+        console.info('Fetching wizard configuration for entity type (fallback):', entityTypeId);
         const wizardConfig =
           await entityConfigApiService.getWizardConfigurationByEntityType(entityTypeId);
 
         if (wizardConfig) {
           setWizardConfiguration(wizardConfig);
-          console.info('✅ Loaded wizard configuration:', {
+          console.info('✅ Loaded wizard configuration (fallback fetch):', {
             steps: wizardConfig.steps?.length || 0,
             activeSteps: wizardConfig.steps?.filter((s) => s.isActive).length || 0,
           });
@@ -231,12 +243,11 @@ export default function ApplicationDetailsPage() {
         }
       } catch (error) {
         console.error('Error fetching wizard configuration:', error);
-        // Don't set to null on error - keep previous config if available
       }
     };
 
     if (formSchema || application?.formConfigId) {
-      fetchWizardConfiguration();
+      loadWizardConfiguration();
     }
   }, [formSchema, application?.formConfigId]);
 
@@ -355,12 +366,20 @@ export default function ApplicationDetailsPage() {
                 return;
               }
             } else if (userCase && userCase.caseId === caseIdToFetch) {
-              // Same case ID - this shouldn't happen, but handle gracefully
-              console.warn(
-                '⚠️ Ownership mismatch for the same case ID - possible data inconsistency'
+              // Same case ID - this is a data inconsistency issue
+              // The case was likely created with a different PartnerId than expected
+              console.error(
+                '❌ Ownership mismatch for the same case ID - DATA INCONSISTENCY DETECTED',
+                {
+                  caseId: caseIdToFetch,
+                  casePartnerId: userCase.partnerId,
+                  userPartnerId: userPartnerId,
+                  userEmail: userEmail,
+                  action: 'Admin needs to run fix-partner-id endpoint',
+                }
               );
               setError(
-                'This application does not belong to your account. Access denied.'
+                'There is a data inconsistency with your application. Please contact support with case ID: ' + caseIdToFetch
               );
               setLoading(false);
               return;
@@ -1192,7 +1211,26 @@ export default function ApplicationDetailsPage() {
               <Tag variant="solid" size="md">
                 {application.status || 'SUBMITTED'}
               </Tag>
-              <Button variant="primary" size="sm" borderRadius="lg">
+              <Button 
+                variant="primary" 
+                size="sm" 
+                borderRadius="lg"
+                onClick={() => {
+                  const status = (application.status || 'SUBMITTED').toUpperCase();
+                  if (status === 'SUBMITTED' || status === 'PENDING_REVIEW' || status === 'APPROVED') {
+                    toast({
+                      title: 'Editing not available',
+                      description: `This application has been ${status.toLowerCase().replace('_', ' ')} and cannot be edited. Please contact support if you need to make changes.`,
+                      status: 'warning',
+                      duration: 5000,
+                      isClosable: true,
+                      position: 'top',
+                    });
+                  } else {
+                    router.push(`/partner/application/enhanced?edit=${params.id}`);
+                  }
+                }}
+              >
                 <EditIcon width="14px" height="14px" style={{ marginRight: '6px' }} />
                 Edit
               </Button>
@@ -1323,40 +1361,6 @@ export default function ApplicationDetailsPage() {
                           Step {currentStep} of {schemaSteps.length} • {currentStepData.subtitle || 'Complete the required fields'}
                         </Typography>
                       </VStack>
-                    </HStack>
-                    <HStack gap="3">
-                      {currentStep > 1 && (
-                        <Button 
-                          variant="ghost" 
-                          size="sm" 
-                          onClick={() => setCurrentStep(currentStep - 1)}
-                          borderRadius="lg"
-                          style={{ 
-                            background: 'rgba(255, 255, 255, 0.15)',
-                            color: 'white',
-                            padding: '0 16px'
-                          }}
-                        >
-                          <ArrowLeftIcon width="14px" height="14px" style={{ marginRight: '6px' }} />
-                          Previous
-                        </Button>
-                      )}
-                      {currentStep < schemaSteps.length && (
-                        <Button 
-                          variant="secondary" 
-                          size="sm" 
-                          onClick={() => setCurrentStep(currentStep + 1)}
-                          borderRadius="lg"
-                          style={{ 
-                            background: 'white',
-                            color: '#f05423',
-                            fontWeight: '600',
-                            padding: '0 20px'
-                          }}
-                        >
-                          Next Step
-                        </Button>
-                      )}
                     </HStack>
                   </HStack>
                 </Box>
@@ -1512,6 +1516,21 @@ export default function ApplicationDetailsPage() {
                           variant="primary"
                           size="md"
                           borderRadius="lg"
+                          onClick={() => {
+                            const status = (application.status || 'SUBMITTED').toUpperCase();
+                            if (status === 'SUBMITTED' || status === 'PENDING_REVIEW' || status === 'APPROVED') {
+                              toast({
+                                title: 'Editing not available',
+                                description: `This application has been ${status.toLowerCase().replace('_', ' ')} and cannot be edited. Please contact support if you need to make changes.`,
+                                status: 'warning',
+                                duration: 5000,
+                                isClosable: true,
+                                position: 'top',
+                              });
+                            } else {
+                              router.push(`/partner/application/enhanced?edit=${params.id}`);
+                            }
+                          }}
                         >
                           <EditIcon width="16px" height="16px" style={{ marginRight: '8px' }} />
                           Edit Application

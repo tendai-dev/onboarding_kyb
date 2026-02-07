@@ -1158,15 +1158,79 @@ function renderDocumentField(field: SchemaField, value: any): React.ReactNode {
                         h="auto"
                         borderRadius="md"
                         title="View document"
-                        onClick={() => {
-                          // Try to open document - check for URL or blob
+                        onClick={async () => {
+                          // Try to open document - check for URL or blob first
                           const docUrl = (doc as any).url || (doc as any).fileUrl || (doc as any).downloadUrl;
                           if (docUrl) {
                             window.open(docUrl, '_blank');
-                          } else {
-                            // Show alert if no URL available
-                            alert(`Document: ${doc.fileName}\nStatus: ${statusInfo.label}\n\nDocument preview not available. The document may need to be downloaded from the server.`);
+                            return;
                           }
+                          
+                          // Try to fetch document from backend using storageKey or document ID
+                          const storageKey = (doc as any).storageKey || (doc as any).storage_key;
+                          const documentId = (doc as any).id || (doc as any).documentId;
+                          
+                          if (storageKey) {
+                            try {
+                              // Use direct download endpoint with storage key
+                              const downloadUrl = `/api/proxy/api/v1/documents/direct?key=${encodeURIComponent(storageKey)}`;
+                              window.open(downloadUrl, '_blank');
+                              return;
+                            } catch (error) {
+                              console.error('Error opening document:', error);
+                            }
+                          }
+                          
+                          if (documentId) {
+                            try {
+                              // Fetch document details to get storage key
+                              const response = await fetch(`/api/proxy/api/v1/documents/${documentId}`);
+                              if (response.ok) {
+                                const docData = await response.json();
+                                const key = docData.storageKey || docData.storage_key;
+                                if (key) {
+                                  const downloadUrl = `/api/proxy/api/v1/documents/direct?key=${encodeURIComponent(key)}`;
+                                  window.open(downloadUrl, '_blank');
+                                  return;
+                                }
+                              }
+                            } catch (error) {
+                              console.error('Error fetching document:', error);
+                            }
+                          }
+                          
+                          // Try to find document by filename from case documents API
+                          // Get caseId from the page context (passed via window or URL)
+                          const caseId = window.location.pathname.split('/').pop();
+                          if (caseId && doc.fileName) {
+                            try {
+                              const response = await fetch(`/api/proxy/api/v1/documents/case/${caseId}`);
+                              if (response.ok) {
+                                const caseDocuments = await response.json();
+                                // Find document by matching filename
+                                const matchingDoc = Array.isArray(caseDocuments) 
+                                  ? caseDocuments.find((d: any) => 
+                                      (d.fileName || d.file_name) === doc.fileName ||
+                                      (d.FileName || d.fileName || d.file_name)?.toLowerCase() === doc.fileName?.toLowerCase()
+                                    )
+                                  : null;
+                                
+                                if (matchingDoc) {
+                                  const key = matchingDoc.storageKey || matchingDoc.storage_key || matchingDoc.StorageKey;
+                                  if (key) {
+                                    const downloadUrl = `/api/proxy/api/v1/documents/direct?key=${encodeURIComponent(key)}`;
+                                    window.open(downloadUrl, '_blank');
+                                    return;
+                                  }
+                                }
+                              }
+                            } catch (error) {
+                              console.error('Error fetching case documents:', error);
+                            }
+                          }
+                          
+                          // Fallback: Show alert if no URL available
+                          alert(`Document: ${doc.fileName}\nStatus: ${statusInfo.label}\n\nDocument preview not available. The document may need to be downloaded from the server.`);
                         }}
                       >
                         <VisibleIcon

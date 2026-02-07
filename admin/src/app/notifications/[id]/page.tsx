@@ -1,11 +1,12 @@
 'use client';
 
-import { Box, VStack, HStack, Flex, Spinner } from '@chakra-ui/react';
+import { Box, VStack, HStack, Flex, Spinner, Input, Textarea } from '@chakra-ui/react';
 import {
   Typography,
   Button,
   Tag,
   IconWrapper,
+  Dropdown,
   // Icons
   DeleteIcon,
   EditIcon,
@@ -154,11 +155,41 @@ export default function NotificationDetailPage({
     }
   };
 
+  const [recipientInput, setRecipientInput] = useState('');
+
   const handleSave = () => {
     if (editedNotification) {
       setNotification(editedNotification);
       setIsEditing(false);
       // In real app, would call API to save
+      console.log('Saved notification:', editedNotification);
+    }
+  };
+
+  const handleAddRecipient = () => {
+    if (recipientInput && recipientInput.includes('@') && editedNotification) {
+      setEditedNotification({
+        ...editedNotification,
+        recipients: [...editedNotification.recipients, recipientInput],
+      });
+      setRecipientInput('');
+    }
+  };
+
+  const handleRemoveRecipient = (index: number) => {
+    if (editedNotification) {
+      setEditedNotification({
+        ...editedNotification,
+        recipients: editedNotification.recipients.filter((_, i) => i !== index),
+      });
+    }
+  };
+
+  const handleDelete = () => {
+    if (confirm('Are you sure you want to delete this notification?')) {
+      // In real app, would call API to delete
+      console.log('Deleted notification:', notification?.id);
+      router.push('/notifications');
     }
   };
 
@@ -317,7 +348,7 @@ export default function NotificationDetailPage({
                     </IconWrapper>
                     Edit
                   </Button>
-                  <Button variant="secondary" size="sm">
+                  <Button variant="secondary" size="sm" onClick={handleDelete}>
                     <IconWrapper>
                       <DeleteIcon width="14" height="14" />
                     </IconWrapper>
@@ -359,17 +390,30 @@ export default function NotificationDetailPage({
                       >
                         Type
                       </Typography>
-                      <Box
-                        display="inline-block"
-                        px="12px"
-                        py="6px"
-                        bg="#DBEAFE"
-                        borderRadius="6px"
-                      >
-                        <Typography fontSize="13px" fontWeight="600" color="#2563EB">
-                          {notification.type}
-                        </Typography>
-                      </Box>
+                      {isEditing && editedNotification ? (
+                        <Dropdown
+                          items={[
+                            { label: 'Email', value: 'EMAIL' },
+                            { label: 'System', value: 'SYSTEM' },
+                            { label: 'SMS', value: 'SMS' },
+                          ]}
+                          placeholder="Select type"
+                          defaultValue={editedNotification.type}
+                          onSelectionChange={(val) => setEditedNotification({ ...editedNotification, type: val as 'EMAIL' | 'SYSTEM' | 'SMS' })}
+                        />
+                      ) : (
+                        <Box
+                          display="inline-block"
+                          px="12px"
+                          py="6px"
+                          bg="#DBEAFE"
+                          borderRadius="6px"
+                        >
+                          <Typography fontSize="13px" fontWeight="600" color="#2563EB">
+                            {notification.type}
+                          </Typography>
+                        </Box>
+                      )}
                     </Box>
                     <Box flex="1" p="20px" borderRight="1px solid #F1F5F9">
                       <Typography
@@ -382,33 +426,47 @@ export default function NotificationDetailPage({
                       >
                         Frequency
                       </Typography>
-                      <Box
-                        display="inline-block"
-                        px="12px"
-                        py="6px"
-                        bg={
-                          notification.frequency === 'IMMEDIATE'
-                            ? '#FEE2E2'
-                            : notification.frequency === 'DAILY'
-                              ? '#FEF3C7'
-                              : '#E0E7FF'
-                        }
-                        borderRadius="6px"
-                      >
-                        <Typography
-                          fontSize="13px"
-                          fontWeight="600"
-                          color={
+                      {isEditing && editedNotification ? (
+                        <Dropdown
+                          items={[
+                            { label: 'Immediate', value: 'IMMEDIATE' },
+                            { label: 'Daily', value: 'DAILY' },
+                            { label: 'Weekly', value: 'WEEKLY' },
+                            { label: 'Monthly', value: 'MONTHLY' },
+                          ]}
+                          placeholder="Select frequency"
+                          defaultValue={editedNotification.frequency}
+                          onSelectionChange={(val) => setEditedNotification({ ...editedNotification, frequency: val as 'IMMEDIATE' | 'DAILY' | 'WEEKLY' | 'MONTHLY' })}
+                        />
+                      ) : (
+                        <Box
+                          display="inline-block"
+                          px="12px"
+                          py="6px"
+                          bg={
                             notification.frequency === 'IMMEDIATE'
-                              ? '#DC2626'
+                              ? '#FEE2E2'
                               : notification.frequency === 'DAILY'
-                                ? '#D97706'
-                                : '#4F46E5'
+                                ? '#FEF3C7'
+                                : '#E0E7FF'
                           }
+                          borderRadius="6px"
                         >
-                          {notification.frequency}
-                        </Typography>
-                      </Box>
+                          <Typography
+                            fontSize="13px"
+                            fontWeight="600"
+                            color={
+                              notification.frequency === 'IMMEDIATE'
+                                ? '#DC2626'
+                                : notification.frequency === 'DAILY'
+                                  ? '#D97706'
+                                  : '#4F46E5'
+                            }
+                          >
+                            {notification.frequency}
+                          </Typography>
+                        </Box>
+                      )}
                     </Box>
                     <Box flex="1" p="20px">
                       <Typography
@@ -451,16 +509,27 @@ export default function NotificationDetailPage({
                     </Typography>
                   </Flex>
                   <Box p="20px">
-                    <Box
-                      p="16px"
-                      bg="#F8FAFC"
-                      borderRadius="10px"
-                      border="1px solid #E2E8F0"
-                    >
-                      <Typography fontSize="14px" color="#1E293B" lineHeight="1.7">
-                        {notification.trigger}
-                      </Typography>
-                    </Box>
+                    {isEditing && editedNotification ? (
+                      <Input
+                        value={editedNotification.trigger}
+                        onChange={(e) => setEditedNotification({ ...editedNotification, trigger: e.target.value })}
+                        placeholder="Enter trigger condition"
+                        size="md"
+                        borderColor="#E2E8F0"
+                        _focus={{ borderColor: '#F05423', boxShadow: '0 0 0 1px #F05423' }}
+                      />
+                    ) : (
+                      <Box
+                        p="16px"
+                        bg="#F8FAFC"
+                        borderRadius="10px"
+                        border="1px solid #E2E8F0"
+                      >
+                        <Typography fontSize="14px" color="#1E293B" lineHeight="1.7">
+                          {notification.trigger}
+                        </Typography>
+                      </Box>
+                    )}
                   </Box>
                 </Box>
 
@@ -485,22 +554,35 @@ export default function NotificationDetailPage({
                     </Typography>
                   </Flex>
                   <Box p="20px">
-                    <Box
-                      p="16px"
-                      bg="#F1F5F9"
-                      borderRadius="10px"
-                      border="1px solid #E2E8F0"
-                    >
-                      <Typography
-                        fontSize="13px"
-                        color="#475569"
+                    {isEditing && editedNotification ? (
+                      <Textarea
+                        value={editedNotification.template}
+                        onChange={(e) => setEditedNotification({ ...editedNotification, template: e.target.value })}
+                        placeholder="Enter email template (use {{variable}} for placeholders)"
+                        size="md"
+                        borderColor="#E2E8F0"
+                        _focus={{ borderColor: '#F05423', boxShadow: '0 0 0 1px #F05423' }}
+                        rows={4}
                         fontFamily="mono"
-                        whiteSpace="pre-wrap"
-                        lineHeight="1.6"
+                      />
+                    ) : (
+                      <Box
+                        p="16px"
+                        bg="#F1F5F9"
+                        borderRadius="10px"
+                        border="1px solid #E2E8F0"
                       >
-                        {notification.template}
-                      </Typography>
-                    </Box>
+                        <Typography
+                          fontSize="13px"
+                          color="#475569"
+                          fontFamily="mono"
+                          whiteSpace="pre-wrap"
+                          lineHeight="1.6"
+                        >
+                          {notification.template}
+                        </Typography>
+                      </Box>
+                    )}
                   </Box>
                 </Box>
 
@@ -525,24 +607,74 @@ export default function NotificationDetailPage({
                     </Typography>
                   </Flex>
                   <Box p="20px">
-                    <VStack gap="10px" align="stretch">
-                      {notification.recipients.map((recipient, index) => (
-                        <Box
-                          key={index}
-                          p="14px"
-                          bg="#F8FAFC"
-                          borderRadius="10px"
-                          border="1px solid #E2E8F0"
-                        >
-                          <HStack gap="10px">
-                            <FiMail size={16} color="#94A3B8" />
-                            <Typography fontSize="14px" color="#1E293B" fontWeight="500">
-                              {recipient}
-                            </Typography>
-                          </HStack>
-                        </Box>
-                      ))}
-                    </VStack>
+                    {isEditing && editedNotification ? (
+                      <VStack gap="12px" align="stretch">
+                        <HStack gap="8px">
+                          <Input
+                            placeholder="Enter email address"
+                            value={recipientInput}
+                            onChange={(e) => setRecipientInput(e.target.value)}
+                            size="md"
+                            borderColor="#E2E8F0"
+                            _focus={{ borderColor: '#F05423', boxShadow: '0 0 0 1px #F05423' }}
+                            flex="1"
+                            onKeyDown={(e) => e.key === 'Enter' && handleAddRecipient()}
+                          />
+                          <Button variant="secondary" size="sm" onClick={handleAddRecipient}>
+                            Add
+                          </Button>
+                        </HStack>
+                        <VStack gap="8px" align="stretch">
+                          {editedNotification.recipients.map((recipient, index) => (
+                            <Flex
+                              key={index}
+                              justify="space-between"
+                              align="center"
+                              p="12px 14px"
+                              bg="#F8FAFC"
+                              borderRadius="10px"
+                              border="1px solid #E2E8F0"
+                            >
+                              <HStack gap="10px">
+                                <FiMail size={16} color="#94A3B8" />
+                                <Typography fontSize="14px" color="#1E293B" fontWeight="500">
+                                  {recipient}
+                                </Typography>
+                              </HStack>
+                              <Box
+                                as="button"
+                                cursor="pointer"
+                                onClick={() => handleRemoveRecipient(index)}
+                                p="6px"
+                                borderRadius="6px"
+                                _hover={{ bg: '#FEE2E2' }}
+                              >
+                                <CloseIcon width="12" height="12" color="#EF4444" />
+                              </Box>
+                            </Flex>
+                          ))}
+                        </VStack>
+                      </VStack>
+                    ) : (
+                      <VStack gap="10px" align="stretch">
+                        {notification.recipients.map((recipient, index) => (
+                          <Box
+                            key={index}
+                            p="14px"
+                            bg="#F8FAFC"
+                            borderRadius="10px"
+                            border="1px solid #E2E8F0"
+                          >
+                            <HStack gap="10px">
+                              <FiMail size={16} color="#94A3B8" />
+                              <Typography fontSize="14px" color="#1E293B" fontWeight="500">
+                                {recipient}
+                              </Typography>
+                            </HStack>
+                          </Box>
+                        ))}
+                      </VStack>
+                    )}
                   </Box>
                 </Box>
               </VStack>

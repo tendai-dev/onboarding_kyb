@@ -696,21 +696,109 @@ class EntityConfigApiService {
   }
 
   async getRequirement(id: string): Promise<Requirement> {
-    return this.request<Requirement>(`/requirements/${id}`);
+    const reqObj = await this.request<Record<string, unknown>>(`/requirements/${id}`);
+    
+    // Transform snake_case or PascalCase to camelCase (same as getRequirements)
+    return {
+      id: String(reqObj.id || reqObj.Id || ''),
+      code: String(reqObj.code || reqObj.Code || ''),
+      displayName: String(
+        reqObj.displayName ||
+          reqObj.DisplayName ||
+          reqObj.display_name ||
+          reqObj.code ||
+          'Unnamed'
+      ),
+      description: String(
+        reqObj.description || reqObj.Description || ''
+      ),
+      type: String(reqObj.type || reqObj.Type || ''),
+      fieldType: String(
+        reqObj.fieldType || reqObj.FieldType || reqObj.field_type || ''
+      ),
+      validationRules:
+        reqObj.validationRules || reqObj.ValidationRules || reqObj.validation_rules
+          ? String(
+              reqObj.validationRules ||
+                reqObj.ValidationRules ||
+                reqObj.validation_rules
+            )
+          : undefined,
+      helpText: String(reqObj.helpText || reqObj.HelpText || reqObj.help_text || ''),
+      isActive:
+        reqObj.isActive !== undefined
+          ? Boolean(reqObj.isActive)
+          : reqObj.IsActive !== undefined
+            ? Boolean(reqObj.IsActive)
+            : reqObj.is_active !== undefined
+              ? Boolean(reqObj.is_active)
+              : true,
+      createdAt: String(
+        reqObj.createdAt || reqObj.CreatedAt || reqObj.created_at || ''
+      ),
+      updatedAt: String(
+        reqObj.updatedAt || reqObj.UpdatedAt || reqObj.updated_at || ''
+      ),
+      options: Array.isArray(reqObj.options || reqObj.Options)
+        ? ((reqObj.options || reqObj.Options) as unknown[]).map((opt: unknown) => {
+            const optObj = opt as Record<string, unknown>;
+            return {
+              id: String(optObj.id || optObj.Id || ''),
+              value: String(optObj.value || optObj.Value || ''),
+              displayText: String(
+                optObj.displayText || optObj.DisplayText || optObj.display_text || ''
+              ),
+              displayOrder:
+                typeof optObj.displayOrder === 'number'
+                  ? optObj.displayOrder
+                  : typeof optObj.DisplayOrder === 'number'
+                    ? optObj.DisplayOrder
+                    : typeof optObj.display_order === 'number'
+                      ? optObj.display_order
+                      : 0,
+            };
+          })
+        : [],
+    };
   }
 
   async createRequirement(data: CreateRequirementRequest): Promise<unknown> {
+    // Backend expects Type as string (e.g., "Document"), not number
+    // Map the numeric type to its string representation
+    const typeMap: Record<number, string> = {
+      1: 'Information',
+      2: 'Document',
+      3: 'ProofOfIdentity',
+      4: 'ProofOfAddress',
+      5: 'OwnershipStructure',
+      6: 'BoardDirectors',
+      7: 'AuthorizedSignatories',
+    };
+    
+    const payload = {
+      code: data.code,
+      displayName: data.displayName,
+      description: data.description,
+      type: typeMap[data.type] || 'Information',
+      fieldType: data.fieldType,
+      validationRules: data.validationRules,
+      helpText: data.helpText,
+    };
+    
     return this.request<unknown>('/requirements', {
       method: 'POST',
-      body: JSON.stringify(data),
+      body: JSON.stringify(payload),
     });
   }
 
   async updateRequirement(id: string, data: UpdateRequirementRequest): Promise<unknown> {
-    return this.request<unknown>(`/requirements/${id}`, {
+    console.log('[updateRequirement] Sending update:', { id, data });
+    const result = await this.request<unknown>(`/requirements/${id}`, {
       method: 'PUT',
       body: JSON.stringify(data),
     });
+    console.log('[updateRequirement] Response:', result);
+    return result;
   }
 
   async deleteRequirement(id: string): Promise<void> {

@@ -26,11 +26,35 @@ public class ChecklistController : ControllerBase
     [HttpPost]
     [ProducesResponseType(typeof(CreateChecklistResult), StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status409Conflict)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     public async Task<IActionResult> CreateChecklist([FromBody] CreateChecklistRequest request)
     {
+        // Check if a checklist already exists for this case
+        var existingQuery = new GetChecklistByCaseQuery(request.CaseId);
+        var existing = await _mediator.Send(existingQuery);
+        if (existing != null)
+        {
+            return Conflict(new { 
+                error = "A checklist already exists for this case",
+                message = $"A checklist already exists for case '{request.CaseId}'. Each case can only have one checklist.",
+                existingChecklistId = existing.Id
+            });
+        }
+
+        // Try to parse as enum first, otherwise default to Corporate for custom entity types
         if (!Enum.TryParse<ChecklistType>(request.Type, out var type))
-            return BadRequest(new { error = $"Invalid checklist type: {request.Type}" });
+        {
+            // Map common entity type codes to ChecklistType
+            type = request.Type?.ToUpperInvariant() switch
+            {
+                "INDIVIDUAL" or "PERSON" or "NATURAL_PERSON" => ChecklistType.Individual,
+                "TRUST" => ChecklistType.Trust,
+                "PARTNERSHIP" => ChecklistType.Partnership,
+                _ => ChecklistType.Corporate // Default to Corporate for business entity types
+            };
+            _logger.LogInformation("Mapped entity type '{EntityType}' to ChecklistType '{ChecklistType}'", request.Type, type);
+        }
 
         var command = new CreateChecklistCommand(
             request.CaseId,
@@ -75,6 +99,24 @@ public class ChecklistController : ControllerBase
             return NotFound();
 
         return Ok(result);
+    }
+
+    /// <summary>
+    /// Delete a checklist
+    /// </summary>
+    [HttpDelete("{id:guid}")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    public async Task<IActionResult> DeleteChecklist(Guid id)
+    {
+        var command = new DeleteChecklistCommand(id);
+        var result = await _mediator.Send(command);
+
+        if (!result)
+            return NotFound();
+
+        return NoContent();
     }
 
     /// <summary>
@@ -209,6 +251,100 @@ public class ChecklistController : ControllerBase
         return Ok(result);
     }
 
+    /// <summary>
+    /// Update a checklist (add/remove items, change status)
+    /// </summary>
+    [HttpPut("{id:guid}")]
+    [ProducesResponseType(typeof(ChecklistDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    public async Task<IActionResult> UpdateChecklist(Guid id, [FromBody] UpdateChecklistRequest request)
+    {
+        try
+        {
+            var command = new UpdateChecklistCommand(
+                id,
+                request.Type,
+                request.Status,
+                request.Items?.Select(i => new UpdateChecklistItemDto
+                {
+                    Id = i.Id,
+                    Name = i.Name,
+                    Description = i.Description,
+                    Category = i.Category,
+                    IsRequired = i.IsRequired,
+                    Order = i.Order,
+                    Notes = i.Notes
+                }).ToList()
+            );
+
+            var result = await _mediator.Send(command);
+            return Ok(result);
+        }
+        catch (KeyNotFoundException)
+        {
+            return NotFound(new { error = "Checklist not found" });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { error = ex.Message });
+        }
+    }
+
+    /// <summary>
+    /// Add an item to a checklist
+    /// </summary>
+    [HttpPost("{checklistId:guid}/items")]
+    [ProducesResponseType(typeof(ChecklistDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> AddChecklistItem(Guid checklistId, [FromBody] AddChecklistItemRequest request)
+    {
+        try
+        {
+            var command = new AddChecklistItemCommand(
+                checklistId,
+                request.Name,
+                request.Description,
+                request.Category,
+                request.IsRequired,
+                request.Notes
+            );
+
+            var result = await _mediator.Send(command);
+            return Ok(result);
+        }
+        catch (KeyNotFoundException)
+        {
+            return NotFound(new { error = "Checklist not found" });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { error = ex.Message });
+        }
+    }
+
+    /// <summary>
+    /// Remove an item from a checklist
+    /// </summary>
+    [HttpDelete("{checklistId:guid}/items/{itemId:guid}")]
+    [ProducesResponseType(typeof(ChecklistDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> RemoveChecklistItem(Guid checklistId, Guid itemId)
+    {
+        try
+        {
+            var command = new RemoveChecklistItemCommand(checklistId, itemId);
+            var result = await _mediator.Send(command);
+            return Ok(result);
+        }
+        catch (KeyNotFoundException)
+        {
+            return NotFound(new { error = "Checklist or item not found" });
+        }
+    }
+
     private string GetCurrentUserId()
     {
         return User.Identity?.Name ?? "system";
@@ -235,5 +371,32 @@ public class SkipChecklistItemRequest
 public class ResetChecklistItemRequest
 {
     public string? Reason { get; set; }
+}
+
+public class UpdateChecklistRequest
+{
+    public string? Type { get; set; }
+    public string? Status { get; set; }
+    public List<UpdateChecklistItemRequest>? Items { get; set; }
+}
+
+public class UpdateChecklistItemRequest
+{
+    public string? Id { get; set; }
+    public string Name { get; set; } = string.Empty;
+    public string Description { get; set; } = string.Empty;
+    public string Category { get; set; } = string.Empty;
+    public bool IsRequired { get; set; }
+    public int Order { get; set; }
+    public string? Notes { get; set; }
+}
+
+public class AddChecklistItemRequest
+{
+    public string Name { get; set; } = string.Empty;
+    public string Description { get; set; } = string.Empty;
+    public string Category { get; set; } = string.Empty;
+    public bool IsRequired { get; set; }
+    public string? Notes { get; set; }
 }
 

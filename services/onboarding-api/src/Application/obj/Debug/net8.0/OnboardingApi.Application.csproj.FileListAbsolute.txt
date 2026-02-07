@@ -1,35 +1,3 @@
-/Users/mukurusystemsadministrator/Desktop/onboarding_kyc copy/services/onboarding-api/src/Application/bin/Debug/net8.0/OnboardingApi.Application.deps.json
-/Users/mukurusystemsadministrator/Desktop/onboarding_kyc copy/services/onboarding-api/src/Application/bin/Debug/net8.0/OnboardingApi.Application.dll
-/Users/mukurusystemsadministrator/Desktop/onboarding_kyc copy/services/onboarding-api/src/Application/bin/Debug/net8.0/OnboardingApi.Application.pdb
-/Users/mukurusystemsadministrator/Desktop/onboarding_kyc copy/services/onboarding-api/src/Application/bin/Debug/net8.0/OnboardingApi.Domain.dll
-/Users/mukurusystemsadministrator/Desktop/onboarding_kyc copy/services/onboarding-api/src/Application/bin/Debug/net8.0/OnboardingApi.Domain.pdb
-/Users/mukurusystemsadministrator/Desktop/onboarding_kyc copy/services/onboarding-api/src/Application/obj/Debug/net8.0/OnboardingApi.Application.csproj.AssemblyReference.cache
-/Users/mukurusystemsadministrator/Desktop/onboarding_kyc copy/services/onboarding-api/src/Application/obj/Debug/net8.0/OnboardingApi.Application.GeneratedMSBuildEditorConfig.editorconfig
-/Users/mukurusystemsadministrator/Desktop/onboarding_kyc copy/services/onboarding-api/src/Application/obj/Debug/net8.0/OnboardingApi.Application.AssemblyInfoInputs.cache
-/Users/mukurusystemsadministrator/Desktop/onboarding_kyc copy/services/onboarding-api/src/Application/obj/Debug/net8.0/OnboardingApi.Application.AssemblyInfo.cs
-/Users/mukurusystemsadministrator/Desktop/onboarding_kyc copy/services/onboarding-api/src/Application/obj/Debug/net8.0/OnboardingApi.Application.csproj.CoreCompileInputs.cache
-/Users/mukurusystemsadministrator/Desktop/onboarding_kyc copy/services/onboarding-api/src/Application/obj/Debug/net8.0/OnboardingApi.Application.sourcelink.json
-/Users/mukurusystemsadministrator/Desktop/onboarding_kyc copy/services/onboarding-api/src/Application/obj/Debug/net8.0/Onboardi.C4E8355A.Up2Date
-/Users/mukurusystemsadministrator/Desktop/onboarding_kyc copy/services/onboarding-api/src/Application/obj/Debug/net8.0/OnboardingApi.Application.dll
-/Users/mukurusystemsadministrator/Desktop/onboarding_kyc copy/services/onboarding-api/src/Application/obj/Debug/net8.0/refint/OnboardingApi.Application.dll
-/Users/mukurusystemsadministrator/Desktop/onboarding_kyc copy/services/onboarding-api/src/Application/obj/Debug/net8.0/OnboardingApi.Application.pdb
-/Users/mukurusystemsadministrator/Desktop/onboarding_kyc copy/services/onboarding-api/src/Application/obj/Debug/net8.0/ref/OnboardingApi.Application.dll
-/Users/mukurusystemsadministrator/Desktop/Archive/services/onboarding-api/src/Application/bin/Debug/net8.0/OnboardingApi.Application.deps.json
-/Users/mukurusystemsadministrator/Desktop/Archive/services/onboarding-api/src/Application/bin/Debug/net8.0/OnboardingApi.Application.dll
-/Users/mukurusystemsadministrator/Desktop/Archive/services/onboarding-api/src/Application/bin/Debug/net8.0/OnboardingApi.Application.pdb
-/Users/mukurusystemsadministrator/Desktop/Archive/services/onboarding-api/src/Application/bin/Debug/net8.0/OnboardingApi.Domain.dll
-/Users/mukurusystemsadministrator/Desktop/Archive/services/onboarding-api/src/Application/bin/Debug/net8.0/OnboardingApi.Domain.pdb
-/Users/mukurusystemsadministrator/Desktop/Archive/services/onboarding-api/src/Application/obj/Debug/net8.0/OnboardingApi.Application.csproj.AssemblyReference.cache
-/Users/mukurusystemsadministrator/Desktop/Archive/services/onboarding-api/src/Application/obj/Debug/net8.0/OnboardingApi.Application.GeneratedMSBuildEditorConfig.editorconfig
-/Users/mukurusystemsadministrator/Desktop/Archive/services/onboarding-api/src/Application/obj/Debug/net8.0/OnboardingApi.Application.AssemblyInfoInputs.cache
-/Users/mukurusystemsadministrator/Desktop/Archive/services/onboarding-api/src/Application/obj/Debug/net8.0/OnboardingApi.Application.AssemblyInfo.cs
-/Users/mukurusystemsadministrator/Desktop/Archive/services/onboarding-api/src/Application/obj/Debug/net8.0/OnboardingApi.Application.csproj.CoreCompileInputs.cache
-/Users/mukurusystemsadministrator/Desktop/Archive/services/onboarding-api/src/Application/obj/Debug/net8.0/OnboardingApi.Application.sourcelink.json
-/Users/mukurusystemsadministrator/Desktop/Archive/services/onboarding-api/src/Application/obj/Debug/net8.0/Onboardi.C4E8355A.Up2Date
-/Users/mukurusystemsadministrator/Desktop/Archive/services/onboarding-api/src/Application/obj/Debug/net8.0/OnboardingApi.Application.dll
-/Users/mukurusystemsadministrator/Desktop/Archive/services/onboarding-api/src/Application/obj/Debug/net8.0/refint/OnboardingApi.Application.dll
-/Users/mukurusystemsadministrator/Desktop/Archive/services/onboarding-api/src/Application/obj/Debug/net8.0/OnboardingApi.Application.pdb
-/Users/mukurusystemsadministrator/Desktop/Archive/services/onboarding-api/src/Application/obj/Debug/net8.0/ref/OnboardingApi.Application.dll
 /root/onboarding_kyc/services/onboarding-api/src/Application/bin/Debug/net8.0/OnboardingApi.Application.deps.json
 /root/onboarding_kyc/services/onboarding-api/src/Application/bin/Debug/net8.0/OnboardingApi.Application.dll
 /root/onboarding_kyc/services/onboarding-api/src/Application/bin/Debug/net8.0/OnboardingApi.Application.pdb

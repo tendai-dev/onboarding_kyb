@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("OnboardingApi.Domain")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+be0c71a22301fc6cbffe60cac8683cabe442ba2e")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+0888e8fb28460a13efc4277631a9e37a36ab6a2c")]
 [assembly: System.Reflection.AssemblyProductAttribute("OnboardingApi.Domain")]
 [assembly: System.Reflection.AssemblyTitleAttribute("OnboardingApi.Domain")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

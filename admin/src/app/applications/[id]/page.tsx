@@ -63,6 +63,7 @@ import {
   PhoneIcon,
 } from '@mukuru/mukuru-react-components';
 import { logger } from '../../../lib/logger';
+import { messagingApi } from '../../../lib/messagingApi';
 import {
   formatCountryName,
   formatDate,
@@ -150,6 +151,14 @@ export default function AdminApplicationDetailsPage() {
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [adminComments, setAdminComments] = useState('');
   const [statusUpdate, setStatusUpdate] = useState('');
+  const [commentsList, setCommentsList] = useState<Array<{
+    id: string;
+    text: string;
+    authorId: string;
+    authorName: string;
+    createdAt: string;
+  }>>([]);
+  const [commentsLoading, setCommentsLoading] = useState(false);
   // Risk assessment state removed - not currently used
 
   // Modal states
@@ -193,6 +202,9 @@ export default function AdminApplicationDetailsPage() {
   const [viewingDocumentSize, setViewingDocumentSize] = useState<number | undefined>(
     undefined
   );
+
+  // Message notification state
+  const [applicationUnreadMessages, setApplicationUnreadMessages] = useState(0);
 
   // Using SweetAlert2 for notifications instead of Chakra UI toaster to avoid initialization issues
 
@@ -733,14 +745,28 @@ export default function AdminApplicationDetailsPage() {
       });
 
       // Map status from backend to frontend
+      // Handle both PascalCase (from domain) and UPPERCASE (from projections)
       const statusMap: Record<string, Application['status']> = {
         Draft: 'IN PROGRESS',
+        DRAFT: 'IN PROGRESS',
         InProgress: 'IN PROGRESS',
+        IN_PROGRESS: 'IN PROGRESS',
+        'IN PROGRESS': 'IN PROGRESS',
         PendingReview: 'RISK REVIEW',
+        PENDING_REVIEW: 'RISK REVIEW',
+        'RISK REVIEW': 'RISK REVIEW',
         Submitted: 'SUBMITTED',
+        SUBMITTED: 'SUBMITTED',
         Approved: 'COMPLETE',
+        APPROVED: 'COMPLETE',
+        Complete: 'COMPLETE',
+        COMPLETE: 'COMPLETE',
         Rejected: 'DECLINED',
+        REJECTED: 'DECLINED',
+        Declined: 'DECLINED',
+        DECLINED: 'DECLINED',
         Cancelled: 'DECLINED',
+        CANCELLED: 'DECLINED',
       };
 
       // Backend returns snake_case, handle both snake_case and camelCase field names
@@ -868,6 +894,20 @@ export default function AdminApplicationDetailsPage() {
     }
   }, [applicationId]);
 
+  // Fetch unread messages count for this application
+  const loadApplicationMessages = useCallback(async () => {
+    if (!applicationId) return;
+    try {
+      const thread = await messagingApi.getThreadByApplication(applicationId);
+      if (thread && thread.unreadCount !== undefined) {
+        setApplicationUnreadMessages(thread.unreadCount);
+      }
+    } catch (err) {
+      // Silently ignore - thread may not exist for this application
+      setApplicationUnreadMessages(0);
+    }
+  }, [applicationId]);
+
   // Fetch audit logs for this application
   const loadAuditLogs = useCallback(async () => {
     if (!applicationId) return;
@@ -901,13 +941,137 @@ export default function AdminApplicationDetailsPage() {
     }
   }, [applicationId]);
 
+  // Fetch comments for this application
+  const loadComments = useCallback(async () => {
+    if (!applicationId) return;
+    setCommentsLoading(true);
+    try {
+      // First get the work item ID for this application
+      const workItemResponse = await fetch(`/api/workqueue/by-application/${applicationId}`);
+      if (!workItemResponse.ok) {
+        if (workItemResponse.status === 404) {
+          // No work item yet - this is normal for draft applications
+          setCommentsList([]);
+          setCommentsLoading(false);
+          return;
+        }
+        const errorText = await workItemResponse.text().catch(() => 'Unknown error');
+        logger.error(new Error(`Failed to find work item: ${workItemResponse.status} - ${errorText}`), 'Error fetching work item for comments', {
+          tags: { error_type: 'work_item_fetch_error' },
+          extra: { applicationId, status: workItemResponse.status },
+        });
+        setCommentsList([]);
+        setCommentsLoading(false);
+        return;
+      }
+      
+      const workItemData = await workItemResponse.json();
+      // Backend returns snake_case, handle both formats
+      const workItemId = workItemData.id || workItemData.workItemId || workItemData.work_item_id;
+      
+      if (!workItemId) {
+        logger.warn('Work item ID not found in response', {
+          tags: { warning_type: 'work_item_id_missing' },
+          extra: { applicationId, workItemData },
+        });
+        setCommentsList([]);
+        setCommentsLoading(false);
+        return;
+      }
+
+      // Fetch comments using work item ID
+      const response = await fetch(`/api/workqueue/${workItemId}/comments`);
+      if (!response.ok) {
+        const errorText = await response.text().catch(() => 'Unknown error');
+        logger.error(new Error(`Failed to fetch comments: ${response.status} - ${errorText}`), 'Error fetching comments', {
+          tags: { error_type: 'comments_fetch_error' },
+          extra: { workItemId, status: response.status },
+        });
+        setCommentsList([]);
+        setCommentsLoading(false);
+        return;
+      }
+
+      const data = await response.json();
+      const comments = Array.isArray(data) ? data : (data.comments || data.items || []);
+      
+      if (process.env.NODE_ENV === 'development') {
+        console.log('[Comments] Fetched comments:', { count: comments.length, comments, rawData: data });
+      }
+
+      const mappedComments = comments
+        .filter((c: Record<string, unknown>) => {
+          // Filter out comments without text
+          const text = String(c.text || c.content || c.message || '').trim();
+          return text.length > 0;
+        })
+        .map((c: Record<string, unknown>) => {
+          // Handle date parsing - backend returns DateTime which serializes to ISO string
+          // Backend uses snake_case (created_at), so handle both snake_case and camelCase
+          let createdAt = '';
+          const rawCreatedAt = c.createdAt || c.created_at;
+          if (rawCreatedAt) {
+            try {
+              const date = new Date(String(rawCreatedAt));
+              if (!isNaN(date.getTime())) {
+                createdAt = date.toISOString();
+              } else {
+                createdAt = String(rawCreatedAt);
+              }
+            } catch {
+              createdAt = String(rawCreatedAt);
+            }
+          }
+
+          // Backend returns snake_case (author_id, author_name), handle both formats
+          return {
+            id: String(c.id || c.commentId || c.comment_id || `${c.authorId || c.author_id}-${rawCreatedAt}` || `comment-${Date.now()}-${Math.random()}`),
+            text: String(c.text || c.content || c.message || '').trim(),
+            authorId: String(c.authorId || c.author_id || c.userId || c.user_id || ''),
+            authorName: String(c.authorName || c.author_name || c.userName || c.user_name || c.author || 'Unknown'),
+            createdAt: createdAt || String(c.timestamp || c.created || ''),
+          };
+        })
+        // Sort by date descending (newest first) as a fallback (backend should already do this)
+        .sort((a: { createdAt: string }, b: { createdAt: string }) => {
+          if (!a.createdAt && !b.createdAt) return 0;
+          if (!a.createdAt) return 1;
+          if (!b.createdAt) return -1;
+          return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+        });
+
+      setCommentsList(mappedComments);
+      
+      if (process.env.NODE_ENV === 'development') {
+        console.log('[Comments] Mapped and sorted comments:', mappedComments);
+      }
+    } catch (err) {
+      logger.error(err instanceof Error ? err : new Error('Unknown error'), 'Failed to fetch comments', {
+        tags: { error_type: 'comments_error' },
+        extra: { applicationId, error: err },
+      });
+      setCommentsList([]);
+    } finally {
+      setCommentsLoading(false);
+    }
+  }, [applicationId]);
+
   // Load sidebar data when application is loaded
   useEffect(() => {
     if (application) {
       loadDocumentsCount();
       loadAuditLogs();
+      loadComments();
+      loadApplicationMessages();
     }
-  }, [application, loadDocumentsCount, loadAuditLogs]);
+  }, [application, loadDocumentsCount, loadAuditLogs, loadComments, loadApplicationMessages]);
+
+  // Also load comments when applicationId changes (in case application object doesn't trigger)
+  useEffect(() => {
+    if (applicationId) {
+      loadComments();
+    }
+  }, [applicationId, loadComments]);
 
   const loadEntitySchema = async (
     entityTypeCode: string,
@@ -1099,10 +1263,27 @@ export default function AdminApplicationDetailsPage() {
 
     setIsCommenting(true);
     try {
-      // Add comment via work queue API if work item exists
-      const _workItemId = application.id;
+      // First, get the work item ID for this application/case
+      // The work queue API requires work item ID, not case/application ID
+      const workItemResponse = await fetch(`/api/workqueue/by-application/${application.id}`);
+      
+      if (!workItemResponse.ok) {
+        if (workItemResponse.status === 404) {
+          throw new Error('No work item found for this application. The application may not have been submitted yet.');
+        }
+        throw new Error(`Failed to find work item: ${workItemResponse.status}`);
+      }
+      
+      const workItemData = await workItemResponse.json();
+      // Backend returns snake_case, handle both formats
+      const workItemId = workItemData.id || workItemData.workItemId || workItemData.work_item_id;
+      
+      if (!workItemId) {
+        throw new Error('Work item ID not found in response');
+      }
 
-      const response = await fetch(`/api/workqueue/${_workItemId}/comments`, {
+      // Now add the comment using the work item ID
+      const response = await fetch(`/api/workqueue/${workItemId}/comments`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -1111,15 +1292,22 @@ export default function AdminApplicationDetailsPage() {
       });
 
       if (response.ok) {
+        const responseData = await response.json().catch(() => ({}));
+        
         // Update local comments
         setAdminComments(tempComment);
 
-        // Refresh audit logs to show the new comment
-        await loadAuditLogs();
-
-        // Close modal and show success
+        // Close modal and clear input immediately for better UX
         setIsCommentModalOpen(false);
+        const commentText = tempComment;
         setTempComment('');
+
+        // Small delay to ensure backend has processed the comment
+        await new Promise(resolve => setTimeout(resolve, 500));
+
+        // Refresh comments list and audit logs
+        await loadComments();
+        await loadAuditLogs();
 
         await SweetAlert.success(
           'Comment Added',
@@ -1127,7 +1315,12 @@ export default function AdminApplicationDetailsPage() {
         );
       } else {
         const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.error || `Failed to add comment: ${response.status}`);
+        const errorMessage = errorData.error || errorData.message || `Failed to add comment: ${response.status}`;
+        logger.error(new Error(errorMessage), 'Failed to add comment - API error', {
+          tags: { error_type: 'comment_add_api_error' },
+          extra: { workItemId, status: response.status, errorData },
+        });
+        throw new Error(errorMessage);
       }
     } catch (err) {
       logger.error(err, 'Error adding comment', {
@@ -1553,6 +1746,37 @@ export default function AdminApplicationDetailsPage() {
                 </IconWrapper>
                 Add Comment
               </Button>
+              <Link href={`/messages?applicationId=${applicationId}`}>
+                <Box position="relative">
+                  <Button variant="secondary" size="sm">
+                    <IconWrapper>
+                      <MailIcon width="14" height="14" />
+                    </IconWrapper>
+                    Messages
+                  </Button>
+                  {applicationUnreadMessages > 0 && (
+                    <Box
+                      position="absolute"
+                      top="-6px"
+                      right="-6px"
+                      bg="mukuru.buttons.primary"
+                      color="white"
+                      borderRadius="full"
+                      minW="18px"
+                      h="18px"
+                      display="flex"
+                      alignItems="center"
+                      justifyContent="center"
+                      fontSize="10px"
+                      fontWeight="bold"
+                      border="2px solid white"
+                      boxShadow="0 2px 4px rgba(0,0,0,0.15)"
+                    >
+                      {applicationUnreadMessages > 99 ? '99+' : applicationUnreadMessages}
+                    </Box>
+                  )}
+                </Box>
+              </Link>
               <Box w="1px" h="24px" bg="mukuru.grey.light" />
               <Link href="/work-queue">
                 <Button variant="secondary" size="sm">
@@ -2796,6 +3020,100 @@ export default function AdminApplicationDetailsPage() {
                 </VStack>
               </Box>
 
+              {/* Comments Card */}
+              <Box
+                bg="white"
+                borderRadius="16px"
+                border="1px solid"
+                borderColor="mukuru.grey.light"
+                overflow="hidden"
+                w="full"
+                boxShadow="0 2px 8px rgba(0, 0, 0, 0.04)"
+              >
+                <Box
+                  p="16px"
+                  borderBottom="1px solid"
+                  borderColor="mukuru.grey.light"
+                  bg="#FAFBFC"
+                >
+                  <HStack justify="space-between" align="center">
+                    <Typography
+                      fontSize="14px"
+                      fontWeight="600"
+                      color="mukuru.text.primary"
+                    >
+                      Comments ({commentsList.length})
+                    </Typography>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => setIsCommentModalOpen(true)}
+                    >
+                      <FiMessageSquare />
+                    </Button>
+                  </HStack>
+                </Box>
+                <VStack gap="0" align="stretch" p="16px" maxH="300px" overflowY="auto">
+                  {commentsLoading ? (
+                    <HStack gap="12px" align="center" justify="center" py="8px">
+                      <Spinner size="sm" color="mukuru.buttons.primary" />
+                      <Typography fontSize="12px" color="mukuru.grey.medium">
+                        Loading comments...
+                      </Typography>
+                    </HStack>
+                  ) : commentsList.length > 0 ? (
+                    commentsList.map((comment, index) => (
+                      <Box
+                        key={comment.id || index}
+                        p="12px"
+                        bg={index % 2 === 0 ? '#F8FAFC' : 'white'}
+                        borderRadius="8px"
+                        mb={index < commentsList.length - 1 ? '8px' : '0'}
+                      >
+                        <VStack align="start" gap="4px">
+                          <HStack justify="space-between" w="full">
+                            <Typography
+                              fontSize="12px"
+                              fontWeight="600"
+                              color="mukuru.text.primary"
+                            >
+                              {comment.authorName}
+                            </Typography>
+                            <Typography fontSize="11px" color="mukuru.grey.medium">
+                              {comment.createdAt
+                                ? formatDateShort(comment.createdAt)
+                                : 'Unknown date'}
+                            </Typography>
+                          </HStack>
+                          <Typography
+                            fontSize="13px"
+                            color="mukuru.text.primary"
+                            lineHeight="1.5"
+                          >
+                            {comment.text}
+                          </Typography>
+                        </VStack>
+                      </Box>
+                    ))
+                  ) : (
+                    <Box py="16px" textAlign="center">
+                      <Typography fontSize="13px" color="mukuru.grey.medium">
+                        No comments yet
+                      </Typography>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        mt="8px"
+                        onClick={() => setIsCommentModalOpen(true)}
+                      >
+                        <FiMessageSquare />
+                        <Typography ml="4px" fontSize="12px">Add Comment</Typography>
+                      </Button>
+                    </Box>
+                  )}
+                </VStack>
+              </Box>
+
               {/* Timeline Card */}
               <Box
                 bg="white"
@@ -3055,14 +3373,14 @@ export default function AdminApplicationDetailsPage() {
           setTempComment('');
         }}
         title="Add Comment"
-        size="small"
+        size="large"
         closeOnBackdropClick={true}
         closeOnEsc={true}
       >
         <ModalHeader>
           <HStack gap="3" align="center" mb="1">
             <Box
-              p="2"
+              p="2.5"
               borderRadius="lg"
               bg="mukuru.state.hover.card"
               display="flex"
@@ -3070,45 +3388,128 @@ export default function AdminApplicationDetailsPage() {
               justifyContent="center"
             >
               <IconWrapper>
-                <FiMessageSquare size={16} color="mukuru.primary" />
+                <FiMessageSquare size={20} color="mukuru.primary" />
               </IconWrapper>
             </Box>
             <VStack align="start" gap="0">
-              <Typography fontSize="lg" fontWeight="700" color="mukuru.text.primary">
-                Add Comment
+              <Typography fontSize="xl" fontWeight="700" color="mukuru.text.primary">
+                Comments
               </Typography>
               <Typography fontSize="sm" color="mukuru.grey.mediumDark" mt="0.5">
-                Add a comment or note to this application
+                View and add comments to this application
               </Typography>
             </VStack>
           </HStack>
         </ModalHeader>
         <ModalBody>
-          <Field.Root>
-            <Field.Label
-              fontSize="sm"
-              fontWeight="600"
-              color="mukuru.text.primary"
-              mb="2"
-            >
-              Comment
-            </Field.Label>
-            <Textarea
-              placeholder="Enter your comment here..."
-              value={tempComment}
-              onChange={(e) => setTempComment(e.target.value)}
-              rows={6}
-              borderRadius="md"
-              borderWidth="1.5px"
-              borderColor="mukuru.grey.light"
-              fontSize="sm"
-              color="mukuru.text.primary"
-              _focus={{
-                borderColor: 'mukuru.primary',
-                boxShadow: '0 0 0 1px mukuru.primary',
-              }}
-            />
-          </Field.Root>
+          {/* Existing Comments List */}
+          {commentsList.length > 0 && (
+            <Box mb="5">
+              <HStack justify="space-between" align="center" mb="3">
+                <Typography fontSize="md" fontWeight="600" color="mukuru.text.primary">
+                  Previous Comments
+                </Typography>
+                <Box 
+                  px="2.5" 
+                  py="1" 
+                  bg="mukuru.primary" 
+                  borderRadius="full"
+                >
+                  <Typography fontSize="xs" fontWeight="600" color="white">
+                    {commentsList.length}
+                  </Typography>
+                </Box>
+              </HStack>
+              <VStack 
+                gap="3" 
+                align="stretch" 
+                maxH="300px" 
+                overflowY="auto"
+                p="3"
+                bg="gray.50"
+                borderRadius="lg"
+                border="1px solid"
+                borderColor="gray.200"
+              >
+                {commentsList.map((comment, index) => (
+                  <Box
+                    key={comment.id || index}
+                    p="4"
+                    bg="white"
+                    borderRadius="lg"
+                    border="1px solid"
+                    borderColor="gray.200"
+                    boxShadow="sm"
+                  >
+                    <HStack justify="space-between" mb="2">
+                      <HStack gap="2">
+                        <Box 
+                          w="8" 
+                          h="8" 
+                          borderRadius="full" 
+                          bg="mukuru.primary" 
+                          display="flex" 
+                          alignItems="center" 
+                          justifyContent="center"
+                        >
+                          <Typography fontSize="xs" fontWeight="600" color="white">
+                            {comment.authorName?.charAt(0)?.toUpperCase() || 'U'}
+                          </Typography>
+                        </Box>
+                        <VStack align="start" gap="0">
+                          <Typography fontSize="sm" fontWeight="600" color="mukuru.text.primary">
+                            {comment.authorName}
+                          </Typography>
+                          <Typography fontSize="xs" color="mukuru.grey.medium">
+                            {comment.createdAt ? formatDateShort(comment.createdAt) : ''}
+                          </Typography>
+                        </VStack>
+                      </HStack>
+                    </HStack>
+                    <Typography fontSize="sm" color="mukuru.text.primary" lineHeight="1.5" pl="10">
+                      {comment.text}
+                    </Typography>
+                  </Box>
+                ))}
+              </VStack>
+            </Box>
+          )}
+          
+          {/* Add New Comment */}
+          <Box 
+            p="4" 
+            bg="gray.50" 
+            borderRadius="lg" 
+            border="1px solid" 
+            borderColor="gray.200"
+          >
+            <Field.Root>
+              <Field.Label
+                fontSize="md"
+                fontWeight="600"
+                color="mukuru.text.primary"
+                mb="3"
+              >
+                {commentsList.length > 0 ? 'Add New Comment' : 'Write a Comment'}
+              </Field.Label>
+              <Textarea
+                placeholder="Enter your comment here..."
+                value={tempComment}
+                onChange={(e) => setTempComment(e.target.value)}
+                rows={5}
+                borderRadius="lg"
+                borderWidth="1.5px"
+                borderColor="gray.300"
+                fontSize="sm"
+                color="mukuru.text.primary"
+                bg="white"
+                _focus={{
+                  borderColor: 'mukuru.primary',
+                  boxShadow: '0 0 0 1px mukuru.primary',
+                }}
+              />
+            </Field.Root>
+          </Box>
         </ModalBody>
         <ModalFooter>
           <HStack gap="3" justify="flex-end" w="full">

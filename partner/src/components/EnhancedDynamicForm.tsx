@@ -321,7 +321,9 @@ export function EnhancedDynamicForm({
               onFileUpload={async (file) => {
                 // Store File object temporarily (will be uploaded to Document Service after case creation)
                 // File objects can't be serialized, so we store them in a ref
-                fileObjectsRef.current.set(field.id, file);
+                // For multiple files, we use a unique key combining field.id and file name
+                const fileKey = `${field.id}__${file.name}`;
+                fileObjectsRef.current.set(fileKey, file);
 
                 // Notify parent component of file changes
                 if (onFilesChange) {
@@ -341,8 +343,18 @@ export function EnhancedDynamicForm({
                   // Note: File object is stored in fileObjectsRef, not here (can't serialize File)
                 };
 
-                // Store file metadata in formData
-                handleFieldChange(field.id, fileData as any);
+                // For multiple files, store as array in formData
+                const existingData = formData[field.id];
+                if (Array.isArray(existingData)) {
+                  // Append to existing array
+                  handleFieldChange(field.id, [...existingData, fileData] as any);
+                } else if (existingData && typeof existingData === 'object' && existingData.fileName) {
+                  // Convert single file to array
+                  handleFieldChange(field.id, [existingData, fileData] as any);
+                } else {
+                  // First file - store as array for consistency
+                  handleFieldChange(field.id, [fileData] as any);
+                }
 
                 console.info(
                   '📎 File selected and stored (will upload to Document Service after case creation):',
@@ -361,8 +373,9 @@ export function EnhancedDynamicForm({
               }}
               acceptedTypes={['.pdf', '.doc', '.docx', '.jpg', '.jpeg', '.png']}
               maxSize={10}
+              multiple={true}
               label={field.label}
-              description={field.description || 'Upload document'}
+              description={field.description || 'Upload documents (multiple files allowed)'}
             />
           );
         }

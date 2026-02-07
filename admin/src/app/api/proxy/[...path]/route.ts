@@ -553,6 +553,22 @@ async function forward(req: NextRequest) {
         return new NextResponse(errorBody, { status: res.status, headers: respHeaders });
       }
 
+      // Handle 204 No Content responses specially - they should have no body
+      if (res.status === 204) {
+        const respHeaders = new Headers();
+        res.headers.forEach((v, k) => respHeaders.set(k, v));
+        respHeaders.set('Access-Control-Allow-Origin', '*');
+        respHeaders.set(
+          'Access-Control-Allow-Methods',
+          'GET, POST, PUT, DELETE, OPTIONS, PATCH'
+        );
+        respHeaders.set(
+          'Access-Control-Allow-Headers',
+          'Content-Type, Authorization, X-User-Id, X-User-Email, X-User-Name, X-User-Role'
+        );
+        return new NextResponse(null, { status: 204, headers: respHeaders });
+      }
+
       const body = await res.arrayBuffer();
 
       const respHeaders = new Headers();

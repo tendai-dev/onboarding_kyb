@@ -122,12 +122,13 @@ public class Message
         IsStarred = !IsStarred;
     }
     
-    public void MarkAsRead(Guid readByUserId)
+    public void MarkAsRead(Guid readByUserId, bool isAdmin = false)
     {
         if (IsRead)
             return;
         
-        if (readByUserId != SenderId && readByUserId != ReceiverId)
+        // Admins can mark any message as read, regular users can only mark messages they sent or received
+        if (!isAdmin && readByUserId != SenderId && readByUserId != ReceiverId)
             throw new UnauthorizedAccessException("User not authorized to read this message");
         
         ReadAt = DateTime.UtcNow;
@@ -141,13 +142,14 @@ public class Message
         ));
     }
     
-    public void Delete(Guid deletedByUserId)
+    public void Delete(Guid deletedByUserId, bool isAdmin = false)
     {
         if (IsDeleted)
             throw new InvalidOperationException("Message is already deleted");
         
-        if (deletedByUserId != SenderId)
-            throw new UnauthorizedAccessException("Only sender can delete their message");
+        // Allow sender or admin to delete
+        if (deletedByUserId != SenderId && !isAdmin)
+            throw new UnauthorizedAccessException("Only sender or admin can delete this message");
         
         DeletedAt = DateTime.UtcNow;
         Status = MessageStatus.Deleted;
@@ -283,6 +285,22 @@ public class MessageThread
     public void ToggleStar()
     {
         IsStarred = !IsStarred;
+    }
+    
+    public void UpdateApplicantName(string applicantName)
+    {
+        if (!string.IsNullOrWhiteSpace(applicantName))
+        {
+            ApplicantName = applicantName;
+        }
+    }
+    
+    public void UpdateApplicationReference(string applicationReference)
+    {
+        if (!string.IsNullOrWhiteSpace(applicationReference))
+        {
+            ApplicationReference = applicationReference;
+        }
     }
 }
 

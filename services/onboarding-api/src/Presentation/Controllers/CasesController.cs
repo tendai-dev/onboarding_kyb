@@ -4,11 +4,12 @@ using OnboardingApi.Domain.Aggregates;
 using System.Net.Http.Json;
 using Microsoft.EntityFrameworkCore;
 using OnboardingApi.Infrastructure.Persistence;
-using OnboardingApi.Infrastructure.Persistence.WorkQueue;
 using MediatR;
 using OnboardingApi.Application.WorkQueue.Commands;
 using OnboardingApi.Application.WorkQueue.Interfaces;
 using OnboardingApi.Application.Notification.Interfaces;
+using OnboardingApi.Application.Sagas.OnboardingCaseSubmissionSaga;
+using OnboardingApi.Application.Cases.Queries;
 
 namespace OnboardingApi.Presentation.Controllers;
 
@@ -21,14 +22,14 @@ public partial class CasesController : ControllerBase
     private readonly IHttpClientFactory _httpClientFactory;
     private readonly IConfiguration _configuration;
     private readonly ILogger<CasesController> _logger;
-    private readonly OnboardingDbContext _context;
+    private readonly OnboardingDbContext _context; // TODO: Refactor remaining queries to use repository pattern
     private readonly IEventBus _eventBus;
     private readonly OnboardingApi.Infrastructure.Services.IEntityConfigurationService _entityConfigService;
     private readonly ICurrentUser _currentUser;
     private readonly IMediator _mediator;
     private readonly IWorkItemRepository _workItemRepository;
-    private readonly WorkQueueDbContext _workQueueContext;
     private readonly OnboardingApi.Application.Notification.Interfaces.INotificationService? _notificationService;
+    private readonly OnboardingCaseSubmissionOrchestrator _sagaOrchestrator;
 
     public CasesController(
         IOnboardingCaseRepository repository, 
@@ -41,7 +42,7 @@ public partial class CasesController : ControllerBase
         ICurrentUser currentUser,
         IMediator mediator,
         IWorkItemRepository workItemRepository,
-        WorkQueueDbContext workQueueContext,
+        OnboardingCaseSubmissionOrchestrator sagaOrchestrator,
         OnboardingApi.Application.Notification.Interfaces.INotificationService? notificationService = null)
     {
         _repository = repository;
@@ -54,7 +55,7 @@ public partial class CasesController : ControllerBase
         _currentUser = currentUser;
         _mediator = mediator;
         _workItemRepository = workItemRepository;
-        _workQueueContext = workQueueContext;
+        _sagaOrchestrator = sagaOrchestrator;
     }
 
     [HttpPost]
@@ -66,19 +67,26 @@ public partial class CasesController : ControllerBase
         if (request == null)
             return BadRequest(new { error = "Invalid request" });
 
-        // Extract user identity from JWT token
-        if (!_currentUser.IsAuthenticated)
-        {
-            _logger.LogWarning("Create case request rejected - user not authenticated");
-            return Unauthorized(new { error = "Authentication required" });
-        }
-
-        var userEmail = _currentUser.Email;
+        // Extract user identity - prefer X-User-Email header (set by proxy/middleware) for consistency
+        // This matches PartnerController behavior and ensures partnerId generation is consistent
+        var userEmail = SanitizeHeaderValue(Request.Headers["X-User-Email"].FirstOrDefault());
+        
+        // Fallback to claims if header not present
         if (string.IsNullOrWhiteSpace(userEmail))
         {
-            _logger.LogWarning("Create case request rejected - user email not found in token");
-            return Unauthorized(new { error = "User email not found in authentication token" });
+            userEmail = _currentUser.Email;
         }
+        
+        if (string.IsNullOrWhiteSpace(userEmail))
+        {
+            _logger.LogWarning("Create case request rejected - user email not found in headers or token");
+            return Unauthorized(new { error = "User email not found. Please ensure you are logged in." });
+        }
+        
+        // Log the email source for debugging
+        _logger.LogDebug("User email for case creation: {Email} (from header: {FromHeader})", 
+            Infrastructure.Utilities.LoggingExtensions.MaskEmail(userEmail),
+            !string.IsNullOrWhiteSpace(Request.Headers["X-User-Email"].FirstOrDefault()));
 
         // Generate PartnerId from authenticated user's email
         var expectedPartnerId = OnboardingApi.Infrastructure.Utilities.PartnerIdGenerator.GenerateFromEmail(userEmail);
@@ -131,6 +139,33 @@ public partial class CasesController : ControllerBase
             ?? (request.Metadata?.ContainsKey("entity_type_code") == true 
                 ? request.Metadata["entity_type_code"]?.ToString() 
                 : null);
+
+        // SECURITY FIX: Validate schema identifiers exist in the system before allowing schema-driven validation
+        // This prevents attackers from bypassing validation by sending arbitrary header values
+        if (!string.IsNullOrWhiteSpace(formConfigId) || !string.IsNullOrWhiteSpace(entityTypeCode))
+        {
+            var configExists = false;
+            if (!string.IsNullOrWhiteSpace(formConfigId))
+            {
+                var config = await _entityConfigService.GetEntityTypeConfigurationByIdAsync(formConfigId, formVersion, cancellationToken);
+                configExists = config != null;
+                if (!configExists)
+                {
+                    _logger.LogWarning("SECURITY: Invalid form config ID {FormConfigId} provided in header. Rejecting request.", formConfigId);
+                    return BadRequest(new { error = "Invalid form configuration. Schema-driven validation requires a valid form configuration." });
+                }
+            }
+            else if (!string.IsNullOrWhiteSpace(entityTypeCode))
+            {
+                var config = await _entityConfigService.GetEntityTypeConfigurationAsync(entityTypeCode, cancellationToken);
+                configExists = config != null;
+                if (!configExists)
+                {
+                    _logger.LogWarning("SECURITY: Invalid entity type code {EntityTypeCode} provided. Rejecting request.", entityTypeCode);
+                    return BadRequest(new { error = "Invalid entity type. Schema-driven validation requires a valid entity type." });
+                }
+            }
+        }
 
         // Generate debug ID for tracing
         // SECURITY FIX: Validate and sanitize request ID header
@@ -239,81 +274,15 @@ public partial class CasesController : ControllerBase
 
         // Submit the case immediately after creation (user submitted the form)
         // This changes status from Draft to Submitted
-        // CRITICAL: For schema-driven forms (formConfigId or entityTypeCode provided), ALWAYS bypass hardcoded IsComplete() check
-        // because the frontend is fully dynamic and may not have all hardcoded fields
         var isSchemaDriven = !string.IsNullOrWhiteSpace(formConfigId) || !string.IsNullOrWhiteSpace(entityTypeCode);
         if (isSchemaDriven)
         {
-            // Schema-driven form detected - bypass hardcoded validation
-            // Even if entity config fetch failed, we trust the frontend validation
-            _logger.LogInformation("[{DebugId}] Schema-driven form detected (FormConfigId: {FormConfigId}, EntityType: {EntityType}). Bypassing hardcoded IsComplete() check.", 
+            // Schema-driven form: use SubmitSchemaDriven() to bypass hardcoded IsComplete() validation
+            // while still raising proper OnboardingCaseSubmittedEvent for downstream services
+            _logger.LogInformation("[{DebugId}] Schema-driven form detected (FormConfigId: {FormConfigId}, EntityType: {EntityType}). Using SubmitSchemaDriven().", 
                 debugId, formConfigId ?? "none", entityTypeCode ?? "none");
             
-            // Manually set status to Submitted using reflection (domain model has private setters)
-            var statusProperty = entity.GetType().GetProperty("Status", System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance);
-            if (statusProperty != null && statusProperty.CanWrite)
-            {
-                statusProperty.SetValue(entity, Domain.Aggregates.OnboardingStatus.Submitted);
-                var updatedAtProperty = entity.GetType().GetProperty("UpdatedAt", System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance);
-                updatedAtProperty?.SetValue(entity, DateTime.UtcNow);
-                var updatedByProperty = entity.GetType().GetProperty("UpdatedBy", System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance);
-                updatedByProperty?.SetValue(entity, createdBy);
-                
-                // Trigger domain event manually (same as Submit() method does)
-                var addEventMethod = entity.GetType().GetMethod("AddDomainEvent", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
-                if (addEventMethod != null)
-                {
-                    var submittedEvent = new Domain.Events.OnboardingCaseSubmittedEvent(
-                        entity.Id,
-                        entity.CaseNumber,
-                        entity.Type,
-                        entity.PartnerId,
-                        DateTime.UtcNow,
-                        entity.Metadata.Count > 0 ? new Dictionary<string, string>(entity.Metadata) : null,
-                        entity.Applicant,
-                        entity.Business
-                    );
-                    addEventMethod.Invoke(entity, new[] { submittedEvent });
-                    _logger.LogInformation("[{DebugId}] Case {CaseId} submitted via schema-driven validation bypass (FormConfigId: {FormConfigId}, Version: {Version})", 
-                        debugId, entity.Id, formConfigId ?? "none", formVersion ?? "none");
-                }
-            }
-            else
-            {
-                // Reflection failed - try Submit() and catch the exception
-                _logger.LogWarning("Could not set Status via reflection, attempting Submit() with exception handling");
-                try
-                {
-        entity.Submit(createdBy);
-                }
-                catch (InvalidOperationException ex) when (ex.Message.Contains("incomplete"))
-                {
-                    // If Submit() fails due to IsComplete(), we still bypass it for schema-driven forms
-                    _logger.LogWarning("Submit() failed with IsComplete() check, but this is a schema-driven form. Forcing status to Submitted.");
-                    // Try to set status via reflection one more time with different approach
-                    var statusProp = typeof(OnboardingCase).GetProperty("Status", System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance);
-                    if (statusProp != null)
-                    {
-                        // Use SetValue with BindingFlags to bypass access restrictions
-                        statusProp.SetValue(entity, Domain.Aggregates.OnboardingStatus.Submitted, System.Reflection.BindingFlags.SetProperty, null, null, null);
-                        entity.GetType().GetProperty("UpdatedAt")?.SetValue(entity, DateTime.UtcNow);
-                        entity.GetType().GetProperty("UpdatedBy")?.SetValue(entity, createdBy);
-                    }
-                    else
-                    {
-                        _logger.LogError("[{DebugId}] CRITICAL: Cannot bypass IsComplete() check. Reflection failed. Error: {Error}", debugId, ex.Message);
-                        return BadRequest(new { 
-                            name = "ValidationBypassFailed",
-                            error = "Schema-driven form validation bypass failed", 
-                            message = "Could not bypass hardcoded domain validation. Please ensure X-Form-Config-Id or X-Entity-Type header is correctly set.",
-                            // SECURITY FIX: Don't expose exception details in response
-                            formConfigId = formConfigId,
-                            entityTypeCode = entityTypeCode,
-                            debug_id = debugId
-                        });
-                    }
-                }
-            }
+            entity.SubmitSchemaDriven(createdBy, $"FormConfigId: {formConfigId ?? "none"}, EntityType: {entityTypeCode ?? "none"}");
         }
         else
         {
@@ -348,34 +317,34 @@ public partial class CasesController : ControllerBase
 
         // Create work item when case is submitted - this is critical and should be awaited
         // to ensure every submitted application has a work queue item
+        var workItemCreated = false;
         if (entity.Status == OnboardingStatus.Submitted)
         {
             try
             {
                 await CreateWorkItemForCaseAsync(entity, cancellationToken);
+                workItemCreated = true;
                 _logger.LogInformation("Successfully created work item for submitted case {CaseId}", entity.Id);
             }
             catch (Exception ex)
             {
-                // Log error but don't fail case creation - work item can be created manually if needed
-                // However, this should be rare and indicates a system issue that needs attention
-                _logger.LogError(ex, "CRITICAL: Failed to create work item for submitted case {CaseId}. This case will not appear in work queue until work item is created manually.", entity.Id);
+                // IMPROVED ERROR HANDLING: Log with structured data for alerting/monitoring
+                // Mark case metadata so we can identify cases missing work items
+                entity.Metadata["_work_item_creation_failed"] = "true";
+                entity.Metadata["_work_item_error"] = ex.Message;
+                entity.Metadata["_work_item_failed_at"] = DateTime.UtcNow.ToString("O");
+                await _repository.UnitOfWork.SaveChangesAsync(cancellationToken);
+                
+                _logger.LogError(ex, 
+                    "CRITICAL: Failed to create work item for submitted case {CaseId}. " +
+                    "Case metadata updated with failure flag. " +
+                    "ErrorType: {ErrorType}, Message: {ErrorMessage}",
+                    entity.Id, ex.GetType().Name, ex.Message);
             }
         }
 
-        // Sync projections immediately to ensure case appears in Applications page and Partner dashboard
-        // This is critical for the application to be visible across all pages
-        try
-        {
-            await SyncProjectionsForCaseAsync(entity, cancellationToken);
-            _logger.LogInformation("Successfully synced projections for case {CaseId}", entity.Id);
-        }
-        catch (Exception ex)
-        {
-            // Log error but don't fail case creation - sync can be retried
-            _logger.LogWarning(ex, "Failed to sync projections for case {CaseId} immediately. Will be synced by background worker. Error: {Message}", 
-                entity.Id, ex.Message);
-        }
+        // Queue projection sync with retry logic (replaces fire-and-forget Task.Run)
+        OnboardingApi.Infrastructure.BackgroundServices.ProjectionSyncService.QueueSync(entity.Id, entity.CaseNumber);
 
         // Orchestrate downstream calls (best-effort, non-blocking failures)
         _ = OrchestrateDownstreamAsync(entity, request, HttpContext.RequestAborted);
@@ -426,9 +395,9 @@ public partial class CasesController : ControllerBase
             _logger.LogWarning("User {User} is attempting to delete ALL cases/applications", 
                 Infrastructure.Utilities.LoggingExtensions.MaskEmail(_currentUser.Email));
 
-            // Count cases and work items before deletion
-            var caseCount = await _context.OnboardingCases.CountAsync(cancellationToken);
-            var workItemCount = await _workQueueContext.WorkItems.CountAsync(cancellationToken);
+            // Count cases and work items before deletion (using repository pattern)
+            var caseCount = await _repository.GetCountAsync(cancellationToken);
+            var workItemCount = await _workItemRepository.GetCountAsync(cancellationToken);
 
             _logger.LogInformation("Found {CaseCount} cases and {WorkItemCount} work items to delete", caseCount, workItemCount);
 
@@ -442,25 +411,21 @@ public partial class CasesController : ControllerBase
                 });
             }
 
-            // Delete all work items first (they reference cases)
+            // Delete all work items first (they reference cases) - using repository pattern
             int workItemsDeleted = 0;
             if (workItemCount > 0)
             {
                 _logger.LogInformation("Deleting all work items...");
-                workItemsDeleted = await _workQueueContext.Database.ExecuteSqlRawAsync(
-                    "DELETE FROM work_queue.work_items", cancellationToken);
-                await _workQueueContext.SaveChangesAsync(cancellationToken);
+                workItemsDeleted = await _workItemRepository.DeleteAllAsync(cancellationToken);
                 _logger.LogInformation("Deleted {Count} work items", workItemsDeleted);
             }
 
-            // Delete all cases/applications
+            // Delete all cases/applications - using repository pattern
             int casesDeleted = 0;
             if (caseCount > 0)
             {
                 _logger.LogInformation("Deleting all cases/applications...");
-                casesDeleted = await _context.Database.ExecuteSqlRawAsync(
-                    "DELETE FROM onboarding.onboarding_cases", cancellationToken);
-                await _context.SaveChangesAsync(cancellationToken);
+                casesDeleted = await _repository.DeleteAllAsync(cancellationToken);
                 _logger.LogInformation("Deleted {Count} cases", casesDeleted);
             }
 
@@ -634,88 +599,74 @@ public partial class CasesController : ControllerBase
             return Unauthorized(new { error = "Authentication required" });
         }
 
-        var entity = await _repository.GetByIdAsync(id, cancellationToken);
-        if (entity == null) return NotFound();
-
-        // SECURITY FIX: Verify resource ownership - prevent IDOR attacks
+        // Get requesting user's partner ID for ownership check
+        Guid? requestingPartnerId = null;
         var userEmail = _currentUser.Email;
         if (!string.IsNullOrWhiteSpace(userEmail))
         {
-            var expectedPartnerId = OnboardingApi.Infrastructure.Utilities.PartnerIdGenerator.GenerateFromEmail(userEmail);
-            if (entity.PartnerId != expectedPartnerId)
-            {
-                _logger.LogWarning("Access denied - ownership mismatch. User: {Email}, Case PartnerId: {CasePartnerId}, Expected: {ExpectedPartnerId}",
-                    Infrastructure.Utilities.LoggingExtensions.MaskEmail(userEmail),
-                    Infrastructure.Utilities.LoggingExtensions.MaskGuid(entity.PartnerId),
-                    Infrastructure.Utilities.LoggingExtensions.MaskGuid(expectedPartnerId));
-                return StatusCode(403, new { error = "Access denied", message = "This case does not belong to your account" });
-            }
+            requestingPartnerId = OnboardingApi.Infrastructure.Utilities.PartnerIdGenerator.GenerateFromEmail(userEmail);
         }
-        
-        // Return full case details matching OnboardingCaseDto structure
-        var response = new
+
+        // Use CQRS query handler
+        var result = await _mediator.Send(new GetCaseByIdQuery(id, requestingPartnerId), cancellationToken);
+
+        if (!result.Success)
         {
-            id = entity.Id,
-            case_number = entity.CaseNumber,
-            type = entity.Type.ToString(),
-            status = entity.Status.ToString(),
-            partner_id = entity.PartnerId,
-            partner_reference_id = entity.PartnerReferenceId,
+            if (result.ErrorMessage == "Case not found")
+                return NotFound();
+            if (result.ErrorMessage == "Access denied")
+                return StatusCode(403, new { error = "Access denied", message = "This case does not belong to your account" });
+            return BadRequest(new { error = result.ErrorMessage });
+        }
+
+        // Map to response format expected by frontend
+        var c = result.Case!;
+        return Ok(new
+        {
+            id = c.Id,
+            case_number = c.CaseNumber,
+            type = c.Type,
+            status = c.Status,
+            partner_id = c.PartnerId,
+            partner_reference_id = c.PartnerReferenceId,
             applicant = new
             {
-                first_name = entity.Applicant.FirstName,
-                last_name = entity.Applicant.LastName,
-                middle_name = entity.Applicant.MiddleName,
-                date_of_birth = entity.Applicant.DateOfBirth,
-                email = entity.Applicant.Email,
-                phone_number = entity.Applicant.PhoneNumber,
-                residential_address = new
+                first_name = c.Applicant.FirstName,
+                last_name = c.Applicant.LastName,
+                date_of_birth = c.Applicant.DateOfBirth,
+                email = c.Applicant.Email,
+                phone_number = c.Applicant.Phone,
+                residential_address = c.Applicant.ResidentialAddress != null ? new
                 {
-                    street = entity.Applicant.ResidentialAddress.Street,
-                    street2 = entity.Applicant.ResidentialAddress.Street2,
-                    city = entity.Applicant.ResidentialAddress.City,
-                    state = entity.Applicant.ResidentialAddress.State,
-                    postal_code = entity.Applicant.ResidentialAddress.PostalCode,
-                    country = entity.Applicant.ResidentialAddress.Country
-                },
-                nationality = entity.Applicant.Nationality
+                    street = c.Applicant.ResidentialAddress.Street,
+                    city = c.Applicant.ResidentialAddress.City,
+                    state = c.Applicant.ResidentialAddress.State,
+                    postal_code = c.Applicant.ResidentialAddress.PostalCode,
+                    country = c.Applicant.ResidentialAddress.Country
+                } : null,
+                nationality = c.Applicant.Nationality
             },
-            business = entity.Business != null ? new
+            business = c.Business != null ? new
             {
-                legal_name = entity.Business.LegalName,
-                trade_name = entity.Business.TradeName,
-                registration_number = entity.Business.RegistrationNumber,
-                registration_country = entity.Business.RegistrationCountry,
-                incorporation_date = entity.Business.IncorporationDate,
-                business_type = entity.Business.BusinessType,
-                industry = entity.Business.Industry,
-                registered_address = new
+                legal_name = c.Business.LegalName,
+                trade_name = c.Business.TradingName,
+                registration_number = c.Business.RegistrationNumber,
+                industry = c.Business.Industry,
+                registered_address = c.Business.RegisteredAddress != null ? new
                 {
-                    street = entity.Business.RegisteredAddress.Street,
-                    street2 = entity.Business.RegisteredAddress.Street2,
-                    city = entity.Business.RegisteredAddress.City,
-                    state = entity.Business.RegisteredAddress.State,
-                    postal_code = entity.Business.RegisteredAddress.PostalCode,
-                    country = entity.Business.RegisteredAddress.Country
-                },
-                operating_address = entity.Business.OperatingAddress != null ? new
-                {
-                    street = entity.Business.OperatingAddress.Street,
-                    street2 = entity.Business.OperatingAddress.Street2,
-                    city = entity.Business.OperatingAddress.City,
-                    state = entity.Business.OperatingAddress.State,
-                    postal_code = entity.Business.OperatingAddress.PostalCode,
-                    country = entity.Business.OperatingAddress.Country
+                    street = c.Business.RegisteredAddress.Street,
+                    city = c.Business.RegisteredAddress.City,
+                    state = c.Business.RegisteredAddress.State,
+                    postal_code = c.Business.RegisteredAddress.PostalCode,
+                    country = c.Business.RegisteredAddress.Country
                 } : null
             } : null,
-            created_at = entity.CreatedAt,
-            updated_at = entity.UpdatedAt,
-            created_by = entity.CreatedBy,
-            updated_by = entity.UpdatedBy,
-            metadata = entity.Metadata
-        };
-        
-        return Ok(response);
+            created_at = c.CreatedAt,
+            updated_at = c.UpdatedAt,
+            created_by = c.CreatedBy,
+            updated_by = c.UpdatedBy,
+            metadata = c.Metadata
+        });
     }
 
     [HttpPut("{id}/approve")]
@@ -944,11 +895,20 @@ public partial class CasesController : ControllerBase
             
             return Ok(new { case_id = entity.Id, case_number = entity.CaseNumber, status = entity.Status.ToString() });
         }
+        catch (InvalidOperationException ex)
+        {
+            // Domain validation errors - expected, return 400
+            _logger.LogWarning(ex, "Invalid status transition for case {CaseId}: {Message}", id, ex.Message);
+            return BadRequest(new { error = "Invalid status transition", details = ex.Message });
+        }
         catch (Exception ex)
         {
-            // SECURITY FIX: Don't expose exception details
-            _logger.LogError(ex, "Error updating case status");
-            return BadRequest(new { error = "Invalid operation" });
+            // Unexpected errors - log with correlation ID for debugging
+            var correlationId = Guid.NewGuid().ToString("N")[..8];
+            _logger.LogError(ex, 
+                "Unexpected error updating case status. CorrelationId: {CorrelationId}, CaseId: {CaseId}, ErrorType: {ErrorType}", 
+                correlationId, id, ex.GetType().Name);
+            return StatusCode(500, new { error = "An unexpected error occurred", correlationId });
         }
     }
 
@@ -978,12 +938,34 @@ public partial class CasesController : ControllerBase
     {
         // SECURITY FIX: Verify user can only access their own cases (unless admin/reviewer)
         var userEmail = _currentUser.Email;
-        if (!string.IsNullOrWhiteSpace(userEmail) && !User.IsInRole("admin") && !User.IsInRole("Administrator") && !User.IsInRole("reviewer"))
+        var originalPartnerId = partnerId; // Store original for logging
+        var isAdminOrReviewer = User.IsInRole("admin") || User.IsInRole("Administrator") || User.IsInRole("reviewer");
+        
+        if (!string.IsNullOrWhiteSpace(userEmail) && !isAdminOrReviewer)
         {
             var expectedPartnerId = OnboardingApi.Infrastructure.Utilities.PartnerIdGenerator.GenerateFromEmail(userEmail);
             // Force filter by user's partner ID - prevent accessing other users' data
             partnerId = expectedPartnerId.ToString();
+            
+            // Log if the requested partnerId differs from the user's actual partnerId
+            if (!string.IsNullOrWhiteSpace(originalPartnerId) && originalPartnerId != partnerId)
+            {
+                _logger.LogWarning(
+                    "GetAll: PartnerId override applied. Requested: {RequestedPartnerId}, User's actual: {ActualPartnerId}, Email: {Email}",
+                    Infrastructure.Utilities.LoggingExtensions.MaskGuid(Guid.TryParse(originalPartnerId, out var reqGuid) ? reqGuid : Guid.Empty),
+                    Infrastructure.Utilities.LoggingExtensions.MaskGuid(expectedPartnerId),
+                    Infrastructure.Utilities.LoggingExtensions.MaskEmail(userEmail));
+            }
         }
+        else if (string.IsNullOrWhiteSpace(userEmail))
+        {
+            _logger.LogWarning("GetAll: User email is empty - PartnerId filter may not be applied correctly");
+        }
+        
+        _logger.LogDebug("GetAll: Filtering by PartnerId={PartnerId}, IsAdminOrReviewer={IsAdmin}, UserEmail={Email}",
+            !string.IsNullOrWhiteSpace(partnerId) ? Infrastructure.Utilities.LoggingExtensions.MaskGuid(Guid.TryParse(partnerId, out var pGuid) ? pGuid : Guid.Empty) : "none",
+            isAdminOrReviewer,
+            !string.IsNullOrWhiteSpace(userEmail) ? Infrastructure.Utilities.LoggingExtensions.MaskEmail(userEmail) : "empty");
 
         try
         {
@@ -993,6 +975,11 @@ public partial class CasesController : ControllerBase
             if (!string.IsNullOrWhiteSpace(partnerId) && Guid.TryParse(partnerId, out var partnerGuid))
             {
                 query = query.Where(c => c.PartnerId == partnerGuid);
+                _logger.LogDebug("GetAll: Applied PartnerId filter: {PartnerId}", Infrastructure.Utilities.LoggingExtensions.MaskGuid(partnerGuid));
+            }
+            else if (!string.IsNullOrWhiteSpace(partnerId))
+            {
+                _logger.LogWarning("GetAll: Invalid PartnerId format, filter not applied: {PartnerId}", partnerId);
             }
 
             if (!string.IsNullOrWhiteSpace(status))
@@ -1094,9 +1081,11 @@ public partial class CasesController : ControllerBase
         }
         catch (Exception ex)
         {
-            // SECURITY FIX: Don't expose exception details
-            _logger.LogError(ex, "Error fetching cases");
-            return StatusCode(500, new { error = "Internal server error", message = "An error occurred while processing the request" });
+            var correlationId = Guid.NewGuid().ToString("N")[..8];
+            _logger.LogError(ex, 
+                "Error fetching cases. CorrelationId: {CorrelationId}, ErrorType: {ErrorType}", 
+                correlationId, ex.GetType().Name);
+            return StatusCode(500, new { error = "An error occurred while fetching cases", correlationId });
         }
     }
 
@@ -1146,9 +1135,11 @@ public partial class CasesController : ControllerBase
         }
         catch (Exception ex)
         {
-            // SECURITY FIX: Don't expose exception details
-            _logger.LogError(ex, "Error fetching cases requiring attention");
-            return StatusCode(500, new { error = "Internal server error", message = "An error occurred while processing the request" });
+            var correlationId = Guid.NewGuid().ToString("N")[..8];
+            _logger.LogError(ex, 
+                "Error fetching cases requiring attention. CorrelationId: {CorrelationId}, ErrorType: {ErrorType}", 
+                correlationId, ex.GetType().Name);
+            return StatusCode(500, new { error = "An error occurred while fetching cases", correlationId });
         }
     }
 
@@ -1224,9 +1215,11 @@ public partial class CasesController : ControllerBase
         }
         catch (Exception ex)
         {
-            // SECURITY FIX: Don't expose exception details
-            _logger.LogError(ex, "Error exporting cases");
-            return StatusCode(500, new { error = "Internal server error", message = "An error occurred while processing the request" });
+            var correlationId = Guid.NewGuid().ToString("N")[..8];
+            _logger.LogError(ex, 
+                "Error exporting cases. CorrelationId: {CorrelationId}, ErrorType: {ErrorType}", 
+                correlationId, ex.GetType().Name);
+            return StatusCode(500, new { error = "An error occurred while exporting cases", correlationId });
         }
     }
 }
@@ -1517,71 +1510,10 @@ public partial class CasesController
             // No automatic risk assessment creation is performed
             _logger.LogInformation("Risk assessment creation skipped - must be done manually by authorized personnel");
 
-            // Trigger projections sync automatically (non-blocking)
-            // This ensures the case appears in admin dashboard immediately
-            _ = Task.Run(async () =>
-            {
-                try
-                {
-                    // Longer delay to ensure database transaction is fully committed and visible
-                    await Task.Delay(1000, CancellationToken.None);
-                    
-                    // Create a new client for the background task to avoid disposal issues
-                    using var syncClient = _httpClientFactory.CreateClient();
-                    syncClient.Timeout = TimeSpan.FromSeconds(30);
-                    
-                    // Try sync with forceFullSync=false first (incremental)
-                    // Use local endpoint - sync is in the same service
-                    var syncUrl = $"{projectionsBase}/api/v1/sync?forceFullSync=false";
-                    _logger.LogInformation("Triggering projections sync for case {CaseId} at {Url}", entity.Id, syncUrl);
-                    
-                    var syncResp = await syncClient.PostAsync(syncUrl, null, CancellationToken.None);
-                    
-                    // If sync endpoint doesn't exist (404), log warning but don't fail
-                    // Background worker will handle sync periodically
-                    if (syncResp.StatusCode == System.Net.HttpStatusCode.NotFound)
-                    {
-                        _logger.LogWarning(
-                            "Projections sync endpoint not found at {Url}. Sync will be handled by background worker.",
-                            syncUrl);
-                        return;
-                    }
-                    if (syncResp.IsSuccessStatusCode)
-                    {
-                        var result = await syncResp.Content.ReadFromJsonAsync<System.Text.Json.JsonElement>();
-                        var casesCreated = result.TryGetProperty("casesCreated", out var created) ? created.GetInt32() : 0;
-                        var casesUpdated = result.TryGetProperty("casesUpdated", out var updated) ? updated.GetInt32() : 0;
-                        _logger.LogInformation("Projections sync completed for case {CaseId}. Created: {Created}, Updated: {Updated}", 
-                            entity.Id, casesCreated, casesUpdated);
-                        
-                        // If no cases were created/updated, try force sync as fallback
-                        if (casesCreated == 0 && casesUpdated == 0)
-                        {
-                            _logger.LogWarning("Incremental sync found no new cases, trying force sync for case {CaseId}", entity.Id);
-                            var forceSyncResp = await syncClient.PostAsync($"{projectionsBase}/api/v1/sync?forceFullSync=true", null, CancellationToken.None);
-                            if (forceSyncResp.IsSuccessStatusCode)
-                            {
-                                var forceResult = await forceSyncResp.Content.ReadFromJsonAsync<System.Text.Json.JsonElement>();
-                                var forceCreated = forceResult.TryGetProperty("casesCreated", out var fc) ? fc.GetInt32() : 0;
-                                var forceUpdated = forceResult.TryGetProperty("casesUpdated", out var fu) ? fu.GetInt32() : 0;
-                                _logger.LogInformation("Force sync completed. Created: {Created}, Updated: {Updated}", forceCreated, forceUpdated);
-                            }
-                        }
-                    }
-                    else
-                    {
-                        var errorContent = await syncResp.Content.ReadAsStringAsync();
-                        _logger.LogError("Projections sync returned {Status} for case {CaseId}: {Error}. URL: {Url}", 
-                            (int)syncResp.StatusCode, entity.Id, errorContent, syncUrl);
-                    }
-                }
-                catch (Exception syncEx)
-                {
-                    // Don't fail case creation if sync fails - it can be triggered manually
-                    _logger.LogError(syncEx, "Failed to trigger projections sync for case {CaseId} - will sync on next scheduled run. Error: {Message}", 
-                        entity.Id, syncEx.Message);
-                }
-            }, CancellationToken.None);
+            // Queue projection sync with retry logic (replaces fire-and-forget)
+            // Background service handles retries and error recovery
+            OnboardingApi.Infrastructure.BackgroundServices.ProjectionSyncService.QueueSync(entity.Id, entity.CaseNumber);
+            _logger.LogInformation("Queued projection sync for case {CaseId}", entity.Id);
 
             // Optional: fire notification (welcome/created)
             if (!string.IsNullOrWhiteSpace(notificationBase))
@@ -1743,7 +1675,7 @@ public partial class CasesController
     /// This is used to correct cases that were created with wrong PartnerId (e.g., UUID v5 instead of MD5)
     /// </summary>
     [HttpPatch("{caseId}/fix-partner-id")]
-    [Microsoft.AspNetCore.Authorization.AllowAnonymous] // Temporarily allow anonymous for data fix - remove after use
+    [Microsoft.AspNetCore.Authorization.Authorize(Roles = "Admin")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
@@ -1780,7 +1712,8 @@ public partial class CasesController
         
         // Update the PartnerId using domain method
         caseEntity.FixPartnerId(correctPartnerId, "system-data-fix");
-        await _context.SaveChangesAsync(cancellationToken);
+        _repository.Update(caseEntity);
+        await _repository.UnitOfWork.SaveChangesAsync(cancellationToken);
 
         _logger.LogInformation(
             "Fixed PartnerId for case {CaseId} ({CaseNumber}): {OldPartnerId} -> {NewPartnerId} (email: {Email})",

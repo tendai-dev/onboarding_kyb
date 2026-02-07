@@ -990,31 +990,16 @@ export async function findUserCaseByEmail(email: string): Promise<UserCase | nul
           };
         }
 
-        // If we queried by PartnerId but got results, they should all belong to the user
-        // (Backend validates ownership, so if PartnerId filter returned results, they're valid)
+        // SECURITY FIX: Do NOT blindly trust results from partnerId query
+        // The backend might return cases that don't match (e.g., admin/reviewer users see all cases)
+        // Always validate that the returned case's partnerId matches the user's partnerId
         if (fallbackUrl.includes('partnerId=')) {
-          const matchingCase = caseApiResult.items[0];
-          // Backend uses snake_case, so extract with fallbacks
-          const applicationGuid = matchingCase.case_id || matchingCase.caseId || '';
-          const caseNumber = matchingCase.case_number || matchingCase.caseNumber || applicationGuid;
-          const partnerId = matchingCase.partner_id || matchingCase.partnerId || '';
-          console.info(
-            `✅ Found case by PartnerId query: GUID=${applicationGuid}, caseNumber=${caseNumber} (partnerId: ${partnerId}, query used: ${userPartnerId})`
+          console.warn(
+            `⚠️ PartnerId query returned ${caseApiResult.items.length} cases but none matched user's partnerId: ${userPartnerId}`
           );
-          return {
-            id: applicationGuid,
-            caseId: caseNumber,
-            type: matchingCase.type,
-            status: matchingCase.status,
-            partnerId: partnerId,
-            applicantFirstName: matchingCase.applicant_first_name || matchingCase.applicantFirstName,
-            applicantLastName: matchingCase.applicant_last_name || matchingCase.applicantLastName,
-            applicantEmail: matchingCase.applicant_email || matchingCase.applicantEmail,
-            country: matchingCase.applicant_country || matchingCase.applicantCountry,
-            businessLegalName: matchingCase.business_legal_name || matchingCase.businessLegalName,
-            createdAt: matchingCase.created_at || matchingCase.createdAt,
-            updatedAt: matchingCase.updated_at || matchingCase.updatedAt,
-          };
+          // Log the partnerIds we received for debugging
+          const receivedPartnerIds = caseApiResult.items.slice(0, 5).map((c) => c.partner_id || c.partnerId);
+          console.warn(`Received partnerIds: ${receivedPartnerIds.join(', ')}`);
         }
       }
 
@@ -1085,21 +1070,32 @@ export async function findUserCaseByEmail(email: string): Promise<UserCase | nul
         const applicationGuid = matchingCase.case_id || matchingCase.caseId || '';
         const caseNumber = matchingCase.case_number || matchingCase.caseNumber || applicationGuid;
         const partnerId = matchingCase.partner_id || matchingCase.partnerId || '';
-        console.info('✅ Found case in case API:', caseNumber);
-        return {
-          id: applicationGuid,
-          caseId: caseNumber, // Use caseNumber if available, otherwise caseId
-          type: matchingCase.type,
-          status: matchingCase.status,
-          partnerId: partnerId,
-          applicantFirstName: matchingCase.applicant_first_name || matchingCase.applicantFirstName,
-          applicantLastName: matchingCase.applicant_last_name || matchingCase.applicantLastName,
-          applicantEmail: matchingCase.applicant_email || matchingCase.applicantEmail,
-          country: matchingCase.applicant_country || matchingCase.applicantCountry,
-          businessLegalName: matchingCase.business_legal_name || matchingCase.businessLegalName,
-          createdAt: matchingCase.created_at || matchingCase.createdAt,
-          updatedAt: matchingCase.updated_at || matchingCase.updatedAt,
-        };
+        
+        // SECURITY FIX: Validate partnerId matches before returning
+        // This prevents returning cases that belong to other users
+        if (userPartnerId && partnerId && partnerId.toLowerCase() !== userPartnerId.toLowerCase()) {
+          console.warn(
+            `⚠️ Email match found but partnerId mismatch - rejecting case ${caseNumber}. ` +
+            `Case partnerId: ${partnerId}, User partnerId: ${userPartnerId}`
+          );
+          // Don't return this case - it belongs to someone else
+        } else {
+          console.info('✅ Found case in case API:', caseNumber);
+          return {
+            id: applicationGuid,
+            caseId: caseNumber, // Use caseNumber if available, otherwise caseId
+            type: matchingCase.type,
+            status: matchingCase.status,
+            partnerId: partnerId,
+            applicantFirstName: matchingCase.applicant_first_name || matchingCase.applicantFirstName,
+            applicantLastName: matchingCase.applicant_last_name || matchingCase.applicantLastName,
+            applicantEmail: matchingCase.applicant_email || matchingCase.applicantEmail,
+            country: matchingCase.applicant_country || matchingCase.applicantCountry,
+            businessLegalName: matchingCase.business_legal_name || matchingCase.businessLegalName,
+            createdAt: matchingCase.created_at || matchingCase.createdAt,
+            updatedAt: matchingCase.updated_at || matchingCase.updatedAt,
+          };
+        }
       } else {
         console.warn(
           `⚠️ No matching case found in case API. Searched ${caseApiResult?.items?.length || 0} cases for email ${email}`

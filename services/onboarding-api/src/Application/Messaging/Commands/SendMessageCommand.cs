@@ -49,7 +49,8 @@ public record SendMessageResult
 
 public record MarkMessageAsReadCommand(
     Guid MessageId,
-    Guid UserId
+    Guid UserId,
+    bool IsAdmin = false
 ) : IRequest<MarkMessageAsReadResult>;
 
 public record MarkMessageAsReadResult
@@ -63,7 +64,8 @@ public record MarkMessageAsReadResult
 
 public record DeleteMessageCommand(
     Guid MessageId,
-    Guid UserId
+    Guid UserId,
+    bool IsAdmin = false
 ) : IRequest<DeleteMessageResult>;
 
 public record DeleteMessageResult
@@ -140,5 +142,19 @@ public record ForwardMessageResult
     
     public static ForwardMessageResult Successful(Guid newMessageId, Guid newThreadId) => new() { Success = true, NewMessageId = newMessageId, NewThreadId = newThreadId };
     public static ForwardMessageResult Failed(string error) => new() { Success = false, ErrorMessage = error };
+}
+
+public record RefreshThreadMetadataCommand(
+    Guid? ThreadId = null // If null, refresh all threads
+) : IRequest<RefreshThreadMetadataResult>;
+
+public record RefreshThreadMetadataResult
+{
+    public bool Success { get; init; }
+    public int ThreadsUpdated { get; init; }
+    public string? ErrorMessage { get; init; }
+    
+    public static RefreshThreadMetadataResult Successful(int count) => new() { Success = true, ThreadsUpdated = count };
+    public static RefreshThreadMetadataResult Failed(string error) => new() { Success = false, ErrorMessage = error };
 }
 

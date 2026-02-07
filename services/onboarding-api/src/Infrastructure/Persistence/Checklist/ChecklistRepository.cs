@@ -89,18 +89,70 @@ public class ChecklistRepository : IChecklistRepository
 
     public async Task UpdateAsync(Domain.Checklist.Aggregates.Checklist checklist, CancellationToken cancellationToken = default)
     {
-        _context.Checklists.Update(checklist);
-        
-        // Update items
+        // Get existing items from database
+        var existingItems = await _context.ChecklistItems
+            .Where(i => EF.Property<ChecklistId>(i, "ChecklistId") == checklist.Id)
+            .ToListAsync(cancellationToken);
+
+        // Remove items that are no longer in the checklist
+        var currentItemIds = checklist.Items.Select(i => i.Id).ToHashSet();
+        var itemsToRemove = existingItems.Where(i => !currentItemIds.Contains(i.Id)).ToList();
+        _context.ChecklistItems.RemoveRange(itemsToRemove);
+
+        // Add or update items
+        var existingItemIds = existingItems.Select(i => i.Id).ToHashSet();
         foreach (var item in checklist.Items)
         {
-            _context.ChecklistItems.Update(item);
+            if (existingItemIds.Contains(item.Id))
+            {
+                // Item exists, update it
+                _context.Entry(item).State = EntityState.Modified;
+            }
+            else
+            {
+                // New item, add it with the foreign key set
+                _context.ChecklistItems.Add(item);
+                _context.Entry(item).Property("ChecklistId").CurrentValue = checklist.Id;
+            }
         }
+
+        // Update the checklist itself
+        _context.Entry(checklist).State = EntityState.Modified;
+    }
+
+    public async Task DeleteAsync(Domain.Checklist.Aggregates.Checklist checklist, CancellationToken cancellationToken = default)
+    {
+        // Delete all items first
+        var items = await _context.ChecklistItems
+            .Where(i => EF.Property<ChecklistId>(i, "ChecklistId") == checklist.Id)
+            .ToListAsync(cancellationToken);
+
+        _context.ChecklistItems.RemoveRange(items);
+        _context.Checklists.Remove(checklist);
     }
 
     public async Task SaveChangesAsync(CancellationToken cancellationToken = default)
     {
         await _context.SaveChangesAsync(cancellationToken);
+    }
+
+    public async Task<int> DeleteByCaseIdAsync(Guid caseId, CancellationToken cancellationToken = default)
+    {
+        var caseIdString = caseId.ToString();
+        var checklists = await _context.Checklists
+            .Where(c => c.CaseId == caseIdString)
+            .ToListAsync(cancellationToken);
+        
+        if (checklists.Count == 0)
+            return 0;
+        
+        foreach (var checklist in checklists)
+        {
+            await DeleteAsync(checklist, cancellationToken);
+        }
+        
+        await _context.SaveChangesAsync(cancellationToken);
+        return checklists.Count;
     }
 
     private async Task LoadItemsAsync(Domain.Checklist.Aggregates.Checklist checklist, CancellationToken cancellationToken)

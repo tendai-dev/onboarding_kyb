@@ -38,11 +38,14 @@ public class DevelopmentAuthMiddleware
                 if (!string.IsNullOrEmpty(userEmail))
                 {
                     // Create a fake claims identity for development
+                    // Use email as fallback for name only if userName is not provided
+                    var effectiveName = !string.IsNullOrEmpty(userName) ? userName : userEmail;
                     var claims = new List<Claim>
                     {
                         new Claim(ClaimTypes.NameIdentifier, userId ?? userEmail),
                         new Claim(ClaimTypes.Email, userEmail),
-                        new Claim(ClaimTypes.Name, userName ?? userEmail),
+                        new Claim(ClaimTypes.Name, effectiveName),
+                        new Claim("name", effectiveName), // Also add "name" claim for GetCurrentUserName()
                         new Claim("preferred_username", userEmail),
                         new Claim("email", userEmail)
                     };

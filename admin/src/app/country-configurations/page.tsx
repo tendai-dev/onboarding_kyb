@@ -311,7 +311,7 @@ export default function CountryConfigurationsPage() {
             <HStack gap="8px" justify="center" align="center">
               <Tooltip content="Edit country profile">
                 <Link
-                  href={`/country-configurations/${idStr}`}
+                  href={`/country-configurations/edit/${idStr}`}
                   style={{
                     display: 'flex',
                     alignItems: 'center',

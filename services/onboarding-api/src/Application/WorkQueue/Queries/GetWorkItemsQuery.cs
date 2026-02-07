@@ -86,41 +86,40 @@ public class GetWorkItemsQueryHandler : IRequestHandler<GetWorkItemsQuery, Paged
 
         var total = workItems.Count;
         
-        // Get unique entity type codes to batch lookup display names
-        var entityTypeCodes = workItems
+        // Page first to reduce the dataset we need to enrich
+        var pagedWorkItems = workItems
+            .Skip((request.Page - 1) * request.PageSize)
+            .Take(request.PageSize)
+            .ToList();
+        
+        // N+1 FIX: Batch lookup entity type display names in a single query
+        var entityTypeCodes = pagedWorkItems
             .Select(wi => wi.EntityType)
             .Where(et => !string.IsNullOrWhiteSpace(et))
             .Distinct()
             .ToList();
         
-        // Batch lookup entity type display names
-        var entityTypeDisplayNames = new Dictionary<string, string?>();
-        foreach (var code in entityTypeCodes)
-        {
-            try
-            {
-                var entityType = await _entityTypeRepository.GetByCodeAsync(code, cancellationToken);
-                entityTypeDisplayNames[code] = entityType?.DisplayName;
-            }
-            catch (Exception ex)
-            {
-                _logger.LogWarning(ex, "Failed to lookup entity type display name for code: {Code}", code);
-                entityTypeDisplayNames[code] = null;
-            }
-        }
+        var entityTypes = await _entityTypeRepository.GetByCodesAsync(entityTypeCodes, cancellationToken);
+        var entityTypeDisplayNames = entityTypes.ToDictionary(
+            kvp => kvp.Key, 
+            kvp => kvp.Value?.DisplayName);
         
-        // Enrich work items with case data when values are "Unknown" or missing
-        var enrichedWorkItems = new List<WorkItemDto>();
-        var pagedWorkItems = workItems
-            .Skip((request.Page - 1) * request.PageSize)
-            .Take(request.PageSize)
+        // N+1 FIX: Identify work items that need enrichment and batch fetch their cases
+        var workItemsNeedingEnrichment = pagedWorkItems
+            .Where(wi => wi.ApplicantName == "Unknown" || wi.ApplicantName == "Unknown Applicant" || 
+                        wi.EntityType == "Unknown" || wi.Country == "Unknown" ||
+                        wi.RiskLevel == RiskLevel.Unknown || string.IsNullOrWhiteSpace(wi.BusinessName))
             .ToList();
-
-        foreach (var wi in pagedWorkItems)
-        {
-            var dto = await MapToDtoAsync(wi, entityTypeDisplayNames, cancellationToken);
-            enrichedWorkItems.Add(dto);
-        }
+        
+        var caseIds = workItemsNeedingEnrichment.Select(wi => wi.ApplicationId).Distinct().ToList();
+        var cases = caseIds.Count > 0 
+            ? await _caseRepository.GetByIdsAsync(caseIds, cancellationToken)
+            : new Dictionary<Guid, OnboardingCase>();
+        
+        // Map to DTOs using pre-fetched data (no more N+1!)
+        var enrichedWorkItems = pagedWorkItems
+            .Select(wi => MapToDto(wi, entityTypeDisplayNames, cases))
+            .ToList();
 
         return new PagedResult<WorkItemDto>
         {
@@ -131,84 +130,64 @@ public class GetWorkItemsQueryHandler : IRequestHandler<GetWorkItemsQuery, Paged
         };
     }
 
-    private async Task<WorkItemDto> MapToDtoAsync(
+    private WorkItemDto MapToDto(
         WorkItem wi, 
         Dictionary<string, string?> entityTypeDisplayNames,
-        CancellationToken cancellationToken)
+        Dictionary<Guid, OnboardingCase> cases)
     {
         entityTypeDisplayNames.TryGetValue(wi.EntityType, out var displayName);
         
-        // If work item has "Unknown" values, try to enrich from case
+        // If work item has "Unknown" values, try to enrich from pre-fetched case data
         var applicantName = wi.ApplicantName;
         var businessName = wi.BusinessName;
         var entityType = wi.EntityType;
         var country = wi.Country;
         var riskLevel = wi.RiskLevel;
 
-        if (applicantName == "Unknown" || applicantName == "Unknown Applicant" || 
+        var needsEnrichment = applicantName == "Unknown" || applicantName == "Unknown Applicant" || 
             entityType == "Unknown" || country == "Unknown" ||
-            riskLevel == RiskLevel.Unknown || string.IsNullOrWhiteSpace(businessName))
+            riskLevel == RiskLevel.Unknown || string.IsNullOrWhiteSpace(businessName);
+
+        if (needsEnrichment && cases.TryGetValue(wi.ApplicationId, out var caseEntity))
         {
-            try
+            // Enrich applicant name
+            if (applicantName == "Unknown" || applicantName == "Unknown Applicant")
             {
-                var caseEntity = await _caseRepository.GetByIdAsync(wi.ApplicationId, cancellationToken);
-                if (caseEntity != null)
+                applicantName = $"{caseEntity.Applicant.FirstName} {caseEntity.Applicant.LastName}".Trim();
+                if (string.IsNullOrWhiteSpace(applicantName) && caseEntity.Business != null)
                 {
-                    // Enrich applicant name
-                    if (applicantName == "Unknown" || applicantName == "Unknown Applicant")
-                    {
-                        applicantName = $"{caseEntity.Applicant.FirstName} {caseEntity.Applicant.LastName}".Trim();
-                        if (string.IsNullOrWhiteSpace(applicantName) && caseEntity.Business != null)
-                        {
-                            applicantName = caseEntity.Business.LegalName ?? applicantName;
-                        }
-                        if (string.IsNullOrWhiteSpace(applicantName))
-                        {
-                            applicantName = wi.ApplicantName; // Keep original if still empty
-                        }
-                    }
-
-                    // Enrich business name
-                    if (string.IsNullOrWhiteSpace(businessName) && caseEntity.Business != null)
-                    {
-                        businessName = caseEntity.Business.LegalName;
-                    }
-
-                    // Enrich entity type
-                    if (entityType == "Unknown")
-                    {
-                        entityType = caseEntity.Type == OnboardingType.Business ? "Business" : "Individual";
-                        if (caseEntity.Metadata != null && caseEntity.Metadata.TryGetValue("entity_type_code", out var entityTypeCode))
-                        {
-                            entityType = entityTypeCode;
-                        }
-                        // Update display name for new entity type
-                        if (!string.IsNullOrWhiteSpace(entityType) && entityType != "Unknown")
-                        {
-                            try
-                            {
-                                var et = await _entityTypeRepository.GetByCodeAsync(entityType, cancellationToken);
-                                displayName = et?.DisplayName;
-                            }
-                            catch
-                            {
-                                // Ignore errors in display name lookup
-                            }
-                        }
-                    }
-
-                    // Enrich country
-                    if (country == "Unknown")
-                    {
-                        country = caseEntity.Applicant?.ResidentialAddress?.Country ?? 
-                                 caseEntity.Business?.RegisteredAddress?.Country ?? 
-                                 country;
-                    }
+                    applicantName = caseEntity.Business.LegalName ?? applicantName;
+                }
+                if (string.IsNullOrWhiteSpace(applicantName))
+                {
+                    applicantName = wi.ApplicantName;
                 }
             }
-            catch (Exception ex)
+
+            // Enrich business name
+            if (string.IsNullOrWhiteSpace(businessName) && caseEntity.Business != null)
             {
-                _logger.LogWarning(ex, "Failed to enrich work item {WorkItemId} from case {CaseId}", wi.Id, wi.ApplicationId);
+                businessName = caseEntity.Business.LegalName;
+            }
+
+            // Enrich entity type
+            if (entityType == "Unknown")
+            {
+                entityType = caseEntity.Type == OnboardingType.Business ? "Business" : "Individual";
+                if (caseEntity.Metadata != null && caseEntity.Metadata.TryGetValue("entity_type_code", out var entityTypeCode))
+                {
+                    entityType = entityTypeCode;
+                    // Try to get display name from pre-fetched data
+                    entityTypeDisplayNames.TryGetValue(entityType, out displayName);
+                }
+            }
+
+            // Enrich country
+            if (country == "Unknown")
+            {
+                country = caseEntity.Applicant?.ResidentialAddress?.Country ?? 
+                         caseEntity.Business?.RegisteredAddress?.Country ?? 
+                         country;
             }
         }
         
@@ -495,33 +474,25 @@ public class GetMyWorkItemsQueryHandler : IRequestHandler<GetMyWorkItemsQuery, P
     {
         var workItems = await _repository.GetByAssignedUserAsync(request.UserId, cancellationToken);
         
-        // Get unique entity type codes to batch lookup display names
-        var entityTypeCodes = workItems
+        var total = workItems.Count;
+        var pagedWorkItems = workItems
+            .Skip((request.Page - 1) * request.PageSize)
+            .Take(request.PageSize)
+            .ToList();
+        
+        // N+1 FIX: Batch lookup entity type display names in a single query
+        var entityTypeCodes = pagedWorkItems
             .Select(wi => wi.EntityType)
             .Where(et => !string.IsNullOrWhiteSpace(et))
             .Distinct()
             .ToList();
         
-        // Batch lookup entity type display names
-        var entityTypeDisplayNames = new Dictionary<string, string?>();
-        foreach (var code in entityTypeCodes)
-        {
-            try
-            {
-                var entityType = await _entityTypeRepository.GetByCodeAsync(code, cancellationToken);
-                entityTypeDisplayNames[code] = entityType?.DisplayName;
-            }
-            catch (Exception ex)
-            {
-                _logger.LogWarning(ex, "Failed to lookup entity type display name for code: {Code}", code);
-                entityTypeDisplayNames[code] = null;
-            }
-        }
+        var entityTypes = await _entityTypeRepository.GetByCodesAsync(entityTypeCodes, cancellationToken);
+        var entityTypeDisplayNames = entityTypes.ToDictionary(
+            kvp => kvp.Key, 
+            kvp => kvp.Value?.DisplayName);
         
-        var total = workItems.Count;
-        var paged = workItems
-            .Skip((request.Page - 1) * request.PageSize)
-            .Take(request.PageSize)
+        var paged = pagedWorkItems
             .Select(wi => {
                 entityTypeDisplayNames.TryGetValue(wi.EntityType, out var displayName);
                 return new WorkItemDto
@@ -534,22 +505,22 @@ public class GetMyWorkItemsQueryHandler : IRequestHandler<GetMyWorkItemsQuery, P
                     EntityType = wi.EntityType,
                     EntityTypeDisplayName = displayName,
                     Country = wi.Country,
-                Status = wi.Status.ToString(),
-                Priority = wi.Priority.ToString(),
-                RiskLevel = wi.RiskLevel.ToString(),
-                AssignedTo = wi.AssignedTo,
-                AssignedToName = wi.AssignedToName,
-                AssignedAt = wi.AssignedAt,
-                RequiresApproval = wi.RequiresApproval,
-                ApprovedBy = wi.ApprovedBy,
-                ApprovedByName = wi.ApprovedByName,
-                ApprovedAt = wi.ApprovedAt,
-                RejectionReason = wi.RejectionReason,
-                DueDate = wi.DueDate,
-                IsOverdue = wi.IsOverdue,
-                NextRefreshDate = wi.NextRefreshDate,
-                LastRefreshedAt = wi.LastRefreshedAt,
-                RefreshCount = wi.RefreshCount,
+                    Status = wi.Status.ToString(),
+                    Priority = wi.Priority.ToString(),
+                    RiskLevel = wi.RiskLevel.ToString(),
+                    AssignedTo = wi.AssignedTo,
+                    AssignedToName = wi.AssignedToName,
+                    AssignedAt = wi.AssignedAt,
+                    RequiresApproval = wi.RequiresApproval,
+                    ApprovedBy = wi.ApprovedBy,
+                    ApprovedByName = wi.ApprovedByName,
+                    ApprovedAt = wi.ApprovedAt,
+                    RejectionReason = wi.RejectionReason,
+                    DueDate = wi.DueDate,
+                    IsOverdue = wi.IsOverdue,
+                    NextRefreshDate = wi.NextRefreshDate,
+                    LastRefreshedAt = wi.LastRefreshedAt,
+                    RefreshCount = wi.RefreshCount,
                     CreatedAt = wi.CreatedAt,
                     UpdatedAt = wi.UpdatedAt
                 };
@@ -586,33 +557,25 @@ public class GetPendingApprovalsQueryHandler : IRequestHandler<GetPendingApprova
     {
         var workItems = await _repository.GetPendingApprovalsAsync(request.MinimumRiskLevel, cancellationToken);
         
-        // Get unique entity type codes to batch lookup display names
-        var entityTypeCodes = workItems
+        var total = workItems.Count;
+        var pagedWorkItems = workItems
+            .Skip((request.Page - 1) * request.PageSize)
+            .Take(request.PageSize)
+            .ToList();
+        
+        // N+1 FIX: Batch lookup entity type display names in a single query
+        var entityTypeCodes = pagedWorkItems
             .Select(wi => wi.EntityType)
             .Where(et => !string.IsNullOrWhiteSpace(et))
             .Distinct()
             .ToList();
         
-        // Batch lookup entity type display names
-        var entityTypeDisplayNames = new Dictionary<string, string?>();
-        foreach (var code in entityTypeCodes)
-        {
-            try
-            {
-                var entityType = await _entityTypeRepository.GetByCodeAsync(code, cancellationToken);
-                entityTypeDisplayNames[code] = entityType?.DisplayName;
-            }
-            catch (Exception ex)
-            {
-                _logger.LogWarning(ex, "Failed to lookup entity type display name for code: {Code}", code);
-                entityTypeDisplayNames[code] = null;
-            }
-        }
+        var entityTypes = await _entityTypeRepository.GetByCodesAsync(entityTypeCodes, cancellationToken);
+        var entityTypeDisplayNames = entityTypes.ToDictionary(
+            kvp => kvp.Key, 
+            kvp => kvp.Value?.DisplayName);
         
-        var total = workItems.Count;
-        var paged = workItems
-            .Skip((request.Page - 1) * request.PageSize)
-            .Take(request.PageSize)
+        var paged = pagedWorkItems
             .Select(wi => {
                 entityTypeDisplayNames.TryGetValue(wi.EntityType, out var displayName);
                 return new WorkItemDto
@@ -625,22 +588,22 @@ public class GetPendingApprovalsQueryHandler : IRequestHandler<GetPendingApprova
                     EntityType = wi.EntityType,
                     EntityTypeDisplayName = displayName,
                     Country = wi.Country,
-                Status = wi.Status.ToString(),
-                Priority = wi.Priority.ToString(),
-                RiskLevel = wi.RiskLevel.ToString(),
-                AssignedTo = wi.AssignedTo,
-                AssignedToName = wi.AssignedToName,
-                AssignedAt = wi.AssignedAt,
-                RequiresApproval = wi.RequiresApproval,
-                ApprovedBy = wi.ApprovedBy,
-                ApprovedByName = wi.ApprovedByName,
-                ApprovedAt = wi.ApprovedAt,
-                RejectionReason = wi.RejectionReason,
-                DueDate = wi.DueDate,
-                IsOverdue = wi.IsOverdue,
-                NextRefreshDate = wi.NextRefreshDate,
-                LastRefreshedAt = wi.LastRefreshedAt,
-                RefreshCount = wi.RefreshCount,
+                    Status = wi.Status.ToString(),
+                    Priority = wi.Priority.ToString(),
+                    RiskLevel = wi.RiskLevel.ToString(),
+                    AssignedTo = wi.AssignedTo,
+                    AssignedToName = wi.AssignedToName,
+                    AssignedAt = wi.AssignedAt,
+                    RequiresApproval = wi.RequiresApproval,
+                    ApprovedBy = wi.ApprovedBy,
+                    ApprovedByName = wi.ApprovedByName,
+                    ApprovedAt = wi.ApprovedAt,
+                    RejectionReason = wi.RejectionReason,
+                    DueDate = wi.DueDate,
+                    IsOverdue = wi.IsOverdue,
+                    NextRefreshDate = wi.NextRefreshDate,
+                    LastRefreshedAt = wi.LastRefreshedAt,
+                    RefreshCount = wi.RefreshCount,
                     CreatedAt = wi.CreatedAt,
                     UpdatedAt = wi.UpdatedAt
                 };
@@ -677,33 +640,25 @@ public class GetItemsDueForRefreshQueryHandler : IRequestHandler<GetItemsDueForR
     {
         var workItems = await _repository.GetItemsDueForRefreshAsync(request.AsOfDate, cancellationToken);
         
-        // Get unique entity type codes to batch lookup display names
-        var entityTypeCodes = workItems
+        var total = workItems.Count;
+        var pagedWorkItems = workItems
+            .Skip((request.Page - 1) * request.PageSize)
+            .Take(request.PageSize)
+            .ToList();
+        
+        // N+1 FIX: Batch lookup entity type display names in a single query
+        var entityTypeCodes = pagedWorkItems
             .Select(wi => wi.EntityType)
             .Where(et => !string.IsNullOrWhiteSpace(et))
             .Distinct()
             .ToList();
         
-        // Batch lookup entity type display names
-        var entityTypeDisplayNames = new Dictionary<string, string?>();
-        foreach (var code in entityTypeCodes)
-        {
-            try
-            {
-                var entityType = await _entityTypeRepository.GetByCodeAsync(code, cancellationToken);
-                entityTypeDisplayNames[code] = entityType?.DisplayName;
-            }
-            catch (Exception ex)
-            {
-                _logger.LogWarning(ex, "Failed to lookup entity type display name for code: {Code}", code);
-                entityTypeDisplayNames[code] = null;
-            }
-        }
+        var entityTypes = await _entityTypeRepository.GetByCodesAsync(entityTypeCodes, cancellationToken);
+        var entityTypeDisplayNames = entityTypes.ToDictionary(
+            kvp => kvp.Key, 
+            kvp => kvp.Value?.DisplayName);
         
-        var total = workItems.Count;
-        var paged = workItems
-            .Skip((request.Page - 1) * request.PageSize)
-            .Take(request.PageSize)
+        var paged = pagedWorkItems
             .Select(wi => {
                 entityTypeDisplayNames.TryGetValue(wi.EntityType, out var displayName);
                 return new WorkItemDto
@@ -716,22 +671,22 @@ public class GetItemsDueForRefreshQueryHandler : IRequestHandler<GetItemsDueForR
                     EntityType = wi.EntityType,
                     EntityTypeDisplayName = displayName,
                     Country = wi.Country,
-                Status = wi.Status.ToString(),
-                Priority = wi.Priority.ToString(),
-                RiskLevel = wi.RiskLevel.ToString(),
-                AssignedTo = wi.AssignedTo,
-                AssignedToName = wi.AssignedToName,
-                AssignedAt = wi.AssignedAt,
-                RequiresApproval = wi.RequiresApproval,
-                ApprovedBy = wi.ApprovedBy,
-                ApprovedByName = wi.ApprovedByName,
-                ApprovedAt = wi.ApprovedAt,
-                RejectionReason = wi.RejectionReason,
-                DueDate = wi.DueDate,
-                IsOverdue = wi.IsOverdue,
-                NextRefreshDate = wi.NextRefreshDate,
-                LastRefreshedAt = wi.LastRefreshedAt,
-                RefreshCount = wi.RefreshCount,
+                    Status = wi.Status.ToString(),
+                    Priority = wi.Priority.ToString(),
+                    RiskLevel = wi.RiskLevel.ToString(),
+                    AssignedTo = wi.AssignedTo,
+                    AssignedToName = wi.AssignedToName,
+                    AssignedAt = wi.AssignedAt,
+                    RequiresApproval = wi.RequiresApproval,
+                    ApprovedBy = wi.ApprovedBy,
+                    ApprovedByName = wi.ApprovedByName,
+                    ApprovedAt = wi.ApprovedAt,
+                    RejectionReason = wi.RejectionReason,
+                    DueDate = wi.DueDate,
+                    IsOverdue = wi.IsOverdue,
+                    NextRefreshDate = wi.NextRefreshDate,
+                    LastRefreshedAt = wi.LastRefreshedAt,
+                    RefreshCount = wi.RefreshCount,
                     CreatedAt = wi.CreatedAt,
                     UpdatedAt = wi.UpdatedAt
                 };

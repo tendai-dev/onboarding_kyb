@@ -9,6 +9,7 @@ import {
   Flex,
   Spinner,
   Avatar,
+  Text,
 } from '@chakra-ui/react';
 // Import components directly from Mukuru package
 import {
@@ -47,7 +48,7 @@ import { Input } from '@/lib/mukuruComponentWrappers';
 // Color mode - always light mode
 const useColorModeValue = <T,>(light: T, _dark: T): T => light;
 import { SweetAlert } from '../../utils/sweetAlert';
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, Suspense } from 'react';
 import AdminSidebar from '../../components/AdminSidebar';
 import { useSidebar } from '../../contexts/SidebarContext';
 import { messagingApi, MessageDto, MessageThreadDto } from '../../lib/messagingApi';
@@ -56,6 +57,7 @@ import { PushNotificationService } from '../../lib/pushNotifications';
 import { uploadFileToDocumentService } from '../../lib/documentUpload';
 import { logger } from '../../lib/logger';
 import NextLink from 'next/link';
+import { useSearchParams } from 'next/navigation';
 import { sendMessageNotificationEmail } from '../../lib/notificationService';
 
 interface DisplayMessage {
@@ -84,8 +86,10 @@ interface DisplayMessage {
   replyToMessageId?: string;
 }
 
-export default function MessagesPage() {
+function MessagesPageContent() {
   const { condensed } = useSidebar();
+  const searchParams = useSearchParams();
+  const applicationIdFromUrl = searchParams?.get('applicationId');
 
   // Color mode values for dark/light mode support
   const bgColor = useColorModeValue('mukuru.background.light', 'mukuru.background.dark');
@@ -122,6 +126,10 @@ export default function MessagesPage() {
   const [signalRConnected, setSignalRConnected] = useState(false);
   const [replyingTo, setReplyingTo] = useState<DisplayMessage | null>(null);
   const [forwardingMessage, setForwardingMessage] = useState<DisplayMessage | null>(null);
+  const [forwardSearchTerm, setForwardSearchTerm] = useState('');
+  const [forwardSearchResults, setForwardSearchResults] = useState<Array<{id: string; caseNumber: string; applicantName: string; businessName?: string}>>([]);
+  const [forwardSearchLoading, setForwardSearchLoading] = useState(false);
+  const [selectedForwardTarget, setSelectedForwardTarget] = useState<{id: string; caseNumber: string; applicantName: string; businessName?: string} | null>(null);
   const [selectedAttachments, setSelectedAttachments] = useState<File[]>([]);
   const [uploadingAttachments, setUploadingAttachments] = useState(false);
   const [attachmentUploadProgress, setAttachmentUploadProgress] = useState<{
@@ -367,27 +375,12 @@ export default function MessagesPage() {
                 }
               }, 150);
 
-              // Also reload messages from backend to ensure consistency and proper sender type
-              // Note: Background refresh happens here, but message is already visible above
-              setTimeout(async () => {
-                try {
-                  if (currentThread?.id) {
-                    await loadThreadMessages(currentThread.id);
-                  }
-                } catch (error) {
-                  logger.error(
-                    error,
-                    '[Admin Messages] Failed to reload messages after SignalR update',
-                    {
-                      tags: { error_type: 'messages_reload_error' },
-                    }
-                  );
-                }
-              }, 500);
+              // Skip background reload - message is already visible via optimistic update
+              // Only reload if there's a data inconsistency (handled by user manually refreshing)
             }
 
-            // Refresh threads to update last message and unread counts
-            loadThreads();
+            // Update thread list in background (debounced to avoid excessive reloads)
+            // Only update unread count, not full thread reload
             loadUnreadCount();
           }
         );
@@ -397,11 +390,12 @@ export default function MessagesPage() {
           (messageData: Record<string, unknown>) => {
             const message = messageData as { threadId?: string };
             // Message was sent successfully via SignalR
+            // Skip reload - optimistic update already shows the message
             const currentThread = selectedThreadRef.current;
             if (currentThread && message.threadId === currentThread.id) {
-              loadThreadMessages(currentThread.id);
+              // Message already visible via optimistic update, no need to reload
             }
-            loadThreads();
+            // Only update unread count, avoid full thread reload
             loadUnreadCount();
           }
         );
@@ -580,21 +574,43 @@ export default function MessagesPage() {
     loadUnreadCount();
   }, []);
 
+  // Auto-select thread when applicationId is provided in URL
+  useEffect(() => {
+    if (applicationIdFromUrl && threads.length > 0 && !selectedThread) {
+      // Find thread matching the applicationId
+      const matchingThread = threads.find(
+        (t) => t.applicationId === applicationIdFromUrl || 
+               t.applicationReference === applicationIdFromUrl
+      );
+      if (matchingThread) {
+        setSelectedThread(matchingThread);
+      } else {
+        // Try to fetch thread by application ID directly
+        messagingApi.getThreadByApplication(applicationIdFromUrl)
+          .then((thread) => {
+            if (thread) {
+              setSelectedThread(thread);
+            }
+          })
+          .catch(() => {
+            // Thread doesn't exist for this application - that's okay
+          });
+      }
+    }
+  }, [applicationIdFromUrl, threads, selectedThread]);
+
   // Fallback polling (only if SignalR is not connected)
   useEffect(() => {
     if (signalRConnected) return; // Don't poll if SignalR is connected
 
     const interval = setInterval(() => {
+      // Only reload threads and unread count, not messages (to reduce screen flicker)
       loadThreads();
       loadUnreadCount();
-      // Refresh current thread messages if one is selected
-      if (selectedThread) {
-        loadThreadMessages(selectedThread.id);
-      }
-    }, 5000); // 5 seconds - faster polling when SignalR is not connected
+    }, 15000); // 15 seconds - reduced polling to prevent excessive reloads
 
     return () => clearInterval(interval);
-  }, [selectedThread, signalRConnected]);
+  }, [signalRConnected]);
 
   // Auto-retry SignalR connection every 30 seconds if disconnected
   useEffect(() => {
@@ -770,6 +786,10 @@ export default function MessagesPage() {
         totalCount: result.totalCount,
         itemsCount: result.items?.length || 0,
       });
+      // Debug: Log first thread details to check data
+      if (result.items && result.items.length > 0) {
+        console.log('[Messages] First thread data:', JSON.stringify(result.items[0], null, 2));
+      }
       setThreads(result.items || []);
       // Clear error if successful
       if (result.items && result.items.length >= 0) {
@@ -1003,7 +1023,7 @@ export default function MessagesPage() {
       // Mark unread messages as read (don't await to avoid blocking)
       const unreadMessages = displayMessages.filter((m) => !m.isRead);
       if (unreadMessages.length > 0) {
-        // Mark as read in background without blocking
+        // Mark as read in background without blocking - don't reload to prevent screen flicker
         Promise.all(
           unreadMessages.map((msg) =>
             messagingApi.markMessageRead(msg.id).catch(() => {
@@ -1011,33 +1031,10 @@ export default function MessagesPage() {
             })
           )
         ).then(() => {
-          // Only reload threads/unread count after a delay to avoid refresh loops
-          // Use a longer delay and check if component is still mounted
-          setTimeout(() => {
-            // Only reload if we're not currently loading messages (avoid loops)
-            if (!loadingMessages) {
-              loadThreads().catch((err) => {
-                if (typeof window !== 'undefined') {
-                  import('../../lib/sentry-client').then(({ clientSentry }) => {
-                    clientSentry.reportError(err, {
-                      tags: { error_type: 'messages', operation: 'load_threads' },
-                      level: 'error',
-                    });
-                  });
-                }
-              });
-              loadUnreadCount().catch((err) => {
-                if (typeof window !== 'undefined') {
-                  import('../../lib/sentry-client').then(({ clientSentry }) => {
-                    clientSentry.reportError(err, {
-                      tags: { error_type: 'messages', operation: 'load_unread_count' },
-                      level: 'warning',
-                    });
-                  });
-                }
-              });
-            }
-          }, 2000);
+          // Only update unread count (lightweight), skip full thread reload to prevent screen flicker
+          loadUnreadCount().catch(() => {
+            // Silently ignore errors - unread count is not critical
+          });
         });
       }
     } catch (err) {
@@ -1201,6 +1198,42 @@ export default function MessagesPage() {
     return 'MEDIUM';
   };
 
+  // Search for applications to forward message to
+  const searchApplicationsForForward = async (searchTerm: string) => {
+    if (!searchTerm || searchTerm.length < 2) {
+      setForwardSearchResults([]);
+      return;
+    }
+
+    setForwardSearchLoading(true);
+    try {
+      const response = await fetch(
+        `/api/proxy/projections/v1/cases?searchTerm=${encodeURIComponent(searchTerm)}&take=10`
+      );
+      if (response.ok) {
+        const data = await response.json();
+        const results = (data.items || []).map((item: any) => ({
+          id: item.id || item.caseId,
+          caseNumber: item.caseNumber || item.case_number || item.id?.substring(0, 8),
+          applicantName: item.applicantFirstName && item.applicantLastName
+            ? `${item.applicantFirstName} ${item.applicantLastName}`.trim()
+            : item.applicantFirstName || item.applicantLastName || item.businessLegalName || 'Unknown',
+          businessName: item.businessLegalName || item.legalName,
+        }));
+        setForwardSearchResults(results);
+      } else {
+        setForwardSearchResults([]);
+      }
+    } catch (error) {
+      logger.error(error, 'Failed to search applications for forward', {
+        tags: { error_type: 'forward_search_error' },
+      });
+      setForwardSearchResults([]);
+    } finally {
+      setForwardSearchLoading(false);
+    }
+  };
+
   const handleSendMessage = async () => {
     if (
       (!newMessage.content.trim() && selectedAttachments.length === 0) ||
@@ -1317,23 +1350,40 @@ export default function MessagesPage() {
       }> = [];
 
       if (selectedAttachments.length > 0) {
-        // Upload files to document service and get storage keys/URLs
-        setUploadingAttachments(true);
-        setAttachmentUploadProgress({});
+        // Validate applicationId is a valid GUID before attempting upload
+        const guidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+        if (!applicationId || !guidRegex.test(applicationId)) {
+          logger.warn('[Messages] Cannot upload attachments - invalid applicationId', {
+            tags: { warning_type: 'attachment_upload_invalid_id' },
+            extra: { applicationId },
+          });
+          await SweetAlert.warning(
+            'Attachment Upload Failed',
+            'Cannot upload attachments because the application ID is not valid. The message will be sent without attachments.'
+          );
+          // Clear attachments and continue with message only
+          setSelectedAttachments([]);
+          if (fileInputRef.current) {
+            fileInputRef.current.value = '';
+          }
+        } else {
+          // Upload files to document service and get storage keys/URLs
+          setUploadingAttachments(true);
+          setAttachmentUploadProgress({});
 
-        try {
-          attachmentInfos = await Promise.all(
-            selectedAttachments.map(async (file, _index) => {
-              try {
-                // Update progress
-                setAttachmentUploadProgress((prev) => ({ ...prev, [file.name]: 50 }));
+          try {
+            attachmentInfos = await Promise.all(
+              selectedAttachments.map(async (file, _index) => {
+                try {
+                  // Update progress
+                  setAttachmentUploadProgress((prev) => ({ ...prev, [file.name]: 50 }));
 
-                const uploadResult = await uploadFileToDocumentService(
-                  applicationId,
-                  file,
-                  `Message attachment: ${file.name}`,
-                  undefined // Will be extracted from session
-                );
+                  const uploadResult = await uploadFileToDocumentService(
+                    applicationId,
+                    file,
+                    `Message attachment: ${file.name}`,
+                    undefined // Will be extracted from session
+                  );
 
                 // Mark as complete
                 setAttachmentUploadProgress((prev) => ({ ...prev, [file.name]: 100 }));
@@ -1397,6 +1447,7 @@ export default function MessagesPage() {
         } finally {
           setUploadingAttachments(false);
           setAttachmentUploadProgress({});
+        }
         }
       }
 
@@ -1546,11 +1597,18 @@ export default function MessagesPage() {
 
     const matchesFilter =
       filterType === 'ALL' ||
-      (filterType === 'UNREAD' && thread.unreadCount > 0) ||
-      (filterType === 'ACTIVE' && thread.isActive);
+      (filterType === 'UNREAD' && (thread.unreadCount ?? 0) > 0) ||
+      (filterType === 'ACTIVE' && (thread.isActive !== false));
 
-    const matchesArchived = filterArchived ? thread.isArchived : !thread.isArchived;
-    const matchesStarred = filterStarred ? thread.isStarred : true;
+    // filterArchived = true means "show archived", false means "hide archived" (show non-archived)
+    // Handle undefined isArchived as false (not archived)
+    const isArchived = thread.isArchived === true;
+    const matchesArchived = filterArchived ? isArchived : !isArchived;
+    
+    // filterStarred = true means "show only starred"
+    // Handle undefined isStarred as false (not starred)
+    const isStarred = thread.isStarred === true;
+    const matchesStarred = filterStarred ? isStarred : true;
 
     return matchesSearch && matchesFilter && matchesArchived && matchesStarred;
   });
@@ -1847,10 +1905,17 @@ export default function MessagesPage() {
                   </Tooltip>
 
                   {/* Refresh Button */}
-                  <Tooltip content="Refresh messages">
+                  <Tooltip content="Refresh messages and fix missing names">
                     <Box
                       as="button"
-                      onClick={() => {
+                      onClick={async () => {
+                        // First refresh thread metadata to fix any missing applicant names
+                        try {
+                          await messagingApi.refreshThreadMetadata();
+                        } catch (err) {
+                          console.warn('Failed to refresh thread metadata:', err);
+                        }
+                        // Then reload threads and messages
                         loadThreads();
                         loadUnreadCount();
                         if (selectedThread) {
@@ -1983,18 +2048,29 @@ export default function MessagesPage() {
 
                     {/* Filter Dropdown - Full Width */}
                     <Box width="100%" position="relative" zIndex="10">
-                      <Dropdown
-                        items={[
-                          { label: 'All Messages', value: 'ALL' },
-                          { label: 'Unread Only', value: 'UNREAD' },
-                          { label: 'Active Only', value: 'ACTIVE' },
-                        ]}
-                        placeholder="Filter by status"
-                        defaultValue={filterType}
-                        onSelectionChange={(selectedValue) =>
-                          setFilterType(selectedValue as string)
-                        }
-                      />
+                      <select
+                        style={{
+                          width: '100%',
+                          padding: '8px 12px',
+                          borderRadius: '8px',
+                          border: '1px solid #E5E7EB',
+                          backgroundColor: 'white',
+                          fontSize: '14px',
+                          color: '#374151',
+                          cursor: 'pointer',
+                          outline: 'none',
+                        }}
+                        value={filterType}
+                        onChange={(e) => {
+                          const newValue = e.target.value;
+                          console.log('[Messages] Filter changed to:', newValue);
+                          setFilterType(newValue);
+                        }}
+                      >
+                        <option value="ALL">All Messages</option>
+                        <option value="UNREAD">Unread Only</option>
+                        <option value="ACTIVE">Active Only</option>
+                      </select>
                     </Box>
 
                     {/* Quick Filter Toggles */}
@@ -2040,7 +2116,7 @@ export default function MessagesPage() {
                           )}
                         </Box>
                         <Typography fontSize="2xs" fontWeight="semibold">
-                          Hide Archived
+                          {filterArchived ? 'Archived' : 'Active'}
                         </Typography>
                       </Box>
 
@@ -2073,7 +2149,7 @@ export default function MessagesPage() {
                           <StarIcon width="12" height="12" />
                         </IconWrapper>
                         <Typography fontSize="2xs" fontWeight="semibold">
-                          Starred Only
+                          {filterStarred ? 'Starred' : 'All'}
                         </Typography>
                       </Box>
                     </HStack>
@@ -2217,8 +2293,8 @@ export default function MessagesPage() {
                               borderRadius="10px"
                               bg={
                                 thread.id === selectedThread?.id
-                                  ? 'mukuru.primary'
-                                  : 'mukuru.teal'
+                                  ? '#F05423'
+                                  : '#00A5A8'
                               }
                               display="flex"
                               alignItems="center"
@@ -2230,32 +2306,32 @@ export default function MessagesPage() {
                                   : '0 1px 3px rgba(0, 0, 0, 0.1)'
                               }
                             >
-                              <Typography fontSize="sm" fontWeight="bold" color="white">
-                                {(thread.applicantName || 'U').charAt(0).toUpperCase()}
-                              </Typography>
+                              <Text fontSize="sm" fontWeight="bold" color="white">
+                                {(thread.applicantName || thread.applicationReference || 'U').charAt(0).toUpperCase()}
+                              </Text>
                             </Box>
 
                             <VStack gap="1.5" align="stretch" flex="1" minW="0">
                               <Flex justify="space-between" align="start">
                                 <HStack gap="2" flex="1" minW="0">
-                                  <Typography
+                                  <Text
                                     fontSize="sm"
                                     fontWeight="semibold"
-                                    color="mukuru.charcoal"
+                                    color="#1F2937"
                                     overflow="hidden"
                                     textOverflow="ellipsis"
                                     whiteSpace="nowrap"
                                   >
-                                    {thread.applicantName}
-                                  </Typography>
+                                    {thread.applicantName || thread.applicationReference || `Application ${thread.applicationId?.substring(0, 8) || 'Unknown'}...`}
+                                  </Text>
                                   {thread.unreadCount > 0 && (
                                     <Box
                                       px="1.5"
                                       py="0.5"
                                       borderRadius="full"
-                                      bg="mukuru.primary"
+                                      bg="#F05423"
                                       color="white"
-                                      fontSize="2xs"
+                                      fontSize="10px"
                                       fontWeight="bold"
                                       minW="18px"
                                       textAlign="center"
@@ -2265,34 +2341,33 @@ export default function MessagesPage() {
                                     </Box>
                                   )}
                                 </HStack>
-                                <Typography
-                                  fontSize="2xs"
+                                <Text
+                                  fontSize="10px"
                                   color="#9CA3AF"
                                   flexShrink={0}
                                   ml="2"
                                   fontWeight="medium"
                                 >
                                   {formatDate(thread.lastMessageAt) || 'Recent'}
-                                </Typography>
+                                </Text>
                               </Flex>
 
-                              {thread.lastMessage?.content && (
-                                <Typography
-                                  fontSize="xs"
-                                  color="#6B7280"
-                                  lineHeight="1.4"
-                                  style={{
-                                    display: '-webkit-box',
-                                    WebkitLineClamp: 2,
-                                    WebkitBoxOrient: 'vertical',
-                                    overflow: 'hidden',
-                                  }}
-                                >
-                                  {thread.lastMessage.content}
-                                </Typography>
-                              )}
+                              <Text
+                                fontSize="xs"
+                                color="#6B7280"
+                                lineHeight="1.4"
+                                overflow="hidden"
+                                textOverflow="ellipsis"
+                                style={{
+                                  display: '-webkit-box',
+                                  WebkitLineClamp: 2,
+                                  WebkitBoxOrient: 'vertical',
+                                }}
+                              >
+                                {thread.lastMessage?.content || 'No messages yet'}
+                              </Text>
 
-                              <HStack gap="2" fontSize="2xs">
+                              <HStack gap="2" fontSize="10px">
                                 {(thread.applicationReference ||
                                   thread.applicationId) && (
                                   <Box
@@ -2303,29 +2378,29 @@ export default function MessagesPage() {
                                     border="1px solid"
                                     borderColor="#E5E7EB"
                                   >
-                                    <Typography
-                                      fontSize="2xs"
+                                    <Text
+                                      fontSize="10px"
                                       fontWeight="medium"
                                       color="#6B7280"
                                     >
                                       {thread.applicationReference ||
                                         thread.applicationId?.substring(0, 8)}
-                                    </Typography>
+                                    </Text>
                                   </Box>
                                 )}
                                 {(thread.applicationReference || thread.applicationId) &&
                                   thread.messageCount !== undefined && (
-                                    <Typography color="#D1D5DB">•</Typography>
+                                    <Text color="#D1D5DB">•</Text>
                                   )}
                                 {thread.messageCount !== undefined && (
-                                  <Typography
-                                    fontSize="2xs"
+                                  <Text
+                                    fontSize="10px"
                                     fontWeight="medium"
                                     color="#9CA3AF"
                                   >
                                     {thread.messageCount}{' '}
                                     {thread.messageCount === 1 ? 'msg' : 'msgs'}
-                                  </Typography>
+                                  </Text>
                                 )}
                               </HStack>
                             </VStack>
@@ -2851,47 +2926,59 @@ export default function MessagesPage() {
                                         </Box>
                                       )}
 
-                                    {/* Reply context */}
-                                    {message.replyToMessageId && (
-                                      <Box
-                                        mt="2"
-                                        p="2"
-                                        bg={
-                                          isAdmin
-                                            ? 'mukuru.primary'
-                                            : 'mukuru.state.hover'
-                                        }
-                                        borderRadius="md"
-                                        borderLeft={isAdmin ? 'none' : '3px'}
-                                        borderColor={
-                                          isAdmin ? 'transparent' : 'mukuru.teal'
-                                        }
-                                      >
-                                        <Typography
-                                          fontSize="2xs"
-                                          color={
+                                    {/* Reply context - shows which message this is replying to */}
+                                    {message.replyToMessageId && (() => {
+                                      const replyToMsg = messages.find(
+                                        (m) => m.id === message.replyToMessageId
+                                      );
+                                      return (
+                                        <Box
+                                          mt="2"
+                                          p="2"
+                                          bg={
                                             isAdmin
-                                              ? 'mukuru.white'
-                                              : 'mukuru.grey.medium'
+                                              ? 'rgba(255,255,255,0.15)'
+                                              : '#F1F5F9'
                                           }
-                                          fontStyle="italic"
-                                          style={{
-                                            display: '-webkit-box',
-                                            WebkitLineClamp: 2,
-                                            WebkitBoxOrient: 'vertical',
-                                            overflow: 'hidden',
-                                          }}
+                                          borderRadius="md"
+                                          borderLeft="3px solid"
+                                          borderLeftColor={
+                                            isAdmin ? 'rgba(255,255,255,0.5)' : 'mukuru.teal'
+                                          }
                                         >
-                                          Replying to:{' '}
-                                          {messages
-                                            .find(
-                                              (m) => m.id === message.replyToMessageId
-                                            )
-                                            ?.content?.substring(0, 100) ||
-                                            'Previous message'}
-                                        </Typography>
-                                      </Box>
-                                    )}
+                                          <VStack align="start" gap="0.5">
+                                            <Typography
+                                              fontSize="2xs"
+                                              fontWeight="bold"
+                                              color={
+                                                isAdmin
+                                                  ? 'rgba(255,255,255,0.9)'
+                                                  : 'mukuru.teal'
+                                              }
+                                            >
+                                              ↩ Reply to {replyToMsg?.sender || 'Unknown'}
+                                            </Typography>
+                                            <Typography
+                                              fontSize="2xs"
+                                              color={
+                                                isAdmin
+                                                  ? 'rgba(255,255,255,0.7)'
+                                                  : 'mukuru.grey.medium'
+                                              }
+                                              style={{
+                                                display: '-webkit-box',
+                                                WebkitLineClamp: 2,
+                                                WebkitBoxOrient: 'vertical',
+                                                overflow: 'hidden',
+                                              }}
+                                            >
+                                              "{replyToMsg?.content?.substring(0, 80) || 'Original message'}
+                                              {(replyToMsg?.content?.length || 0) > 80 ? '...' : ''}"
+                                            </Typography>
+                                          </VStack>
+                                        </Box>
+                                      );
+                                    })()}
 
                                     {/* Message actions */}
                                     <HStack gap="1" mt="2" justify="flex-end">
@@ -2958,12 +3045,19 @@ export default function MessagesPage() {
                                               message.id
                                             );
                                             if (result.success) {
-                                              // Refresh messages to show updated star status
-                                              if (selectedThread) {
-                                                await loadThreadMessages(
-                                                  selectedThread.id
-                                                );
-                                              }
+                                              // Update local state immediately for instant feedback
+                                              setMessages((prev) =>
+                                                prev.map((m) =>
+                                                  m.id === message.id
+                                                    ? { ...m, isStarred: result.isStarred }
+                                                    : m
+                                                )
+                                              );
+                                            } else {
+                                              await SweetAlert.error(
+                                                'Star Failed',
+                                                result.errorMessage || 'Failed to star message'
+                                              );
                                             }
                                           } catch (error) {
                                             logger.error(
@@ -2974,6 +3068,10 @@ export default function MessagesPage() {
                                                   error_type: 'star_message_error',
                                                 },
                                               }
+                                            );
+                                            await SweetAlert.error(
+                                              'Star Failed',
+                                              'Failed to star message. Please try again.'
                                             );
                                           }
                                         }}
@@ -3553,6 +3651,9 @@ export default function MessagesPage() {
         onClose={() => {
           setForwardingMessage(null);
           setNewMessage({ applicationId: '', content: '', receiverId: '' });
+          setForwardSearchTerm('');
+          setForwardSearchResults([]);
+          setSelectedForwardTarget(null);
         }}
         title="Forward Message"
         size="large"
@@ -3597,15 +3698,111 @@ export default function MessagesPage() {
                   color="mukuru.text.primary"
                   mb="2"
                 >
-                  To Application ID:
+                  Forward to Application:
                 </Typography>
-                <Input
-                  placeholder="Enter application ID (GUID)"
-                  value={newMessage.receiverId || ''}
-                  onChange={(e) =>
-                    setNewMessage((prev) => ({ ...prev, receiverId: e.target.value }))
-                  }
-                />
+                <VStack gap="2" align="stretch">
+                  <Input
+                    placeholder="Search by case number, name, or business..."
+                    value={forwardSearchTerm}
+                    onChange={(e) => {
+                      setForwardSearchTerm(e.target.value);
+                      searchApplicationsForForward(e.target.value);
+                    }}
+                  />
+                  
+                  {/* Search Results */}
+                  {forwardSearchLoading && (
+                    <HStack gap="2" p="2">
+                      <Spinner size="sm" />
+                      <Typography fontSize="sm" color="mukuru.grey.medium">
+                        Searching...
+                      </Typography>
+                    </HStack>
+                  )}
+                  
+                  {!forwardSearchLoading && forwardSearchResults.length > 0 && (
+                    <Box
+                      maxH="200px"
+                      overflowY="auto"
+                      border="1px solid"
+                      borderColor="mukuru.grey.light"
+                      borderRadius="md"
+                    >
+                      {forwardSearchResults.map((result) => (
+                        <Box
+                          key={result.id}
+                          p="2"
+                          cursor="pointer"
+                          bg={selectedForwardTarget?.id === result.id ? 'mukuru.state.hover' : 'white'}
+                          borderBottom="1px solid"
+                          borderColor="mukuru.grey.light"
+                          _hover={{ bg: 'mukuru.state.hover' }}
+                          onClick={() => {
+                            setSelectedForwardTarget(result);
+                            setNewMessage((prev) => ({ ...prev, receiverId: result.id }));
+                          }}
+                        >
+                          <HStack justify="space-between">
+                            <VStack align="start" gap="0">
+                              <Typography fontSize="sm" fontWeight="medium" color="mukuru.text.primary">
+                                {result.applicantName}
+                              </Typography>
+                              <Typography fontSize="xs" color="mukuru.grey.medium">
+                                Case: {result.caseNumber}
+                                {result.businessName && ` • ${result.businessName}`}
+                              </Typography>
+                            </VStack>
+                            {selectedForwardTarget?.id === result.id && (
+                              <IconWrapper>
+                                <TickCircleIcon width="16" height="16" color="#10B981" />
+                              </IconWrapper>
+                            )}
+                          </HStack>
+                        </Box>
+                      ))}
+                    </Box>
+                  )}
+                  
+                  {!forwardSearchLoading && forwardSearchTerm.length >= 2 && forwardSearchResults.length === 0 && (
+                    <Typography fontSize="sm" color="mukuru.grey.medium" p="2">
+                      No applications found matching "{forwardSearchTerm}"
+                    </Typography>
+                  )}
+                  
+                  {/* Selected Application */}
+                  {selectedForwardTarget && (
+                    <Box
+                      p="2"
+                      bg="mukuru.state.hover"
+                      borderRadius="md"
+                      border="1px solid"
+                      borderColor="mukuru.primary"
+                    >
+                      <HStack justify="space-between">
+                        <VStack align="start" gap="0">
+                          <Typography fontSize="xs" color="mukuru.primary" fontWeight="bold">
+                            Selected:
+                          </Typography>
+                          <Typography fontSize="sm" fontWeight="medium" color="mukuru.text.primary">
+                            {selectedForwardTarget.applicantName} ({selectedForwardTarget.caseNumber})
+                          </Typography>
+                        </VStack>
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          onClick={() => {
+                            setSelectedForwardTarget(null);
+                            setNewMessage((prev) => ({ ...prev, receiverId: '' }));
+                          }}
+                        >
+                          <IconWrapper>
+                            <CloseIcon width="12" height="12" />
+                          </IconWrapper>
+                        </Button>
+                      </HStack>
+                    </Box>
+                  )}
+                </VStack>
               </Box>
 
               <Box>
@@ -3636,6 +3833,9 @@ export default function MessagesPage() {
               onClick={() => {
                 setForwardingMessage(null);
                 setNewMessage({ applicationId: '', content: '', receiverId: '' });
+                setForwardSearchTerm('');
+                setForwardSearchResults([]);
+                setSelectedForwardTarget(null);
               }}
             >
               Cancel
@@ -3643,10 +3843,10 @@ export default function MessagesPage() {
             <Button
               variant="primary"
               onClick={async () => {
-                if (!newMessage.receiverId?.trim()) {
+                if (!selectedForwardTarget) {
                   await SweetAlert.warning(
-                    'Application ID Required',
-                    'Please enter an application ID to forward to'
+                    'Application Required',
+                    'Please search and select an application to forward to'
                   );
                   return;
                 }
@@ -3663,10 +3863,13 @@ export default function MessagesPage() {
                   if (result.success) {
                     await SweetAlert.success(
                       'Message Forwarded',
-                      'The message has been forwarded successfully.'
+                      `The message has been forwarded to ${selectedForwardTarget.applicantName} (${selectedForwardTarget.caseNumber}).`
                     );
                     setForwardingMessage(null);
                     setNewMessage({ applicationId: '', content: '', receiverId: '' });
+                    setForwardSearchTerm('');
+                    setForwardSearchResults([]);
+                    setSelectedForwardTarget(null);
                     await loadThreads();
                   } else {
                     throw new Error(result.errorMessage || 'Failed to forward message');
@@ -3698,5 +3901,18 @@ export default function MessagesPage() {
         </ModalFooter>
       </Modal>
     </Box>
+  );
+}
+
+// Wrap with Suspense for useSearchParams
+export default function MessagesPage() {
+  return (
+    <Suspense fallback={
+      <Box display="flex" justifyContent="center" alignItems="center" height="100vh">
+        <Spinner size="xl" color="#F05423" />
+      </Box>
+    }>
+      <MessagesPageContent />
+    </Suspense>
   );
 }

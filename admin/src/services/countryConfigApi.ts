@@ -252,9 +252,16 @@ class CountryConfigApiService {
   async createCountryProfile(
     request: CreateCountryProfileRequest
   ): Promise<CountryProfile> {
+    // Convert to snake_case for backend
+    const backendRequest = {
+      country_code: request.countryCode,
+      country_name: request.countryName,
+      description: request.description,
+      created_by: request.createdBy,
+    };
     const data = await this.request<unknown>('', {
       method: 'POST',
-      body: JSON.stringify(request),
+      body: JSON.stringify(backendRequest),
     });
     return this.transformCountryProfile(data as Record<string, unknown>);
   }
@@ -263,9 +270,15 @@ class CountryConfigApiService {
     id: string,
     request: UpdateCountryProfileRequest
   ): Promise<CountryProfile> {
+    // Convert to snake_case for backend
+    const backendRequest = {
+      country_name: request.countryName,
+      description: request.description,
+      updated_by: request.updatedBy,
+    };
     const data = await this.request<unknown>(`/${id}`, {
       method: 'PUT',
-      body: JSON.stringify(request),
+      body: JSON.stringify(backendRequest),
     });
     return this.transformCountryProfile(data as Record<string, unknown>);
   }
@@ -412,9 +425,14 @@ class CountryConfigApiService {
 
   // Tag methods
   async addTag(countryProfileId: string, request: AddTagRequest): Promise<void> {
+    // Convert to snake_case for backend
+    const backendRequest = {
+      tag_name: request.tagName,
+      tag_value: request.tagValue,
+    };
     await this.request(`/${countryProfileId}/tags`, {
       method: 'POST',
-      body: JSON.stringify(request),
+      body: JSON.stringify(backendRequest),
     });
   }
 
@@ -423,9 +441,10 @@ class CountryConfigApiService {
     tagName: string,
     tagValue?: string
   ): Promise<void> {
+    // Backend expects snake_case query params
     const params = tagValue
-      ? `?tagName=${tagName}&tagValue=${tagValue}`
-      : `?tagName=${tagName}`;
+      ? `?tag_name=${encodeURIComponent(tagName)}&tag_value=${encodeURIComponent(tagValue)}`
+      : `?tag_name=${encodeURIComponent(tagName)}`;
     await this.request(`/${countryProfileId}/tags${params}`, {
       method: 'DELETE',
     });

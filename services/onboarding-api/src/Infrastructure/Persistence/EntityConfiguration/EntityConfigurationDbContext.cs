@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.ChangeTracking;
+using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using OnboardingApi.Domain.EntityConfiguration.Aggregates;
 using System;
 
@@ -17,6 +18,7 @@ public class EntityConfigurationDbContext : DbContext
     // EntityTypeRequirement is an owned entity, accessed through EntityType.Requirements
     public DbSet<WizardConfiguration> WizardConfigurations => Set<WizardConfiguration>();
     public DbSet<Role> Roles => Set<Role>();
+    public DbSet<RolePermission> RolePermissions => Set<RolePermission>();
     public DbSet<User> Users => Set<User>();
     
     // Country Configuration entities
@@ -95,6 +97,31 @@ public class EntityConfigurationDbContext : DbContext
 
         // Use entity_configuration schema for separation
         modelBuilder.HasDefaultSchema("entity_configuration");
+
+        // Configure DateTime value converter to ensure UTC kind is preserved when reading from PostgreSQL
+        var dateTimeConverter = new ValueConverter<DateTime, DateTime>(
+            v => v.Kind == DateTimeKind.Utc ? v : DateTime.SpecifyKind(v, DateTimeKind.Utc),
+            v => DateTime.SpecifyKind(v, DateTimeKind.Utc));
+        
+        var nullableDateTimeConverter = new ValueConverter<DateTime?, DateTime?>(
+            v => v.HasValue ? (v.Value.Kind == DateTimeKind.Utc ? v : DateTime.SpecifyKind(v.Value, DateTimeKind.Utc)) : v,
+            v => v.HasValue ? DateTime.SpecifyKind(v.Value, DateTimeKind.Utc) : v);
+
+        // Apply converters to all DateTime properties
+        foreach (var entityType in modelBuilder.Model.GetEntityTypes())
+        {
+            foreach (var property in entityType.GetProperties())
+            {
+                if (property.ClrType == typeof(DateTime))
+                {
+                    property.SetValueConverter(dateTimeConverter);
+                }
+                else if (property.ClrType == typeof(DateTime?))
+                {
+                    property.SetValueConverter(nullableDateTimeConverter);
+                }
+            }
+        }
 
         // EntityType configuration
         modelBuilder.Entity<EntityType>(entity =>
@@ -240,7 +267,7 @@ public class EntityConfigurationDbContext : DbContext
                 step.Property(s => s.Subtitle).IsRequired().HasMaxLength(500).HasColumnName("subtitle");
                 step.Property(s => s.RequirementTypes).IsRequired().HasMaxLength(2000).HasColumnName("requirement_types");
                 step.Property(s => s.ChecklistCategory).IsRequired().HasMaxLength(100).HasColumnName("checklist_category");
-                step.Property(s => s.StepNumber).IsRequired().HasColumnName("step_number");
+                step.Property(s => s.StepNumber).IsRequired().HasColumnName("step_order");
                 step.Property(s => s.IsActive).IsRequired().HasColumnName("is_active");
                 step.Property(s => s.CreatedAt).IsRequired().HasColumnName("created_at");
                 step.Property(s => s.UpdatedAt).IsRequired().HasColumnName("updated_at");
@@ -282,17 +309,23 @@ public class EntityConfigurationDbContext : DbContext
             entity.HasIndex(e => e.Name)
                 .IsUnique();
 
-            // Configure the backing field for Permissions
-            entity.OwnsMany(e => e.Permissions, permission =>
-            {
-                permission.ToTable("role_permissions", "entity_configuration");
-                permission.HasKey(p => p.Id);
-                permission.Property(p => p.RoleId).HasColumnName("role_id");
-                permission.Property(p => p.PermissionName).IsRequired().HasMaxLength(200).HasColumnName("permission_name");
-                permission.Property(p => p.Resource).HasMaxLength(200).HasColumnName("resource");
-                permission.Property(p => p.IsActive).IsRequired().HasColumnName("is_active");
-                permission.Property(p => p.CreatedAt).IsRequired().HasColumnName("created_at");
-            });
+            // Configure the navigation property for Permissions using HasMany instead of OwnsMany
+            entity.HasMany(e => e.Permissions)
+                .WithOne()
+                .HasForeignKey(p => p.RoleId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        // RolePermission configuration (separate entity instead of owned)
+        modelBuilder.Entity<RolePermission>(entity =>
+        {
+            entity.ToTable("role_permissions", "entity_configuration");
+            entity.HasKey(p => p.Id);
+            entity.Property(p => p.RoleId).HasColumnName("role_id");
+            entity.Property(p => p.PermissionName).IsRequired().HasMaxLength(200).HasColumnName("permission_name");
+            entity.Property(p => p.Resource).HasMaxLength(200).HasColumnName("resource");
+            entity.Property(p => p.IsActive).IsRequired().HasColumnName("is_active");
+            entity.Property(p => p.CreatedAt).IsRequired().HasColumnName("created_at");
         });
 
         // User configuration
@@ -472,15 +505,22 @@ public class EntityConfigurationDbContext : DbContext
                 toggle.Property(t => t.UpdatedAt).IsRequired().HasColumnName("updated_at");
             });
 
-            entity.OwnsMany(e => e.Tags, tag =>
-            {
-                tag.ToTable("configuration_tags", "entity_configuration");
-                tag.HasKey(t => t.Id);
-                tag.Property(t => t.CountryProfileId).HasColumnName("country_profile_id");
-                tag.Property(t => t.TagName).IsRequired().HasMaxLength(100).HasColumnName("tag_name");
-                tag.Property(t => t.TagValue).HasMaxLength(200).HasColumnName("tag_value");
-                tag.Property(t => t.CreatedAt).IsRequired().HasColumnName("created_at");
-            });
+            // Configure the navigation property for Tags using HasMany instead of OwnsMany
+            entity.HasMany(e => e.Tags)
+                .WithOne()
+                .HasForeignKey(t => t.CountryProfileId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        // ConfigurationTag configuration (separate entity instead of owned)
+        modelBuilder.Entity<ConfigurationTag>(entity =>
+        {
+            entity.ToTable("configuration_tags", "entity_configuration");
+            entity.HasKey(t => t.Id);
+            entity.Property(t => t.CountryProfileId).HasColumnName("country_profile_id");
+            entity.Property(t => t.TagName).IsRequired().HasMaxLength(100).HasColumnName("tag_name");
+            entity.Property(t => t.TagValue).HasMaxLength(200).HasColumnName("tag_value");
+            entity.Property(t => t.CreatedAt).IsRequired().HasColumnName("created_at");
         });
     }
 }

@@ -18,7 +18,6 @@ export async function GET(
     // The caseId might be a case number (e.g., "OBC-20251203-99307") or a GUID
     // The backend workqueue API expects applicationId which should be a GUID
     // We need to resolve the caseId to an application GUID first
-    // For now, try using the caseId directly - if it's a GUID it will work, if it's a case number we'll need to resolve it
     
     // URL encode the caseId to handle special characters
     const encodedCaseId = encodeURIComponent(caseId);
@@ -29,7 +28,10 @@ export async function GET(
     const internalBaseUrl = process.env.NODE_ENV === 'production' 
       ? 'http://localhost:3000' 
       : (process.env.NEXTAUTH_URL || 'http://localhost:3000');
-    const url = `${internalBaseUrl}/api/proxy/api/v1/workqueue?applicationId=${encodedCaseId}`;
+    
+    // Use the correct endpoint: /api/v1/workqueue/by-application/{applicationId}
+    // This endpoint is designed to find work items by their associated application/case ID
+    const url = `${internalBaseUrl}/api/proxy/api/v1/workqueue/by-application/${encodedCaseId}`;
     console.log('[WorkItem API] Fetching from proxy:', url);
 
     // CRITICAL: Forward cookies for session-based authentication
@@ -71,26 +73,29 @@ export async function GET(
     }
 
     const data = await response.json();
-    const rawWorkItem = data.items?.[0] || null;
+    // The by-application endpoint returns a single work item object directly, not a paginated list
+    // Handle both formats for backwards compatibility
+    const rawWorkItem = data.items?.[0] || data || null;
 
     // Convert snake_case to camelCase for frontend
+    // The backend may return either snake_case or camelCase depending on the endpoint
     const workItem = rawWorkItem
       ? {
           id: rawWorkItem.id,
-          workItemNumber: rawWorkItem.work_item_number,
-          applicationId: rawWorkItem.application_id,
-          applicantName: rawWorkItem.applicant_name,
-          businessName: rawWorkItem.business_name,
-          entityType: rawWorkItem.entity_type,
+          workItemNumber: rawWorkItem.work_item_number || rawWorkItem.workItemNumber,
+          applicationId: rawWorkItem.application_id || rawWorkItem.applicationId,
+          applicantName: rawWorkItem.applicant_name || rawWorkItem.applicantName,
+          businessName: rawWorkItem.business_name || rawWorkItem.businessName,
+          entityType: rawWorkItem.entity_type || rawWorkItem.entityType,
           country: rawWorkItem.country,
           status: rawWorkItem.status,
           priority: rawWorkItem.priority,
-          riskLevel: rawWorkItem.risk_level,
-          assignedTo: rawWorkItem.assigned_to,
-          assignedToName: rawWorkItem.assigned_to_name,
-          assignedAt: rawWorkItem.assigned_at,
-          createdAt: rawWorkItem.created_at,
-          updatedAt: rawWorkItem.updated_at,
+          riskLevel: rawWorkItem.risk_level || rawWorkItem.riskLevel,
+          assignedTo: rawWorkItem.assigned_to || rawWorkItem.assignedTo,
+          assignedToName: rawWorkItem.assigned_to_name || rawWorkItem.assignedToName,
+          assignedAt: rawWorkItem.assigned_at || rawWorkItem.assignedAt,
+          createdAt: rawWorkItem.created_at || rawWorkItem.createdAt,
+          updatedAt: rawWorkItem.updated_at || rawWorkItem.updatedAt,
         }
       : null;
 

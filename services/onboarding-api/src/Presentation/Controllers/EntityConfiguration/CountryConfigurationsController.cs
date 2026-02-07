@@ -1,7 +1,11 @@
+using System.Text.Json.Serialization;
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using OnboardingApi.Application.EntityConfiguration.Commands;
 using OnboardingApi.Application.EntityConfiguration.Queries;
+using OnboardingApi.Domain.EntityConfiguration.Aggregates;
+using OnboardingApi.Infrastructure.Persistence.EntityConfiguration;
 
 namespace OnboardingApi.Presentation.Controllers.EntityConfiguration;
 
@@ -12,11 +16,13 @@ public class CountryConfigurationsController : ControllerBase
 {
     private readonly IMediator _mediator;
     private readonly ILogger<CountryConfigurationsController> _logger;
+    private readonly EntityConfigurationDbContext _dbContext;
 
-    public CountryConfigurationsController(IMediator mediator, ILogger<CountryConfigurationsController> logger)
+    public CountryConfigurationsController(IMediator mediator, ILogger<CountryConfigurationsController> logger, EntityConfigurationDbContext dbContext)
     {
         _mediator = mediator;
         _logger = logger;
+        _dbContext = dbContext;
     }
 
     /// <summary>
@@ -556,13 +562,35 @@ public class CountryConfigurationsController : ControllerBase
     {
         try
         {
-            var command = new AddTagCommand(
-                countryProfileId,
-                request.TagName,
-                request.TagValue);
+            if (string.IsNullOrWhiteSpace(request.TagName))
+            {
+                return BadRequest(new { message = "Tag name is required" });
+            }
 
-            var result = await _mediator.Send(command, cancellationToken);
-            return Ok(new { success = result });
+            // Check if country profile exists
+            var profile = await _dbContext.CountryProfiles.FindAsync(new object[] { countryProfileId }, cancellationToken);
+            if (profile == null)
+            {
+                return NotFound(new { message = $"Country profile with ID '{countryProfileId}' not found" });
+            }
+
+            // Check if tag already exists
+            var existingTag = await _dbContext.ConfigurationTags
+                .FirstOrDefaultAsync(t => t.CountryProfileId == countryProfileId && t.TagName == request.TagName && t.TagValue == request.TagValue, cancellationToken);
+            
+            if (existingTag != null)
+            {
+                _logger.LogInformation("Tag {TagName} already exists on country profile {CountryProfileId}, skipping", request.TagName, countryProfileId);
+                return Ok(new { success = true, message = "Tag already exists" });
+            }
+
+            // Add tag directly to DbContext to avoid EF Core tracking issues
+            var tag = new ConfigurationTag(countryProfileId, request.TagName, request.TagValue);
+            await _dbContext.ConfigurationTags.AddAsync(tag, cancellationToken);
+            await _dbContext.SaveChangesAsync(cancellationToken);
+
+            _logger.LogInformation("Tag {TagName} added to country profile {CountryProfileId}", request.TagName, countryProfileId);
+            return Ok(new { success = true });
         }
         catch (InvalidOperationException ex)
         {
@@ -575,14 +603,39 @@ public class CountryConfigurationsController : ControllerBase
     /// </summary>
     [HttpDelete("{countryProfileId}/tags")]
     [ProducesResponseType(204)]
+    [ProducesResponseType(404)]
     public async Task<IActionResult> RemoveTag(
         Guid countryProfileId,
-        [FromQuery] string tagName,
-        [FromQuery] string? tagValue = null,
+        [FromQuery(Name = "tag_name")] string tagName,
+        [FromQuery(Name = "tag_value")] string? tagValue = null,
         CancellationToken cancellationToken = default)
     {
-        var command = new RemoveTagCommand(countryProfileId, tagName, tagValue);
-        await _mediator.Send(command, cancellationToken);
+        if (string.IsNullOrWhiteSpace(tagName))
+        {
+            return BadRequest(new { message = "Tag name is required" });
+        }
+
+        // Find the tag directly in DbContext
+        var query = _dbContext.ConfigurationTags
+            .Where(t => t.CountryProfileId == countryProfileId && t.TagName == tagName);
+        
+        if (!string.IsNullOrWhiteSpace(tagValue))
+        {
+            query = query.Where(t => t.TagValue == tagValue);
+        }
+
+        var tag = await query.FirstOrDefaultAsync(cancellationToken);
+        
+        if (tag == null)
+        {
+            _logger.LogInformation("Tag {TagName} not found on country profile {CountryProfileId}", tagName, countryProfileId);
+            return NoContent(); // Idempotent - return success even if not found
+        }
+
+        _dbContext.ConfigurationTags.Remove(tag);
+        await _dbContext.SaveChangesAsync(cancellationToken);
+
+        _logger.LogInformation("Tag {TagName} removed from country profile {CountryProfileId}", tagName, countryProfileId);
         return NoContent();
     }
 }
@@ -677,7 +730,7 @@ public record UpdateComplianceToggleRequest(
 );
 
 public record AddTagRequest(
-    string TagName,
-    string? TagValue = null
+    [property: JsonPropertyName("tag_name")] string TagName,
+    [property: JsonPropertyName("tag_value")] string? TagValue = null
 );
 

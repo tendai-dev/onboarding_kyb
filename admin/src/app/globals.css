@@ -3274,3 +3274,14 @@ thead [data-scope="popover"][data-part="content"],
   background-color: #FAFAFA !important;
   background: #FAFAFA !important;
 }
+
+/* Reassign Modal - Force white background */
+.reassign-modal-container {
+  background-color: #FFFFFF !important;
+  background: #FFFFFF !important;
+}
+
+.reassign-modal-container > div {
+  background-color: #FFFFFF !important;
+  background: #FFFFFF !important;
+}

@@ -97,7 +97,7 @@ public class PartnerController : ControllerBase
     /// This endpoint allows testing the SendGrid integration
     /// </summary>
     [HttpPost("test-email")]
-    [Microsoft.AspNetCore.Authorization.AllowAnonymous] // Allow anonymous access for testing
+    [Microsoft.AspNetCore.Authorization.Authorize(Roles = "Admin")]
     [ProducesResponseType(typeof(object), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]

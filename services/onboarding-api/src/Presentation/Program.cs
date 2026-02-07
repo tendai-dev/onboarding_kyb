@@ -29,6 +29,25 @@ using Npgsql;
 var builder = WebApplication.CreateBuilder(args);
 
 // ========================================
+// Strongly-Typed Configuration
+// ========================================
+builder.Services.Configure<OnboardingApi.Application.Configuration.ServicesOptions>(
+    builder.Configuration.GetSection(OnboardingApi.Application.Configuration.ServicesOptions.SectionName));
+builder.Services.Configure<OnboardingApi.Application.Configuration.SendGridOptions>(
+    builder.Configuration.GetSection(OnboardingApi.Application.Configuration.SendGridOptions.SectionName));
+builder.Services.Configure<OnboardingApi.Application.Configuration.SecurityOptions>(
+    builder.Configuration.GetSection(OnboardingApi.Application.Configuration.SecurityOptions.SectionName));
+
+// ========================================
+// Security: Configure PartnerIdGenerator Salt
+// ========================================
+// IMPORTANT: Set PARTNER_ID_SALT environment variable in production
+// Changing this salt will invalidate all existing partner IDs
+var partnerIdSalt = builder.Configuration["Security:PartnerIdSalt"] 
+    ?? Environment.GetEnvironmentVariable("PARTNER_ID_SALT");
+OnboardingApi.Infrastructure.Utilities.PartnerIdGenerator.ConfigureSalt(partnerIdSalt);
+
+// ========================================
 // Sentry Error Monitoring
 // ========================================
 // Sentry configuration
@@ -44,26 +63,50 @@ if (!string.IsNullOrEmpty(sentryDsn))
 }
 
 // ========================================
-// Logging with Serilog
+// Logging with Serilog (Optimized for reduced storage costs)
 // ========================================
+// Log sampling configuration - reduces ~100GB/day to ~25GB/day
+var debugSamplePercent = builder.Configuration.GetValue("Logging:DebugSamplePercent", 10);
+var verboseSamplePercent = builder.Configuration.GetValue("Logging:VerboseSamplePercent", 5);
+
 Log.Logger = new LoggerConfiguration()
     .MinimumLevel.Information()
     .MinimumLevel.Override("Microsoft", LogEventLevel.Warning)
     .MinimumLevel.Override("Microsoft.EntityFrameworkCore", LogEventLevel.Warning)
+    .MinimumLevel.Override("Microsoft.AspNetCore.Hosting", LogEventLevel.Warning)
+    .MinimumLevel.Override("Microsoft.AspNetCore.Routing", LogEventLevel.Warning)
+    .MinimumLevel.Override("Microsoft.AspNetCore.Mvc", LogEventLevel.Warning)
+    .MinimumLevel.Override("System.Net.Http.HttpClient", LogEventLevel.Warning)
+    .MinimumLevel.Override("HealthChecks", LogEventLevel.Warning)
+    // Apply log sampling to reduce Debug/Verbose volume by 90%+
+    .Filter.With(new OnboardingApi.Infrastructure.Logging.LogSamplingFilter(
+        debugSamplePercent, verboseSamplePercent))
+    // Filter out high-frequency health check and metrics logs
+    .Filter.With(new OnboardingApi.Infrastructure.Logging.HighFrequencyLogFilter())
+    // Rate limit repeated errors to prevent log flooding
+    .Filter.With(new OnboardingApi.Infrastructure.Logging.RateLimitedLogFilter(5))
     .Enrich.FromLogContext()
     .Enrich.WithProperty("Service", Environment.GetEnvironmentVariable("SERVICE_NAME") ?? "kyb-onboarding-api")
     .Enrich.WithProperty("Environment", builder.Environment.EnvironmentName)
     .WriteTo.Console(outputTemplate: "[{Timestamp:HH:mm:ss} {Level:u3}] {Message:lj} {Properties:j}{NewLine}{Exception}")
     .WriteTo.Elasticsearch(new ElasticsearchSinkOptions(new Uri(builder.Configuration["Elasticsearch:Uri"] ?? "http://elasticsearch:9200"))
     {
+        // Index format compatible with ILM policy (see Infrastructure/Logging/ElasticsearchIlmPolicy.json)
         IndexFormat = $"{Environment.GetEnvironmentVariable("SERVICE_NAME") ?? "kyb-onboarding-api"}-logs-{{0:yyyy.MM.dd}}",
         AutoRegisterTemplate = true,
         AutoRegisterTemplateVersion = AutoRegisterTemplateVersion.ESv7,
+        // Batch settings to reduce Elasticsearch load
+        BatchPostingLimit = 50,
+        Period = TimeSpan.FromSeconds(2),
         ModifyConnectionSettings = x => x.BasicAuthentication(
             builder.Configuration["Elasticsearch:Username"],
             builder.Configuration["Elasticsearch:Password"])
     })
     .CreateLogger();
+
+Log.Information(
+    "Logging configured with sampling: Debug={DebugPercent}%, Verbose={VerbosePercent}%",
+    debugSamplePercent, verboseSamplePercent);
 
 builder.Host.UseSerilog();
 
@@ -78,15 +121,65 @@ builder.Host.UseSerilog();
 // ========================================
 // Database (PostgreSQL + EF Core)
 // ========================================
-builder.Services.AddDbContext<OnboardingDbContext>(options =>
+// OPTIMIZATION: Create shared NpgsqlDataSource to prevent connection pool exhaustion
+// With 11 DbContexts, each creating its own pool would mean 11x connections
+// Connection pool settings are configured in the connection string:
+// - Maximum Pool Size: 100 (shared across all DbContexts)
+// - Minimum Pool Size: 5 (keep warm connections ready)
+// - Connection Idle Lifetime: 300s (release idle connections after 5 min)
+// - Connection Pruning Interval: 10s (check for idle connections frequently)
+var connectionString = builder.Configuration.GetConnectionString("PostgreSQL") 
+    ?? throw new InvalidOperationException("PostgreSQL connection string is required");
+
+// Append optimized pool settings if not already present
+var poolSettings = new Dictionary<string, string>
+{
+    ["Maximum Pool Size"] = "100",
+    ["Minimum Pool Size"] = "5",
+    ["Connection Idle Lifetime"] = "300",
+    ["Connection Pruning Interval"] = "10",
+    ["Timeout"] = "15",  // Connection timeout in seconds
+    ["Command Timeout"] = "30"  // Command timeout in seconds
+};
+
+var connStringBuilder = new NpgsqlConnectionStringBuilder(connectionString);
+foreach (var setting in poolSettings)
+{
+    // Only set if not already configured
+    if (!connectionString.Contains(setting.Key, StringComparison.OrdinalIgnoreCase))
+    {
+        switch (setting.Key)
+        {
+            case "Maximum Pool Size": connStringBuilder.MaxPoolSize = int.Parse(setting.Value); break;
+            case "Minimum Pool Size": connStringBuilder.MinPoolSize = int.Parse(setting.Value); break;
+            case "Connection Idle Lifetime": connStringBuilder.ConnectionIdleLifetime = int.Parse(setting.Value); break;
+            case "Connection Pruning Interval": connStringBuilder.ConnectionPruningInterval = int.Parse(setting.Value); break;
+            case "Timeout": connStringBuilder.Timeout = int.Parse(setting.Value); break;
+            case "Command Timeout": connStringBuilder.CommandTimeout = int.Parse(setting.Value); break;
+        }
+    }
+}
+
+var dataSourceBuilder = new NpgsqlDataSourceBuilder(connStringBuilder.ConnectionString);
+dataSourceBuilder.EnableDynamicJson(); // Required for Dictionary<string, object> columns
+var sharedDataSource = dataSourceBuilder.Build();
+builder.Services.AddSingleton(sharedDataSource);
+
+Log.Information(
+    "Database connection pool configured: MaxPoolSize={MaxPool}, MinPoolSize={MinPool}, Timeout={Timeout}s",
+    connStringBuilder.MaxPoolSize, connStringBuilder.MinPoolSize, connStringBuilder.Timeout);
+
+builder.Services.AddDbContext<OnboardingDbContext>((sp, options) =>
 {
     options.UseNpgsql(
-        builder.Configuration.GetConnectionString("PostgreSQL"),
+        sp.GetRequiredService<NpgsqlDataSource>(),
         npgsqlOptions =>
         {
+            // OPTIMIZED: Reduced retries from 5 to 2 to prevent connection exhaustion
+            // With 11 DbContexts, 5 retries = 5x connection pressure during failures
             npgsqlOptions.EnableRetryOnFailure(
-                maxRetryCount: 5,
-                maxRetryDelay: TimeSpan.FromSeconds(10),
+                maxRetryCount: 2,
+                maxRetryDelay: TimeSpan.FromSeconds(3),
                 errorCodesToAdd: null);
         });
     // Suppress ManyServiceProvidersCreatedWarning - this is expected with multiple DbContexts
@@ -96,17 +189,16 @@ builder.Services.AddDbContext<OnboardingDbContext>(options =>
 // ========================================
 // Audit Module Database Context
 // ========================================
-builder.Services.AddDbContext<OnboardingApi.Infrastructure.Persistence.Audit.AuditLogDbContext>(options =>
+builder.Services.AddDbContext<OnboardingApi.Infrastructure.Persistence.Audit.AuditLogDbContext>((sp, options) =>
 {
     options.UseNpgsql(
-        builder.Configuration.GetConnectionString("PostgreSQL") ?? builder.Configuration.GetConnectionString("AuditLog:PostgreSQL"),
+        sp.GetRequiredService<NpgsqlDataSource>(),
         npgsqlOptions =>
         {
             npgsqlOptions.EnableRetryOnFailure(
-                maxRetryCount: 5,
-                maxRetryDelay: TimeSpan.FromSeconds(10),
+                maxRetryCount: 2,
+                maxRetryDelay: TimeSpan.FromSeconds(3),
                 errorCodesToAdd: null);
-            // Use audit schema
             npgsqlOptions.MigrationsHistoryTable("__EFMigrationsHistory", "audit");
         });
     options.ConfigureWarnings(w => w.Ignore(CoreEventId.ManyServiceProvidersCreatedWarning));
@@ -115,17 +207,16 @@ builder.Services.AddDbContext<OnboardingApi.Infrastructure.Persistence.Audit.Aud
 // ========================================
 // Checklist Module Database Context
 // ========================================
-builder.Services.AddDbContext<OnboardingApi.Infrastructure.Persistence.Checklist.ChecklistDbContext>(options =>
+builder.Services.AddDbContext<OnboardingApi.Infrastructure.Persistence.Checklist.ChecklistDbContext>((sp, options) =>
 {
     options.UseNpgsql(
-        builder.Configuration.GetConnectionString("PostgreSQL") ?? builder.Configuration.GetConnectionString("Checklist:PostgreSQL"),
+        sp.GetRequiredService<NpgsqlDataSource>(),
         npgsqlOptions =>
         {
             npgsqlOptions.EnableRetryOnFailure(
-                maxRetryCount: 5,
-                maxRetryDelay: TimeSpan.FromSeconds(10),
+                maxRetryCount: 2,
+                maxRetryDelay: TimeSpan.FromSeconds(3),
                 errorCodesToAdd: null);
-            // Use checklist schema
             npgsqlOptions.MigrationsHistoryTable("__EFMigrationsHistory", "checklist");
         });
     options.ConfigureWarnings(w => w.Ignore(CoreEventId.ManyServiceProvidersCreatedWarning));
@@ -134,21 +225,14 @@ builder.Services.AddDbContext<OnboardingApi.Infrastructure.Persistence.Checklist
 // ========================================
 // Notification Module Database Context
 // ========================================
-builder.Services.AddDbContext<OnboardingApi.Infrastructure.Persistence.Notification.NotificationDbContext>(options =>
+builder.Services.AddDbContext<OnboardingApi.Infrastructure.Persistence.Notification.NotificationDbContext>((sp, options) =>
 {
-    var connectionString = builder.Configuration.GetConnectionString("PostgreSQL") ?? builder.Configuration.GetConnectionString("Notification:PostgreSQL");
-    // Configure data source with dynamic JSON enabled for Dictionary<string, object> support
-    var dataSourceBuilder = new NpgsqlDataSourceBuilder(connectionString ?? "");
-    dataSourceBuilder.EnableDynamicJson();
-    var dataSource = dataSourceBuilder.Build();
-    
-    options.UseNpgsql(dataSource, npgsqlOptions =>
+    options.UseNpgsql(sp.GetRequiredService<NpgsqlDataSource>(), npgsqlOptions =>
     {
         npgsqlOptions.EnableRetryOnFailure(
-            maxRetryCount: 5,
-            maxRetryDelay: TimeSpan.FromSeconds(10),
+            maxRetryCount: 2,
+            maxRetryDelay: TimeSpan.FromSeconds(3),
             errorCodesToAdd: null);
-        // Use notification schema
         npgsqlOptions.MigrationsHistoryTable("__EFMigrationsHistory", "notification");
     });
     options.ConfigureWarnings(w => w.Ignore(CoreEventId.ManyServiceProvidersCreatedWarning));
@@ -157,17 +241,16 @@ builder.Services.AddDbContext<OnboardingApi.Infrastructure.Persistence.Notificat
 // ========================================
 // Messaging Module Database Context
 // ========================================
-builder.Services.AddDbContext<OnboardingApi.Infrastructure.Persistence.Messaging.MessagingDbContext>(options =>
+builder.Services.AddDbContext<OnboardingApi.Infrastructure.Persistence.Messaging.MessagingDbContext>((sp, options) =>
 {
     options.UseNpgsql(
-        builder.Configuration.GetConnectionString("PostgreSQL") ?? builder.Configuration.GetConnectionString("Messaging:PostgreSQL"),
+        sp.GetRequiredService<NpgsqlDataSource>(),
         npgsqlOptions =>
         {
             npgsqlOptions.EnableRetryOnFailure(
-                maxRetryCount: 5,
-                maxRetryDelay: TimeSpan.FromSeconds(10),
+                maxRetryCount: 2,
+                maxRetryDelay: TimeSpan.FromSeconds(3),
                 errorCodesToAdd: null);
-            // Use messaging schema
             npgsqlOptions.MigrationsHistoryTable("__EFMigrationsHistory", "messaging");
         });
     options.ConfigureWarnings(w => w.Ignore(CoreEventId.ManyServiceProvidersCreatedWarning));
@@ -176,17 +259,16 @@ builder.Services.AddDbContext<OnboardingApi.Infrastructure.Persistence.Messaging
 // ========================================
 // Entity Configuration Module Database Context
 // ========================================
-builder.Services.AddDbContext<OnboardingApi.Infrastructure.Persistence.EntityConfiguration.EntityConfigurationDbContext>(options =>
+builder.Services.AddDbContext<OnboardingApi.Infrastructure.Persistence.EntityConfiguration.EntityConfigurationDbContext>((sp, options) =>
 {
     options.UseNpgsql(
-        builder.Configuration.GetConnectionString("PostgreSQL") ?? builder.Configuration.GetConnectionString("EntityConfiguration:PostgreSQL"),
+        sp.GetRequiredService<NpgsqlDataSource>(),
         npgsqlOptions =>
         {
             npgsqlOptions.EnableRetryOnFailure(
-                maxRetryCount: 5,
-                maxRetryDelay: TimeSpan.FromSeconds(10),
+                maxRetryCount: 2,
+                maxRetryDelay: TimeSpan.FromSeconds(3),
                 errorCodesToAdd: null);
-            // Use entity_configuration schema
             npgsqlOptions.MigrationsHistoryTable("__EFMigrationsHistory", "entity_configuration");
         });
     options.ConfigureWarnings(w => w.Ignore(CoreEventId.ManyServiceProvidersCreatedWarning));
@@ -195,17 +277,16 @@ builder.Services.AddDbContext<OnboardingApi.Infrastructure.Persistence.EntityCon
 // ========================================
 // Work Queue Module Database Context
 // ========================================
-builder.Services.AddDbContext<OnboardingApi.Infrastructure.Persistence.WorkQueue.WorkQueueDbContext>(options =>
+builder.Services.AddDbContext<OnboardingApi.Infrastructure.Persistence.WorkQueue.WorkQueueDbContext>((sp, options) =>
 {
     options.UseNpgsql(
-        builder.Configuration.GetConnectionString("PostgreSQL") ?? builder.Configuration.GetConnectionString("WorkQueue:PostgreSQL"),
+        sp.GetRequiredService<NpgsqlDataSource>(),
         npgsqlOptions =>
         {
             npgsqlOptions.EnableRetryOnFailure(
-                maxRetryCount: 5,
-                maxRetryDelay: TimeSpan.FromSeconds(10),
+                maxRetryCount: 2,
+                maxRetryDelay: TimeSpan.FromSeconds(3),
                 errorCodesToAdd: null);
-            // Use work_queue schema
             npgsqlOptions.MigrationsHistoryTable("__EFMigrationsHistory", "work_queue");
         });
     options.ConfigureWarnings(w => w.Ignore(CoreEventId.ManyServiceProvidersCreatedWarning));
@@ -214,17 +295,16 @@ builder.Services.AddDbContext<OnboardingApi.Infrastructure.Persistence.WorkQueue
 // ========================================
 // Risk Module Database Context
 // ========================================
-builder.Services.AddDbContext<OnboardingApi.Infrastructure.Persistence.Risk.RiskDbContext>(options =>
+builder.Services.AddDbContext<OnboardingApi.Infrastructure.Persistence.Risk.RiskDbContext>((sp, options) =>
 {
     options.UseNpgsql(
-        builder.Configuration.GetConnectionString("PostgreSQL") ?? builder.Configuration.GetConnectionString("Risk:PostgreSQL"),
+        sp.GetRequiredService<NpgsqlDataSource>(),
         npgsqlOptions =>
         {
             npgsqlOptions.EnableRetryOnFailure(
-                maxRetryCount: 5,
-                maxRetryDelay: TimeSpan.FromSeconds(10),
+                maxRetryCount: 2,
+                maxRetryDelay: TimeSpan.FromSeconds(3),
                 errorCodesToAdd: null);
-            // Use risk schema
             npgsqlOptions.MigrationsHistoryTable("__EFMigrationsHistory", "risk");
         });
     options.ConfigureWarnings(w => w.Ignore(CoreEventId.ManyServiceProvidersCreatedWarning));
@@ -233,17 +313,16 @@ builder.Services.AddDbContext<OnboardingApi.Infrastructure.Persistence.Risk.Risk
 // ========================================
 // Projections Module Database Context
 // ========================================
-builder.Services.AddDbContext<OnboardingApi.Infrastructure.Persistence.Projections.ProjectionsDbContext>(options =>
+builder.Services.AddDbContext<OnboardingApi.Infrastructure.Persistence.Projections.ProjectionsDbContext>((sp, options) =>
 {
     options.UseNpgsql(
-        builder.Configuration.GetConnectionString("PostgreSQL") ?? builder.Configuration.GetConnectionString("Projections:PostgreSQL"),
+        sp.GetRequiredService<NpgsqlDataSource>(),
         npgsqlOptions =>
         {
             npgsqlOptions.EnableRetryOnFailure(
-                maxRetryCount: 5,
-                maxRetryDelay: TimeSpan.FromSeconds(10),
+                maxRetryCount: 2,
+                maxRetryDelay: TimeSpan.FromSeconds(3),
                 errorCodesToAdd: null);
-            // Use projections schema
             npgsqlOptions.MigrationsHistoryTable("__EFMigrationsHistory", "projections");
         });
     options.ConfigureWarnings(w => w.Ignore(CoreEventId.ManyServiceProvidersCreatedWarning));
@@ -252,17 +331,16 @@ builder.Services.AddDbContext<OnboardingApi.Infrastructure.Persistence.Projectio
 // ========================================
 // Document Module Database Context
 // ========================================
-builder.Services.AddDbContext<OnboardingApi.Infrastructure.Persistence.Document.DocumentDbContext>(options =>
+builder.Services.AddDbContext<OnboardingApi.Infrastructure.Persistence.Document.DocumentDbContext>((sp, options) =>
 {
     options.UseNpgsql(
-        builder.Configuration.GetConnectionString("PostgreSQL") ?? builder.Configuration.GetConnectionString("Document:PostgreSQL"),
+        sp.GetRequiredService<NpgsqlDataSource>(),
         npgsqlOptions =>
         {
             npgsqlOptions.EnableRetryOnFailure(
-                maxRetryCount: 5,
-                maxRetryDelay: TimeSpan.FromSeconds(10),
+                maxRetryCount: 2,
+                maxRetryDelay: TimeSpan.FromSeconds(3),
                 errorCodesToAdd: null);
-            // Use document schema
             npgsqlOptions.MigrationsHistoryTable("__EFMigrationsHistory", "document");
         });
     options.ConfigureWarnings(w => w.Ignore(CoreEventId.ManyServiceProvidersCreatedWarning));
@@ -281,9 +359,51 @@ builder.Services.AddSingleton<IConnectionMultiplexer>(sp =>
 });
 
 // ========================================
+// Cache Metrics and Health Monitoring
+// ========================================
+builder.Services.AddSingleton<OnboardingApi.Infrastructure.Caching.ICacheMetrics, 
+    OnboardingApi.Infrastructure.Caching.CacheMetrics>();
+builder.Services.AddHostedService<OnboardingApi.Infrastructure.Caching.CacheHealthMonitorService>();
+
+// ========================================
+// Connection Pool Monitoring
+// ========================================
+builder.Services.AddSingleton<OnboardingApi.Infrastructure.Monitoring.IConnectionPoolMonitor, 
+    OnboardingApi.Infrastructure.Monitoring.ConnectionPoolMonitor>();
+builder.Services.AddHostedService<OnboardingApi.Infrastructure.Monitoring.ConnectionPoolHealthService>();
+
+// ========================================
 // Event Bus (In-Memory, no Kafka)
 // ========================================
 builder.Services.AddSingleton<IEventBus, InMemoryEventBus>();
+
+// ========================================
+// Cross-Schema Transaction Support
+// ========================================
+builder.Services.AddScoped<OnboardingApi.Application.Interfaces.ICrossSchemaTransactionFactory, 
+    OnboardingApi.Infrastructure.Persistence.CrossSchemaTransactionFactory>();
+
+// ========================================
+// Data Integrity Service
+// ========================================
+builder.Services.AddScoped<OnboardingApi.Infrastructure.Services.IDataIntegrityService, 
+    OnboardingApi.Infrastructure.Services.DataIntegrityService>();
+
+// ========================================
+// Domain Event Dispatcher (Async Event Processing)
+// ========================================
+builder.Services.AddScoped<OnboardingApi.Application.Interfaces.IDomainEventDispatcher, 
+    OnboardingApi.Infrastructure.EventBus.DomainEventDispatcher>();
+
+// ========================================
+// Outbox Event Processor (Background Service)
+// ========================================
+builder.Services.AddHostedService<OnboardingApi.Infrastructure.EventBus.OutboxEventProcessor>();
+
+// ========================================
+// Projection Sync Service (Background Service with Retry)
+// ========================================
+builder.Services.AddHostedService<OnboardingApi.Infrastructure.BackgroundServices.ProjectionSyncService>();
 
 // ========================================
 // Repositories
@@ -298,6 +418,17 @@ builder.Services.AddScoped<OnboardingApi.Application.Commands.IEventPublisher, O
 builder.Services.AddScoped<OnboardingApi.Application.Audit.Interfaces.IAuditLogRepository, OnboardingApi.Infrastructure.Persistence.Audit.AuditLogRepository>();
 
 // ========================================
+// Logging & Metrics Services
+// ========================================
+builder.Services.AddSingleton<OnboardingApi.Infrastructure.Logging.IStateTransitionLogger, 
+    OnboardingApi.Infrastructure.Logging.StateTransitionLogger>();
+builder.Services.AddSingleton<OnboardingApi.Infrastructure.Logging.IOperationMetrics, 
+    OnboardingApi.Infrastructure.Logging.OperationMetrics>();
+
+// Audit log retention service (monthly partition management + 7-year retention)
+builder.Services.AddHostedService<OnboardingApi.Infrastructure.BackgroundServices.AuditLogRetentionService>();
+
+// ========================================
 // Checklist Module Repositories & Services
 // ========================================
 builder.Services.AddScoped<OnboardingApi.Application.Checklist.Interfaces.IChecklistRepository, OnboardingApi.Infrastructure.Persistence.Checklist.ChecklistRepository>();
@@ -308,16 +439,28 @@ builder.Services.AddScoped<OnboardingApi.Application.Checklist.Interfaces.ICheck
 // ========================================
 builder.Services.AddScoped<OnboardingApi.Application.Notification.Interfaces.INotificationRepository, OnboardingApi.Infrastructure.Persistence.Notification.NotificationRepository>();
 builder.Services.AddScoped<OnboardingApi.Application.Notification.Interfaces.INotificationSender, OnboardingApi.Infrastructure.Services.NotificationSender>();
-// Use SendGridEmailSender if API key is configured, otherwise fall back to EmailSender (logs only)
+
+// Email Dead Letter Queue for failed email retry
+builder.Services.AddDbContext<OnboardingApi.Infrastructure.Services.EmailQueueDbContext>(options =>
+    options.UseNpgsql(sharedDataSource));
+builder.Services.AddScoped<OnboardingApi.Infrastructure.Services.IEmailDeadLetterQueue, OnboardingApi.Infrastructure.Services.EmailDeadLetterQueue>();
+
+// Email Sender with resilience (retry, circuit breaker, dead letter queue)
+builder.Services.AddScoped<OnboardingApi.Infrastructure.Services.SendGridEmailSender>();
 var sendGridApiKey = builder.Configuration["SendGrid:ApiKey"] ?? builder.Configuration["SENDGRID_API_KEY"];
 if (!string.IsNullOrWhiteSpace(sendGridApiKey))
 {
-    builder.Services.AddScoped<OnboardingApi.Application.Notification.Interfaces.IEmailSender, OnboardingApi.Infrastructure.Services.SendGridEmailSender>();
+    // Use resilient email sender that wraps SendGrid with retry policies
+    builder.Services.AddScoped<OnboardingApi.Application.Notification.Interfaces.IEmailSender, OnboardingApi.Infrastructure.Services.ResilientEmailSender>();
 }
 else
 {
     builder.Services.AddScoped<OnboardingApi.Application.Notification.Interfaces.IEmailSender, OnboardingApi.Infrastructure.Services.EmailSender>();
 }
+
+// Background service to retry failed emails
+builder.Services.AddHostedService<OnboardingApi.Infrastructure.BackgroundServices.EmailRetryService>();
+
 builder.Services.AddScoped<OnboardingApi.Application.Notification.Interfaces.ISmsSender, OnboardingApi.Infrastructure.Services.SmsSender>();
 builder.Services.AddScoped<OnboardingApi.Application.Notification.Interfaces.INotificationService, OnboardingApi.Infrastructure.Services.NotificationServiceImpl>();
 
@@ -390,6 +533,14 @@ builder.Services.AddScoped<IOrganizationMapper, OnboardingApi.Infrastructure.Ser
 // Entity Configuration Service
 // ========================================
 builder.Services.AddScoped<OnboardingApi.Infrastructure.Services.IEntityConfigurationService, OnboardingApi.Infrastructure.Services.EntityConfigurationService>();
+builder.Services.AddScoped<OnboardingApi.Application.Cases.Interfaces.IEntityConfigurationService, OnboardingApi.Infrastructure.Services.EntityConfigurationServiceAdapter>();
+
+// ========================================
+// Saga Pattern - Cross-Module Transaction Coordination
+// ========================================
+builder.Services.AddScoped<OnboardingApi.Application.Sagas.OnboardingCaseSubmissionSaga.Steps.CreateCaseStep>();
+builder.Services.AddScoped<OnboardingApi.Application.Sagas.OnboardingCaseSubmissionSaga.Steps.CreateWorkItemStep>();
+builder.Services.AddScoped<OnboardingApi.Application.Sagas.OnboardingCaseSubmissionSaga.OnboardingCaseSubmissionOrchestrator>();
 
 // Add distributed cache (Redis) for organization mapping cache
 builder.Services.AddStackExchangeRedisCache(options =>
@@ -577,6 +728,12 @@ app.UseHttpMetrics();
 // SECURITY: Add security headers middleware (early in pipeline)
 app.UseMiddleware<OnboardingApi.Presentation.Middleware.SecurityHeadersMiddleware>();
 
+// Correlation ID middleware - ensures every request has a correlation ID for distributed tracing
+app.UseCorrelationId();
+
+// Request/Response logging middleware - logs all API calls with performance metrics
+app.UseRequestLogging();
+
 // Trace ID middleware - propagate trace ID across all services
 app.Use(async (context, next) =>
 {
@@ -657,3 +814,5 @@ finally
     Log.CloseAndFlush();
 }
 
+// Make Program class accessible for integration tests
+public partial class Program { }

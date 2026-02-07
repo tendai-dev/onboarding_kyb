@@ -88,6 +88,8 @@ export default function EnhancedNewPartnerApplicationPage() {
   const [showOCR, setShowOCR] = useState(false);
   const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submissionStatus, setSubmissionStatus] = useState<'submitting' | 'success' | 'error' | null>(null);
+  const [submittedCaseId, setSubmittedCaseId] = useState<string | null>(null);
   const [toastState, setToastState] = useState<{
     status: 'success' | 'error' | 'info';
     title: string;
@@ -888,6 +890,7 @@ export default function EnhancedNewPartnerApplicationPage() {
     }
 
     setIsSubmitting(true);
+    setSubmissionStatus('submitting');
     console.info('🎯 Starting submission process...');
 
     // Show loading indicator
@@ -2120,57 +2123,8 @@ export default function EnhancedNewPartnerApplicationPage() {
             }
           }
 
-          // Trigger projections sync to ensure case is available in read model
-          // This is a best-effort call - don't block on it
-          // Note: The onboarding API also triggers sync automatically, but we trigger it here
-          // to ensure immediate visibility (with a small delay to let the DB transaction commit)
-          try {
-            // Wait a bit for the database transaction to commit
-            await new Promise((resolve) => setTimeout(resolve, 1000));
-
-            // Trigger projections sync (optional - service may not be available)
-            // Note: This endpoint may not exist if projections service is not running
-            const syncResponse = await fetch(
-              '/api/proxy/api/v1/sync?forceFullSync=false',
-              {
-                method: 'POST',
-                headers: {
-                  'Content-Type': 'application/json',
-                  ...(user?.email
-                    ? {
-                        'X-User-Email': user.email,
-                        'X-User-Name': user.name || user.email,
-                        'X-User-Role': 'Applicant',
-                      }
-                    : {}),
-                },
-              }
-            );
-
-            if (syncResponse.ok) {
-              const syncResult = await syncResponse.json();
-              console.info('✅ Projections sync completed:', syncResult);
-            } else if (syncResponse.status === 404) {
-              // Projections service not available - this is expected in some environments
-              console.debug(
-                'Projections sync endpoint not available (404) - service may not be running'
-              );
-            } else {
-              // Other errors - log but don't fail
-              const errorText = await syncResponse.text();
-              console.debug('Projections sync returned non-200 status:', {
-                status: syncResponse.status,
-                error: errorText,
-              });
-            }
-          } catch (syncError) {
-            // Silently handle - projections service may not be available
-            // The onboarding API also triggers sync automatically, and admin can manually sync
-            console.debug(
-              'Projections sync not available:',
-              syncError instanceof Error ? syncError.message : 'Unknown error'
-            );
-          }
+          // Note: Projections sync is already handled by the backend (onboarding-api)
+          // No need to trigger it again from the frontend - this was causing unnecessary delay
 
           console.info('✅ APPLICATION SUBMITTED SUCCESSFULLY:', {
             caseId: createdCaseId,
@@ -2179,14 +2133,25 @@ export default function EnhancedNewPartnerApplicationPage() {
               'Case created successfully. Check console for any background operation errors.',
           });
 
+          // Update status to success and store case ID
+          setSubmissionStatus('success');
+          setSubmittedCaseId(createdCaseId);
+
           // Close loading indicator and show success confirmation
           SweetAlert.close();
           
+          // Small delay to ensure loading modal is fully closed
+          await new Promise(resolve => setTimeout(resolve, 100));
+          
           // Show success confirmation modal
-          await SweetAlert.success(
-            'Application Submitted Successfully!',
-            `Your application has been submitted successfully.\n\nCase ID: ${createdCaseId}\n\nYou will be redirected to your dashboard shortly.`
-          );
+          try {
+            await SweetAlert.success(
+              'Application Submitted Successfully!',
+              `Your application has been submitted successfully.\n\nCase ID: ${createdCaseId}\n\nYou will be redirected to your dashboard shortly.`
+            );
+          } catch (alertError) {
+            console.warn('SweetAlert error (non-blocking):', alertError);
+          }
 
           // Send welcome email notification (non-blocking)
           try {
@@ -2796,8 +2761,8 @@ export default function EnhancedNewPartnerApplicationPage() {
 
   return (
     <Box minH="100vh" bg="mukuru.background.light" position="relative">
-      {/* Loading Overlay */}
-      {isSubmitting && (
+      {/* Loading/Success Overlay */}
+      {(isSubmitting || submissionStatus === 'success') && (
         <Box
           position="fixed"
           top="0"
@@ -2818,22 +2783,61 @@ export default function EnhancedNewPartnerApplicationPage() {
             maxW="400px"
             textAlign="center"
           >
-            <Spinner
-              color="mukuru.buttons.primary"
-              size="xl"
-              mb="4"
-            />
-            <Typography
-              fontSize="lg"
-              fontWeight="semibold"
-              color="mukuru.text.primary"
-              mb="2"
-            >
-              Submitting Application
-            </Typography>
-            <Typography fontSize="sm" color="mukuru.text.primary">
-              Please wait while we process your application...
-            </Typography>
+            {submissionStatus === 'success' ? (
+              <>
+                <Box
+                  w="64px"
+                  h="64px"
+                  borderRadius="full"
+                  bg="green.100"
+                  display="flex"
+                  alignItems="center"
+                  justifyContent="center"
+                  mx="auto"
+                  mb="4"
+                >
+                  <Box as="span" fontSize="2xl" color="green.500">✓</Box>
+                </Box>
+                <Typography
+                  fontSize="lg"
+                  fontWeight="semibold"
+                  color="green.600"
+                  mb="2"
+                >
+                  Application Submitted Successfully!
+                </Typography>
+                <Typography fontSize="sm" color="mukuru.text.primary" mb="2">
+                  Your application has been received and is being processed.
+                </Typography>
+                {submittedCaseId && (
+                  <Typography fontSize="xs" color="mukuru.grey.medium" mb="3">
+                    Case ID: {submittedCaseId}
+                  </Typography>
+                )}
+                <Typography fontSize="sm" color="mukuru.text.primary">
+                  Redirecting to your dashboard...
+                </Typography>
+              </>
+            ) : (
+              <>
+                <Spinner
+                  color="mukuru.buttons.primary"
+                  size="xl"
+                  mb="4"
+                />
+                <Typography
+                  fontSize="lg"
+                  fontWeight="semibold"
+                  color="mukuru.text.primary"
+                  mb="2"
+                >
+                  Submitting Application
+                </Typography>
+                <Typography fontSize="sm" color="mukuru.text.primary">
+                  Please wait while we process your application...
+                </Typography>
+              </>
+            )}
           </Box>
         </Box>
       )}

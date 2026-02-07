@@ -133,5 +133,30 @@ public class AuditLogRepository : IAuditLogRepository
         var entry = await GetByIdAsync(id, cancellationToken);
         return entry?.VerifyIntegrity() ?? false;
     }
+
+    public async Task LogAsync(
+        string entityType,
+        string entityId,
+        string action,
+        string performedBy,
+        string? details = null,
+        CancellationToken cancellationToken = default)
+    {
+        var entry = AuditLogEntry.Create(
+            eventType: $"{entityType}.{action}",
+            entityType: entityType,
+            entityId: entityId,
+            userId: performedBy,
+            userRole: "system",
+            action: action == "Delete" ? AuditAction.Delete : AuditAction.Update,
+            description: details ?? $"{action} performed on {entityType} {entityId}",
+            ipAddress: "internal",
+            userAgent: "cascade-delete-service",
+            severity: AuditSeverity.Medium,
+            complianceCategory: ComplianceCategory.DataProtection);
+        
+        await AddAsync(entry, cancellationToken);
+        await SaveChangesAsync(cancellationToken);
+    }
 }
 

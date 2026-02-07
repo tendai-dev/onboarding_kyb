@@ -932,7 +932,7 @@ public record CreateWorkItemRequest(
     string CreatedBy,
     int SlaDays = 5
 );
-public record AssignWorkItemRequest(Guid AssignedToUserId, string AssignedToUserName);
+public record AssignWorkItemRequest(string AssignedToUserId, string AssignedToUserName);
 public record SubmitForApprovalRequest(string? Notes);
 public record ApproveWorkItemRequest(string? Notes);
 public record CompleteWorkItemRequest(string? Notes);

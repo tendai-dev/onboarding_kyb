@@ -32,11 +32,16 @@ public class CreateRiskAssessmentCommandHandler : IRequestHandler<CreateRiskAsse
         if (existingAssessment != null)
         {
             _logger.LogInformation(
-                "Risk assessment already exists for case {CaseId}. Existing assessment ID: {AssessmentId}, stored CaseId: {StoredCaseId}",
+                "Risk assessment already exists for case {CaseId}. Returning existing assessment ID: {AssessmentId}",
                 request.CaseId,
+                existingAssessment.Id.Value);
+            
+            // Return the existing assessment instead of throwing an error
+            return new CreateRiskAssessmentResult(
                 existingAssessment.Id.Value,
-                existingAssessment.CaseId);
-            throw new InvalidOperationException($"Risk assessment already exists for case {request.CaseId}");
+                existingAssessment.CaseId,
+                existingAssessment.PartnerId,
+                existingAssessment.Status.ToString());
         }
 
         // Create new assessment

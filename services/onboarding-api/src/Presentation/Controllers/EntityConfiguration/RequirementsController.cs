@@ -169,6 +169,9 @@ public class RequirementsController : ControllerBase
         [FromBody] UpdateRequirementRequest request,
         CancellationToken cancellationToken = default)
     {
+        _logger.LogInformation("UpdateRequirement called with id={Id}, DisplayName={DisplayName}, IsActive={IsActive}", 
+            id, request.DisplayName, request.IsActive);
+        
         try
         {
             var command = new UpdateRequirementCommand(
@@ -252,10 +255,19 @@ public class CreateRequirementRequest
 
 public class UpdateRequirementRequest
 {
+    [System.Text.Json.Serialization.JsonPropertyName("displayName")]
     public string DisplayName { get; set; } = string.Empty;
+    
+    [System.Text.Json.Serialization.JsonPropertyName("description")]
     public string Description { get; set; } = string.Empty;
+    
+    [System.Text.Json.Serialization.JsonPropertyName("validationRules")]
     public string? ValidationRules { get; set; }
+    
+    [System.Text.Json.Serialization.JsonPropertyName("helpText")]
     public string? HelpText { get; set; }
+    
+    [System.Text.Json.Serialization.JsonPropertyName("isActive")]
     public bool? IsActive { get; set; }
 }
 

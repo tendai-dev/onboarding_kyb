@@ -6,6 +6,13 @@ public interface IEntityTypeRepository
 {
     Task<EntityType?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default);
     Task<EntityType?> GetByCodeAsync(string code, CancellationToken cancellationToken = default);
+    
+    /// <summary>
+    /// Batch lookup entity types by codes to prevent N+1 queries.
+    /// Returns a dictionary mapping code to EntityType.
+    /// </summary>
+    Task<Dictionary<string, EntityType>> GetByCodesAsync(IEnumerable<string> codes, CancellationToken cancellationToken = default);
+    
     Task<List<EntityType>> GetAllAsync(bool includeInactive = false, CancellationToken cancellationToken = default);
     Task<List<EntityType>> GetAllWithRequirementsAsync(bool includeInactive = false, CancellationToken cancellationToken = default);
     Task AddAsync(EntityType entityType, CancellationToken cancellationToken = default);

@@ -619,13 +619,18 @@ function PartnerDashboardContent() {
           const realProgress = found.progressPercentage ?? 0;
           let realStatus = statusRaw.replace(/_/g, ' ').toUpperCase();
 
-          // Get caseId first
+          // Get caseId for display (human-readable case number like "OBC-...")
           const caseIdForLink = found.caseId || found.caseNumber || found.id;
+          
+          // Get application GUID for API calls (workqueue API expects GUID, not case number)
+          // The 'id' field contains the application GUID, 'caseId' is the human-readable case number
+          const applicationGuid = found.id || found.caseId;
 
           // Fetch work item to get real-time status
           let workItemStatus = null;
           try {
-            const workItemResponse = await fetch(`/api/workitem/${caseIdForLink}`);
+            console.info('🔍 Fetching work item with applicationGuid:', applicationGuid);
+            const workItemResponse = await fetch(`/api/workitem/${applicationGuid}`);
             if (workItemResponse.ok) {
               const workItemData = await workItemResponse.json();
               if (workItemData.workItem) {

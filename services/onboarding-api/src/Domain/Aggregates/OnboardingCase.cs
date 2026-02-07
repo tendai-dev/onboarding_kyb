@@ -79,7 +79,7 @@ public class OnboardingCase
     }
     
     /// <summary>
-    /// Submit case for processing
+    /// Submit case for processing (legacy mode with hardcoded validation)
     /// </summary>
     public void Submit(string submittedBy)
     {
@@ -92,6 +92,28 @@ public class OnboardingCase
         if (Type == OnboardingType.Business && (Business == null || !Business.IsComplete()))
             throw new InvalidOperationException("Business details are incomplete for KYB onboarding");
         
+        SubmitInternal(submittedBy);
+    }
+    
+    /// <summary>
+    /// Submit case for processing (schema-driven mode - validation handled by frontend/entity config)
+    /// Use this when the form schema is dynamically configured and hardcoded IsComplete() checks don't apply
+    /// </summary>
+    public void SubmitSchemaDriven(string submittedBy, string? schemaInfo = null)
+    {
+        if (Status != OnboardingStatus.Draft)
+            throw new InvalidOperationException($"Cannot submit case in status {Status}");
+        
+        if (!string.IsNullOrWhiteSpace(schemaInfo))
+        {
+            Metadata["schema_driven_submission"] = schemaInfo;
+        }
+        
+        SubmitInternal(submittedBy);
+    }
+    
+    private void SubmitInternal(string submittedBy)
+    {
         Status = OnboardingStatus.Submitted;
         UpdatedAt = DateTime.UtcNow;
         UpdatedBy = submittedBy;

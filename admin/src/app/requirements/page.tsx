@@ -57,7 +57,7 @@ export default function KYBRequirementsPage() {
         status: statusFilter,
         search: searchQuery,
       });
-      const requirementsData = await entityConfigApiService.getRequirements(false);
+      const requirementsData = await entityConfigApiService.getRequirements(true);
       console.info('[Requirements Page] Requirements loaded:', requirementsData.length);
       // Log a sample requirement to check fieldType
       if (requirementsData.length > 0) {

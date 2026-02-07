@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using OnboardingApi.Application.WorkQueue.Interfaces;
 using OnboardingApi.Domain.WorkQueue.Aggregates;
+using OnboardingApi.Domain.WorkQueue.Enums;
 using OnboardingApi.Domain.WorkQueue.ValueObjects;
 using OnboardingApi.Infrastructure.Persistence.WorkQueue;
 
@@ -247,7 +248,7 @@ public class WorkItemRepository : IWorkItemRepository
     
     public async Task<int> UpdateAssignmentDirectlyAsync(
         Guid workItemId, 
-        Guid assignedToUserId, 
+        string assignedToUserId, 
         string assignedToUserName, 
         string assignedByUserId, 
         CancellationToken cancellationToken = default)
@@ -256,13 +257,25 @@ public class WorkItemRepository : IWorkItemRepository
         // This avoids concurrency issues completely
         // Status is stored as string, so we compare against string values
         var now = DateTime.UtcNow;
+        
+        // Convert string userId to Guid - if not a valid Guid, generate a deterministic one from the string
+        Guid userIdGuid;
+        if (!Guid.TryParse(assignedToUserId, out userIdGuid))
+        {
+            // Generate a deterministic GUID from the string using MD5 hash
+            using var md5 = System.Security.Cryptography.MD5.Create();
+            var hash = md5.ComputeHash(System.Text.Encoding.UTF8.GetBytes(assignedToUserId));
+            userIdGuid = new Guid(hash);
+            _logger.LogInformation("Generated deterministic GUID {GeneratedGuid} from user ID string {UserId}", userIdGuid, assignedToUserId);
+        }
+        
         var rowsAffected = await _context.WorkItems
             .Where(w => w.Id == workItemId 
                 && w.Status != WorkItemStatus.Completed 
                 && w.Status != WorkItemStatus.Declined 
                 && w.Status != WorkItemStatus.Cancelled)
             .ExecuteUpdateAsync(setters => setters
-                .SetProperty(w => w.AssignedTo, assignedToUserId)
+                .SetProperty(w => w.AssignedTo, userIdGuid)
                 .SetProperty(w => w.AssignedToName, assignedToUserName)
                 .SetProperty(w => w.AssignedAt, now)
                 .SetProperty(w => w.Status, WorkItemStatus.Assigned)
@@ -344,6 +357,31 @@ public class WorkItemRepository : IWorkItemRepository
                 cancellationToken);
         
         _logger.LogInformation("ExecuteUpdate affected {RowsAffected} row(s) for work item {WorkItemId} approval", 
+            rowsAffected, workItemId);
+        
+        return rowsAffected;
+    }
+
+    public async Task<int> UnassignDirectlyAsync(
+        Guid workItemId,
+        string unassignedBy,
+        CancellationToken cancellationToken = default)
+    {
+        // Use ExecuteUpdate to unassign the work item directly in the database without change tracking
+        // This avoids concurrency issues with owned collections (Comments, History)
+        var now = DateTime.UtcNow;
+        var rowsAffected = await _context.WorkItems
+            .Where(w => w.Id == workItemId && w.AssignedTo != null)
+            .ExecuteUpdateAsync(setters => setters
+                .SetProperty(w => w.AssignedTo, (Guid?)null)
+                .SetProperty(w => w.AssignedToName, (string?)null)
+                .SetProperty(w => w.AssignedAt, (DateTime?)null)
+                .SetProperty(w => w.Status, WorkItemStatus.New)
+                .SetProperty(w => w.UpdatedAt, now)
+                .SetProperty(w => w.UpdatedBy, unassignedBy),
+                cancellationToken);
+        
+        _logger.LogInformation("ExecuteUpdate affected {RowsAffected} row(s) for work item {WorkItemId} unassignment", 
             rowsAffected, workItemId);
         
         return rowsAffected;
@@ -449,5 +487,201 @@ public class WorkItemRepository : IWorkItemRepository
             existing.UpdatedAt = review.UpdatedAt;
         }
     }
-}
+    
+    public async Task<Guid> UpsertStepReviewAsync(
+        Guid workItemId,
+        string stepId,
+        ReviewField field,
+        bool value,
+        string? updatedByUserId,
+        string? notes,
+        CancellationToken cancellationToken = default)
+    {
+        // RACE CONDITION FIX: Use PostgreSQL ON CONFLICT (upsert) for atomic insert-or-update
+        // This prevents the race condition where two concurrent requests both see null and both try to insert
+        var reviewId = Guid.NewGuid();
+        var now = DateTime.UtcNow;
+        
+        // Build the upsert SQL based on which field is being updated
+        // PostgreSQL ON CONFLICT DO UPDATE ensures atomicity
+        var sql = field switch
+        {
+            ReviewField.Completed => @"
+                INSERT INTO work_queue.work_item_step_reviews 
+                    (id, work_item_id, step_id, completed, completed_at, completed_by, notes, created_at, updated_at)
+                VALUES 
+                    ({0}, {1}, {2}, {3}, {4}, {5}, {6}, {7}, {7})
+                ON CONFLICT (work_item_id, step_id) 
+                DO UPDATE SET 
+                    completed = EXCLUDED.completed,
+                    completed_at = CASE WHEN EXCLUDED.completed THEN EXCLUDED.completed_at ELSE NULL END,
+                    completed_by = CASE WHEN EXCLUDED.completed THEN EXCLUDED.completed_by ELSE NULL END,
+                    notes = COALESCE(EXCLUDED.notes, work_item_step_reviews.notes),
+                    updated_at = EXCLUDED.updated_at
+                RETURNING id",
+            ReviewField.Verified => @"
+                INSERT INTO work_queue.work_item_step_reviews 
+                    (id, work_item_id, step_id, verified, verified_at, verified_by, notes, created_at, updated_at)
+                VALUES 
+                    ({0}, {1}, {2}, {3}, {4}, {5}, {6}, {7}, {7})
+                ON CONFLICT (work_item_id, step_id) 
+                DO UPDATE SET 
+                    verified = EXCLUDED.verified,
+                    verified_at = CASE WHEN EXCLUDED.verified THEN EXCLUDED.verified_at ELSE NULL END,
+                    verified_by = CASE WHEN EXCLUDED.verified THEN EXCLUDED.verified_by ELSE NULL END,
+                    notes = COALESCE(EXCLUDED.notes, work_item_step_reviews.notes),
+                    updated_at = EXCLUDED.updated_at
+                RETURNING id",
+            ReviewField.Approved => @"
+                INSERT INTO work_queue.work_item_step_reviews 
+                    (id, work_item_id, step_id, approved, approved_at, approved_by, notes, created_at, updated_at)
+                VALUES 
+                    ({0}, {1}, {2}, {3}, {4}, {5}, {6}, {7}, {7})
+                ON CONFLICT (work_item_id, step_id) 
+                DO UPDATE SET 
+                    approved = EXCLUDED.approved,
+                    approved_at = CASE WHEN EXCLUDED.approved THEN EXCLUDED.approved_at ELSE NULL END,
+                    approved_by = CASE WHEN EXCLUDED.approved THEN EXCLUDED.approved_by ELSE NULL END,
+                    notes = COALESCE(EXCLUDED.notes, work_item_step_reviews.notes),
+                    updated_at = EXCLUDED.updated_at
+                RETURNING id",
+            _ => throw new ArgumentException($"Invalid field: {field}")
+        };
+        
+        // Execute the upsert and get the resulting ID (either new or existing)
+        var result = await _context.Database.SqlQueryRaw<Guid>(
+            sql,
+            reviewId,
+            workItemId,
+            stepId,
+            value,
+            value ? now : (DateTime?)null,
+            value ? updatedByUserId : null,
+            notes,
+            now
+        ).FirstOrDefaultAsync(cancellationToken);
+        
+        _logger.LogInformation(
+            "Upserted step review: WorkItemId={WorkItemId}, StepId={StepId}, Field={Field}, Value={Value}, ReviewId={ReviewId}",
+            workItemId, stepId, field, value, result);
+        
+        return result;
+    }
+    
+    public async Task<Guid> AddCommentDirectlyAsync(Guid workItemId, string text, string authorId, string authorName, CancellationToken cancellationToken = default)
+    {
+        // Use raw SQL to insert comment directly, bypassing EF Core owned collection tracking issues
+        var commentId = Guid.NewGuid();
+        var createdAt = DateTime.UtcNow;
+        
+        await _context.Database.ExecuteSqlRawAsync(
+            @"INSERT INTO work_queue.work_item_comments (id, work_item_id, text, author_id, author_name, created_at)
+              VALUES ({0}, {1}, {2}, {3}, {4}, {5})",
+            commentId, workItemId, text, authorId, authorName, createdAt);
+        
+        return commentId;
+    }
 
+    public async Task<(int rowsAffected, Guid? applicationId)> DeclineDirectlyAsync(
+        Guid workItemId,
+        string declinedBy,
+        string reason,
+        CancellationToken cancellationToken = default)
+    {
+        // Use ExecuteUpdate to decline the work item directly in the database without change tracking
+        // This avoids concurrency issues with owned collections (Comments, History)
+        var now = DateTime.UtcNow;
+        
+        // First get the application ID for syncing status
+        var workItem = await _context.WorkItems.AsNoTracking()
+            .FirstOrDefaultAsync(w => w.Id == workItemId, cancellationToken);
+        
+        if (workItem == null)
+        {
+            _logger.LogWarning("Work item {WorkItemId} not found for decline", workItemId);
+            return (0, null);
+        }
+        
+        var applicationId = workItem.ApplicationId;
+        
+        var rowsAffected = await _context.WorkItems
+            .Where(w => w.Id == workItemId 
+                && w.Status != WorkItemStatus.Completed 
+                && w.Status != WorkItemStatus.Declined 
+                && w.Status != WorkItemStatus.Cancelled)
+            .ExecuteUpdateAsync(setters => setters
+                .SetProperty(w => w.Status, WorkItemStatus.Declined)
+                .SetProperty(w => w.UpdatedAt, now)
+                .SetProperty(w => w.UpdatedBy, declinedBy),
+                cancellationToken);
+        
+        _logger.LogInformation("ExecuteUpdate affected {RowsAffected} row(s) for work item {WorkItemId} decline", 
+            rowsAffected, workItemId);
+        
+        // Add history entry
+        if (rowsAffected > 0)
+        {
+            var historyAction = string.IsNullOrEmpty(reason) 
+                ? "Declined" 
+                : $"Declined Reason {reason.Substring(0, Math.Min(reason.Length, 50))}";
+            await AddHistoryEntryAsync(workItemId, historyAction, declinedBy, "Declined", cancellationToken);
+        }
+        
+        return (rowsAffected, applicationId);
+    }
+
+    public async Task<int> MarkForRefreshDirectlyAsync(
+        Guid workItemId,
+        string markedBy,
+        CancellationToken cancellationToken = default)
+    {
+        // Use ExecuteUpdate to mark for refresh directly in the database without change tracking
+        // This avoids concurrency issues with owned collections (Comments, History)
+        var now = DateTime.UtcNow;
+        
+        // First get the current refresh count
+        var workItem = await _context.WorkItems.AsNoTracking()
+            .FirstOrDefaultAsync(w => w.Id == workItemId, cancellationToken);
+        
+        if (workItem == null)
+        {
+            _logger.LogWarning("Work item {WorkItemId} not found for mark for refresh", workItemId);
+            return 0;
+        }
+        
+        var newRefreshCount = workItem.RefreshCount + 1;
+        
+        var rowsAffected = await _context.WorkItems
+            .Where(w => w.Id == workItemId)
+            .ExecuteUpdateAsync(setters => setters
+                .SetProperty(w => w.Status, WorkItemStatus.DueForRefresh)
+                .SetProperty(w => w.LastRefreshedAt, now)
+                .SetProperty(w => w.RefreshCount, newRefreshCount)
+                .SetProperty(w => w.UpdatedAt, now)
+                .SetProperty(w => w.UpdatedBy, markedBy),
+                cancellationToken);
+        
+        _logger.LogInformation("ExecuteUpdate affected {RowsAffected} row(s) for work item {WorkItemId} mark for refresh (count: {RefreshCount})", 
+            rowsAffected, workItemId, newRefreshCount);
+        
+        // Add history entry
+        if (rowsAffected > 0)
+        {
+            await AddHistoryEntryAsync(workItemId, $"Marked for refresh Count {newRefreshCount}", markedBy, "DueForRefresh", cancellationToken);
+        }
+        
+        return rowsAffected;
+    }
+
+    public async Task<int> DeleteAllAsync(CancellationToken cancellationToken = default)
+    {
+        var count = await _context.Database.ExecuteSqlRawAsync(
+            "DELETE FROM work_queue.work_items", cancellationToken);
+        return count;
+    }
+
+    public async Task<int> GetCountAsync(CancellationToken cancellationToken = default)
+    {
+        return await _context.WorkItems.CountAsync(cancellationToken);
+    }
+}

@@ -3,6 +3,7 @@ using Microsoft.Extensions.Logging;
 using OnboardingApi.Application.Projections.Interfaces;
 using OnboardingApi.Application.WorkQueue.Interfaces;
 using OnboardingApi.Domain.WorkQueue.Aggregates;
+using OnboardingApi.Domain.WorkQueue.Enums;
 using OnboardingApi.Domain.WorkQueue.ValueObjects;
 
 namespace OnboardingApi.Application.WorkQueue.Commands;
@@ -44,7 +45,7 @@ public class CreateWorkItemCommandHandler : IRequestHandler<CreateWorkItemComman
             await _repository.AddAsync(workItem, cancellationToken);
             await _repository.SaveChangesAsync(cancellationToken);
 
-            return CreateWorkItemResult.Successful(workItem.Id);
+            return CreateWorkItemResult.Successful(workItem.Id, workItem.WorkItemNumber);
         }
         catch (Exception ex)
         {
@@ -117,7 +118,7 @@ public class AssignWorkItemCommandHandler : IRequestHandler<AssignWorkItemComman
                     request.WorkItemId,
                     $"Assigned to {request.AssignedToUserName}" + 
                     (previousAssignee != null ? $" (previously: {previousAssignee})" : ""),
-                    request.AssignedByUserId,
+                    request.AssignedToUserName,
                     currentStatus,
                     cancellationToken);
                 
@@ -201,15 +202,31 @@ public class UnassignWorkItemCommandHandler : IRequestHandler<UnassignWorkItemCo
     {
         try
         {
+            // First check if work item exists and get applicationId
             var workItem = await _repository.GetByIdAsync(request.WorkItemId, cancellationToken);
             if (workItem == null)
                 return UnassignWorkItemResult.Failed("Work item not found");
 
+            // Check if already unassigned
+            if (workItem.AssignedTo == null)
+                return UnassignWorkItemResult.Failed("Work item is not currently assigned");
+
             var applicationId = workItem.ApplicationId;
+            var previousAssignee = workItem.AssignedToName;
             
-            workItem.Unassign(request.UnassignedByUserId);
-            await _repository.UpdateAsync(workItem, cancellationToken);
-            await _repository.SaveChangesAsync(cancellationToken);
+            // Use direct database update to avoid EF Core concurrency issues with owned collections
+            var rowsAffected = await _repository.UnassignDirectlyAsync(request.WorkItemId, request.UnassignedByUserId, cancellationToken);
+            
+            if (rowsAffected == 0)
+                return UnassignWorkItemResult.Failed("Work item could not be unassigned - it may have already been unassigned");
+            
+            // Add history entry - use previousAssignee as the performer since that's who was unassigned
+            await _repository.AddHistoryEntryAsync(
+                request.WorkItemId, 
+                $"Unassigned from {previousAssignee}", 
+                previousAssignee ?? "System", 
+                "New", 
+                cancellationToken);
             
             // Sync unassignment to case projection
             try
@@ -619,28 +636,31 @@ public class DeclineWorkItemCommandHandler : IRequestHandler<DeclineWorkItemComm
     {
         try
         {
-            var workItem = await _repository.GetByIdAsync(request.WorkItemId, cancellationToken);
-            if (workItem == null)
-                return DeclineWorkItemResult.Failed("Work item not found");
-
-            var applicationId = workItem.ApplicationId;
-
-            workItem.Decline(request.DeclinedByUserId, request.Reason);
-            await _repository.UpdateAsync(workItem, cancellationToken);
-            await _repository.SaveChangesAsync(cancellationToken);
+            // Use direct database update to avoid concurrency issues with EF Core change tracking
+            var (rowsAffected, applicationId) = await _repository.DeclineDirectlyAsync(
+                request.WorkItemId,
+                request.DeclinedByUserId,
+                request.Reason,
+                cancellationToken);
+            
+            if (rowsAffected == 0)
+                return DeclineWorkItemResult.Failed("Work item not found or already in a terminal state");
             
             // Sync status to case projection: Declined -> "DECLINED" (frontend expected value)
-            try
+            if (applicationId.HasValue)
             {
-                await _projectionRepository.UpdateCaseStatusAsync(
-                    applicationId,
-                    "DECLINED",
-                    cancellationToken);
-                _logger.LogInformation("Synced status to case projection: CaseId={CaseId}, Status=DECLINED", applicationId);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogWarning(ex, "Failed to sync status to case projection for CaseId={CaseId}", applicationId);
+                try
+                {
+                    await _projectionRepository.UpdateCaseStatusAsync(
+                        applicationId.Value,
+                        "DECLINED",
+                        cancellationToken);
+                    _logger.LogInformation("Synced status to case projection: CaseId={CaseId}, Status=DECLINED", applicationId);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Failed to sync status to case projection for CaseId={CaseId}", applicationId);
+                }
             }
             
             return DeclineWorkItemResult.Successful();
@@ -665,16 +685,18 @@ public class AddCommentCommandHandler : IRequestHandler<AddCommentCommand, AddCo
     {
         try
         {
-            var workItem = await _repository.GetByIdAsync(request.WorkItemId, cancellationToken);
+            // First check if work item exists
+            var workItem = await _repository.GetByIdForUpdateAsync(request.WorkItemId, cancellationToken);
             if (workItem == null)
                 return AddCommentResult.Failed("Work item not found");
 
-            workItem.AddComment(request.Text, request.AuthorId, request.AuthorName);
-            await _repository.UpdateAsync(workItem, cancellationToken);
-            await _repository.SaveChangesAsync(cancellationToken);
-            
-            var lastComment = workItem.Comments.OrderByDescending(c => c.CreatedAt).FirstOrDefault();
-            var commentId = lastComment?.Id ?? Guid.NewGuid();
+            // Use direct SQL insert to avoid EF Core owned collection tracking issues
+            var commentId = await _repository.AddCommentDirectlyAsync(
+                request.WorkItemId, 
+                request.Text, 
+                request.AuthorId, 
+                request.AuthorName, 
+                cancellationToken);
             
             return AddCommentResult.Successful(commentId);
         }
@@ -698,13 +720,15 @@ public class MarkForRefreshCommandHandler : IRequestHandler<MarkForRefreshComman
     {
         try
         {
-            var workItem = await _repository.GetByIdAsync(request.WorkItemId, cancellationToken);
-            if (workItem == null)
+            // Use direct database update to avoid concurrency issues with EF Core change tracking
+            var rowsAffected = await _repository.MarkForRefreshDirectlyAsync(
+                request.WorkItemId, 
+                request.MarkedByUserId, 
+                cancellationToken);
+            
+            if (rowsAffected == 0)
                 return MarkForRefreshResult.Failed("Work item not found");
 
-            workItem.MarkForRefresh(request.MarkedByUserId);
-            await _repository.UpdateAsync(workItem, cancellationToken);
-            await _repository.SaveChangesAsync(cancellationToken);
             return MarkForRefreshResult.Successful();
         }
         catch (Exception ex)
@@ -738,57 +762,29 @@ public class UpdateStepReviewStatusCommandHandler : IRequestHandler<UpdateStepRe
                 return UpdateStepReviewStatusResult.Failed("Work item not found");
             }
 
-            // Find existing review or create new
-            var review = await _repository.GetStepReviewAsync(request.WorkItemId, request.StepId, cancellationToken);
-
-            var now = DateTime.UtcNow;
-
-            if (review == null)
+            // Validate field before attempting upsert
+            // Parse string field to strongly-typed enum
+            var field = ReviewFieldExtensions.ParseReviewField(request.Field);
+            if (field == null)
             {
-                review = new WorkItemStepReview
-                {
-                    Id = Guid.NewGuid(),
-                    WorkItemId = request.WorkItemId,
-                    StepId = request.StepId,
-                    CreatedAt = now,
-                };
+                return UpdateStepReviewStatusResult.Failed($"Invalid field: {request.Field}. Must be 'completed', 'verified', or 'approved'");
             }
 
-            // Update the appropriate field
-            switch (request.Field.ToLowerInvariant())
-            {
-                case "completed":
-                    review.Completed = request.Value;
-                    review.CompletedAt = request.Value ? now : null;
-                    review.CompletedBy = request.Value ? request.UpdatedByUserId : null;
-                    break;
-                case "verified":
-                    review.Verified = request.Value;
-                    review.VerifiedAt = request.Value ? now : null;
-                    review.VerifiedBy = request.Value ? request.UpdatedByUserId : null;
-                    break;
-                case "approved":
-                    review.Approved = request.Value;
-                    review.ApprovedAt = request.Value ? now : null;
-                    review.ApprovedBy = request.Value ? request.UpdatedByUserId : null;
-                    break;
-                default:
-                    return UpdateStepReviewStatusResult.Failed($"Invalid field: {request.Field}. Must be 'completed', 'verified', or 'approved'");
-            }
-
-            // Update notes if provided
-            if (request.Notes != null)
-            {
-                review.Notes = request.Notes;
-            }
-
-            review.UpdatedAt = now;
-            await _repository.AddOrUpdateStepReviewAsync(review, cancellationToken);
-            await _repository.SaveChangesAsync(cancellationToken);
+            // RACE CONDITION FIX: Use atomic upsert instead of read-then-write pattern
+            // This prevents the scenario where two concurrent requests both see null and both try to insert
+            // PostgreSQL ON CONFLICT ensures only one row exists per (work_item_id, step_id)
+            var reviewId = await _repository.UpsertStepReviewAsync(
+                request.WorkItemId,
+                request.StepId,
+                field.Value,
+                request.Value,
+                request.UpdatedByUserId,
+                request.Notes,
+                cancellationToken);
 
             _logger.LogInformation(
-                "Step review status updated: WorkItemId={WorkItemId}, StepId={StepId}, Field={Field}, Value={Value}, UpdatedBy={UpdatedBy}",
-                request.WorkItemId, request.StepId, request.Field, request.Value, request.UpdatedByUserId);
+                "Step review status updated atomically: WorkItemId={WorkItemId}, StepId={StepId}, Field={Field}, Value={Value}, UpdatedBy={UpdatedBy}, ReviewId={ReviewId}",
+                request.WorkItemId, request.StepId, request.Field, request.Value, request.UpdatedByUserId, reviewId);
 
             return UpdateStepReviewStatusResult.Successful();
         }
@@ -800,3 +796,40 @@ public class UpdateStepReviewStatusCommandHandler : IRequestHandler<UpdateStepRe
     }
 }
 
+public class DeleteWorkItemCommandHandler : IRequestHandler<DeleteWorkItemCommand, DeleteWorkItemResult>
+{
+    private readonly IWorkItemRepository _repository;
+    private readonly ILogger<DeleteWorkItemCommandHandler> _logger;
+
+    public DeleteWorkItemCommandHandler(
+        IWorkItemRepository repository,
+        ILogger<DeleteWorkItemCommandHandler> logger)
+    {
+        _repository = repository;
+        _logger = logger;
+    }
+
+    public async Task<DeleteWorkItemResult> Handle(DeleteWorkItemCommand request, CancellationToken cancellationToken)
+    {
+        try
+        {
+            var workItem = await _repository.GetByIdAsync(request.WorkItemId, cancellationToken);
+            if (workItem == null)
+            {
+                _logger.LogWarning("Work item {WorkItemId} not found for deletion", request.WorkItemId);
+                return DeleteWorkItemResult.Successful(); // Already deleted, consider success
+            }
+
+            await _repository.DeleteAsync(workItem, cancellationToken);
+            await _repository.SaveChangesAsync(cancellationToken);
+
+            _logger.LogInformation("Deleted work item {WorkItemId} (saga compensation)", request.WorkItemId);
+            return DeleteWorkItemResult.Successful();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error deleting work item {WorkItemId}", request.WorkItemId);
+            return DeleteWorkItemResult.Failed(ex.Message);
+        }
+    }
+}

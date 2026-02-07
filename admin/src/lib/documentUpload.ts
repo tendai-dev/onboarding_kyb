@@ -27,6 +27,13 @@ export async function uploadFileToDocumentService(
   description?: string,
   uploadedBy?: string
 ): Promise<UploadDocumentResult> {
+  // Validate caseId is a valid GUID format
+  const guidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  if (!caseId || !guidRegex.test(caseId)) {
+    console.error(`❌ Invalid caseId for document upload: ${caseId}`);
+    throw new Error(`Invalid case ID format. Expected GUID, got: ${caseId?.substring(0, 20) || 'empty'}`);
+  }
+
   // Get user email from session if not provided
   if (!uploadedBy && typeof window !== 'undefined') {
     try {
@@ -43,8 +50,12 @@ export async function uploadFileToDocumentService(
   let partnerId = '';
   try {
     // PRIMARY: Get PartnerId from the case itself (correct for admin uploads)
-    const caseResponse = await fetch(
-      `/api/proxy/api/v1/cases/${encodeURIComponent(caseId)}`,
+    // Try multiple endpoints to find the case
+    let caseData = null;
+    
+    // Try projections endpoint first (more reliable)
+    const projectionsResponse = await fetch(
+      `/api/proxy/projections/v1/cases/${encodeURIComponent(caseId)}`,
       {
         method: 'GET',
         headers: {
@@ -54,12 +65,32 @@ export async function uploadFileToDocumentService(
       }
     );
 
-    if (caseResponse.ok) {
-      const caseData = await caseResponse.json();
-      if (caseData?.partnerId) {
-        partnerId = caseData.partnerId;
-        console.info(`✅ Admin: Got PartnerId from case: ${partnerId}`);
+    if (projectionsResponse.ok) {
+      caseData = await projectionsResponse.json();
+    } else {
+      // Fallback to direct case endpoint
+      const caseResponse = await fetch(
+        `/api/proxy/api/v1/cases/${encodeURIComponent(caseId)}`,
+        {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          credentials: 'include',
+        }
+      );
+
+      if (caseResponse.ok) {
+        caseData = await caseResponse.json();
       }
+    }
+
+    if (caseData?.partnerId) {
+      partnerId = caseData.partnerId;
+      console.info(`✅ Admin: Got PartnerId from case: ${partnerId}`);
+    } else if (caseData?.partner_id) {
+      partnerId = caseData.partner_id;
+      console.info(`✅ Admin: Got partner_id from case: ${partnerId}`);
     }
   } catch (caseError) {
     console.warn(
@@ -93,10 +124,14 @@ export async function uploadFileToDocumentService(
           '⚠️ Admin: Could not get PartnerId from backend endpoint either:',
           error
         );
-        // Last resort: Use empty string - backend might handle it
-        partnerId = '';
       }
     }
+  }
+
+  // If we still don't have a partnerId, throw an error with helpful message
+  if (!partnerId) {
+    console.error(`❌ Could not determine PartnerId for case: ${caseId}`);
+    throw new Error('Could not determine partner ID for this application. The attachment cannot be uploaded.');
   }
 
   const formData = new FormData();

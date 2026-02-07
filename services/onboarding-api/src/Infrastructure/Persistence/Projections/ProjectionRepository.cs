@@ -130,60 +130,72 @@ public class ProjectionRepository : IProjectionRepository
         
         if (!string.IsNullOrEmpty(partnerId))
         {
-            // Normalize PartnerId for comparison (case-insensitive, trim whitespace)
             var normalizedPartnerId = partnerId.Trim();
             query = query.Where(c => c.PartnerId.ToLower() == normalizedPartnerId.ToLower());
         }
 
-        // EF Core DbContext doesn't support concurrent operations, so execute queries sequentially
-        // Use DateTime.SpecifyKind to ensure UTC kind for PostgreSQL timestamp with time zone compatibility
         var now = DateTime.UtcNow;
         var firstOfThisMonth = DateTime.SpecifyKind(new DateTime(now.Year, now.Month, 1), DateTimeKind.Utc);
         var firstOfLastMonth = DateTime.SpecifyKind(firstOfThisMonth.AddMonths(-1), DateTimeKind.Utc);
         var thirtyDaysAgo = DateTime.SpecifyKind(now.AddDays(-30), DateTimeKind.Utc);
 
-        // Case statistics - execute sequentially
-        var totalCases = await query.CountAsync(cancellationToken);
-        var activeCases = await query.CountAsync(c => c.Status == "InProgress" || c.Status == "PendingReview", cancellationToken);
-        var completedCases = await query.CountAsync(c => c.Status == "Approved", cancellationToken);
-        var rejectedCases = await query.CountAsync(c => c.Status == "Rejected", cancellationToken);
-        var pendingReviewCases = await query.CountAsync(c => c.Status == "PendingReview", cancellationToken);
-        var overdueCases = await query.CountAsync(c => c.Status == "InProgress" && c.CreatedAt < thirtyDaysAgo, cancellationToken);
-        var individualCases = await query.CountAsync(c => c.Type == "Individual", cancellationToken);
-        var corporateCases = await query.CountAsync(c => c.Type == "Corporate", cancellationToken);
-        var trustCases = await query.CountAsync(c => c.Type == "Trust", cancellationToken);
-        var partnershipCases = await query.CountAsync(c => c.Type == "Partnership", cancellationToken);
-        var newCasesThisMonth = await query.CountAsync(c => c.CreatedAt >= firstOfThisMonth, cancellationToken);
-        var newCasesLastMonth = await query.CountAsync(c => 
-            c.CreatedAt >= firstOfLastMonth && c.CreatedAt < firstOfThisMonth, cancellationToken);
-        var completedCasesThisMonth = await query.CountAsync(c => 
-            c.Status == "Approved" && c.ApprovedAt.HasValue && c.ApprovedAt >= firstOfThisMonth, cancellationToken);
-        var completedCasesLastMonth = await query.CountAsync(c => 
-            c.Status == "Approved" && c.ApprovedAt.HasValue && 
-            c.ApprovedAt >= firstOfLastMonth && c.ApprovedAt < firstOfThisMonth, cancellationToken);
-        
-        // Performance metrics - calculate average completion time client-side
-        // EF Core cannot translate TimeSpan.TotalHours to SQL, so we fetch the dates and calculate in memory
-        var completedWithDates = await query
-            .Where(c => c.Status == "Approved" && c.ApprovedAt.HasValue)
-            .Select(c => new { c.CreatedAt, ApprovedAt = c.ApprovedAt!.Value })
-            .ToListAsync(cancellationToken);
-        var approvedOrRejectedCount = await query.CountAsync(c => c.Status == "Approved" || c.Status == "Rejected", cancellationToken);
-        var approvedCount = await query.CountAsync(c => c.Status == "Approved", cancellationToken);
-        
-        // Risk metrics
-        var highRiskCases = await query.CountAsync(c => c.RiskLevel == "High", cancellationToken);
-        var mediumRiskCases = await query.CountAsync(c => c.RiskLevel == "Medium" || c.RiskLevel == "MediumHigh", cancellationToken);
-        var lowRiskCases = await query.CountAsync(c => c.RiskLevel == "Low" || c.RiskLevel == "MediumLow", cancellationToken);
-        // EF Core cannot translate DefaultIfEmpty with AverageAsync, so we use Sum/Count
-        var riskScoreSum = await query.SumAsync(c => c.RiskScore, cancellationToken);
-        var riskScoreCount = await query.CountAsync(cancellationToken);
-        var casesRequiringManualReview = await query.CountAsync(c => c.RequiresManualReview, cancellationToken);
-        
-        // Compliance metrics
-        var documentsAwaitingVerification = await query.SumAsync(c => c.PendingDocumentCount, cancellationToken);
-        var documentsVerified = await query.SumAsync(c => c.VerifiedDocumentCount, cancellationToken);
-        var documentsRejected = await query.SumAsync(c => c.RejectedDocumentCount, cancellationToken);
+        // OPTIMIZED: Single query to get all statistics using GroupBy with conditional counts
+        var stats = await query
+            .GroupBy(c => 1) // Group all into one
+            .Select(g => new
+            {
+                TotalCases = g.Count(),
+                ActiveCases = g.Count(c => c.Status == "InProgress" || c.Status == "PendingReview"),
+                CompletedCases = g.Count(c => c.Status == "Approved"),
+                RejectedCases = g.Count(c => c.Status == "Rejected"),
+                PendingReviewCases = g.Count(c => c.Status == "PendingReview"),
+                OverdueCases = g.Count(c => c.Status == "InProgress" && c.CreatedAt < thirtyDaysAgo),
+                IndividualCases = g.Count(c => c.Type == "Individual"),
+                CorporateCases = g.Count(c => c.Type == "Corporate"),
+                TrustCases = g.Count(c => c.Type == "Trust"),
+                PartnershipCases = g.Count(c => c.Type == "Partnership"),
+                NewCasesThisMonth = g.Count(c => c.CreatedAt >= firstOfThisMonth),
+                NewCasesLastMonth = g.Count(c => c.CreatedAt >= firstOfLastMonth && c.CreatedAt < firstOfThisMonth),
+                CompletedCasesThisMonth = g.Count(c => c.Status == "Approved" && c.ApprovedAt.HasValue && c.ApprovedAt >= firstOfThisMonth),
+                CompletedCasesLastMonth = g.Count(c => c.Status == "Approved" && c.ApprovedAt.HasValue && c.ApprovedAt >= firstOfLastMonth && c.ApprovedAt < firstOfThisMonth),
+                ApprovedOrRejectedCount = g.Count(c => c.Status == "Approved" || c.Status == "Rejected"),
+                HighRiskCases = g.Count(c => c.RiskLevel == "High"),
+                MediumRiskCases = g.Count(c => c.RiskLevel == "Medium" || c.RiskLevel == "MediumHigh"),
+                LowRiskCases = g.Count(c => c.RiskLevel == "Low" || c.RiskLevel == "MediumLow"),
+                RiskScoreSum = g.Sum(c => c.RiskScore),
+                CasesRequiringManualReview = g.Count(c => c.RequiresManualReview),
+                DocumentsAwaitingVerification = g.Sum(c => c.PendingDocumentCount),
+                DocumentsVerified = g.Sum(c => c.VerifiedDocumentCount),
+                DocumentsRejected = g.Sum(c => c.RejectedDocumentCount)
+            })
+            .FirstOrDefaultAsync(cancellationToken);
+
+        // Handle empty result
+        var totalCases = stats?.TotalCases ?? 0;
+        var activeCases = stats?.ActiveCases ?? 0;
+        var completedCases = stats?.CompletedCases ?? 0;
+        var rejectedCases = stats?.RejectedCases ?? 0;
+        var pendingReviewCases = stats?.PendingReviewCases ?? 0;
+        var overdueCases = stats?.OverdueCases ?? 0;
+        var individualCases = stats?.IndividualCases ?? 0;
+        var corporateCases = stats?.CorporateCases ?? 0;
+        var trustCases = stats?.TrustCases ?? 0;
+        var partnershipCases = stats?.PartnershipCases ?? 0;
+        var newCasesThisMonth = stats?.NewCasesThisMonth ?? 0;
+        var newCasesLastMonth = stats?.NewCasesLastMonth ?? 0;
+        var completedCasesThisMonth = stats?.CompletedCasesThisMonth ?? 0;
+        var completedCasesLastMonth = stats?.CompletedCasesLastMonth ?? 0;
+        var approvedOrRejectedCount = stats?.ApprovedOrRejectedCount ?? 0;
+        var approvedCount = completedCases; // Same as CompletedCases (Status == "Approved")
+        var highRiskCases = stats?.HighRiskCases ?? 0;
+        var mediumRiskCases = stats?.MediumRiskCases ?? 0;
+        var lowRiskCases = stats?.LowRiskCases ?? 0;
+        var riskScoreSum = stats?.RiskScoreSum ?? 0;
+        var riskScoreCount = totalCases;
+        var casesRequiringManualReview = stats?.CasesRequiringManualReview ?? 0;
+        var documentsAwaitingVerification = stats?.DocumentsAwaitingVerification ?? 0;
+        var documentsVerified = stats?.DocumentsVerified ?? 0;
+        var documentsRejected = stats?.DocumentsRejected ?? 0;
 
         // Build case statistics
         var cases = new CaseStatistics
@@ -207,11 +219,20 @@ public class ProjectionRepository : IProjectionRepository
         cases.NewCasesGrowthPercentage = CalculateGrowthPercentage(cases.NewCasesThisMonth, cases.NewCasesLastMonth);
         cases.CompletedCasesGrowthPercentage = CalculateGrowthPercentage(cases.CompletedCasesThisMonth, cases.CompletedCasesLastMonth);
 
-        // Build performance metrics
-        // Calculate average completion time from fetched data (client-side calculation)
-        var averageCompletionTime = completedWithDates.Count > 0
-            ? (decimal)completedWithDates.Average(c => (c.ApprovedAt - c.CreatedAt).TotalHours)
-            : 0m;
+        // Performance metrics - only fetch completion times if there are completed cases
+        decimal averageCompletionTime = 0m;
+        if (completedCases > 0)
+        {
+            var completedWithDates = await query
+                .Where(c => c.Status == "Approved" && c.ApprovedAt.HasValue)
+                .Select(c => new { c.CreatedAt, ApprovedAt = c.ApprovedAt!.Value })
+                .ToListAsync(cancellationToken);
+            
+            if (completedWithDates.Count > 0)
+            {
+                averageCompletionTime = (decimal)completedWithDates.Average(c => (c.ApprovedAt - c.CreatedAt).TotalHours);
+            }
+        }
         var performance = new PerformanceMetrics
         {
             AverageCompletionTimeHours = averageCompletionTime,
@@ -320,31 +341,42 @@ public class ProjectionRepository : IProjectionRepository
         IQueryable<OnboardingCaseProjection> query, 
         CancellationToken cancellationToken)
     {
-        // Use DateTime.SpecifyKind to ensure UTC kind for PostgreSQL timestamp with time zone compatibility
+        var thirtyDaysAgo = DateTime.SpecifyKind(DateTime.UtcNow.Date.AddDays(-29), DateTimeKind.Utc);
+        
+        // OPTIMIZED: Single query to get all daily metrics using GroupBy
+        var dailyStats = await query
+            .Where(c => c.CreatedAt >= thirtyDaysAgo)
+            .GroupBy(c => c.CreatedAt.Date)
+            .Select(g => new
+            {
+                Date = g.Key,
+                NewCases = g.Count(),
+                CompletedCases = g.Count(c => c.Status == "Approved"),
+                RejectedCases = g.Count(c => c.Status == "Rejected"),
+                RiskScoreSum = g.Sum(c => c.RiskScore),
+                HighRiskCases = g.Count(c => c.RiskLevel == "High")
+            })
+            .ToListAsync(cancellationToken);
+
+        // Build the full 30-day list with zeros for missing days
         var last30Days = Enumerable.Range(0, 30)
             .Select(i => DateTime.SpecifyKind(DateTime.UtcNow.Date.AddDays(-i), DateTimeKind.Utc))
             .Reverse()
             .ToList();
 
-        var trends = new List<DailyMetric>();
+        var statsDict = dailyStats.ToDictionary(s => s.Date.Date, s => s);
         
-        // Query each day's data sequentially (EF Core DbContext doesn't support concurrent operations)
-        foreach (var date in last30Days)
+        return last30Days.Select(date =>
         {
-            var nextDate = DateTime.SpecifyKind(date.AddDays(1), DateTimeKind.Utc);
-            var dayQuery = query.Where(c => c.CreatedAt >= date && c.CreatedAt < nextDate);
-            
-            var newCases = await dayQuery.CountAsync(cancellationToken);
-            var completedCases = await dayQuery.CountAsync(c => c.Status == "Approved", cancellationToken);
-            var rejectedCases = await dayQuery.CountAsync(c => c.Status == "Rejected", cancellationToken);
-            // EF Core cannot translate DefaultIfEmpty with AverageAsync, so we use Sum/Count
-            var riskScoreSum = await dayQuery.SumAsync(c => c.RiskScore, cancellationToken);
-            var riskScoreCount = await dayQuery.CountAsync(cancellationToken);
-            var highRiskCases = await dayQuery.CountAsync(c => c.RiskLevel == "High", cancellationToken);
-            
-            var averageRiskScore = riskScoreCount > 0 ? (decimal)riskScoreSum / riskScoreCount : 0;
-            
-            trends.Add(new DailyMetric
+            var hasData = statsDict.TryGetValue(date.Date, out var dayStats);
+            var newCases = hasData ? dayStats!.NewCases : 0;
+            var completedCases = hasData ? dayStats!.CompletedCases : 0;
+            var rejectedCases = hasData ? dayStats!.RejectedCases : 0;
+            var riskScoreSum = hasData ? dayStats!.RiskScoreSum : 0;
+            var highRiskCases = hasData ? dayStats!.HighRiskCases : 0;
+            var averageRiskScore = newCases > 0 ? (decimal)riskScoreSum / newCases : 0;
+
+            return new DailyMetric
             {
                 Date = date,
                 NewCases = newCases,
@@ -353,10 +385,8 @@ public class ProjectionRepository : IProjectionRepository
                 AverageRiskScore = averageRiskScore,
                 CompletionRate = newCases > 0 ? (decimal)completedCases / newCases * 100 : 0,
                 HighRiskCases = highRiskCases
-            });
-        }
-        
-        return trends;
+            };
+        }).ToList();
     }
 
     private static decimal CalculateGrowthPercentage(int current, int previous)

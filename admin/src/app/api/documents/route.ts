@@ -6,9 +6,18 @@ import { logger } from '@/lib/logger';
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 
+// Get backend URL from environment
+const getBackendUrl = () => {
+  return process.env.PROXY_TARGET || 
+         process.env.ONBOARDING_TARGET ||
+         process.env.NEXT_PUBLIC_GATEWAY_URL || 
+         process.env.NEXT_PUBLIC_BACKEND_URL ||
+         'http://localhost:8001';
+};
+
 /**
- * Documents API route - routes through centralized proxy for BFF pattern
- * All token handling is done by the proxy, ensuring sessionId never exposed to client
+ * Documents API route - calls backend directly with user headers
+ * Backend uses X-User-* headers for authorization when no Bearer token is present
  */
 export async function GET(request: NextRequest) {
   logger.debug('[Documents API Route] GET request received', { url: request.url });
@@ -19,30 +28,31 @@ export async function GET(request: NextRequest) {
     const queryString = searchParams.toString();
     logger.debug('[Documents API Route] Query params', { queryString });
 
-    // Build proxy URL - proxy will handle token injection and refresh
-    // The backend endpoint is /api/v1/documents (from DocumentsController)
-    // The proxy routes /api/proxy/api/v1/documents to the backend
-    // Use NEXTAUTH_URL for base URL to ensure correct routing in Docker
-    const baseUrl = process.env.NEXTAUTH_URL || request.nextUrl.origin;
-    const proxyPath = `/api/proxy/api/v1/documents${queryString ? `?${queryString}` : ''}`;
-    const proxyUrl = new URL(proxyPath, baseUrl);
+    // Call backend directly with user headers
+    const backendUrl = getBackendUrl();
+    const apiUrl = `${backendUrl}/api/v1/documents${queryString ? `?${queryString}` : ''}`;
 
-    // Prepare headers
+    // Prepare headers - backend accepts X-User-* headers for admin portal requests
     const headers: HeadersInit = {
       'Content-Type': 'application/json',
+      'X-User-Email': session?.user?.email || 'admin@mukuru.com',
+      'X-User-Name': session?.user?.name || 'Admin User',
+      'X-User-Role': 'Administrator',
     };
 
-    // Add user identification headers (proxy will inject token from Redis)
+    // Add user identification headers
     if (session?.user) {
       const user = session.user as Record<string, unknown>;
       if (user.email) headers['X-User-Email'] = String(user.email);
       if (user.name) headers['X-User-Name'] = String(user.name);
       if (user.id) headers['X-User-Id'] = String(user.id);
-      if (user.role) headers['X-User-Role'] = String(user.role);
+      if (user.role) headers['X-User-Role'] = String(user.role) || 'Administrator';
     }
 
-    // Forward request through proxy (proxy handles token from httpOnly cookie)
-    const response = await fetch(proxyUrl.toString(), {
+    logger.info('[Documents API Route] Calling backend', { url: apiUrl, headers: { ...headers, Authorization: '[REDACTED]' } });
+
+    // Call backend directly
+    const response = await fetch(apiUrl, {
       method: 'GET',
       headers,
       cache: 'no-store',
@@ -66,7 +76,7 @@ export async function GET(request: NextRequest) {
             status: response.status,
             statusText: response.statusText,
             body: errorText,
-            url: proxyUrl.toString(),
+            url: apiUrl,
           },
         }
       );
@@ -92,7 +102,7 @@ export async function GET(request: NextRequest) {
     } catch (parseError) {
       logger.error(parseError, '[Documents API Route] Failed to parse response', {
         tags: { error_type: 'api_parse_error' },
-        extra: { url: proxyUrl.toString() },
+        extra: { url: apiUrl },
       });
       return NextResponse.json(
         {

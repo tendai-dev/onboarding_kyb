@@ -42,6 +42,19 @@ export default function CreateRequirementPage() {
     helpText: '',
   });
 
+  // Track if code has been manually edited
+  const [codeManuallyEdited, setCodeManuallyEdited] = useState(false);
+
+  // Helper function to generate code from display name
+  const generateCodeFromDisplayName = (displayName: string): string => {
+    return displayName
+      .toUpperCase()
+      .replace(/[^A-Z0-9\s]/g, '') // Remove special characters
+      .replace(/\s+/g, '_') // Replace spaces with underscores
+      .replace(/^_+|_+$/g, '') // Trim leading/trailing underscores
+      .replace(/_+/g, '_'); // Replace multiple underscores with single
+  };
+
   // User-friendly validation state
   const [validationState, setValidationState] = useState({
     required: false,
@@ -351,13 +364,14 @@ export default function CreateRequirementPage() {
               </Typography>
               <input
                 value={formData.code}
-                onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+                  setCodeManuallyEdited(true);
                   setFormData((prev) => ({
                     ...prev,
                     code: e.target.value.toUpperCase(),
-                  }))
-                }
-                placeholder="e.g., REGISTRATION_NUMBER"
+                  }));
+                }}
+                placeholder="Auto-generated from Display Name"
                 style={{
                   width: '100%',
                   padding: '12px 16px',
@@ -371,7 +385,7 @@ export default function CreateRequirementPage() {
                 }}
               />
               <Typography fontSize="12px" color="mukuru.grey.medium" mt="8px">
-                Uppercase letters, numbers, and underscores only
+                Auto-generated from Display Name (can be edited)
               </Typography>
             </Box>
 
@@ -387,12 +401,15 @@ export default function CreateRequirementPage() {
               </Typography>
               <input
                 value={formData.displayName}
-                onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+                  const newDisplayName = e.target.value;
                   setFormData((prev) => ({
                     ...prev,
-                    displayName: e.target.value,
-                  }))
-                }
+                    displayName: newDisplayName,
+                    // Auto-generate code if not manually edited
+                    code: codeManuallyEdited ? prev.code : generateCodeFromDisplayName(newDisplayName),
+                  }));
+                }}
                 placeholder="e.g., Registration Number"
                 style={{
                   width: '100%',

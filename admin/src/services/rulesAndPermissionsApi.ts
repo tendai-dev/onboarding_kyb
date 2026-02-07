@@ -534,9 +534,13 @@ class RulesAndPermissionsApiService {
   }
 
   async updateRole(roleId: string, data: UpdateRoleRequest): Promise<unknown> {
+    // Backend expects snake_case
     return this.request<unknown>(`/roles/${roleId}`, {
       method: 'PUT',
-      body: JSON.stringify(data),
+      body: JSON.stringify({
+        display_name: data.displayName,
+        description: data.description,
+      }),
     });
   }
 
@@ -550,9 +554,13 @@ class RulesAndPermissionsApiService {
     roleId: string,
     data: AddPermissionToRoleRequest
   ): Promise<unknown> {
+    // Backend expects snake_case
     return this.request<unknown>(`/roles/${roleId}/permissions`, {
       method: 'POST',
-      body: JSON.stringify(data),
+      body: JSON.stringify({
+        permission_name: data.permissionName,
+        resource: data.resource,
+      }),
     });
   }
 
@@ -563,9 +571,10 @@ class RulesAndPermissionsApiService {
   }
 
   async assignRoleToUser(userId: string, roleId: string): Promise<unknown> {
+    // Backend expects snake_case
     return this.request<unknown>(`/users/${userId}/roles`, {
       method: 'POST',
-      body: JSON.stringify({ roleId }),
+      body: JSON.stringify({ role_id: roleId }),
     });
   }
 

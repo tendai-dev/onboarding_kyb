@@ -1,6 +1,7 @@
 using MediatR;
 using Microsoft.Extensions.Logging;
 using OnboardingApi.Application.Messaging.Interfaces;
+using OnboardingApi.Application.Projections.Interfaces;
 using OnboardingApi.Domain.Messaging.Aggregates;
 using OnboardingApi.Domain.Messaging.ValueObjects;
 
@@ -10,15 +11,18 @@ public class SendMessageCommandHandler : IRequestHandler<SendMessageCommand, Sen
 {
     private readonly IMessageRepository _messageRepository;
     private readonly IMessageBroadcaster _messageBroadcaster;
+    private readonly IProjectionRepository _projectionRepository;
     private readonly ILogger<SendMessageCommandHandler> _logger;
 
     public SendMessageCommandHandler(
         IMessageRepository messageRepository,
         IMessageBroadcaster messageBroadcaster,
+        IProjectionRepository projectionRepository,
         ILogger<SendMessageCommandHandler> logger)
     {
         _messageRepository = messageRepository;
         _messageBroadcaster = messageBroadcaster;
+        _projectionRepository = projectionRepository;
         _logger = logger;
     }
 
@@ -32,12 +36,46 @@ public class SendMessageCommandHandler : IRequestHandler<SendMessageCommand, Sen
             
             if (thread == null)
             {
-                // Create new thread - in production, would get application details
+                // Fetch actual application details from projections
+                var applicationDetails = await _projectionRepository.GetOnboardingCaseAsync(
+                    request.ApplicationId.ToString(), cancellationToken);
+                
+                var applicationReference = applicationDetails?.CaseId 
+                    ?? $"APP-{request.ApplicationId.ToString().Substring(0, 8)}";
+                
+                // Build applicant name from projection data (first + last name, or business name)
+                // Only use sender name as fallback if sender is an applicant (not admin)
+                string applicantName;
+                if (!string.IsNullOrWhiteSpace(applicationDetails?.ApplicantFirstName))
+                {
+                    applicantName = $"{applicationDetails.ApplicantFirstName} {applicationDetails.ApplicantLastName}".Trim();
+                }
+                else if (!string.IsNullOrWhiteSpace(applicationDetails?.BusinessLegalName))
+                {
+                    applicantName = applicationDetails.BusinessLegalName;
+                }
+                else if (request.SenderRole == UserRole.Applicant && !string.IsNullOrWhiteSpace(request.SenderName))
+                {
+                    // Only use sender name if sender is the applicant
+                    applicantName = request.SenderName;
+                }
+                else
+                {
+                    // Use partner name from projection if available, otherwise use case reference
+                    applicantName = !string.IsNullOrWhiteSpace(applicationDetails?.PartnerName)
+                        ? applicationDetails.PartnerName
+                        : applicationReference;
+                }
+                
+                _logger.LogInformation(
+                    "Creating new message thread for application {ApplicationId} with reference {Reference} and applicant {ApplicantName}",
+                    request.ApplicationId, applicationReference, applicantName);
+                
                 thread = MessageThread.Create(
                     request.ApplicationId,
-                    $"APP-{request.ApplicationId}",
+                    applicationReference,
                     request.SenderId,
-                    request.SenderName);
+                    applicantName);
                 await _messageRepository.AddThreadAsync(thread, cancellationToken);
             }
 
@@ -59,7 +97,7 @@ public class SendMessageCommandHandler : IRequestHandler<SendMessageCommand, Sen
                 thread.Id,
                 request.ApplicationId,
                 request.SenderId,
-                request.SenderName,
+                request.SenderName ?? "Unknown",
                 request.SenderRole,
                 request.Content,
                 request.ReceiverId,
@@ -167,7 +205,7 @@ public class MarkMessageAsReadCommandHandler : IRequestHandler<MarkMessageAsRead
             if (message == null)
                 return MarkMessageAsReadResult.Failed("Message not found");
 
-            message.MarkAsRead(request.UserId);
+            message.MarkAsRead(request.UserId, request.IsAdmin);
             await _messageRepository.UpdateAsync(message, cancellationToken);
             await _messageRepository.SaveChangesAsync(cancellationToken);
 
@@ -197,7 +235,7 @@ public class DeleteMessageCommandHandler : IRequestHandler<DeleteMessageCommand,
             if (message == null)
                 return DeleteMessageResult.Failed("Message not found");
 
-            message.Delete(request.UserId);
+            message.Delete(request.UserId, request.IsAdmin);
             await _messageRepository.UpdateAsync(message, cancellationToken);
             await _messageRepository.SaveChangesAsync(cancellationToken);
 
@@ -283,15 +321,18 @@ public class ForwardMessageCommandHandler : IRequestHandler<ForwardMessageComman
 {
     private readonly IMessageRepository _messageRepository;
     private readonly IMessageBroadcaster _messageBroadcaster;
+    private readonly IProjectionRepository _projectionRepository;
     private readonly ILogger<ForwardMessageCommandHandler> _logger;
 
     public ForwardMessageCommandHandler(
         IMessageRepository messageRepository,
         IMessageBroadcaster messageBroadcaster,
+        IProjectionRepository projectionRepository,
         ILogger<ForwardMessageCommandHandler> logger)
     {
         _messageRepository = messageRepository;
         _messageBroadcaster = messageBroadcaster;
+        _projectionRepository = projectionRepository;
         _logger = logger;
     }
 
@@ -310,13 +351,36 @@ public class ForwardMessageCommandHandler : IRequestHandler<ForwardMessageComman
 
             if (targetThread == null)
             {
-                // Create new thread for target application
-                // Note: In production, you'd want to get actual application details
+                // Fetch actual application details from projections
+                var applicationDetails = await _projectionRepository.GetOnboardingCaseAsync(
+                    request.ToApplicationId.ToString(), cancellationToken);
+                
+                var applicationReference = applicationDetails?.CaseId 
+                    ?? $"APP-{request.ToApplicationId.ToString().Substring(0, 8)}";
+                
+                // Build applicant name from projection data (first + last name, or business name)
+                string applicantName;
+                if (!string.IsNullOrWhiteSpace(applicationDetails?.ApplicantFirstName))
+                {
+                    applicantName = $"{applicationDetails.ApplicantFirstName} {applicationDetails.ApplicantLastName}".Trim();
+                }
+                else if (!string.IsNullOrWhiteSpace(applicationDetails?.BusinessLegalName))
+                {
+                    applicantName = applicationDetails.BusinessLegalName;
+                }
+                else
+                {
+                    // Use partner name from projection if available, otherwise use case reference
+                    applicantName = !string.IsNullOrWhiteSpace(applicationDetails?.PartnerName)
+                        ? applicationDetails.PartnerName
+                        : applicationReference;
+                }
+                
                 targetThread = MessageThread.Create(
                     request.ToApplicationId,
-                    $"APP-{request.ToApplicationId}",
-                    sourceMessage.SenderId, // Use original sender as applicant
-                    sourceMessage.SenderName);
+                    applicationReference,
+                    sourceMessage.SenderId,
+                    applicantName);
                 await _messageRepository.AddThreadAsync(targetThread, cancellationToken);
             }
 
@@ -412,6 +476,110 @@ public class ForwardMessageCommandHandler : IRequestHandler<ForwardMessageComman
         catch (Exception ex)
         {
             return ForwardMessageResult.Failed(ex.Message);
+        }
+    }
+}
+
+public class RefreshThreadMetadataCommandHandler : IRequestHandler<RefreshThreadMetadataCommand, RefreshThreadMetadataResult>
+{
+    private readonly IMessageRepository _messageRepository;
+    private readonly IProjectionRepository _projectionRepository;
+    private readonly ILogger<RefreshThreadMetadataCommandHandler> _logger;
+
+    public RefreshThreadMetadataCommandHandler(
+        IMessageRepository messageRepository,
+        IProjectionRepository projectionRepository,
+        ILogger<RefreshThreadMetadataCommandHandler> logger)
+    {
+        _messageRepository = messageRepository;
+        _projectionRepository = projectionRepository;
+        _logger = logger;
+    }
+
+    public async Task<RefreshThreadMetadataResult> Handle(RefreshThreadMetadataCommand request, CancellationToken cancellationToken)
+    {
+        try
+        {
+            var updatedCount = 0;
+            IEnumerable<MessageThread> threads;
+
+            if (request.ThreadId.HasValue)
+            {
+                var thread = await _messageRepository.GetThreadByIdAsync(request.ThreadId.Value, cancellationToken);
+                threads = thread != null ? new[] { thread } : Array.Empty<MessageThread>();
+            }
+            else
+            {
+                threads = await _messageRepository.GetAllThreadsAsync(cancellationToken);
+            }
+
+            foreach (var thread in threads)
+            {
+                var applicationDetails = await _projectionRepository.GetOnboardingCaseAsync(
+                    thread.ApplicationId.ToString(), cancellationToken);
+
+                if (applicationDetails == null)
+                {
+                    _logger.LogWarning(
+                        "Could not find projection for application {ApplicationId} in thread {ThreadId}",
+                        thread.ApplicationId, thread.Id);
+                    continue;
+                }
+
+                // Build applicant name from projection data
+                string? newApplicantName = null;
+                if (!string.IsNullOrWhiteSpace(applicationDetails.ApplicantFirstName))
+                {
+                    newApplicantName = $"{applicationDetails.ApplicantFirstName} {applicationDetails.ApplicantLastName}".Trim();
+                }
+                else if (!string.IsNullOrWhiteSpace(applicationDetails.BusinessLegalName))
+                {
+                    newApplicantName = applicationDetails.BusinessLegalName;
+                }
+                else if (!string.IsNullOrWhiteSpace(applicationDetails.PartnerName))
+                {
+                    newApplicantName = applicationDetails.PartnerName;
+                }
+
+                var needsUpdate = false;
+
+                // Update applicant name if we found a better one
+                if (!string.IsNullOrWhiteSpace(newApplicantName) && 
+                    (thread.ApplicantName.Contains("Unknown") || 
+                     thread.ApplicantName.StartsWith("APP-") ||
+                     string.IsNullOrWhiteSpace(thread.ApplicantName)))
+                {
+                    thread.UpdateApplicantName(newApplicantName);
+                    needsUpdate = true;
+                    _logger.LogInformation(
+                        "Updated thread {ThreadId} applicant name from '{OldName}' to '{NewName}'",
+                        thread.Id, thread.ApplicantName, newApplicantName);
+                }
+
+                // Update application reference if needed
+                if (!string.IsNullOrWhiteSpace(applicationDetails.CaseId) &&
+                    (thread.ApplicationReference.StartsWith("APP-") || string.IsNullOrWhiteSpace(thread.ApplicationReference)))
+                {
+                    thread.UpdateApplicationReference(applicationDetails.CaseId);
+                    needsUpdate = true;
+                }
+
+                if (needsUpdate)
+                {
+                    await _messageRepository.UpdateThreadAsync(thread, cancellationToken);
+                    updatedCount++;
+                }
+            }
+
+            await _messageRepository.SaveChangesAsync(cancellationToken);
+
+            _logger.LogInformation("Refreshed metadata for {Count} threads", updatedCount);
+            return RefreshThreadMetadataResult.Successful(updatedCount);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to refresh thread metadata");
+            return RefreshThreadMetadataResult.Failed(ex.Message);
         }
     }
 }

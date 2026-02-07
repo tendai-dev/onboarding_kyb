@@ -12,5 +12,10 @@ public interface IDocumentRepository
     Task AddAsync(DomainDocument document, CancellationToken cancellationToken = default);
     Task UpdateAsync(DomainDocument document, CancellationToken cancellationToken = default);
     Task SaveChangesAsync(CancellationToken cancellationToken = default);
+    
+    /// <summary>
+    /// Deletes all documents associated with a case. Used for cascade delete.
+    /// </summary>
+    Task<int> DeleteByCaseIdAsync(Guid caseId, CancellationToken cancellationToken = default);
 }
 

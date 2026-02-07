@@ -159,6 +159,16 @@ public class DocumentsController : ControllerBase
                 request.Type, 
                 request.File.Length);
 
+            // Get the actual uploader from current user context, falling back to request or "system"
+            var actualUploader = !string.IsNullOrWhiteSpace(_currentUser.Email) 
+                ? _currentUser.Email 
+                : !string.IsNullOrWhiteSpace(_currentUser.Name)
+                    ? _currentUser.Name
+                    : request.UploadedBy ?? "system";
+            
+            _logger.LogInformation("Document upload - UploadedBy resolved to: {UploadedBy} (from CurrentUser.Email: {Email}, CurrentUser.Name: {Name}, Request.UploadedBy: {RequestUploadedBy})",
+                actualUploader, _currentUser.Email ?? "null", _currentUser.Name ?? "null", request.UploadedBy ?? "null");
+
             var command = new UploadDocumentCommand
             {
                 CaseId = request.CaseId,
@@ -168,7 +178,7 @@ public class DocumentsController : ControllerBase
                 ContentType = request.File.ContentType,
                 FileStream = request.File.OpenReadStream(),
                 FileSizeBytes = request.File.Length,
-                UploadedBy = request.UploadedBy ?? "system",
+                UploadedBy = actualUploader,
                 Metadata = new DocumentMetadata
                 {
                     Description = request.Description,

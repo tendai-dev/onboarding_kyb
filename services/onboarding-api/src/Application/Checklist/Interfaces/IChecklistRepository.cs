@@ -11,6 +11,12 @@ public interface IChecklistRepository
     Task<List<DomainChecklist>> GetAllAsync(CancellationToken cancellationToken = default);
     Task AddAsync(DomainChecklist checklist, CancellationToken cancellationToken = default);
     Task UpdateAsync(DomainChecklist checklist, CancellationToken cancellationToken = default);
+    Task DeleteAsync(DomainChecklist checklist, CancellationToken cancellationToken = default);
     Task SaveChangesAsync(CancellationToken cancellationToken = default);
+    
+    /// <summary>
+    /// Deletes all checklists associated with a case. Used for cascade delete.
+    /// </summary>
+    Task<int> DeleteByCaseIdAsync(Guid caseId, CancellationToken cancellationToken = default);
 }
 

@@ -84,4 +84,18 @@ public class DocumentRepository : IDocumentRepository
     {
         await _context.SaveChangesAsync(cancellationToken);
     }
+
+    public async Task<int> DeleteByCaseIdAsync(Guid caseId, CancellationToken cancellationToken = default)
+    {
+        var documents = await _context.Documents
+            .Where(d => d.CaseId == caseId)
+            .ToListAsync(cancellationToken);
+        
+        if (documents.Count == 0)
+            return 0;
+        
+        _context.Documents.RemoveRange(documents);
+        await _context.SaveChangesAsync(cancellationToken);
+        return documents.Count;
+    }
 }

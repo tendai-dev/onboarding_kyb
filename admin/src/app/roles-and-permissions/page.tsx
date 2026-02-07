@@ -773,7 +773,28 @@ export default function RulesAndPermissionsPage() {
       width: '120px',
       minWidth: '120px',
       render: (value, row) => {
-        const permissionsCount = row.permissions?.length || 0;
+        // Calculate total permissions: direct + from roles
+        const directPermissions = new Set(
+          (row.permissions || []).filter((p: { isActive?: boolean; is_active?: boolean }) => p.isActive || p.is_active).map((p: { permissionName?: string; permission_name?: string }) => p.permissionName || p.permission_name)
+        );
+        
+        // Add permissions from user's roles
+        (row.roles || [])
+          .filter((r: { isActive?: boolean; is_active?: boolean }) => r.isActive || r.is_active)
+          .forEach((userRole: { roleId?: string; role_id?: string; roleName?: string; role_name?: string }) => {
+            const role = roles.find(
+              (r) => r.id === (userRole.roleId || userRole.role_id) || r.name === (userRole.roleName || userRole.role_name)
+            );
+            if (role) {
+              role.permissions
+                .filter((p) => p.isActive || p.is_active)
+                .forEach((perm) => {
+                  directPermissions.add(perm.permissionName || perm.permission_name);
+                });
+            }
+          });
+        
+        const permissionsCount = directPermissions.size;
         return (
           <Tag variant="info" size="md" style={{ fontSize: '10px', padding: '1px 6px' }}>
             {permissionsCount} {permissionsCount === 1 ? 'Permission' : 'Permissions'}

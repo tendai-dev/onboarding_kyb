@@ -50,9 +50,14 @@ public class Checklist
             checklist._items.Add(item);
         }
 
+        // Try to parse CaseId as GUID, use empty GUID if parsing fails
+        var caseGuid = Guid.TryParse(checklist.CaseId, out var parsedCaseId) 
+            ? parsedCaseId 
+            : Guid.Empty;
+            
         checklist.AddDomainEvent(new ChecklistCreatedEvent(
             checklist.Id.Value,
-            Guid.Parse(checklist.CaseId),
+            caseGuid,
             (EntityType)checklist.Type,
             RiskTier.Medium, // Default risk tier
             checklist.Items.Count,
@@ -181,5 +186,46 @@ public class Checklist
     {
         _domainEvents.Clear();
     }
+
+    public void ClearItems()
+    {
+        _items.Clear();
+    }
+
+    public void AddItem(string name, string description, string category, bool isRequired, int order, string? notes = null)
+    {
+        // Parse category string to enum, default to Other
+        if (!Enum.TryParse<ChecklistItemCategory>(category, true, out var categoryEnum))
+        {
+            categoryEnum = ChecklistItemCategory.Other;
+        }
+
+        var item = ChecklistItem.Create(
+            $"ITEM_{order}",
+            name,
+            description,
+            categoryEnum,
+            isRequired,
+            order);
+        
+        if (!string.IsNullOrEmpty(notes))
+        {
+            item.SetNotes(notes);
+        }
+        
+        _items.Add(item);
+    }
+
+    public void RemoveItem(ChecklistItemId itemId)
+    {
+        var item = _items.FirstOrDefault(i => i.Id == itemId);
+        if (item == null)
+            throw new KeyNotFoundException($"Checklist item {itemId} not found");
+        
+        _items.Remove(item);
+    }
+
+    public double CompletionPercentage => GetCompletionPercentage();
+    public double RequiredCompletionPercentage => GetRequiredCompletionPercentage();
 }
 

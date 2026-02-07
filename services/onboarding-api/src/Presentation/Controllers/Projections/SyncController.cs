@@ -33,11 +33,11 @@ public class SyncController : ControllerBase
     /// Sync onboarding cases to projections table
     /// Handles dynamic fields based on entity configuration
     /// Uses separate scopes to avoid EF Core context conflicts
-    /// SECURITY: Allows internal service calls (X-Internal-Service header) or admin authentication
+    /// Requires Admin or Service role authentication
     /// </summary>
     [HttpPost("sync")]
     [ProducesResponseType(typeof(object), StatusCodes.Status200OK)]
-    [Microsoft.AspNetCore.Authorization.AllowAnonymous] // Allow internal service calls - validated below
+    [Microsoft.AspNetCore.Authorization.Authorize(Roles = "Admin,Service")]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
     public async Task<IActionResult> Sync([FromQuery] bool forceFullSync = false)

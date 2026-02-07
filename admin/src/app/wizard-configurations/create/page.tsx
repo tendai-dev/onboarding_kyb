@@ -1040,8 +1040,24 @@ export default function CreateWizardConfigurationPage() {
                         overflowY="auto"
                       >
                         {(() => {
+                          // Get all requirement IDs selected in OTHER steps (not this step)
+                          const selectedInOtherSteps = new Set<string>();
+                          steps.forEach((otherStep, otherIndex) => {
+                            if (otherIndex !== index) {
+                              otherStep.requirementIds.forEach((reqId) => {
+                                selectedInOtherSteps.add(reqId);
+                              });
+                            }
+                          });
+
+                          // Filter out requirements already selected in other steps
+                          // but keep requirements that are selected in THIS step
+                          const availableRequirements = entityRequirements.filter(
+                            (req) => !selectedInOtherSteps.has(req.id) || step.requirementIds.includes(req.id)
+                          );
+
                           const groupedByTypeMap = new Map<string, Requirement[]>();
-                          entityRequirements.forEach((req) => {
+                          availableRequirements.forEach((req) => {
                             const type = req.type || 'Other';
                             const existing = groupedByTypeMap.get(type) || [];
                             groupedByTypeMap.set(type, [...existing, req]);

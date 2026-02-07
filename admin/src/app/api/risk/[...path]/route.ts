@@ -6,9 +6,18 @@ import { auth } from '@/lib/auth';
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
+// Get backend URL - prioritize runtime env vars over build-time vars
+const getBackendUrl = () => {
+  return process.env.PROXY_TARGET || 
+         process.env.ONBOARDING_TARGET ||
+         process.env.NEXT_PUBLIC_GATEWAY_URL || 
+         process.env.NEXT_PUBLIC_BACKEND_URL ||
+         'http://localhost:8001';
+};
+
 /**
- * Risk API route - routes through centralized proxy for BFF pattern
- * All token handling is done by the proxy, ensuring sessionId never exposed to client
+ * Risk API route - forwards directly to backend API
+ * This avoids issues with internal proxy routing through external URLs
  */
 async function forwardRequest(
   request: NextRequest,
@@ -29,9 +38,8 @@ async function forwardRequest(
           ? pathAfterRisk
           : `/${pathAfterRisk}`;
 
-    // Build proxy URL - proxy will handle token injection and refresh
-    const proxyPath = `/api/proxy/api/v1/risk-assessments${servicePath}${queryString ? `?${queryString}` : ''}`;
-    const proxyUrl = new URL(proxyPath, request.url);
+    // Build direct backend URL instead of going through proxy route
+    const backendUrl = `${getBackendUrl()}/api/v1/risk-assessments${servicePath}${queryString ? `?${queryString}` : ''}`;
 
     // Prepare headers
     const headers: HeadersInit = {
@@ -75,8 +83,8 @@ async function forwardRequest(
       }
     }
 
-    // Forward request through proxy (proxy handles token from httpOnly cookie)
-    const response = await fetch(proxyUrl.toString(), {
+    // Forward request directly to backend API
+    const response = await fetch(backendUrl, {
       method,
       headers,
       body: body || undefined,

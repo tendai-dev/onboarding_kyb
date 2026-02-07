@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
 using OnboardingApi.Application.EntityConfiguration.Interfaces;
 using OnboardingApi.Domain.EntityConfiguration.Aggregates;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace OnboardingApi.Presentation.Controllers;
 
@@ -267,15 +268,92 @@ public class UsersController : ControllerBase
     }
 
     /// <summary>
-    /// Create or update user
+    /// Create or update user (called on login to record login timestamps)
     /// </summary>
     [HttpPost]
+    [ProducesResponseType(typeof(UserDto), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(UserDto), StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    public IActionResult CreateOrUpdateUser([FromBody] CreateOrUpdateUserRequest request)
+    public async Task<IActionResult> CreateOrUpdateUser([FromBody] CreateOrUpdateUserRequest request, CancellationToken cancellationToken = default)
     {
-        // Stub implementation
-        return BadRequest(new { error = "User creation not yet implemented" });
+        try
+        {
+            if (string.IsNullOrWhiteSpace(request.Email))
+            {
+                return BadRequest(new { error = "Email is required" });
+            }
+
+            // Check if user exists
+            var existingUser = await _userRepository.GetByEmailAsync(request.Email, cancellationToken);
+            
+            if (existingUser != null)
+            {
+                // Update existing user - record login
+                existingUser.RecordLogin();
+                if (!string.IsNullOrWhiteSpace(request.Name))
+                {
+                    existingUser.UpdateDetails(request.Name);
+                }
+                await _userRepository.UpdateAsync(existingUser, cancellationToken);
+                await _userRepository.SaveChangesAsync(cancellationToken);
+                
+                _logger.LogInformation("User login recorded for {Email}", 
+                    Infrastructure.Utilities.LoggingExtensions.MaskEmail(request.Email));
+                
+                return Ok(MapUserToDto(existingUser));
+            }
+            else
+            {
+                // Create new user
+                var newUser = new User(request.Email, request.Name);
+                newUser.RecordLogin(); // Record first login
+                await _userRepository.AddAsync(newUser, cancellationToken);
+                await _userRepository.SaveChangesAsync(cancellationToken);
+                
+                _logger.LogInformation("New user created and login recorded for {Email}", 
+                    Infrastructure.Utilities.LoggingExtensions.MaskEmail(request.Email));
+                
+                return CreatedAtAction(nameof(GetUserByEmail), new { email = request.Email }, MapUserToDto(newUser));
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error creating/updating user {Email}", 
+                Infrastructure.Utilities.LoggingExtensions.MaskEmail(request.Email));
+            return StatusCode(500, new { error = "Failed to create/update user" });
+        }
+    }
+
+    private UserDto MapUserToDto(User user)
+    {
+        return new UserDto
+        {
+            Id = user.Id.ToString(),
+            Email = user.Email,
+            Name = user.Name,
+            FirstLoginAt = user.FirstLoginAt?.ToString("o") ?? string.Empty,
+            LastLoginAt = user.LastLoginAt?.ToString("o") ?? string.Empty,
+            CreatedAt = user.CreatedAt.ToString("o"),
+            Permissions = user.Permissions.Where(p => p.IsActive).Select(p => new PermissionDto
+            {
+                Id = p.Id.ToString(),
+                PermissionName = p.PermissionName,
+                Resource = p.Resource,
+                Description = p.Description,
+                IsActive = p.IsActive,
+                CreatedAt = p.CreatedAt.ToString("o"),
+                CreatedBy = p.CreatedBy
+            }).ToList(),
+            Roles = user.RoleAssignments.Where(r => r.IsActive).Select(r => new UserRoleDto
+            {
+                Id = r.Id.ToString(),
+                RoleId = r.RoleId.ToString(),
+                RoleName = r.RoleName,
+                RoleDisplayName = r.RoleDisplayName,
+                IsActive = r.IsActive,
+                CreatedAt = r.CreatedAt.ToString("o")
+            }).ToList()
+        };
     }
 
     /// <summary>
@@ -308,10 +386,64 @@ public class UsersController : ControllerBase
     [HttpPost("{id}/roles")]
     [ProducesResponseType(typeof(UserRoleDto), StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public IActionResult AssignRoleToUser(string id, [FromBody] AssignRoleRequest request)
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> AssignRoleToUser(string id, [FromBody] AssignRoleRequest request, CancellationToken cancellationToken = default)
     {
-        // Stub implementation
-        return NotFound(new { error = "User not found" });
+        try
+        {
+            if (!Guid.TryParse(id, out var userId))
+            {
+                return BadRequest(new { error = "Invalid user ID format" });
+            }
+
+            if (!Guid.TryParse(request.RoleId, out var roleId))
+            {
+                return BadRequest(new { error = "Invalid role ID format" });
+            }
+
+            var user = await _userRepository.GetByIdAsync(userId, cancellationToken);
+            if (user == null)
+            {
+                return NotFound(new { error = "User not found" });
+            }
+
+            // Check if role is already assigned
+            if (user.RoleAssignments.Any(r => r.RoleId == roleId && r.IsActive))
+            {
+                return BadRequest(new { error = "Role is already assigned to this user" });
+            }
+
+            // Get role details from roles repository
+            var roleRepository = HttpContext.RequestServices.GetRequiredService<IRoleRepository>();
+            var role = await roleRepository.GetByIdAsync(roleId, cancellationToken);
+            if (role == null)
+            {
+                return NotFound(new { error = "Role not found" });
+            }
+
+            // Assign the role
+            user.AssignRole(roleId, role.Name, role.DisplayName);
+            await _userRepository.UpdateAsync(user, cancellationToken);
+
+            var assignedRole = user.RoleAssignments.First(r => r.RoleId == roleId && r.IsActive);
+            var roleDto = new UserRoleDto
+            {
+                Id = assignedRole.Id.ToString(),
+                RoleId = assignedRole.RoleId.ToString(),
+                RoleName = assignedRole.RoleName,
+                RoleDisplayName = assignedRole.RoleDisplayName,
+                IsActive = assignedRole.IsActive,
+                CreatedAt = assignedRole.CreatedAt.ToString("o")
+            };
+
+            _logger.LogInformation("Role {RoleName} assigned to user {UserId}", role.Name, userId);
+            return CreatedAtAction(nameof(GetAllUsers), roleDto);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error assigning role to user {UserId}", id);
+            return StatusCode(500, new { error = "Failed to assign role" });
+        }
     }
 
     /// <summary>
@@ -320,10 +452,43 @@ public class UsersController : ControllerBase
     [HttpDelete("{id}/roles/{userRoleId}")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public IActionResult RemoveRoleFromUser(string id, string userRoleId)
+    public async Task<IActionResult> RemoveRoleFromUser(string id, string userRoleId, CancellationToken cancellationToken = default)
     {
-        // Stub implementation
-        return NotFound(new { error = "User role not found" });
+        try
+        {
+            if (!Guid.TryParse(id, out var userId))
+            {
+                return BadRequest(new { error = "Invalid user ID format" });
+            }
+
+            if (!Guid.TryParse(userRoleId, out var roleAssignmentId))
+            {
+                return BadRequest(new { error = "Invalid role assignment ID format" });
+            }
+
+            var user = await _userRepository.GetByIdAsync(userId, cancellationToken);
+            if (user == null)
+            {
+                return NotFound(new { error = "User not found" });
+            }
+
+            var roleAssignment = user.RoleAssignments.FirstOrDefault(r => r.Id == roleAssignmentId);
+            if (roleAssignment == null)
+            {
+                return NotFound(new { error = "Role assignment not found" });
+            }
+
+            user.RemoveRole(roleAssignmentId);
+            await _userRepository.UpdateAsync(user, cancellationToken);
+
+            _logger.LogInformation("Role assignment {RoleAssignmentId} removed from user {UserId}", userRoleId, userId);
+            return NoContent();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error removing role from user {UserId}", id);
+            return StatusCode(500, new { error = "Failed to remove role" });
+        }
     }
 }
 

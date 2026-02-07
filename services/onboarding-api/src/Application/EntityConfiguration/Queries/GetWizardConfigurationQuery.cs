@@ -48,7 +48,9 @@ public class GetAllWizardConfigurationsQueryHandler : IRequestHandler<GetAllWiza
             {
                 Id = config.Id,
                 EntityTypeId = config.EntityTypeId,
-                EntityTypeDisplayName = entityType?.DisplayName,
+                EntityTypeDisplayName = !string.IsNullOrWhiteSpace(entityType?.DisplayName) 
+                    ? entityType.DisplayName 
+                    : entityType?.Code ?? "Unknown Entity Type",
                 IsActive = config.IsActive,
                 CreatedAt = config.CreatedAt,
                 UpdatedAt = config.UpdatedAt,
@@ -111,7 +113,9 @@ public class GetWizardConfigurationByIdQueryHandler : IRequestHandler<GetWizardC
         {
             Id = config.Id,
             EntityTypeId = config.EntityTypeId,
-            EntityTypeDisplayName = entityType?.DisplayName,
+            EntityTypeDisplayName = !string.IsNullOrWhiteSpace(entityType?.DisplayName) 
+                ? entityType.DisplayName 
+                : entityType?.Code ?? "Unknown Entity Type",
             IsActive = config.IsActive,
             CreatedAt = config.CreatedAt,
             UpdatedAt = config.UpdatedAt,
@@ -169,7 +173,9 @@ public class GetWizardConfigurationByEntityTypeIdQueryHandler : IRequestHandler<
         {
             Id = config.Id,
             EntityTypeId = config.EntityTypeId,
-            EntityTypeDisplayName = entityType?.DisplayName,
+            EntityTypeDisplayName = !string.IsNullOrWhiteSpace(entityType?.DisplayName) 
+                ? entityType.DisplayName 
+                : entityType?.Code ?? "Unknown Entity Type",
             IsActive = config.IsActive,
             CreatedAt = config.CreatedAt,
             UpdatedAt = config.UpdatedAt,

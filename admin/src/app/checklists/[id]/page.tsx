@@ -2,7 +2,6 @@
 
 import {
   Box,
-  Container,
   VStack,
   HStack,
   Flex,
@@ -10,7 +9,6 @@ import {
   Textarea,
   Checkbox as ChakraCheckbox,
 } from '@chakra-ui/react';
-// Import components directly from Mukuru package
 import {
   Typography,
   Button,
@@ -19,9 +17,7 @@ import {
   Card,
   AlertBar,
 } from '@mukuru/mukuru-react-components';
-// Import wrapper components (not yet in npm package)
 import { Input } from '@/lib/mukuruComponentWrappers';
-// Color mode - always light mode
 const useColorModeValue = <T,>(light: T, _dark: T): T => light;
 import {
   FiCheckSquare,
@@ -31,6 +27,9 @@ import {
   FiPlus,
   FiClock,
   FiArrowLeft,
+  FiSave,
+  FiX,
+  FiFileText,
 } from 'react-icons/fi';
 import { useState, useEffect, use } from 'react';
 import { SweetAlert } from '../../../utils/sweetAlert';
@@ -40,7 +39,6 @@ import { useSidebar } from '../../../contexts/SidebarContext';
 import { checklistApiService } from '../../../services/checklistApi';
 import { useRouter } from 'next/navigation';
 import { logger } from '../../../lib/logger';
-// Removed unused MotionBox import
 
 interface Checklist {
   id: string;
@@ -72,11 +70,7 @@ export default function ChecklistDetailPage({
   const router = useRouter();
   const { id } = use(params);
 
-  // Color mode values for dark/light mode support
-  const bgColor = useColorModeValue('mukuru.background.light', 'mukuru.background.dark');
-  const cardBg = useColorModeValue('mukuru.cards.white', 'mukuru.cards.dark');
   const textColor = useColorModeValue('mukuru.text.primary', 'mukuru.text.inverse');
-  const headerBg = useColorModeValue('mukuru.cards.white', 'mukuru.cards.dark');
   const borderColor = useColorModeValue('mukuru.grey.light', 'mukuru.grey.500');
 
   const [checklist, setChecklist] = useState<Checklist | null>(null);
@@ -88,6 +82,10 @@ export default function ChecklistDetailPage({
     isRequired: false,
     guidelines: '',
   });
+  const [isEditing, setIsEditing] = useState(false);
+  const [hasChanges, setHasChanges] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [originalChecklist, setOriginalChecklist] = useState<Checklist | null>(null);
 
   useEffect(() => {
     if (id) {
@@ -99,28 +97,25 @@ export default function ChecklistDetailPage({
     try {
       setLoading(true);
       setError(null);
-      const allChecklists = await checklistApiService.getAllChecklists();
-      logger.debug('[ChecklistDetailPage] All checklists loaded', {
-        count: allChecklists.length,
-      });
-      const found = allChecklists.find((c) => c.id === id);
+      
+      // Use getChecklistById for better performance and to ensure items are loaded
+      const found = await checklistApiService.getChecklistById(id);
+      
       if (found) {
         logger.debug('[ChecklistDetailPage] Found checklist', {
           id: found.id,
           itemCount: found.items.length,
         });
-        logger.debug('[ChecklistDetailPage] Items', { items: found.items });
+        console.log('[ChecklistDetailPage] Loaded checklist with items:', found.items);
         setChecklist(found);
+        setOriginalChecklist(JSON.parse(JSON.stringify(found)));
       } else {
         logger.error(
           new Error('Checklist not found'),
           '[ChecklistDetailPage] Checklist not found',
           {
             tags: { error_type: 'checklist_not_found' },
-            extra: {
-              id,
-              availableIds: allChecklists.map((c) => c.id),
-            },
+            extra: { id },
           }
         );
         setError('Checklist not found');
@@ -156,10 +151,7 @@ export default function ChecklistDetailPage({
 
   const addNewItem = async () => {
     if (!newItem.description || !newItem.category) {
-      await SweetAlert.warning(
-        'Validation Error',
-        'Please fill in description and category'
-      );
+      await SweetAlert.warning('Validation Error', 'Please fill in description and category');
       return;
     }
 
@@ -174,21 +166,35 @@ export default function ChecklistDetailPage({
       guidelines: newItem.guidelines,
     };
 
-    setChecklist((prev) =>
-      prev
-        ? {
-            ...prev,
-            items: [...prev.items, item],
-            lastUpdated: new Date().toISOString(),
-          }
-        : null
-    );
+    // Create updated checklist with new item
+    const updatedChecklist = {
+      ...checklist,
+      items: [...checklist.items, item],
+      lastUpdated: new Date().toISOString(),
+    };
 
-    setNewItem({ description: '', category: '', isRequired: false, guidelines: '' });
-    await SweetAlert.success(
-      'Item Added',
-      'The new item has been added to the checklist.'
-    );
+    // Save immediately to backend
+    try {
+      setSaving(true);
+      await checklistApiService.updateChecklist(checklist.id, {
+        name: updatedChecklist.name,
+        entityType: updatedChecklist.entityType,
+        description: updatedChecklist.description,
+        items: updatedChecklist.items,
+        isActive: updatedChecklist.isActive,
+      });
+      
+      setChecklist(updatedChecklist);
+      setOriginalChecklist(JSON.parse(JSON.stringify(updatedChecklist)));
+      setNewItem({ description: '', category: '', isRequired: false, guidelines: '' });
+      setHasChanges(false);
+      await SweetAlert.success('Item Added', 'The new item has been added and saved.');
+    } catch (err) {
+      logger.error(err, 'Failed to add item');
+      await SweetAlert.error('Failed', 'Failed to add item. Please try again.');
+    } finally {
+      setSaving(false);
+    }
   };
 
   const removeItem = async (itemId: string) => {
@@ -203,64 +209,167 @@ export default function ChecklistDetailPage({
 
     if (!result.isConfirmed) return;
 
-    setChecklist((prev) =>
-      prev
-        ? {
-            ...prev,
-            items: prev.items.filter((item) => item.id !== itemId),
-            lastUpdated: new Date().toISOString(),
-          }
-        : null
-    );
+    // Create updated checklist without the item
+    const updatedChecklist = {
+      ...checklist,
+      items: checklist.items.filter((item) => item.id !== itemId),
+      lastUpdated: new Date().toISOString(),
+    };
 
-    await SweetAlert.success(
-      'Item Removed',
-      'The item has been removed from the checklist.'
-    );
+    // Save immediately to backend
+    try {
+      setSaving(true);
+      await checklistApiService.updateChecklist(checklist.id, {
+        name: updatedChecklist.name,
+        entityType: updatedChecklist.entityType,
+        description: updatedChecklist.description,
+        items: updatedChecklist.items,
+        isActive: updatedChecklist.isActive,
+      });
+      
+      setChecklist(updatedChecklist);
+      setOriginalChecklist(JSON.parse(JSON.stringify(updatedChecklist)));
+      setHasChanges(false);
+      await SweetAlert.success('Item Removed', 'The item has been removed and saved.');
+    } catch (err) {
+      logger.error(err, 'Failed to remove item');
+      await SweetAlert.error('Failed', 'Failed to remove item. Please try again.');
+    } finally {
+      setSaving(false);
+    }
   };
 
+  const handleExport = async () => {
+    if (!checklist) return;
+
+    try {
+      const exportData = {
+        name: checklist.name,
+        entityType: checklist.entityType,
+        description: checklist.description,
+        version: checklist.version,
+        isActive: checklist.isActive,
+        items: checklist.items.map((item, index) => ({
+          order: index + 1,
+          description: item.description,
+          category: item.category,
+          isRequired: item.isRequired,
+          guidelines: item.guidelines || '',
+        })),
+        exportedAt: new Date().toISOString(),
+      };
+
+      const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${checklist.name.replace(/\s+/g, '_')}_checklist.json`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+
+      await SweetAlert.success('Exported!', 'Checklist has been exported successfully.');
+    } catch (err) {
+      logger.error(err, 'Failed to export checklist');
+      await SweetAlert.error('Export Failed', 'Failed to export checklist.');
+    }
+  };
+
+  const handleSave = async () => {
+    if (!checklist) return;
+
+    try {
+      setSaving(true);
+      await checklistApiService.updateChecklist(checklist.id, {
+        name: checklist.name,
+        entityType: checklist.entityType,
+        description: checklist.description,
+        items: checklist.items,
+        isActive: checklist.isActive,
+      });
+      setOriginalChecklist(JSON.parse(JSON.stringify(checklist)));
+      setHasChanges(false);
+      setIsEditing(false);
+      await SweetAlert.success('Saved!', 'Checklist has been updated successfully.');
+    } catch (err) {
+      logger.error(err, 'Failed to save checklist');
+      await SweetAlert.error('Save Failed', 'Failed to save checklist. Please try again.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleCancelEdit = async () => {
+    if (hasChanges) {
+      const result = await SweetAlert.confirm(
+        'Discard Changes?',
+        'You have unsaved changes. Are you sure you want to discard them?',
+        'Yes, discard',
+        'Keep editing'
+      );
+      if (!result.isConfirmed) return;
+    }
+
+    if (originalChecklist) {
+      setChecklist(JSON.parse(JSON.stringify(originalChecklist)));
+    }
+    setHasChanges(false);
+    setIsEditing(false);
+  };
+
+  const formatDate = (dateString: string) => {
+    try {
+      const date = new Date(dateString);
+      if (isNaN(date.getTime())) return 'N/A';
+      return date.toLocaleDateString('en-US', {
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric',
+      });
+    } catch {
+      return 'N/A';
+    }
+  };
+
+  // Loading State
   if (loading) {
     return (
-      <Flex minH="100vh" bg={bgColor}>
+      <Box minH="100vh" bg="mukuru.grey.100">
         <AdminSidebar />
+        <PortalHeader />
         <Box
           ml={condensed ? '72px' : '280px'}
-          mt="90px"
-          minH="calc(100vh - 90px)"
-          width={condensed ? 'calc(100% - 72px)' : 'calc(100% - 280px)'}
-          bg={bgColor}
-          transition="margin-left 0.3s ease, width 0.3s ease"
+          pt="90px"
+          minH="100vh"
+          bg="mukuru.grey.100"
+          transition="margin-left 0.3s ease"
         >
-          <PortalHeader />
           <Flex justify="center" align="center" h="400px">
             <VStack gap="4">
               <Spinner size="xl" color="#F05423" />
-              <Typography
-                color={useColorModeValue('mukuru.grey.mediumDark', 'mukuru.grey.300')}
-              >
-                Loading checklist...
-              </Typography>
+              <Typography color="mukuru.grey.600">Loading checklist...</Typography>
             </VStack>
           </Flex>
         </Box>
-      </Flex>
+      </Box>
     );
   }
 
+  // Error State
   if (error || !checklist) {
     return (
-      <Flex minH="100vh" bg={bgColor}>
+      <Box minH="100vh" bg="mukuru.grey.100">
         <AdminSidebar />
+        <PortalHeader />
         <Box
           ml={condensed ? '72px' : '280px'}
-          mt="90px"
-          minH="calc(100vh - 90px)"
-          width={condensed ? 'calc(100% - 72px)' : 'calc(100% - 280px)'}
-          bg="gray.50"
-          transition="margin-left 0.3s ease, width 0.3s ease"
+          pt="90px"
+          minH="100vh"
+          bg="mukuru.grey.100"
+          transition="margin-left 0.3s ease"
         >
-          <PortalHeader />
-          <Container maxW="100%" px="8" py="8">
+          <Box px="24px" py="24px">
             <AlertBar
               status="error"
               title="Error loading checklist"
@@ -277,630 +386,294 @@ export default function ChecklistDetailPage({
               </IconWrapper>
               Back to Checklists
             </Button>
-          </Container>
+          </Box>
         </Box>
-      </Flex>
+      </Box>
     );
   }
 
   return (
-    <Flex minH="100vh" bg={bgColor} direction="column">
+    <Box minH="100vh" bg="mukuru.background.light">
       <AdminSidebar />
       <PortalHeader />
 
-      {/* Main Content Area - Scrollable */}
+      {/* Main Content Area */}
       <Box
         ml={condensed ? '72px' : '280px'}
-        mt="90px"
-        width={condensed ? 'calc(100% - 72px)' : 'calc(100% - 280px)'}
-        bg={bgColor}
-        overflowY="auto"
-        overflowX="hidden"
-        transition="margin-left 0.3s ease, width 0.3s ease"
-        minH="calc(100vh - 90px)"
-        maxH="calc(100vh - 90px)"
+        pt="90px"
+        minH="100vh"
+        bg="mukuru.background.light"
+        transition="margin-left 0.3s ease"
       >
-        {/* Sticky Header */}
-        <Box
-          bg={headerBg}
-          borderBottom="1px solid"
-          borderColor={borderColor}
-          py="4"
-          position="sticky"
-          top="0"
-          zIndex="10"
-          boxShadow="0 1px 3px 0 rgba(0, 0, 0, 0.1)"
-          width="100%"
-        >
-          <Container maxW="1200px" px="6" mx="auto" width="full">
-            <VStack align="start" gap="3" w="100%">
+        {/* Page Header - Clean like requirements page */}
+        <Box px="24px" pt="24px" pb="16px" bg="mukuru.cards.white">
+          <Flex justify="space-between" align="center">
+            <VStack align="start" gap="2px">
+              <HStack gap="12px" align="center">
+                <Box
+                  as="button"
+                  onClick={() => router.push('/checklists')}
+                  display="flex"
+                  alignItems="center"
+                  justifyContent="center"
+                  w="32px"
+                  h="32px"
+                  borderRadius="6px"
+                  bg="mukuru.grey.light"
+                  cursor="pointer"
+                  transition="all 0.2s ease"
+                  _hover={{ bg: 'mukuru.grey.medium' }}
+                >
+                  <FiArrowLeft size={16} color="#374151" />
+                </Box>
+                <Typography fontSize="24px" fontWeight="700" color={textColor}>
+                  {checklist.name}
+                </Typography>
+                {checklist.isActive && (
+                  <Tag variant="success" style={{ fontSize: '12px' }}>Active</Tag>
+                )}
+              </HStack>
+              <Typography fontSize="14px" color="mukuru.grey.600" pl="44px">
+                {checklist.description}
+              </Typography>
+            </VStack>
+
+            {/* Action Buttons */}
+            <HStack gap="12px">
               <Button
                 variant="secondary"
-                size="sm"
-                onClick={() => router.push('/checklists')}
-                className="mukuru-secondary-button"
+                size="md"
+                onClick={handleExport}
                 style={{
-                  padding: '6px 12px',
-                  minWidth: '80px',
-                  height: '32px',
-                  border: `1px solid ${borderColor}`,
-                  backgroundColor: cardBg,
-                  color: textColor,
-                  fontWeight: '500',
-                  fontSize: '13px',
-                  borderRadius: '6px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
                 }}
               >
-                <IconWrapper>
-                  <FiArrowLeft size={13} />
-                </IconWrapper>
-                Back
+                <FiDownload size={16} />
+                Export
               </Button>
 
-              <Flex
-                justify="space-between"
-                align="start"
-                width="full"
-                gap="4"
-                flexWrap={{ base: 'wrap', lg: 'nowrap' }}
-              >
-                <VStack align="start" gap="2" flex="1" minW="0">
-                  <HStack gap="2" align="center" width="full" flexWrap="wrap">
-                    <Typography
-                      fontSize="24px"
-                      fontWeight="700"
-                      color={textColor}
-                      letterSpacing="-0.01em"
-                      lineHeight="1.3"
-                    >
-                      {checklist.name}
-                    </Typography>
-                    {checklist.isActive && (
-                      <Box
-                        w="8px"
-                        h="8px"
-                        borderRadius="full"
-                        bg="#22C55E"
-                        boxShadow="0 0 0 2px rgba(34, 197, 94, 0.2)"
-                        flexShrink={0}
-                      />
-                    )}
-                  </HStack>
-
-                  <Typography
-                    fontSize="14px"
-                    color="#6B7280"
-                    lineHeight="1.5"
-                    fontWeight="400"
-                  >
-                    {checklist.description}
-                  </Typography>
-
-                  <HStack gap="2" flexWrap="wrap">
-                    <Tag
-                      variant={getEntityTypeColor(checklist.entityType)}
-                      style={{
-                        color: '#111827',
-                        fontSize: '12px',
-                        fontWeight: '600',
-                        padding: '4px 10px',
-                        borderRadius: '6px',
-                        height: '24px',
-                        display: 'flex',
-                        alignItems: 'center',
-                      }}
-                    >
-                      {checklist.entityType}
-                    </Tag>
-                    <Tag
-                      variant={checklist.isActive ? 'success' : 'inactive'}
-                      style={{
-                        color: checklist.isActive ? '#111827' : '#6B7280',
-                        fontSize: '12px',
-                        fontWeight: '600',
-                        padding: '4px 10px',
-                        borderRadius: '6px',
-                        height: '24px',
-                        display: 'flex',
-                        alignItems: 'center',
-                      }}
-                    >
-                      {checklist.isActive ? 'Active' : 'Inactive'}
-                    </Tag>
-                  </HStack>
-
-                  <HStack gap="4" fontSize="13px" color="#6B7280" flexWrap="wrap" pt="0">
-                    <HStack gap="1" align="center">
-                      <Typography fontSize="13px" color="#6B7280" fontWeight="500">
-                        Version:{' '}
-                        <strong style={{ color: '#111827', fontWeight: '600' }}>
-                          {checklist.version || '1.0'}
-                        </strong>
-                      </Typography>
-                    </HStack>
-                    <HStack gap="1" align="center">
-                      <IconWrapper>
-                        <FiCheckSquare size={13} color="#6B7280" />
-                      </IconWrapper>
-                      <Typography fontSize="13px" color="#6B7280" fontWeight="500">
-                        Items:{' '}
-                        <strong style={{ color: '#111827', fontWeight: '600' }}>
-                          {checklist.items.length}
-                        </strong>
-                      </Typography>
-                    </HStack>
-                    <HStack gap="1" align="center">
-                      <IconWrapper>
-                        <FiCheckSquare size={13} color="#F05423" />
-                      </IconWrapper>
-                      <Typography fontSize="13px" color="#6B7280" fontWeight="500">
-                        Required:{' '}
-                        <strong style={{ color: '#111827', fontWeight: '600' }}>
-                          {checklist.items.filter((item) => item.isRequired).length}
-                        </strong>
-                      </Typography>
-                    </HStack>
-                    <HStack gap="1" align="center">
-                      <IconWrapper>
-                        <FiClock size={13} color="#6B7280" />
-                      </IconWrapper>
-                      <Typography fontSize="13px" color="#6B7280" fontWeight="500">
-                        Updated:{' '}
-                        <strong style={{ color: '#111827', fontWeight: '600' }}>
-                          {(() => {
-                            try {
-                              const date = new Date(checklist.lastUpdated);
-                              if (isNaN(date.getTime())) {
-                                return 'N/A';
-                              }
-                              return date.toLocaleDateString('en-US', {
-                                month: 'short',
-                                day: 'numeric',
-                                year: 'numeric',
-                              });
-                            } catch {
-                              return 'N/A';
-                            }
-                          })()}
-                        </strong>
-                      </Typography>
-                    </HStack>
-                  </HStack>
-                </VStack>
-
-                <HStack gap="2" flexShrink={0} align="start">
+              {isEditing ? (
+                <>
                   <Button
                     variant="secondary"
-                    size="sm"
-                    fontWeight="600"
-                    className="mukuru-secondary-button"
-                    style={{
-                      padding: '8px 16px',
-                      height: '36px',
-                      borderRadius: '6px',
-                      fontSize: '13px',
-                    }}
+                    size="md"
+                    onClick={handleCancelEdit}
                   >
-                    <IconWrapper>
-                      <FiDownload size={14} />
-                    </IconWrapper>
-                    Export
+                    Cancel
                   </Button>
                   <Button
                     variant="primary"
-                    size="sm"
-                    fontWeight="600"
-                    className="mukuru-primary-button"
+                    size="md"
+                    onClick={handleSave}
+                    disabled={saving || !hasChanges}
                     style={{
-                      padding: '8px 16px',
-                      height: '36px',
-                      borderRadius: '6px',
-                      fontSize: '13px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '8px',
+                      opacity: saving || !hasChanges ? 0.6 : 1,
                     }}
                   >
-                    <IconWrapper>
-                      <FiEdit size={14} />
-                    </IconWrapper>
-                    Edit
+                    <FiSave size={16} />
+                    {saving ? 'Saving...' : 'Save'}
                   </Button>
-                </HStack>
-              </Flex>
-            </VStack>
-          </Container>
+                </>
+              ) : (
+                <Button
+                  variant="primary"
+                  size="md"
+                  onClick={() => setIsEditing(true)}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px',
+                  }}
+                >
+                  <FiEdit size={16} />
+                  Edit
+                </Button>
+              )}
+            </HStack>
+          </Flex>
         </Box>
 
-        {/* Scrollable Main Content */}
-        <Box width="100%" py="6" px="0" minH="auto">
-          <Container maxW="1200px" px="6" mx="auto" width="full">
-            <VStack gap="4" align="stretch" width="full" pb="6" minH="auto">
-              {/* Checklist Items */}
-              <Card
-                p="0"
-                boxShadow="0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06)"
+        {/* Info Bar */}
+        <Box px="24px" py="12px" bg="mukuru.cards.white" borderBottom="1px solid" borderColor={borderColor}>
+          <HStack gap="24px" flexWrap="wrap">
+            <HStack gap="8px">
+              <Tag variant={getEntityTypeColor(checklist.entityType)}>
+                {checklist.entityType}
+              </Tag>
+            </HStack>
+            <HStack gap="6px">
+              <FiCheckSquare size={14} color="#6B7280" />
+              <Typography fontSize="13px" color="mukuru.grey.600">{checklist.items.length} items</Typography>
+            </HStack>
+            <HStack gap="6px">
+              <FiCheckSquare size={14} color="#F05423" />
+              <Typography fontSize="13px" color="mukuru.grey.600">{checklist.items.filter((item) => item.isRequired).length} required</Typography>
+            </HStack>
+            <HStack gap="6px">
+              <FiClock size={14} color="#6B7280" />
+              <Typography fontSize="13px" color="mukuru.grey.600">{formatDate(checklist.lastUpdated)}</Typography>
+            </HStack>
+          </HStack>
+        </Box>
+
+        {/* Content Section */}
+        <Box px="24px" py="16px" bg="mukuru.background.light" flex="1" display="flex" flexDirection="column">
+          {/* Existing Items List */}
+          <Box
+            bg="mukuru.cards.white"
+            borderRadius="8px"
+            border="1px solid"
+            borderColor={borderColor}
+            overflow="hidden"
+          >
+            <Box px="20px" py="14px" borderBottom="1px solid" borderColor={borderColor} bg="mukuru.grey.light">
+              <Flex justify="space-between" align="center">
+                <Typography fontSize="15px" fontWeight="600" color={textColor}>
+                  Checklist Items
+                </Typography>
+                <Tag variant="info">{checklist.items.length} {checklist.items.length === 1 ? 'item' : 'items'}</Tag>
+              </Flex>
+            </Box>
+            <Box>
+              {checklist.items.length === 0 ? (
+                <Box py="48px" textAlign="center">
+                  <Typography fontSize="14px" color="#6B7280">No items in this checklist yet</Typography>
+                  <Typography fontSize="13px" color="#9CA3AF" mt="4px">Add items using the form below</Typography>
+                </Box>
+              ) : (
+                <VStack gap="0" align="stretch">
+                  {checklist.items.map((item, index) => (
+                    <Box
+                      key={item.id}
+                      px="20px"
+                      py="14px"
+                      borderBottom={index < checklist.items.length - 1 ? "1px solid" : "none"}
+                      borderColor={borderColor}
+                      _hover={{ bg: 'mukuru.grey.50' }}
+                      transition="background 0.2s"
+                    >
+                      <Flex justify="space-between" align="center" gap="16px">
+                        <HStack gap="12px" flex="1">
+                          <Box
+                            w="28px"
+                            h="28px"
+                            borderRadius="6px"
+                            bg={item.isRequired ? '#FFF4ED' : '#F3F4F6'}
+                            display="flex"
+                            alignItems="center"
+                            justifyContent="center"
+                            flexShrink={0}
+                          >
+                            <Typography fontSize="12px" fontWeight="600" color={item.isRequired ? '#F05423' : '#6B7280'}>
+                              {index + 1}
+                            </Typography>
+                          </Box>
+                          <VStack align="start" gap="2px" flex="1">
+                            <Typography fontSize="14px" fontWeight="500" color={textColor}>
+                              {item.description}
+                            </Typography>
+                            {item.guidelines && (
+                              <Typography fontSize="12px" color="#6B7280">{item.guidelines}</Typography>
+                            )}
+                          </VStack>
+                        </HStack>
+                        <HStack gap="8px" flexShrink={0}>
+                          <Tag variant="info" style={{ fontSize: '11px' }}>{item.category || 'Other'}</Tag>
+                          {item.isRequired && <Tag variant="danger" style={{ fontSize: '11px' }}>Required</Tag>}
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => removeItem(item.id)}
+                            style={{ padding: '4px', minWidth: '28px', height: '28px' }}
+                          >
+                            <FiTrash2 size={14} color="#DC2626" />
+                          </Button>
+                        </HStack>
+                      </Flex>
+                    </Box>
+                  ))}
+                </VStack>
+              )}
+            </Box>
+          </Box>
+
+          {/* Add New Item Section */}
+          <Box
+            mt="16px"
+            bg="mukuru.cards.white"
+            borderRadius="8px"
+            border="1px solid"
+            borderColor={borderColor}
+            p="20px"
+          >
+            <Typography fontSize="15px" fontWeight="600" color={textColor} mb="16px">
+              <HStack gap="8px">
+                <FiPlus size={18} color="#F05423" />
+                Add New Item
+              </HStack>
+            </Typography>
+            <Flex gap="16px" flexWrap="wrap" align="flex-end">
+              <Box flex="2" minW="200px">
+                <Typography fontSize="12px" fontWeight="500" color="#6B7280" mb="4px">
+                  Description *
+                </Typography>
+                <Input
+                  placeholder="Enter item description..."
+                  value={newItem.description}
+                  onChange={(e) => setNewItem((prev) => ({ ...prev, description: e.target.value }))}
+                />
+              </Box>
+              <Box flex="1" minW="150px">
+                <Typography fontSize="12px" fontWeight="500" color="#6B7280" mb="4px">
+                  Category *
+                </Typography>
+                <Input
+                  placeholder="e.g., Documents"
+                  value={newItem.category}
+                  onChange={(e) => setNewItem((prev) => ({ ...prev, category: e.target.value }))}
+                />
+              </Box>
+              <HStack
+                gap="8px"
+                px="12px"
+                py="8px"
+                bg={newItem.isRequired ? 'rgba(240, 84, 35, 0.1)' : '#F9FAFB'}
+                borderRadius="6px"
                 border="1px solid"
-                borderColor="#E5E7EB"
-                width="full"
-                bg={cardBg}
-                borderRadius="10px"
-                overflow="visible"
-                minH="auto"
+                borderColor={newItem.isRequired ? '#F05423' : '#E5E7EB'}
+                cursor="pointer"
+                onClick={() => setNewItem((prev) => ({ ...prev, isRequired: !prev.isRequired }))}
               >
                 <Box
-                  p="4"
-                  borderBottom="1px solid"
-                  borderColor={borderColor}
-                  bg={cardBg}
-                  width="100%"
+                  w="16px"
+                  h="16px"
+                  borderRadius="3px"
+                  border="2px solid"
+                  borderColor={newItem.isRequired ? '#F05423' : '#D1D5DB'}
+                  bg={newItem.isRequired ? '#F05423' : 'white'}
+                  display="flex"
+                  alignItems="center"
+                  justifyContent="center"
                 >
-                  <HStack
-                    justify="space-between"
-                    align="center"
-                    width="full"
-                    flexWrap="wrap"
-                    gap="2"
-                  >
-                    <Typography
-                      fontSize="16px"
-                      fontWeight="700"
-                      color={textColor}
-                      letterSpacing="-0.01em"
-                    >
-                      Checklist Items
-                    </Typography>
-                    <Tag
-                      variant="info"
-                      style={{
-                        color: '#111827',
-                        fontSize: '12px',
-                        fontWeight: '600',
-                        padding: '3px 10px',
-                        borderRadius: '6px',
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        whiteSpace: 'nowrap',
-                        height: '22px',
-                      }}
-                    >
-                      {checklist.items.length}{' '}
-                      {checklist.items.length === 1 ? 'item' : 'items'}
-                    </Tag>
-                  </HStack>
+                  {newItem.isRequired && <FiCheckSquare size={10} color="white" />}
                 </Box>
-
-                <Box p="4" bg="white" width="100%">
-                  {checklist.items.length === 0 ? (
-                    <VStack gap="3" align="center" py="16">
-                      <Box
-                        p="6"
-                        borderRadius="xl"
-                        bg="linear-gradient(135deg, #F9FAFB 0%, #F3F4F6 100%)"
-                        display="flex"
-                        alignItems="center"
-                        justifyContent="center"
-                        border="1px solid"
-                        borderColor={borderColor}
-                        boxShadow="inset 0 2px 4px 0 rgba(0, 0, 0, 0.06)"
-                      >
-                        <IconWrapper>
-                          <FiCheckSquare size={48} color="#9CA3AF" />
-                        </IconWrapper>
-                      </Box>
-                      <VStack gap="1" align="center">
-                        <Typography fontSize="16px" fontWeight="600" color="#374151">
-                          No items in this checklist
-                        </Typography>
-                        <Typography fontSize="13px" color="#9CA3AF" textAlign="center">
-                          Add items below to get started
-                        </Typography>
-                      </VStack>
-                    </VStack>
-                  ) : (
-                    <VStack gap="2.5" align="stretch" width="100%">
-                      {checklist.items.map((item, index) => (
-                        <Card
-                          key={`${item.id}-${index}`}
-                          p="4"
-                          bg={cardBg}
-                          border="1px solid"
-                          borderColor={item.isRequired ? '#FEE4E2' : '#E5E7EB'}
-                          boxShadow="0 1px 2px 0 rgba(0, 0, 0, 0.05)"
-                          borderRadius="8px"
-                          _hover={{
-                            borderColor: '#F05423',
-                            boxShadow: '0 2px 4px 0 rgba(0, 0, 0, 0.1)',
-                            transform: 'translateY(-1px)',
-                          }}
-                          transition="all 0.2s cubic-bezier(0.4, 0, 0.2, 1)"
-                          position="relative"
-                          width="100%"
-                        >
-                          {item.isRequired && (
-                            <Box
-                              position="absolute"
-                              top="0"
-                              left="0"
-                              right="0"
-                              height="3px"
-                              bg="#F05423"
-                              borderRadius="8px 8px 0 0"
-                            />
-                          )}
-                          <Flex
-                            direction={{ base: 'column', md: 'row' }}
-                            justify="space-between"
-                            align={{ base: 'stretch', md: 'center' }}
-                            gap="3"
-                            width="100%"
-                          >
-                            <HStack gap="3" align="start" flex="1" minW="0" width="100%">
-                              <Box pt="0.5" flexShrink={0}>
-                                <Box
-                                  w="28px"
-                                  h="28px"
-                                  borderRadius="6px"
-                                  bg={item.isRequired ? '#FFF5F2' : '#F3F4F6'}
-                                  display="flex"
-                                  alignItems="center"
-                                  justifyContent="center"
-                                  border="2px solid"
-                                  borderColor={item.isRequired ? '#F05423' : '#D1D5DB'}
-                                >
-                                  <IconWrapper>
-                                    <FiCheckSquare
-                                      size={16}
-                                      color={item.isRequired ? '#F05423' : '#9CA3AF'}
-                                    />
-                                  </IconWrapper>
-                                </Box>
-                              </Box>
-                              <VStack
-                                align="start"
-                                gap="1.5"
-                                flex="1"
-                                minW="0"
-                                width="100%"
-                              >
-                                <HStack gap="2" align="start" w="full" flexWrap="wrap">
-                                  <Typography
-                                    fontSize="14px"
-                                    fontWeight="700"
-                                    color={textColor}
-                                    flexShrink={0}
-                                    minW="20px"
-                                  >
-                                    {index + 1}.
-                                  </Typography>
-                                  <Typography
-                                    fontSize="14px"
-                                    fontWeight="600"
-                                    color={textColor}
-                                    flex="1"
-                                    lineHeight="1.4"
-                                    wordBreak="break-word"
-                                    style={{
-                                      whiteSpace: 'normal',
-                                      overflow: 'visible',
-                                      textOverflow: 'clip',
-                                    }}
-                                  >
-                                    {item.description}
-                                  </Typography>
-                                </HStack>
-                                {item.guidelines && (
-                                  <Box
-                                    pl="6"
-                                    pt="0.5"
-                                    borderLeft="2px solid"
-                                    borderColor={borderColor}
-                                    width="100%"
-                                  >
-                                    <Typography
-                                      fontSize="12px"
-                                      color={useColorModeValue(
-                                        'mukuru.grey.mediumDark',
-                                        'mukuru.grey.300'
-                                      )}
-                                      lineHeight="1.5"
-                                      wordBreak="break-word"
-                                      style={{
-                                        whiteSpace: 'normal',
-                                        overflow: 'visible',
-                                        textOverflow: 'clip',
-                                      }}
-                                    >
-                                      {item.guidelines}
-                                    </Typography>
-                                  </Box>
-                                )}
-                              </VStack>
-                            </HStack>
-
-                            <HStack
-                              gap="1.5"
-                              flexShrink={0}
-                              align="center"
-                              flexWrap="wrap"
-                              justify={{ base: 'flex-start', md: 'flex-end' }}
-                            >
-                              <Tag
-                                variant="info"
-                                style={{
-                                  color: '#111827',
-                                  fontSize: '11px',
-                                  fontWeight: '600',
-                                  padding: '3px 10px',
-                                  borderRadius: '5px',
-                                  display: 'inline-flex',
-                                  alignItems: 'center',
-                                  whiteSpace: 'nowrap',
-                                  height: '22px',
-                                }}
-                              >
-                                {item.category || 'Other'}
-                              </Tag>
-                              {item.isRequired && (
-                                <Tag
-                                  variant="danger"
-                                  style={{
-                                    color: '#111827',
-                                    fontSize: '11px',
-                                    fontWeight: '600',
-                                    padding: '3px 10px',
-                                    borderRadius: '5px',
-                                    display: 'inline-flex',
-                                    alignItems: 'center',
-                                    whiteSpace: 'nowrap',
-                                    height: '22px',
-                                  }}
-                                >
-                                  Required
-                                </Tag>
-                              )}
-                              <Button
-                                size="sm"
-                                variant="ghost"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  removeItem(item.id);
-                                }}
-                                _hover={{ bg: '#FEF2F2' }}
-                                aria-label="Delete item"
-                                style={{
-                                  padding: '4px',
-                                  minWidth: '28px',
-                                  height: '28px',
-                                  borderRadius: '5px',
-                                  flexShrink: 0,
-                                }}
-                              >
-                                <IconWrapper>
-                                  <FiTrash2 size={13} color="#DC2626" />
-                                </IconWrapper>
-                              </Button>
-                            </HStack>
-                          </Flex>
-                        </Card>
-                      ))}
-                    </VStack>
-                  )}
-                </Box>
-              </Card>
-
-              {/* Add New Item */}
-              <Card
-                p="4"
-                boxShadow="0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06)"
-                border="1px solid"
-                borderColor="#E5E7EB"
-                width="full"
-                bg="#F9FAFB"
-                borderRadius="10px"
-              >
-                <VStack gap="3" align="stretch">
-                  <Typography
-                    fontSize="12px"
-                    fontWeight="700"
-                    color="#111827"
-                    textTransform="uppercase"
-                    letterSpacing="0.05em"
-                  >
-                    Add New Item
-                  </Typography>
-
-                  <Input
-                    placeholder="Enter item description..."
-                    value={newItem.description}
-                    onChange={(e) =>
-                      setNewItem((prev) => ({ ...prev, description: e.target.value }))
-                    }
-                  />
-
-                  <HStack gap="2" align="flex-end">
-                    <Box flex="1">
-                      <Input
-                        placeholder="Category (e.g., Documents, Information)"
-                        value={newItem.category}
-                        onChange={(e) =>
-                          setNewItem((prev) => ({ ...prev, category: e.target.value }))
-                        }
-                      />
-                    </Box>
-
-                    <HStack
-                      gap="2"
-                      align="center"
-                      px="3"
-                      py="2"
-                      bg={cardBg}
-                      borderRadius="6px"
-                      border="1px solid"
-                      borderColor={borderColor}
-                      height="36px"
-                      flexShrink={0}
-                    >
-                      <ChakraCheckbox.Root
-                        checked={newItem.isRequired}
-                        onCheckedChange={(details) => {
-                          const checked =
-                            details?.checked === true || (details as unknown) === true;
-                          setNewItem((prev) => ({ ...prev, isRequired: checked }));
-                        }}
-                      >
-                        <ChakraCheckbox.Control
-                          style={{
-                            backgroundColor: newItem.isRequired ? '#F05423' : 'white',
-                            borderColor: newItem.isRequired ? '#F05423' : '#D1D5DB',
-                          }}
-                        >
-                          <ChakraCheckbox.Indicator>
-                            <IconWrapper>
-                              <FiCheckSquare size={12} color="white" />
-                            </IconWrapper>
-                          </ChakraCheckbox.Indicator>
-                        </ChakraCheckbox.Control>
-                      </ChakraCheckbox.Root>
-                      <Typography fontSize="13px" color="#111827" fontWeight="500">
-                        Required
-                      </Typography>
-                    </HStack>
-                  </HStack>
-
-                  <Textarea
-                    placeholder="Add guidelines or instructions for this item (optional)..."
-                    value={newItem.guidelines}
-                    onChange={(e) =>
-                      setNewItem((prev) => ({ ...prev, guidelines: e.target.value }))
-                    }
-                    resize="none"
-                    style={{ minHeight: '80px' }}
-                  />
-
-                  <HStack justify="flex-end" pt="1">
-                    <Button
-                      size="sm"
-                      variant="primary"
-                      onClick={addNewItem}
-                      fontWeight="600"
-                      className="mukuru-primary-button"
-                      style={{
-                        padding: '8px 20px',
-                        height: '36px',
-                        borderRadius: '6px',
-                        fontSize: '13px',
-                      }}
-                    >
-                      <IconWrapper>
-                        <FiPlus size={16} />
-                      </IconWrapper>
-                      Add Item
-                    </Button>
-                  </HStack>
-                </VStack>
-              </Card>
-            </VStack>
-          </Container>
+                <Typography fontSize="13px" fontWeight="500" color={textColor}>
+                  Required
+                </Typography>
+              </HStack>
+              <Button variant="primary" size="md" onClick={addNewItem}>
+                <FiPlus size={16} />
+                Add Item
+              </Button>
+            </Flex>
+          </Box>
         </Box>
       </Box>
-    </Flex>
+    </Box>
   );
 }

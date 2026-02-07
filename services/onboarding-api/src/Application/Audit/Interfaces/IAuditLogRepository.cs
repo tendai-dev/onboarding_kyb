@@ -14,6 +14,17 @@ public interface IAuditLogRepository
     Task AddAsync(AuditLogEntry entry, CancellationToken cancellationToken = default);
     Task SaveChangesAsync(CancellationToken cancellationToken = default);
     Task<bool> VerifyIntegrityAsync(AuditLogEntryId id, CancellationToken cancellationToken = default);
+    
+    /// <summary>
+    /// Logs an action with simplified parameters.
+    /// </summary>
+    Task LogAsync(
+        string entityType,
+        string entityId,
+        string action,
+        string performedBy,
+        string? details = null,
+        CancellationToken cancellationToken = default);
 }
 
 public class AuditLogSearchCriteria

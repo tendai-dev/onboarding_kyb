@@ -708,7 +708,16 @@ export async function getComments(workItemId: string): Promise<
   }
 
   const data = await response.json();
-  return data.items || data || [];
+  const rawComments = data.items || data || [];
+  
+  // Map snake_case from backend to camelCase for frontend
+  return rawComments.map((c: Record<string, unknown>) => ({
+    id: String(c.id || c.comment_id || ''),
+    text: String(c.text || ''),
+    authorId: String(c.author_id || c.authorId || ''),
+    authorName: String(c.author_name || c.authorName || 'Unknown'),
+    createdAt: String(c.created_at || c.createdAt || ''),
+  }));
 }
 
 /**
@@ -736,7 +745,16 @@ export async function getHistory(workItemId: string): Promise<
   }
 
   const data = await response.json();
-  return data.items || data || [];
+  const rawHistory = data.items || data || [];
+  
+  // Map snake_case from backend to camelCase for frontend
+  return rawHistory.map((h: Record<string, unknown>) => ({
+    id: String(h.id || ''),
+    action: String(h.action || ''),
+    performedBy: String(h.performed_by || h.performedBy || ''),
+    performedAt: String(h.performed_at || h.performedAt || ''),
+    status: String(h.status || ''),
+  }));
 }
 
 /**

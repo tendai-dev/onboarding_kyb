@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Distributed;
 using Microsoft.Extensions.Logging;
 using OnboardingApi.Application.Interfaces;
+using OnboardingApi.Infrastructure.Caching;
 using OnboardingApi.Infrastructure.Persistence;
 using System.Text.Json;
 
@@ -16,17 +17,21 @@ public class OrganizationMapper : IOrganizationMapper
 {
     private readonly OnboardingDbContext _context;
     private readonly IDistributedCache _cache;
+    private readonly ICacheMetrics _cacheMetrics;
     private readonly ILogger<OrganizationMapper> _logger;
     private const string CACHE_KEY_PREFIX = "org_mapping:";
+    private const string CACHE_TYPE = "organization_mapping";
     private readonly TimeSpan _cacheExpiration = TimeSpan.FromHours(1);
 
     public OrganizationMapper(
         OnboardingDbContext context,
         IDistributedCache cache,
+        ICacheMetrics cacheMetrics,
         ILogger<OrganizationMapper> logger)
     {
         _context = context;
         _cache = cache;
+        _cacheMetrics = cacheMetrics;
         _logger = logger;
     }
 
@@ -39,14 +44,24 @@ public class OrganizationMapper : IOrganizationMapper
 
         // Try cache first
         var cacheKey = $"{CACHE_KEY_PREFIX}{normalizedEmail}";
-        var cached = await _cache.GetStringAsync(cacheKey);
-        if (!string.IsNullOrEmpty(cached))
+        try
         {
-            _logger.LogDebug("Organization mapping found in cache for {Email}", email);
-            return cached;
+            var cached = await _cache.GetStringAsync(cacheKey);
+            if (!string.IsNullOrEmpty(cached))
+            {
+                _cacheMetrics.RecordHit(CACHE_TYPE);
+                _logger.LogDebug("Organization mapping found in cache for {Email}", email);
+                return cached;
+            }
+            _cacheMetrics.RecordMiss(CACHE_TYPE);
+        }
+        catch (Exception ex)
+        {
+            _cacheMetrics.RecordError(CACHE_TYPE, "get_failed");
+            _logger.LogWarning(ex, "Cache lookup failed for {Email}, falling back to database", email);
         }
 
-        // Query database
+        // Query database (cache miss or error - fallback)
         // Note: This assumes you have a UserOrganizationMapping table
         // You'll need to create this table and entity
         var mapping = await _context.Set<UserOrganizationMapping>()

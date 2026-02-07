@@ -3,6 +3,7 @@ using System.Net.Http.Json;
 using System.Text.Json;
 using FluentAssertions;
 using Microsoft.AspNetCore.Mvc.Testing;
+using OnboardingApi.Application.Commands;
 using OnboardingApi.Domain.Aggregates;
 using OnboardingApi.Presentation.Models;
 using Xunit;
@@ -148,7 +149,7 @@ public class OnboardingCasesControllerTests : IClassFixture<WebApplicationFactor
         // Assert
         response.StatusCode.Should().Be(HttpStatusCode.OK);
 
-        var result = await response.Content.ReadFromJsonAsync<ApiResponse<OnboardingCaseDto>>();
+        var result = await response.Content.ReadFromJsonAsync<ApiResponse<OnboardingCaseResponse>>();
         result.Should().NotBeNull();
         result!.Data.Id.Should().Be(createdCase.Id);
         result.Data.CaseNumber.Should().Be(createdCase.CaseNumber);

@@ -76,5 +76,10 @@ public class ChecklistItem
         Notes = null;
         SkipReason = $"Reset by {resetBy}: {reason}";
     }
+
+    public void SetNotes(string notes)
+    {
+        Notes = notes;
+    }
 }
 

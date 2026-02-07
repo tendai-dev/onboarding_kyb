@@ -18,15 +18,17 @@ public record CreateWorkItemResult
 {
     public bool Success { get; init; }
     public Guid? WorkItemId { get; init; }
+    public string? WorkItemNumber { get; init; }
     public string? ErrorMessage { get; init; }
     
-    public static CreateWorkItemResult Successful(Guid workItemId) => new() { Success = true, WorkItemId = workItemId };
+    public static CreateWorkItemResult Successful(Guid workItemId, string? workItemNumber = null) => 
+        new() { Success = true, WorkItemId = workItemId, WorkItemNumber = workItemNumber };
     public static CreateWorkItemResult Failed(string error) => new() { Success = false, ErrorMessage = error };
 }
 
 public record AssignWorkItemCommand(
     Guid WorkItemId,
-    Guid AssignedToUserId,
+    string AssignedToUserId,
     string AssignedToUserName,
     string AssignedByUserId
 ) : IRequest<AssignWorkItemResult>;
@@ -180,4 +182,15 @@ public record UpdateStepReviewStatusResult
     public static UpdateStepReviewStatusResult Failed(string error) => new() { Success = false, ErrorMessage = error };
 }
 
+public record DeleteWorkItemCommand(
+    Guid WorkItemId
+) : IRequest<DeleteWorkItemResult>;
 
+public record DeleteWorkItemResult
+{
+    public bool Success { get; init; }
+    public string? ErrorMessage { get; init; }
+    
+    public static DeleteWorkItemResult Successful() => new() { Success = true };
+    public static DeleteWorkItemResult Failed(string error) => new() { Success = false, ErrorMessage = error };
+}

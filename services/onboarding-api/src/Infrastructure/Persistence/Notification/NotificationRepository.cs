@@ -58,5 +58,20 @@ public class NotificationRepository : INotificationRepository
     {
         await _context.SaveChangesAsync(cancellationToken);
     }
+
+    public async Task<int> DeleteByCaseIdAsync(Guid caseId, CancellationToken cancellationToken = default)
+    {
+        var caseIdString = caseId.ToString();
+        var notifications = await _context.Notifications
+            .Where(n => n.CaseId == caseIdString)
+            .ToListAsync(cancellationToken);
+        
+        if (notifications.Count == 0)
+            return 0;
+        
+        _context.Notifications.RemoveRange(notifications);
+        await _context.SaveChangesAsync(cancellationToken);
+        return notifications.Count;
+    }
 }
 

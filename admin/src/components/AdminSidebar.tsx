@@ -16,15 +16,35 @@ import {
   FileOpenIcon,
   FilterIcon,
   WarningIcon,
+  MailIcon,
 } from '@mukuru/mukuru-react-components';
 import { FiCheckCircle } from 'react-icons/fi';
 import type { NavigationItem, HelpCentreItem } from '@mukuru/mukuru-react-components';
+import { messagingApi } from '@/lib/messagingApi';
 
 export default function AdminSidebar() {
   const { condensed, setCondensed } = useSidebar();
   const [activeItemId, setActiveItemId] = useState('dashboard');
+  const [unreadMessageCount, setUnreadMessageCount] = useState(0);
   const pathname = usePathname();
   const router = useRouter();
+
+  // Fetch unread message count
+  useEffect(() => {
+    const fetchUnreadCount = async () => {
+      try {
+        const result = await messagingApi.getUnreadCount();
+        setUnreadMessageCount(typeof result === 'number' ? result : result?.count ?? 0);
+      } catch (error) {
+        console.warn('Failed to fetch unread message count:', error);
+      }
+    };
+
+    fetchUnreadCount();
+    // Refresh every 30 seconds
+    const interval = setInterval(fetchUnreadCount, 30000);
+    return () => clearInterval(interval);
+  }, []);
 
   // Update activeItemId based on pathname
   useEffect(() => {
@@ -137,6 +157,16 @@ export default function AdminSidebar() {
         },
       },
       {
+        id: 'messages',
+        label: unreadMessageCount > 0 ? `Messages (${unreadMessageCount})` : 'Messages',
+        icon: <MailIcon width="20" height="20" />,
+        isActive: activeItemId === 'messages',
+        onClick: () => {
+          setActiveItemId('messages');
+          router.push('/messages');
+        },
+      },
+      {
         id: 'configuration',
         label: 'Configuration',
         icon: <SettingsIcon width="20" height="20" />,
@@ -231,15 +261,6 @@ export default function AdminSidebar() {
             },
           },
           {
-            id: 'messages',
-            label: 'Messages',
-            isActive: activeItemId === 'system' && pathname?.startsWith('/messages'),
-            onClick: () => {
-              setActiveItemId('system');
-              router.push('/messages');
-            },
-          },
-          {
             id: 'notifications',
             label: 'Notifications',
             isActive: activeItemId === 'system' && pathname?.startsWith('/notifications'),
@@ -290,7 +311,7 @@ export default function AdminSidebar() {
         },
       },
     ],
-    [router, setActiveItemId, activeItemId, pathname]
+    [router, setActiveItemId, activeItemId, pathname, unreadMessageCount]
   );
 
   const helpCentreItem: HelpCentreItem = {

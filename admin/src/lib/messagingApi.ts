@@ -843,9 +843,29 @@ export const messagingApi = {
       });
       return { success: true };
     } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Failed to delete message';
+      // Check if it's a 404 (already deleted or not found)
+      if (errorMessage.includes('404') || errorMessage.includes('Not Found')) {
+        // Message already deleted or doesn't exist - treat as success
+        return { success: true };
+      }
+      // Check if it's a 501 (not implemented)
+      if (errorMessage.includes('501') || errorMessage.includes('Not Implemented')) {
+        return {
+          success: false,
+          errorMessage: 'Delete message feature is not yet available. Please try again later.',
+        };
+      }
+      // Check if it's a 403 (forbidden - can't delete others' messages)
+      if (errorMessage.includes('403') || errorMessage.includes('Forbidden')) {
+        return {
+          success: false,
+          errorMessage: 'You do not have permission to delete this message.',
+        };
+      }
       return {
         success: false,
-        errorMessage: error instanceof Error ? error.message : 'Failed to delete message',
+        errorMessage,
       };
     }
   },
@@ -863,6 +883,7 @@ export const messagingApi = {
         success?: boolean;
         isStarred?: boolean;
         ErrorMessage?: string;
+        errorMessage?: string;
       }
       const response = await request<ResponseBody>(
         `/api/v1/messages/${encodeURIComponent(messageId)}/star`,
@@ -870,16 +891,32 @@ export const messagingApi = {
           method: 'PUT',
         }
       );
+      
+      // Handle empty response (backend may return 200 with no body on success)
+      // If we get here without error, assume success and toggle starred state
+      const success = response.Success ?? response.success ?? true;
+      const isStarred = response.IsStarred ?? response.isStarred ?? true;
+      const errorMessage = response.ErrorMessage ?? response.errorMessage;
+      
       return {
-        success: response.Success ?? response.success ?? false,
-        isStarred: response.IsStarred ?? response.isStarred ?? false,
-        errorMessage: response.ErrorMessage,
+        success,
+        isStarred,
+        errorMessage,
       };
     } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Failed to star message';
+      // Check if it's a 404 (endpoint not implemented) or 501 (not implemented)
+      if (errorMessage.includes('404') || errorMessage.includes('501') || errorMessage.includes('Not Found')) {
+        return {
+          success: false,
+          isStarred: false,
+          errorMessage: 'Star message feature is not yet available. Please try again later.',
+        };
+      }
       return {
         success: false,
         isStarred: false,
-        errorMessage: error instanceof Error ? error.message : 'Failed to star message',
+        errorMessage,
       };
     }
   },
@@ -966,6 +1003,48 @@ export const messagingApi = {
         success: false,
         errorMessage:
           error instanceof Error ? error.message : 'Failed to forward message',
+      };
+    }
+  },
+
+  /**
+   * Refresh thread metadata from projections (fixes missing applicant names)
+   */
+  async refreshThreadMetadata(
+    threadId?: string
+  ): Promise<{
+    success: boolean;
+    threadsUpdated?: number;
+    errorMessage?: string;
+  }> {
+    try {
+      interface ResponseBody {
+        Success?: boolean;
+        ThreadsUpdated?: number;
+        success?: boolean;
+        threadsUpdated?: number;
+        ErrorMessage?: string;
+        errorMessage?: string;
+      }
+      const response = await request<ResponseBody>(
+        `/api/v1/messages/threads/refresh-metadata`,
+        {
+          method: 'POST',
+          body: JSON.stringify({
+            ThreadId: threadId,
+          }),
+        }
+      );
+      return {
+        success: response.Success ?? response.success ?? false,
+        threadsUpdated: response.ThreadsUpdated ?? response.threadsUpdated,
+        errorMessage: response.ErrorMessage ?? response.errorMessage,
+      };
+    } catch (error) {
+      return {
+        success: false,
+        errorMessage:
+          error instanceof Error ? error.message : 'Failed to refresh thread metadata',
       };
     }
   },

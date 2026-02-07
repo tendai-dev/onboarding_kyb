@@ -307,15 +307,22 @@ export async function GET(
 
       // Extract form configuration identifiers from case metadata
       // The metadata can be in different formats depending on the API response
+      // Backend uses snake_case (metadata_json), but we also check camelCase variants
       let metadata: Record<string, any> = {};
-      if (data.metadata) {
+      const rawMetadata = data.metadata_json || data.metadataJson || data.metadata;
+      
+      console.info('[API Route] 🔍 Metadata extraction:', {
+        hasMetadataJson: !!data.metadata_json,
+        hasMetadataJsonCamel: !!data.metadataJson,
+        hasMetadata: !!data.metadata,
+        rawMetadataType: typeof rawMetadata,
+        rawMetadataLength: typeof rawMetadata === 'string' ? rawMetadata.length : 'N/A',
+      });
+      
+      if (rawMetadata) {
         metadata =
-          typeof data.metadata === 'string' ? JSON.parse(data.metadata) : data.metadata;
-      } else if (data.metadataJson) {
-        metadata =
-          typeof data.metadataJson === 'string'
-            ? JSON.parse(data.metadataJson)
-            : data.metadataJson;
+          typeof rawMetadata === 'string' ? JSON.parse(rawMetadata) : rawMetadata;
+        console.info('[API Route] ✅ Parsed metadata keys:', Object.keys(metadata).slice(0, 10));
       }
 
       // Ensure metadata is an object
@@ -323,15 +330,24 @@ export async function GET(
         metadata = {};
       }
 
-      // Clean up duplicated values (handle comma-separated strings)
-      const cleanValue = (value: Record<string, unknown>): string | null => {
-        if (!value) return null;
+      // Clean up duplicated values (handle space-separated or comma-separated strings)
+      // The backend sometimes duplicates values like "abc123 abc123" or "abc123, abc123"
+      const cleanValue = (value: unknown): string | null => {
+        if (value === null || value === undefined) return null;
         const str = String(value).trim();
         if (!str || str === 'null' || str === 'undefined') return null;
-        // If comma-separated, take the first value
+        
+        // Check for space-separated duplicates (e.g., "abc123 abc123")
+        const parts = str.split(' ');
+        if (parts.length === 2 && parts[0] === parts[1]) {
+          return parts[0].trim();
+        }
+        
+        // Check for comma-separated duplicates
         if (str.includes(',')) {
           return str.split(',')[0].trim();
         }
+        
         return str;
       };
 
@@ -343,6 +359,15 @@ export async function GET(
       const formConfigId = cleanValue(rawFormConfigId);
       const formVersion = cleanValue(rawFormVersion);
       const entityTypeCode = cleanValue(rawEntityTypeCode);
+      
+      console.info('[API Route] 📋 Extracted form config:', {
+        rawFormConfigId,
+        rawFormVersion,
+        rawEntityTypeCode,
+        cleanedFormConfigId: formConfigId,
+        cleanedFormVersion: formVersion,
+        cleanedEntityTypeCode: entityTypeCode,
+      });
 
       // Fetch entity configuration schema if identifiers are available
       // Make this non-blocking - use Promise.race to timeout quickly if backend is slow
@@ -420,6 +445,29 @@ export async function GET(
                 console.info(
                   `[API Route] ✅ Successfully fetched form schema for ${formConfigId || entityTypeCode}`
                 );
+                
+                // Also fetch wizard configuration for this entity type
+                // This ensures we use the wizard config that matches the form schema version
+                if (formSchema?.id) {
+                  try {
+                    const wizardConfigUrl = `${ENTITY_CONFIG_API_BASE}/api/v1/wizardconfigurations/by-entity-type/${formSchema.id}`;
+                    console.info(`[API Route] Fetching wizard config from: ${wizardConfigUrl}`);
+                    const wizardResponse = await fetch(wizardConfigUrl, {
+                      headers: { 'Content-Type': 'application/json' },
+                      signal: AbortSignal.timeout(5000),
+                    });
+                    if (wizardResponse.ok) {
+                      const wizardConfig = await wizardResponse.json();
+                      // Attach wizard configuration to form schema so frontend doesn't need separate fetch
+                      formSchema.wizardConfiguration = wizardConfig;
+                      console.info(`[API Route] ✅ Successfully fetched wizard configuration with ${wizardConfig?.steps?.length || 0} steps`);
+                    } else {
+                      console.warn(`[API Route] ⚠️ No wizard configuration found for entity type ${formSchema.id}`);
+                    }
+                  } catch (wizardError) {
+                    console.warn(`[API Route] ⚠️ Error fetching wizard config (non-critical):`, wizardError);
+                  }
+                }
               } else {
                 const errorText = await entityConfigResponse.text();
                 console.warn(

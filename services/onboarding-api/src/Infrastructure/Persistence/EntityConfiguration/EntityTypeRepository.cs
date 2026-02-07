@@ -76,6 +76,20 @@ public class EntityTypeRepository : IEntityTypeRepository
             .FirstOrDefaultAsync(e => e.Code == code, cancellationToken);
     }
 
+    public async Task<Dictionary<string, EntityType>> GetByCodesAsync(IEnumerable<string> codes, CancellationToken cancellationToken = default)
+    {
+        var codeList = codes.Where(c => !string.IsNullOrWhiteSpace(c)).Distinct().ToList();
+        if (codeList.Count == 0)
+            return new Dictionary<string, EntityType>();
+
+        // Single query to fetch all entity types by codes - prevents N+1
+        var entityTypes = await _context.EntityTypes
+            .Where(e => codeList.Contains(e.Code))
+            .ToListAsync(cancellationToken);
+
+        return entityTypes.ToDictionary(e => e.Code, e => e);
+    }
+
     public async Task<List<EntityType>> GetAllAsync(bool includeInactive = false, CancellationToken cancellationToken = default)
     {
         var query = _context.EntityTypes.AsQueryable();

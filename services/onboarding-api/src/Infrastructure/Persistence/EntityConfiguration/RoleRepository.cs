@@ -79,7 +79,13 @@ public class RoleRepository : IRoleRepository
 
     public Task UpdateAsync(Role role, CancellationToken cancellationToken = default)
     {
-        _context.Roles.Update(role);
+        // Only call Update if the entity is not already tracked
+        var entry = _context.Entry(role);
+        if (entry.State == EntityState.Detached)
+        {
+            _context.Roles.Update(role);
+        }
+        // If already tracked, changes will be detected automatically
         return Task.CompletedTask;
     }
 

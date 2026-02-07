@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
 using OnboardingApi.Application.EntityConfiguration.Interfaces;
 using OnboardingApi.Domain.EntityConfiguration.Aggregates;
+using OnboardingApi.Infrastructure.Persistence.EntityConfiguration;
 
 namespace OnboardingApi.Presentation.Controllers;
 
@@ -14,11 +15,13 @@ public class RolesController : ControllerBase
 {
     private readonly ILogger<RolesController> _logger;
     private readonly IRoleRepository _roleRepository;
+    private readonly EntityConfigurationDbContext _dbContext;
 
-    public RolesController(ILogger<RolesController> logger, IRoleRepository roleRepository)
+    public RolesController(ILogger<RolesController> logger, IRoleRepository roleRepository, EntityConfigurationDbContext dbContext)
     {
         _logger = logger;
         _roleRepository = roleRepository;
+        _dbContext = dbContext;
     }
 
     /// <summary>
@@ -129,10 +132,53 @@ public class RolesController : ControllerBase
     [HttpPut("{id}")]
     [ProducesResponseType(typeof(RoleDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public IActionResult UpdateRole(string id, [FromBody] UpdateRoleRequest request)
+    public async Task<IActionResult> UpdateRole(string id, [FromBody] UpdateRoleRequest request, CancellationToken cancellationToken = default)
     {
-        // Stub implementation
-        return NotFound(new { error = "Role not found" });
+        try
+        {
+            if (!Guid.TryParse(id, out var roleId))
+            {
+                return BadRequest(new { error = "Invalid role ID format" });
+            }
+
+            var role = await _roleRepository.GetByIdAsync(roleId, cancellationToken);
+            if (role == null)
+            {
+                return NotFound(new { error = "Role not found" });
+            }
+
+            // Update role details
+            role.UpdateDetails(request.DisplayName, request.Description);
+            await _roleRepository.UpdateAsync(role, cancellationToken);
+            await _roleRepository.SaveChangesAsync(cancellationToken);
+
+            _logger.LogInformation("Role {RoleId} updated successfully", id);
+
+            var roleDto = new RoleDto
+            {
+                Id = role.Id.ToString(),
+                Name = role.Name,
+                DisplayName = role.DisplayName,
+                Description = role.Description,
+                IsActive = role.IsActive,
+                CreatedAt = role.CreatedAt.ToString("o"),
+                UpdatedAt = role.UpdatedAt.ToString("o"),
+                Permissions = role.Permissions.Select(p => new RolePermissionDto
+                {
+                    Id = p.Id.ToString(),
+                    PermissionName = p.PermissionName,
+                    Resource = p.Resource,
+                    IsActive = p.IsActive
+                }).ToList()
+            };
+
+            return Ok(roleDto);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error updating role {RoleId}", id);
+            return StatusCode(500, new { error = "Failed to update role" });
+        }
     }
 
     /// <summary>
@@ -153,10 +199,68 @@ public class RolesController : ControllerBase
     [HttpPost("{id}/permissions")]
     [ProducesResponseType(typeof(RoleDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public IActionResult AddPermissionToRole(string id, [FromBody] AddPermissionToRoleRequest request)
+    public async Task<IActionResult> AddPermissionToRole(string id, [FromBody] AddPermissionToRoleRequest request, CancellationToken cancellationToken = default)
     {
-        // Stub implementation
-        return NotFound(new { error = "Role not found" });
+        try
+        {
+            if (!Guid.TryParse(id, out var roleId))
+            {
+                return BadRequest(new { error = "Invalid role ID format" });
+            }
+
+            if (string.IsNullOrWhiteSpace(request.PermissionName))
+            {
+                return BadRequest(new { error = "Permission name is required" });
+            }
+
+            var role = await _roleRepository.GetByIdAsync(roleId, cancellationToken);
+            if (role == null)
+            {
+                return NotFound(new { error = "Role not found" });
+            }
+
+            // Check if permission already exists - if so, just return success (idempotent)
+            if (role.Permissions.Any(p => p.PermissionName == request.PermissionName && p.Resource == request.Resource))
+            {
+                _logger.LogInformation("Permission {PermissionName} already exists on role {RoleId}, skipping", request.PermissionName, id);
+            }
+            else
+            {
+                // Add permission directly to DbContext to avoid EF Core tracking issues
+                var permission = new RolePermission(roleId, request.PermissionName, request.Resource);
+                await _dbContext.RolePermissions.AddAsync(permission, cancellationToken);
+                await _dbContext.SaveChangesAsync(cancellationToken);
+                _logger.LogInformation("Permission {PermissionName} added to role {RoleId}", request.PermissionName, id);
+            }
+
+            // Reload role to get updated permissions
+            role = await _roleRepository.GetByIdAsync(roleId, cancellationToken);
+
+            var roleDto = new RoleDto
+            {
+                Id = role!.Id.ToString(),
+                Name = role.Name,
+                DisplayName = role.DisplayName,
+                Description = role.Description,
+                IsActive = role.IsActive,
+                CreatedAt = role.CreatedAt.ToString("o"),
+                UpdatedAt = role.UpdatedAt.ToString("o"),
+                Permissions = role.Permissions.Select(p => new RolePermissionDto
+                {
+                    Id = p.Id.ToString(),
+                    PermissionName = p.PermissionName,
+                    Resource = p.Resource,
+                    IsActive = p.IsActive
+                }).ToList()
+            };
+
+            return Ok(roleDto);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error adding permission to role {RoleId}", id);
+            return StatusCode(500, new { error = "Failed to add permission to role" });
+        }
     }
 
     /// <summary>
@@ -165,10 +269,40 @@ public class RolesController : ControllerBase
     [HttpDelete("{id}/permissions/{permissionId}")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public IActionResult RemovePermissionFromRole(string id, string permissionId)
+    public async Task<IActionResult> RemovePermissionFromRole(string id, string permissionId, CancellationToken cancellationToken = default)
     {
-        // Stub implementation
-        return NotFound(new { error = "Role not found" });
+        try
+        {
+            if (!Guid.TryParse(id, out var roleId))
+            {
+                return BadRequest(new { error = "Invalid role ID format" });
+            }
+
+            if (!Guid.TryParse(permissionId, out var permId))
+            {
+                return BadRequest(new { error = "Invalid permission ID format" });
+            }
+
+            var role = await _roleRepository.GetByIdAsync(roleId, cancellationToken);
+            if (role == null)
+            {
+                return NotFound(new { error = "Role not found" });
+            }
+
+            // Remove permission from role
+            role.RemovePermission(permId);
+            await _roleRepository.UpdateAsync(role, cancellationToken);
+            await _roleRepository.SaveChangesAsync(cancellationToken);
+
+            _logger.LogInformation("Permission {PermissionId} removed from role {RoleId}", permissionId, id);
+
+            return NoContent();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error removing permission from role {RoleId}", id);
+            return StatusCode(500, new { error = "Failed to remove permission from role" });
+        }
     }
 }
 

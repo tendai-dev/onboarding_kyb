@@ -78,6 +78,7 @@ import {
   type RenderableSection,
 } from '../../../lib/entitySchemaRenderer';
 import { riskApiService, RiskAssessmentDto } from '../../../services/riskApi';
+import { rulesAndPermissionsApiService } from '../../../services/rulesAndPermissionsApi';
 import { logger } from '../../../lib/logger';
 import { useSidebar } from '../../../contexts/SidebarContext';
 // Import Tabs components for wizard step navigation
@@ -994,6 +995,8 @@ export default function ReviewPage() {
   const [reassignUserId, setReassignUserId] = useState('');
   const [reassignUserName, setReassignUserName] = useState('');
   const [reviewStarted, setReviewStarted] = useState(false);
+  const [reassignUsers, setReassignUsers] = useState<Array<{ id: string; name: string; email: string }>>([]);
+  const [reassignUsersLoading, setReassignUsersLoading] = useState(false);
 
   // Document viewer state
   const [documentViewerOpen, setDocumentViewerOpen] = useState(false);
@@ -1170,12 +1173,17 @@ export default function ReviewPage() {
     }
   }, [workItemId]);
 
-  const loadComments = useCallback(async () => {
-    if (loadingRefs.current.comments) return;
+  const loadComments = useCallback(async (forceReload = false, overrideWorkItemId?: string) => {
+    if (loadingRefs.current.comments && !forceReload) return;
+    
+    // Use override ID if provided, otherwise use URL parameter
+    const targetWorkItemId = overrideWorkItemId || workItemId;
 
     try {
       loadingRefs.current.comments = true;
-      const commentsData = await fetchWorkItemComments(workItemId);
+      console.log('[Comments] Loading comments for workItemId:', targetWorkItemId);
+      const commentsData = await fetchWorkItemComments(targetWorkItemId);
+      console.log('[Comments] Received comments:', commentsData);
       setComments(commentsData as Record<string, unknown>[]);
     } catch (err) {
       console.error('Error loading comments', err, {
@@ -1187,12 +1195,15 @@ export default function ReviewPage() {
     }
   }, [workItemId]);
 
-  const loadHistory = useCallback(async () => {
+  const loadHistory = useCallback(async (overrideWorkItemId?: string) => {
     if (loadingRefs.current.history) return;
+    
+    // Use override ID if provided, otherwise use URL parameter
+    const targetWorkItemId = overrideWorkItemId || workItemId;
 
     try {
       loadingRefs.current.history = true;
-      const historyData = await fetchWorkItemHistory(workItemId);
+      const historyData = await fetchWorkItemHistory(targetWorkItemId);
       setHistory(historyData as Record<string, unknown>[]);
     } catch (err) {
       console.error('Error loading history', err, {
@@ -1623,20 +1634,39 @@ export default function ReviewPage() {
   const handleAddComment = useCallback(async () => {
     if (!newComment.trim() || !workItem || !session?.user) return;
 
+    const userId = (session.user as { id?: string }).id || session.user.email || '';
+    // Use name if it's different from email, otherwise just use email once
+    const userEmail = session.user.email || '';
+    const rawName = session.user.name || '';
+    const userName = rawName && rawName !== userEmail ? rawName : userEmail || 'Current User';
+    const commentText = newComment.trim();
+
+    // Optimistic update: add comment to local state immediately
+    const optimisticComment: Record<string, unknown> = {
+      id: `temp-${Date.now()}`,
+      text: commentText,
+      authorId: userId,
+      authorName: userName,
+      createdBy: userName,
+      createdAt: new Date().toISOString(),
+    };
+    setComments((prev) => [optimisticComment, ...prev]);
+    setNewComment('');
+
     setActionLoading(true);
     try {
-      const userId = (session.user as { id?: string }).id || session.user.email || '';
-      const userName = session.user.name || session.user.email || 'Current User';
       await addCommentUseCase(
         workItem.workItemId || workItem.id,
-        newComment,
+        commentText,
         userId,
         userName
       );
       showToast('Comment added', 'Your comment has been added', 'success', 3000);
-      setNewComment('');
-      await loadComments();
+      // Reload comments to get the actual server-generated ID
+      await loadComments(true);
     } catch (err: unknown) {
+      // Rollback optimistic update on error
+      setComments((prev) => prev.filter((c) => (c as Record<string, unknown>).id !== optimisticComment.id));
       const errorMessage = err instanceof Error ? err.message : 'Failed to add comment';
       showToast('Comment failed', errorMessage, 'error', 5000);
     } finally {
@@ -1927,26 +1957,59 @@ export default function ReviewPage() {
     };
   }, []);
 
+  // Load users for reassign modal
+  const loadReassignUsers = useCallback(async () => {
+    try {
+      setReassignUsersLoading(true);
+      const allUsers = await rulesAndPermissionsApiService.getAllUsers(false);
+      const formattedUsers = allUsers
+        .map((user) => ({
+          id: user.id,
+          name: user.name || user.email || 'Unknown User',
+          email: user.email || '',
+        }))
+        .sort((a, b) => a.name.localeCompare(b.name));
+      setReassignUsers(formattedUsers);
+    } catch (err) {
+      logger.error(err, '[Review Page] Error loading users for reassign');
+      showToast('Error', 'Failed to load users. Please try again.', 'error', 5000);
+    } finally {
+      setReassignUsersLoading(false);
+    }
+  }, [showToast]);
+
+  // Load users when reassign modal opens
+  useEffect(() => {
+    if (reassignModalOpen) {
+      loadReassignUsers();
+    }
+  }, [reassignModalOpen, loadReassignUsers]);
+
   // Reassign work item to another user
   const handleReassign = useCallback(async () => {
-    if (!workItem || !reassignUserId.trim() || !reassignUserName.trim()) return;
+    if (!workItem || !reassignUserId.trim()) return;
+    
+    const selectedUser = reassignUsers.find((u) => u.id === reassignUserId);
+    if (!selectedUser) {
+      showToast('Error', 'Selected user not found.', 'error', 5000);
+      return;
+    }
 
     setActionLoading(true);
     try {
       await assignWorkItemUseCase(
         workItem.workItemId || workItem.id,
-        reassignUserId,
-        reassignUserName
+        selectedUser.id,
+        selectedUser.name
       );
       showToast(
         'Reassigned',
-        `Work item has been assigned to ${reassignUserName}`,
+        `Work item has been assigned to ${selectedUser.name}`,
         'success',
         3000
       );
       setReassignModalOpen(false);
       setReassignUserId('');
-      setReassignUserName('');
       await loadWorkItem();
     } catch (err: unknown) {
       const errorMessage =
@@ -1955,7 +2018,7 @@ export default function ReviewPage() {
     } finally {
       setActionLoading(false);
     }
-  }, [workItem, reassignUserId, reassignUserName, showToast, loadWorkItem]);
+  }, [workItem, reassignUserId, reassignUsers, showToast, loadWorkItem]);
 
   // Unassign work item
   const handleUnassign = useCallback(async () => {
@@ -2991,9 +3054,17 @@ export default function ReviewPage() {
     if (workItem) {
       loadApplicationData();
       // Review is started manually from the work queue page, not automatically here
+      
+      // Load comments and history with the correct work item ID
+      const actualWorkItemId = workItem.workItemId || workItem.id;
+      if (actualWorkItemId) {
+        loadComments(true, actualWorkItemId);
+        loadHistory(actualWorkItemId);
+      }
     }
-  }, [workItem, loadApplicationData]);
+  }, [workItem, loadApplicationData, loadComments, loadHistory]);
 
+  
   useEffect(() => {
     // Load documents when Documents step is active and work item is loaded (fallback mode only)
     if (
@@ -6037,7 +6108,9 @@ export default function ReviewPage() {
                                 ? String(commentObj.createdBy)
                                 : commentObj.authorName
                                   ? String(commentObj.authorName)
-                                  : 'Unknown User'}
+                                  : commentObj.author_name
+                                    ? String(commentObj.author_name)
+                                    : 'Unknown User'}
                             </Typography>
                             <HStack gap="6px" align="center">
                               <FiClock
@@ -6048,6 +6121,7 @@ export default function ReviewPage() {
                                 {new Date(
                                   String(
                                     commentObj.createdAt ||
+                                      commentObj.created_at ||
                                       commentObj.timestamp ||
                                       Date.now()
                                   )
@@ -6184,19 +6258,20 @@ export default function ReviewPage() {
             top="50%"
             left="50%"
             transform="translate(-50%, -50%)"
-            bg="mukuru.cards.white"
+            bg="#FFFFFF"
             borderRadius="20px"
             boxShadow="0 25px 80px rgba(0, 0, 0, 0.15)"
             zIndex={9999}
             w="90%"
-            maxW="480px"
-            maxH="80vh"
+            maxW="520px"
+            maxH="85vh"
             overflow="hidden"
             display="flex"
             flexDirection="column"
+            style={{ backgroundColor: '#FFFFFF' }}
           >
             {/* Header */}
-            <Box p="20px 24px" borderBottom="1px solid" borderColor="#EAECF0">
+            <Box p="20px 24px" borderBottom="1px solid" borderColor="#EAECF0" bg="#FFFFFF">
               <HStack justify="space-between" align="center">
                 <HStack gap="14px">
                   <Box
@@ -6242,7 +6317,7 @@ export default function ReviewPage() {
             </Box>
 
             {/* Content */}
-            <Box flex="1" overflowY="auto" p="20px 24px">
+            <Box flex="1" overflowY="auto" p="20px 24px" bg="#F9FAFB">
               {history.length === 0 ? (
                 <Flex
                   direction="column"
@@ -6277,7 +6352,17 @@ export default function ReviewPage() {
                   </VStack>
                 </Flex>
               ) : (
-                <VStack align="stretch" gap="12px">
+                <VStack align="stretch" gap="0" position="relative">
+                  {/* Timeline line */}
+                  <Box
+                    position="absolute"
+                    left="19px"
+                    top="24px"
+                    bottom="24px"
+                    w="2px"
+                    bg="#E5E7EB"
+                    zIndex={0}
+                  />
                   {history.map((entry: unknown, idx: number) => {
                     const entryObj = entry as Record<string, unknown>;
                     const action = entryObj.action
@@ -6287,40 +6372,137 @@ export default function ReviewPage() {
                         : entryObj.eventType
                           ? String(entryObj.eventType)
                           : 'Activity';
+                    
+                    const performedBy = entryObj.performedBy 
+                      ? String(entryObj.performedBy) 
+                      : entryObj.performed_by
+                        ? String(entryObj.performed_by)
+                        : null;
+                    
+                    const performedAt = entryObj.performedAt 
+                      ? new Date(String(entryObj.performedAt))
+                      : entryObj.performed_at
+                        ? new Date(String(entryObj.performed_at))
+                        : entryObj.timestamp
+                          ? new Date(String(entryObj.timestamp))
+                          : null;
+                    
+                    const status = entryObj.status ? String(entryObj.status) : null;
+
+                    const formatDate = (date: Date | null) => {
+                      if (!date || isNaN(date.getTime())) return null;
+                      return date.toLocaleDateString('en-GB', {
+                        day: '2-digit',
+                        month: 'short',
+                        year: 'numeric',
+                      });
+                    };
+
+                    const formatTime = (date: Date | null) => {
+                      if (!date || isNaN(date.getTime())) return null;
+                      return date.toLocaleTimeString('en-GB', {
+                        hour: '2-digit',
+                        minute: '2-digit',
+                      });
+                    };
 
                     return (
                       <Box
                         key={idx}
-                        p="14px 16px"
-                        bg="#F9FAFB"
-                        borderRadius="10px"
-                        borderLeft="3px solid"
-                        borderLeftColor="mukuru.buttons.primary"
-                        transition="all 0.15s"
-                        _hover={{ bg: '#F3F4F6' }}
+                        position="relative"
+                        pl="48px"
+                        pb={idx === history.length - 1 ? '0' : '20px'}
+                        zIndex={1}
                       >
-                        <HStack justify="space-between" align="center">
-                          <HStack gap="12px" flex="1">
-                            <Box
-                              w="32px"
-                              h="32px"
-                              borderRadius="8px"
-                              bg="mukuru.cards.white"
-                              display="flex"
-                              alignItems="center"
-                              justifyContent="center"
-                              boxShadow="0 1px 2px rgba(0,0,0,0.05)"
-                            >
-                              <FiCheckSquare
-                                size={16}
-                                color="var(--chakra-colors-mukuru-buttons-primary)"
-                              />
-                            </Box>
-                            <Typography fontSize="14px" fontWeight="500" color="#1D2939">
-                              {action}
-                            </Typography>
+                        {/* Timeline dot */}
+                        <Box
+                          position="absolute"
+                          left="12px"
+                          top="4px"
+                          w="16px"
+                          h="16px"
+                          borderRadius="full"
+                          bg={idx === 0 ? '#F97316' : '#E5E7EB'}
+                          border="3px solid"
+                          borderColor={idx === 0 ? '#FED7AA' : '#F3F4F6'}
+                          zIndex={2}
+                        />
+                        
+                        <Box
+                          p="16px"
+                          bg="#FFFFFF"
+                          borderRadius="12px"
+                          border="1px solid"
+                          borderColor="#E5E7EB"
+                          boxShadow="0 1px 3px rgba(0,0,0,0.05)"
+                          transition="all 0.15s"
+                          _hover={{ borderColor: '#D1D5DB', boxShadow: '0 2px 6px rgba(0,0,0,0.08)' }}
+                        >
+                          {/* Action */}
+                          <Typography fontSize="14px" fontWeight="600" color="#1D2939" mb="8px">
+                            {action}
+                          </Typography>
+                          
+                          {/* Meta info row */}
+                          <HStack gap="16px" flexWrap="wrap">
+                            {performedBy && (
+                              <HStack gap="6px">
+                                <FiUser size={14} color="#6B7280" />
+                                <Typography fontSize="13px" color="#6B7280">
+                                  {performedBy}
+                                </Typography>
+                              </HStack>
+                            )}
+                            
+                            {performedAt && formatDate(performedAt) && (
+                              <HStack gap="6px">
+                                <FiCalendar size={14} color="#6B7280" />
+                                <Typography fontSize="13px" color="#6B7280">
+                                  {formatDate(performedAt)}
+                                </Typography>
+                              </HStack>
+                            )}
+                            
+                            {performedAt && formatTime(performedAt) && (
+                              <HStack gap="6px">
+                                <FiClock size={14} color="#6B7280" />
+                                <Typography fontSize="13px" color="#6B7280">
+                                  {formatTime(performedAt)}
+                                </Typography>
+                              </HStack>
+                            )}
                           </HStack>
-                        </HStack>
+                          
+                          {/* Status badge */}
+                          {status && (
+                            <Box mt="10px">
+                              <Box
+                                as="span"
+                                px="10px"
+                                py="4px"
+                                borderRadius="6px"
+                                bg={
+                                  status.toLowerCase() === 'completed' ? '#DCFCE7' :
+                                  status.toLowerCase() === 'assigned' ? '#DBEAFE' :
+                                  status.toLowerCase() === 'new' ? '#FEF3C7' :
+                                  status.toLowerCase() === 'inreview' || status.toLowerCase() === 'in_review' ? '#E0E7FF' :
+                                  '#F3F4F6'
+                                }
+                                fontSize="12px"
+                                fontWeight="500"
+                                color={
+                                  status.toLowerCase() === 'completed' ? '#166534' :
+                                  status.toLowerCase() === 'assigned' ? '#1E40AF' :
+                                  status.toLowerCase() === 'new' ? '#92400E' :
+                                  status.toLowerCase() === 'inreview' || status.toLowerCase() === 'in_review' ? '#3730A3' :
+                                  '#374151'
+                                }
+                              >
+                                {status.replace(/_/g, ' ')}
+                              </Box>
+                            </Box>
+                          )}
+                        </Box>
                       </Box>
                     );
                   })}
@@ -6329,7 +6511,7 @@ export default function ReviewPage() {
             </Box>
 
             {/* Footer */}
-            <Box p="16px 24px" borderTop="1px solid" borderColor="#EAECF0">
+            <Box p="16px 24px" borderTop="1px solid" borderColor="#EAECF0" bg="#FFFFFF">
               <Button
                 variant="secondary"
                 onClick={() => setHistoryModalOpen(false)}
@@ -6366,19 +6548,21 @@ export default function ReviewPage() {
             onClick={() => setReassignModalOpen(false)}
           />
           <Box
+            className="reassign-modal-container"
             position="fixed"
             top="50%"
             left="50%"
             transform="translate(-50%, -50%)"
-            bg="mukuru.cards.white"
+            bg="#FFFFFF"
             borderRadius="20px"
             boxShadow="0 25px 80px rgba(0, 0, 0, 0.15)"
             zIndex={9999}
             w="90%"
             maxW="420px"
             overflow="hidden"
+            style={{ backgroundColor: '#FFFFFF' }}
           >
-            <Box p="20px 24px" borderBottom="1px solid" borderColor="#EAECF0">
+            <Box p="20px 24px" borderBottom="1px solid" borderColor="#EAECF0" bg="#FFFFFF" style={{ backgroundColor: '#FFFFFF' }}>
               <HStack justify="space-between" align="center">
                 <HStack gap="14px">
                   <Box
@@ -6421,64 +6605,179 @@ export default function ReviewPage() {
                 </Box>
               </HStack>
             </Box>
-            <Box p="24px">
-              <VStack align="stretch" gap="16px">
-                <Box>
-                  <Typography fontSize="14px" fontWeight="500" color="#344054" mb="6px">
-                    User ID
-                  </Typography>
-                  <Textarea
-                    value={reassignUserId}
-                    onChange={(e) => setReassignUserId(e.target.value)}
-                    placeholder="Enter user ID or email..."
-                    rows={1}
-                    borderRadius="10px"
-                    border="1px solid"
-                    borderColor="#D0D5DD"
-                    p="12px"
-                    fontSize="14px"
-                    color="#1D2939"
-                    bg="mukuru.cards.white"
-                    _placeholder={{ color: '#98A2B3' }}
-                    _focus={{
-                      borderColor: 'mukuru.buttons.primary',
-                      boxShadow: '0 0 0 2px rgba(240, 84, 35, 0.1)',
-                    }}
-                  />
-                </Box>
-                <Box>
-                  <Typography fontSize="14px" fontWeight="500" color="#344054" mb="6px">
-                    User Name
-                  </Typography>
-                  <Textarea
-                    value={reassignUserName}
-                    onChange={(e) => setReassignUserName(e.target.value)}
-                    placeholder="Enter user name..."
-                    rows={1}
-                    borderRadius="10px"
-                    border="1px solid"
-                    borderColor="#D0D5DD"
-                    p="12px"
-                    fontSize="14px"
-                    color="#1D2939"
-                    bg="mukuru.cards.white"
-                    _placeholder={{ color: '#98A2B3' }}
-                    _focus={{
-                      borderColor: 'mukuru.buttons.primary',
-                      boxShadow: '0 0 0 2px rgba(240, 84, 35, 0.1)',
-                    }}
-                  />
-                </Box>
-              </VStack>
+            <Box p="24px" bg="#FFFFFF" style={{ backgroundColor: '#FFFFFF' }}>
+              {reassignUsersLoading ? (
+                <Flex
+                  justify="center"
+                  align="center"
+                  py="40px"
+                  bg="#F9FAFB"
+                  borderRadius="8px"
+                  border="1px dashed"
+                  borderColor="#D0D5DD"
+                >
+                  <VStack gap="12px">
+                    <Spinner size="lg" color="mukuru.buttons.primary" />
+                    <Typography fontSize="14px" color="#667085">
+                      Loading team members...
+                    </Typography>
+                  </VStack>
+                </Flex>
+              ) : reassignUsers.length === 0 ? (
+                <Flex
+                  justify="center"
+                  align="center"
+                  py="40px"
+                  bg="#F9FAFB"
+                  borderRadius="8px"
+                  border="1px dashed"
+                  borderColor="#D0D5DD"
+                >
+                  <VStack gap="12px">
+                    <Flex
+                      w="56px"
+                      h="56px"
+                      borderRadius="full"
+                      bg="#E5E7EB"
+                      align="center"
+                      justify="center"
+                    >
+                      <FiUser size={28} color="#9CA3AF" />
+                    </Flex>
+                    <VStack gap="4px">
+                      <Typography fontSize="14px" fontWeight="500" color="#1D2939">
+                        No Team Members
+                      </Typography>
+                      <Typography fontSize="13px" color="#667085">
+                        There are no users available for assignment
+                      </Typography>
+                    </VStack>
+                  </VStack>
+                </Flex>
+              ) : (
+                <VStack align="stretch" gap="20px">
+                  <Box>
+                    <Typography
+                      fontSize="13px"
+                      fontWeight="500"
+                      color="#667085"
+                      mb="12px"
+                    >
+                      Select Team Member
+                    </Typography>
+                    <Box
+                      border="1px solid"
+                      borderColor="#D0D5DD"
+                      borderRadius="10px"
+                      overflow="hidden"
+                      bg="white"
+                    >
+                      <Box
+                        maxH="240px"
+                        overflowY="auto"
+                        css={{
+                          '&::-webkit-scrollbar': {
+                            width: '6px',
+                          },
+                          '&::-webkit-scrollbar-track': {
+                            background: 'transparent',
+                          },
+                          '&::-webkit-scrollbar-thumb': {
+                            background: '#E5E7EB',
+                            borderRadius: '3px',
+                          },
+                          '&::-webkit-scrollbar-thumb:hover': {
+                            background: '#9CA3AF',
+                          },
+                        }}
+                      >
+                        {reassignUsers.map((user, index) => {
+                          const isSelected = reassignUserId === user.id;
+                          return (
+                            <Box
+                              key={user.id}
+                              px="16px"
+                              py="12px"
+                              cursor="pointer"
+                              bg={isSelected ? 'rgba(240, 84, 35, 0.08)' : 'transparent'}
+                              borderBottom={index < reassignUsers.length - 1 ? '1px solid' : 'none'}
+                              borderColor="#F3F4F6"
+                              _hover={{
+                                bg: isSelected ? 'rgba(240, 84, 35, 0.12)' : '#F9FAFB',
+                              }}
+                              onClick={() => setReassignUserId(user.id)}
+                              transition="all 0.15s ease"
+                            >
+                              <HStack gap="12px">
+                                <Flex
+                                  w="36px"
+                                  h="36px"
+                                  borderRadius="full"
+                                  bg={isSelected ? 'rgba(240, 84, 35, 0.15)' : '#F3F4F6'}
+                                  align="center"
+                                  justify="center"
+                                  flexShrink={0}
+                                  transition="all 0.15s ease"
+                                >
+                                  <Typography
+                                    fontSize="13px"
+                                    fontWeight="600"
+                                    color={isSelected ? 'mukuru.buttons.primary' : '#6B7280'}
+                                  >
+                                    {user.name.charAt(0).toUpperCase()}
+                                  </Typography>
+                                </Flex>
+                                <VStack align="flex-start" gap="2px" flex="1" minW="0">
+                                  <Typography
+                                    fontSize="14px"
+                                    fontWeight={isSelected ? '600' : '500'}
+                                    color={isSelected ? 'mukuru.buttons.primary' : '#1D2939'}
+                                    lineHeight="1.3"
+                                  >
+                                    {user.name}
+                                  </Typography>
+                                  <Typography
+                                    fontSize="12px"
+                                    color="#9CA3AF"
+                                    lineHeight="1.3"
+                                    overflow="hidden"
+                                    textOverflow="ellipsis"
+                                    whiteSpace="nowrap"
+                                    maxW="100%"
+                                  >
+                                    {user.email}
+                                  </Typography>
+                                </VStack>
+                                {isSelected && (
+                                  <Flex
+                                    w="20px"
+                                    h="20px"
+                                    borderRadius="full"
+                                    bg="mukuru.buttons.primary"
+                                    align="center"
+                                    justify="center"
+                                    flexShrink={0}
+                                  >
+                                    <FiCheck size={12} color="white" />
+                                  </Flex>
+                                )}
+                              </HStack>
+                            </Box>
+                          );
+                        })}
+                      </Box>
+                    </Box>
+                  </Box>
+                </VStack>
+              )}
             </Box>
-            <Box p="16px 24px" borderTop="1px solid" borderColor="#EAECF0">
+            <Box p="16px 24px" borderTop="1px solid" borderColor="#EAECF0" bg="#FFFFFF" style={{ backgroundColor: '#FFFFFF' }}>
               <HStack justify="flex-end" gap="12px">
                 <Button
                   variant="secondary"
                   onClick={() => {
                     setReassignModalOpen(false);
                     setReassignUserId('');
-                    setReassignUserName('');
                   }}
                   size="md"
                   style={{
@@ -6495,9 +6794,7 @@ export default function ReviewPage() {
                 <Button
                   variant="primary"
                   onClick={handleReassign}
-                  disabled={
-                    actionLoading || !reassignUserId.trim() || !reassignUserName.trim()
-                  }
+                  disabled={actionLoading || !reassignUserId.trim()}
                   loading={actionLoading}
                   className="mukuru-primary-button"
                   size="md"
@@ -6535,15 +6832,15 @@ export default function ReviewPage() {
             top="50%"
             left="50%"
             transform="translate(-50%, -50%)"
-            bg="mukuru.cards.white"
-            borderRadius="20px"
-            boxShadow="0 25px 80px rgba(0, 0, 0, 0.15)"
+            bg="#FFFFFF"
+            borderRadius="16px"
+            boxShadow="0 20px 60px rgba(0, 0, 0, 0.2)"
             zIndex={9999}
             w="90%"
-            maxW="420px"
+            maxW="480px"
             overflow="hidden"
           >
-            <Box p="20px 24px" borderBottom="1px solid" borderColor="#EAECF0">
+            <Box p="20px 24px" borderBottom="1px solid" borderColor="#EAECF0" bg="#FFFFFF">
               <HStack justify="space-between" align="center">
                 <HStack gap="14px">
                   <Box
@@ -6586,7 +6883,7 @@ export default function ReviewPage() {
                 </Box>
               </HStack>
             </Box>
-            <Box p="24px">
+            <Box p="24px" bg="#FFFFFF">
               <Box
                 p="16px"
                 bg="#FEF3F2"
@@ -6612,7 +6909,7 @@ export default function ReviewPage() {
                 </HStack>
               </Box>
             </Box>
-            <Box p="16px 24px" borderTop="1px solid" borderColor="#EAECF0">
+            <Box p="16px 24px" borderTop="1px solid" borderColor="#EAECF0" bg="#FFFFFF">
               <HStack justify="flex-end" gap="12px">
                 <Button
                   variant="secondary"

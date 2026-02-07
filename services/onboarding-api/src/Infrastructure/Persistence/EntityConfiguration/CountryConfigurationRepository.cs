@@ -61,7 +61,13 @@ public class CountryConfigurationRepository : ICountryConfigurationRepository
 
     public async Task UpdateAsync(CountryProfile countryProfile, CancellationToken cancellationToken = default)
     {
-        _context.CountryProfiles.Update(countryProfile);
+        // Only call Update if the entity is not already tracked
+        var entry = _context.Entry(countryProfile);
+        if (entry.State == EntityState.Detached)
+        {
+            _context.CountryProfiles.Update(countryProfile);
+        }
+        // If already tracked, changes will be detected automatically
         await Task.CompletedTask;
     }
 

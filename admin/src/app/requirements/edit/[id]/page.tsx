@@ -6,7 +6,6 @@ import {
   Button,
   AlertBar,
   Tag,
-  Switch,
   ArrowLeftIcon,
 } from '@mukuru/mukuru-react-components';
 import { useRouter } from 'next/navigation';
@@ -27,6 +26,7 @@ export default function EditRequirementPage({
   const { id } = use(params);
 
   const [formData, setFormData] = useState({
+    code: '',
     displayName: '',
     description: '',
     fieldType: 'Text' as FieldType,
@@ -47,13 +47,15 @@ export default function EditRequirementPage({
       setLoading(true);
       setError(null);
       const requirement = await entityConfigApiService.getRequirement(id);
+      console.log('[Edit Requirement] API Response:', requirement);
       setFormData({
-        displayName: requirement.displayName,
+        code: requirement.code || '',
+        displayName: requirement.displayName || requirement.display_name || '',
         description: requirement.description || '',
-        fieldType: requirement.fieldType as FieldType,
-        isActive: requirement.isActive,
-        validationRules: requirement.validationRules || '',
-        helpText: requirement.helpText || '',
+        fieldType: (requirement.fieldType || requirement.field_type || 'Text') as FieldType,
+        isActive: requirement.isActive ?? requirement.is_active ?? true,
+        validationRules: requirement.validationRules || requirement.validation_rules || '',
+        helpText: requirement.helpText || requirement.help_text || '',
       });
     } catch (err) {
       setError('Failed to load requirement');
@@ -65,7 +67,7 @@ export default function EditRequirementPage({
   };
 
   const handleUpdate = async () => {
-    if (!formData.displayName.trim()) {
+    if (!formData.displayName?.trim()) {
       SweetAlert.error('Validation Error', 'Display name is required.');
       return;
     }
@@ -228,10 +230,7 @@ export default function EditRequirementPage({
                 Code
               </Typography>
               <input
-                value={(formData.displayName || '')
-                  .toUpperCase()
-                  .replace(/\s+/g, '_')
-                  .replace(/[^A-Z0-9_]/g, '')}
+                value={formData.code || ''}
                 readOnly
                 style={{
                   width: '100%',
@@ -247,7 +246,7 @@ export default function EditRequirementPage({
                 }}
               />
               <Typography fontSize="12px" color="mukuru.grey.medium" mt="8px">
-                Auto-generated from display name
+                Code cannot be changed after creation
               </Typography>
             </Box>
 
@@ -465,12 +464,31 @@ export default function EditRequirementPage({
               <Tag variant={formData.isActive ? 'success' : 'inactive'}>
                 {formData.isActive ? 'Active' : 'Inactive'}
               </Tag>
-              <Switch
-                checked={formData.isActive}
-                onChange={() =>
+              <Box
+                onClick={() =>
                   setFormData((prev) => ({ ...prev, isActive: !prev.isActive }))
                 }
-              />
+                w="44px"
+                h="24px"
+                borderRadius="full"
+                bg={formData.isActive ? '#F05423' : '#D0D5DD'}
+                position="relative"
+                cursor="pointer"
+                transition="background 0.2s"
+                _hover={{ opacity: 0.8 }}
+              >
+                <Box
+                  position="absolute"
+                  top="2px"
+                  left={formData.isActive ? '22px' : '2px'}
+                  w="20px"
+                  h="20px"
+                  borderRadius="full"
+                  bg="white"
+                  boxShadow="0 1px 3px rgba(0,0,0,0.2)"
+                  transition="left 0.2s"
+                />
+              </Box>
             </HStack>
           </HStack>
         </Box>

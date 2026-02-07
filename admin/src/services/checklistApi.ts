@@ -494,6 +494,58 @@ class ChecklistApiService {
       throw error;
     }
   }
+
+  /**
+   * Update checklist
+   */
+  async updateChecklist(
+    id: string,
+    data: {
+      name?: string;
+      entityType?: string;
+      description?: string;
+      items?: ChecklistItem[];
+      isActive?: boolean;
+    }
+  ): Promise<Checklist> {
+    const url = `${CHECKLIST_API_BASE_URL}/api/checklist/checklists/${id}`;
+    
+    // Map frontend items to backend format
+    const backendItems = data.items?.map((item, index) => ({
+      id: item.id,
+      name: item.description,
+      description: item.description,
+      category: item.category,
+      isRequired: item.isRequired,
+      order: index + 1,
+      status: 'Pending',
+      notes: item.guidelines || '',
+    }));
+
+    const payload = {
+      type: data.entityType || 'Private Company',
+      status: data.isActive ? 'Active' : 'Inactive',
+      items: backendItems,
+    };
+
+    const dto = await this.request<ChecklistDto>(url, {
+      method: 'PUT',
+      body: JSON.stringify(payload),
+    });
+    
+    return this.mapChecklistDto(dto);
+  }
+
+  /**
+   * Delete checklist
+   */
+  async deleteChecklist(id: string): Promise<void> {
+    const url = `${CHECKLIST_API_BASE_URL}/api/checklist/checklists/${id}`;
+    
+    await this.request<void>(url, {
+      method: 'DELETE',
+    });
+  }
 }
 
 export const _checklistApiService = new ChecklistApiService();

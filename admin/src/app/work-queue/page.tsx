@@ -48,7 +48,7 @@ import { exportWorkItems, WorkItemDto } from '../../services';
 import { rulesAndPermissionsApiService } from '../../services/rulesAndPermissionsApi';
 import { logger } from '../../lib/logger';
 
-type TabFilter = 'All' | 'Active' | 'Completed' | 'MyItems' | 'PendingApprovals';
+type TabFilter = 'All' | 'New' | 'Active' | 'Completed' | 'MyItems' | 'PendingApprovals';
 
 export default function WorkQueuePage() {
   const router = useRouter();
@@ -95,6 +95,12 @@ export default function WorkQueuePage() {
   const [priorityModalOpen, setPriorityModalOpen] = useState(false);
   const [priorityWorkItemId, setPriorityWorkItemId] = useState<string | null>(null);
   const [currentPriorityValue, setCurrentPriorityValue] = useState<string>('Medium');
+  
+  // Decline modal state
+  const [declineModalOpen, setDeclineModalOpen] = useState(false);
+  const [declineWorkItemId, setDeclineWorkItemId] = useState<string | null>(null);
+  const [declineReason, setDeclineReason] = useState('');
+  const [declineLoading, setDeclineLoading] = useState(false);
   const [users, setUsers] = useState<Array<{ id: string; name: string; email: string }>>(
     []
   );
@@ -119,29 +125,12 @@ export default function WorkQueuePage() {
       setLoading(true);
       setError(null);
 
-      // Build filters based on active tab
-      let statusFilter = filters.status;
-      let assignedToFilter = filters.assignedTo;
-
-      if (activeTab === 'MyItems') {
-        // My Items: Show items assigned to current user
-        assignedToFilter = currentUserId;
-        statusFilter = filters.status; // Allow status filter on top of my items
-      } else if (activeTab === 'PendingApprovals') {
-        // Pending Approvals: Show items pending approval
-        statusFilter = 'PendingApproval';
-      } else if (!statusFilter && activeTab === 'Active') {
-        statusFilter = undefined; // Will filter client-side
-      } else if (!statusFilter && activeTab === 'Completed') {
-        statusFilter = undefined; // Will filter client-side
-      }
-
-      // Handle "unassigned" filter - we'll filter client-side for now
-      // TODO: Update backend to support unassigned filtering
-      const isUnassignedFilter = filters.assignedTo === 'unassigned';
-      if (isUnassignedFilter && activeTab !== 'MyItems') {
-        assignedToFilter = undefined; // Don't send to backend, filter client-side
-      }
+      // Always fetch ALL items - tab filtering is done client-side
+      // This ensures counts remain accurate across all tabs
+      // Only apply user-specified filters (priority, riskLevel) to the API call
+      // Status and assignedTo filtering is done client-side to maintain accurate counts
+      const statusFilter = undefined; // Filter client-side
+      const assignedToFilter = undefined; // Filter client-side
 
       // Use getWorkItems directly to get WorkItemDto
       const { getWorkItems } = await import('../../services/api/workQueueApi');
@@ -155,48 +144,47 @@ export default function WorkQueuePage() {
         searchTerm: searchTerm || undefined,
       });
 
-      // API client already converts PascalCase to camelCase
-      const workItemDtos: WorkItemDto[] = result.items.map((item: any) => {
-        // Backend returns snake_case: 'id' is the work item ID, 'application_id' is the application ID
-        const workItemId = item.id || item.Id || item.workItemId || item.work_item_id;
-        const applicationId =
-          item.application_id || item.applicationId || item.ApplicationId;
-        return {
-          id: String(workItemId), // Work item ID
-          workItemId: String(workItemId), // Work item ID (same as id)
-          workItemNumber:
-            item.workItemNumber || item.work_item_number || item.WorkItemNumber || '',
-          applicationId: String(applicationId || workItemId), // Application ID (fallback to workItemId if missing)
-          applicantName: item.applicantName || 'Unknown Applicant',
-          businessName: item.businessName,
-          entityType: item.entityType || 'Unknown',
-          entityTypeDisplayName: item.entityTypeDisplayName,
-          country: item.country || 'Unknown',
-          status: item.status || 'New',
-          priority: item.priority || 'Medium',
-          riskLevel: item.riskLevel || 'Unknown',
-          assignedTo: item.assignedTo ? String(item.assignedTo) : undefined,
-          assignedToName: item.assignedToName,
-          assignedAt: item.assignedAt,
-          requiresApproval: item.requiresApproval ?? false,
-          approvedBy: item.approvedBy ? String(item.approvedBy) : undefined,
-          approvedByName: item.approvedByName,
-          approvedAt: item.approvedAt,
-          approvalNotes: item.approvalNotes,
-          rejectionReason: item.rejectionReason,
-          rejectedAt: item.rejectedAt,
-          dueDate: item.dueDate || item.createdAt,
-          isOverdue: item.isOverdue ?? false,
-          createdAt: item.createdAt,
-          updatedAt: item.updatedAt,
-          nextRefreshDate: item.nextRefreshDate,
-          lastRefreshedAt: item.lastRefreshedAt,
-          refreshCount: item.refreshCount ?? 0,
-          createdBy: item.createdBy || 'System',
-          updatedBy: item.updatedBy,
-        };
-      });
+      // API client (getWorkItems) already converts snake_case to camelCase
+      // Use the items directly - they're already in the correct format
+      const workItemDtos: WorkItemDto[] = result.items.map((item: any) => ({
+        id: String(item.id),
+        workItemId: String(item.workItemId || item.id),
+        workItemNumber: item.workItemNumber || '',
+        applicationId: String(item.applicationId || item.id),
+        applicantName: item.applicantName || 'Unknown Applicant',
+        businessName: item.businessName,
+        entityType: item.entityType || 'Unknown',
+        entityTypeDisplayName: item.entityTypeDisplayName,
+        country: item.country || 'Unknown',
+        status: item.status || 'New',
+        priority: item.priority || 'Medium',
+        riskLevel: item.riskLevel || 'Unknown',
+        assignedTo: item.assignedTo ? String(item.assignedTo) : undefined,
+        assignedToName: item.assignedToName,
+        assignedAt: item.assignedAt,
+        requiresApproval: item.requiresApproval ?? false,
+        approvedBy: item.approvedBy ? String(item.approvedBy) : undefined,
+        approvedByName: item.approvedByName,
+        approvedAt: item.approvedAt,
+        approvalNotes: item.approvalNotes,
+        rejectionReason: item.rejectionReason,
+        rejectedAt: item.rejectedAt,
+        dueDate: item.dueDate || item.createdAt,
+        isOverdue: item.isOverdue ?? false,
+        createdAt: item.createdAt,
+        updatedAt: item.updatedAt,
+        nextRefreshDate: item.nextRefreshDate,
+        lastRefreshedAt: item.lastRefreshedAt,
+        refreshCount: item.refreshCount ?? 0,
+        createdBy: item.createdBy || 'System',
+        updatedBy: item.updatedBy,
+      }));
 
+      console.log('[Work Queue] Loaded work items:', { 
+        count: workItemDtos.length, 
+        totalCount: result.totalCount,
+        firstItem: workItemDtos[0] 
+      });
       setWorkItems(workItemDtos);
       setTotalCount(result.totalCount);
     } catch (err) {
@@ -211,7 +199,7 @@ export default function WorkQueuePage() {
     } finally {
       setLoading(false);
     }
-  }, [currentPage, pageSize, filters, searchTerm, activeTab, currentUserId]);
+  }, [currentPage, pageSize, filters.priority, filters.riskLevel, searchTerm]);
 
   // Load users when modal opens
   useEffect(() => {
@@ -338,10 +326,10 @@ export default function WorkQueuePage() {
     loadWorkItems();
   }, [loadWorkItems, refreshKey]);
 
-  // Reset to page 1 when filters change
+  // Reset to page 1 when API filters change (not tab, since tab is client-side)
   useEffect(() => {
     setCurrentPage(1);
-  }, [filters, searchTerm, activeTab]);
+  }, [filters.priority, filters.riskLevel, searchTerm]);
 
   const handleExport = async () => {
     try {
@@ -368,17 +356,46 @@ export default function WorkQueuePage() {
 
   // Filter work items based on tab and unassigned filter (client-side filtering)
   const filteredWorkItems = useMemo(() => {
-    return workItems.filter((item) => {
+    console.log('[Work Queue] Filtering:', { 
+      workItemsCount: workItems.length, 
+      activeTab, 
+      assignedToFilter: filters.assignedTo,
+      currentUserId,
+      currentUserName,
+      currentUserEmail: session?.user?.email,
+      statuses: workItems.map(i => i.status),
+      assignedToValues: workItems.map(i => ({ assignedTo: i.assignedTo, assignedToName: i.assignedToName }))
+    });
+    const filtered = workItems.filter((item) => {
       let matchesTab = true;
-      if (activeTab === 'Active') {
+      if (activeTab === 'New') {
+        // New: Only show items with "New" status
+        matchesTab = item.status === 'New';
+      } else if (activeTab === 'Active') {
+        // Active: Show New, Assigned, InProgress, PendingApproval (excludes completed/declined)
         matchesTab = ['New', 'Assigned', 'InProgress', 'PendingApproval'].includes(
           item.status
         );
       } else if (activeTab === 'Completed') {
         matchesTab = ['Completed', 'Approved', 'Declined'].includes(item.status);
       } else if (activeTab === 'MyItems') {
-        // My Items: Already filtered by backend, but double-check client-side
-        matchesTab = item.assignedTo === currentUserId;
+        // My Items: Match by assignedTo (GUID), assignedToName, or email
+        // currentUserId might be a GUID or email depending on session
+        const currentUserEmail = session?.user?.email?.toLowerCase();
+        const currentUserNameLower = currentUserName?.toLowerCase();
+        const assignedToLower = item.assignedTo?.toLowerCase();
+        const assignedToNameLower = item.assignedToName?.toLowerCase();
+        
+        matchesTab = Boolean(
+          // Match by GUID
+          (item.assignedTo && item.assignedTo === currentUserId) ||
+          // Match by email in assignedTo field
+          (currentUserEmail && assignedToLower === currentUserEmail) ||
+          // Match by name
+          (currentUserNameLower && assignedToNameLower === currentUserNameLower) ||
+          // Match by email in assignedToName field
+          (currentUserEmail && assignedToNameLower === currentUserEmail)
+        );
       } else if (activeTab === 'PendingApprovals') {
         // Pending Approvals: Already filtered by backend, but double-check client-side
         matchesTab = item.status === 'PendingApproval';
@@ -399,17 +416,20 @@ export default function WorkQueuePage() {
 
       return matchesTab && matchesAssignedFilter;
     });
-  }, [workItems, activeTab, filters.assignedTo, currentUserId]);
+    console.log('[Work Queue] Filtered result:', { filteredCount: filtered.length });
+    return filtered;
+  }, [workItems, activeTab, filters.assignedTo, currentUserId, currentUserName, session?.user?.email]);
 
   // Get counts for tabs
   const tabCounts = useMemo(() => {
+    const newItems = workItems.filter((item) => item.status === 'New').length;
     const active = workItems.filter((item) =>
       ['New', 'Assigned', 'InProgress', 'PendingApproval'].includes(item.status)
     ).length;
     const completed = workItems.filter((item) =>
       ['Completed', 'Approved', 'Declined'].includes(item.status)
     ).length;
-    return { all: workItems.length, active, completed };
+    return { all: workItems.length, new: newItems, active, completed };
   }, [workItems]);
 
   // Get icon for entity type
@@ -928,19 +948,11 @@ export default function WorkQueuePage() {
                 display="flex"
                 alignItems="center"
                 justifyContent="center"
-                onClick={async (e: React.MouseEvent) => {
+                onClick={(e: React.MouseEvent) => {
                   e.stopPropagation();
-                  const reason = prompt('Please provide a reason for declining:');
-                  if (reason && reason.trim()) {
-                    const { declineWorkItem } = await import(
-                      '../../services/api/workQueueApi'
-                    );
-                    await executeAction(
-                      () => declineWorkItem(workItemId, reason),
-                      'Work item declined successfully',
-                      'Error declining work item'
-                    );
-                  }
+                  setDeclineWorkItemId(workItemId);
+                  setDeclineReason('');
+                  setDeclineModalOpen(true);
                 }}
               >
                 <FiX size={16} color="var(--chakra-colors-mukuru-text-error)" />
@@ -1211,6 +1223,19 @@ export default function WorkQueuePage() {
               {tabCounts.all}
             </Typography>
           </HStack>
+          <HStack gap="2" cursor="pointer" onClick={() => setActiveTab('New')}>
+            <Typography
+              fontSize="xs"
+              color={subtleText}
+              textTransform="uppercase"
+              letterSpacing="wide"
+            >
+              New
+            </Typography>
+            <Typography fontSize="sm" fontWeight="600" color="mukuru.buttons.primary">
+              {tabCounts.new}
+            </Typography>
+          </HStack>
           <HStack gap="2" cursor="pointer" onClick={() => setActiveTab('Active')}>
             <Typography
               fontSize="xs"
@@ -1258,6 +1283,11 @@ export default function WorkQueuePage() {
             label="All"
             isActive={activeTab === 'All'}
             onClick={() => setActiveTab('All')}
+          />
+          <Tab
+            label="New"
+            isActive={activeTab === 'New'}
+            onClick={() => setActiveTab('New')}
           />
           <Tab
             label="Active"
@@ -1518,6 +1548,10 @@ export default function WorkQueuePage() {
               align-items: flex-start !important;
             }
           `}</style>
+          {/* Debug: Show filtered count */}
+          <Typography fontSize="xs" color="red.500" mb="2">
+            Debug: workItems={workItems.length}, filteredWorkItems={filteredWorkItems.length}, activeTab={activeTab}, loading={String(loading)}
+          </Typography>
           <DataTable
             data={filteredWorkItems as unknown as Record<string, unknown>[]}
             columns={columns as unknown as ColumnConfig<Record<string, unknown>>[]}
@@ -2110,6 +2144,174 @@ export default function WorkQueuePage() {
                   leftIcon={<FiFlag size={16} />}
                 >
                   Update Priority
+                </Button>
+              </HStack>
+            </Box>
+          </Box>
+        </Modal>
+
+        {/* Decline Work Item Modal */}
+        <Modal
+          isOpen={declineModalOpen}
+          onClose={() => {
+            setDeclineModalOpen(false);
+            setDeclineWorkItemId(null);
+            setDeclineReason('');
+          }}
+          title=""
+          size="small"
+          closeOnBackdropClick={true}
+          closeOnEsc={true}
+        >
+          <Box bg="#FFFFFF">
+            {/* Header Section */}
+            <Box
+              px="24px"
+              pt="24px"
+              pb="20px"
+              borderBottom="1px solid"
+              borderColor={borderColor}
+              bg="#FFFFFF"
+            >
+              <HStack gap="16px" align="flex-start">
+                <Flex
+                  w="48px"
+                  h="48px"
+                  borderRadius="12px"
+                  bg="#FEE2E2"
+                  align="center"
+                  justify="center"
+                  flexShrink={0}
+                >
+                  <FiX
+                    size={24}
+                    color="#DC2626"
+                  />
+                </Flex>
+                <VStack align="flex-start" gap="4px" flex="1">
+                  <Typography
+                    fontSize="18px"
+                    fontWeight="600"
+                    color={textColor}
+                    lineHeight="1.3"
+                  >
+                    Decline Work Item
+                  </Typography>
+                  <Typography fontSize="14px" color={subtleText} lineHeight="1.4">
+                    Please provide a reason for declining this work item
+                  </Typography>
+                </VStack>
+              </HStack>
+            </Box>
+
+            {/* Body Section */}
+            <Box px="24px" py="24px" bg="#FFFFFF">
+              <VStack align="stretch" gap="16px">
+                {/* Warning Alert */}
+                <Box
+                  p="12px 16px"
+                  bg="#FEF3F2"
+                  borderRadius="8px"
+                  border="1px solid"
+                  borderColor="#FECDCA"
+                >
+                  <HStack gap="12px" align="start">
+                    <FiAlertTriangle size={18} color="#DC2626" style={{ marginTop: '2px', flexShrink: 0 }} />
+                    <Typography fontSize="13px" color="#B42318" lineHeight="1.5">
+                      This action cannot be undone. The work item will be marked as declined and removed from the active queue.
+                    </Typography>
+                  </HStack>
+                </Box>
+
+                {/* Reason Input */}
+                <Box>
+                  <Typography
+                    fontSize="13px"
+                    fontWeight="500"
+                    color={labelColor}
+                    mb="8px"
+                  >
+                    Reason for Declining <span style={{ color: '#DC2626' }}>*</span>
+                  </Typography>
+                  <textarea
+                    style={{
+                      width: '100%',
+                      minHeight: '120px',
+                      padding: '12px 14px',
+                      border: '1px solid var(--chakra-colors-mukuru-grey-light)',
+                      borderRadius: '8px',
+                      fontSize: '14px',
+                      color: 'var(--chakra-colors-mukuru-text-primary)',
+                      backgroundColor: '#FFFFFF',
+                      resize: 'vertical',
+                      outline: 'none',
+                      fontFamily: 'inherit',
+                    }}
+                    placeholder="Enter the reason for declining this work item..."
+                    value={declineReason}
+                    onChange={(e) => setDeclineReason(e.target.value)}
+                    onFocus={(e) => {
+                      e.target.style.borderColor = 'var(--chakra-colors-mukuru-buttons-primary)';
+                      e.target.style.boxShadow = '0 0 0 1px var(--chakra-colors-mukuru-buttons-primary)';
+                    }}
+                    onBlur={(e) => {
+                      e.target.style.borderColor = 'var(--chakra-colors-mukuru-grey-light)';
+                      e.target.style.boxShadow = 'none';
+                    }}
+                  />
+                </Box>
+              </VStack>
+            </Box>
+
+            {/* Footer Section */}
+            <Box
+              px="24px"
+              py="16px"
+              borderTop="1px solid"
+              borderColor={borderColor}
+              bg="#FFFFFF"
+            >
+              <HStack gap="12px" justify="flex-end">
+                <Button
+                  variant="secondary"
+                  onClick={() => {
+                    setDeclineModalOpen(false);
+                    setDeclineWorkItemId(null);
+                    setDeclineReason('');
+                  }}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  variant="primary"
+                  disabled={!declineReason.trim() || declineLoading}
+                  loading={declineLoading}
+                  onClick={async () => {
+                    if (declineWorkItemId && declineReason.trim()) {
+                      setDeclineLoading(true);
+                      try {
+                        const { declineWorkItem } = await import(
+                          '../../services/api/workQueueApi'
+                        );
+                        await executeAction(
+                          () => declineWorkItem(declineWorkItemId, declineReason.trim()),
+                          'Work item declined successfully',
+                          'Error declining work item'
+                        );
+                        setDeclineModalOpen(false);
+                        setDeclineWorkItemId(null);
+                        setDeclineReason('');
+                      } finally {
+                        setDeclineLoading(false);
+                      }
+                    }
+                  }}
+                  style={{
+                    background: '#DC2626',
+                  }}
+                  leftIcon={<FiX size={16} />}
+                >
+                  Decline Work Item
                 </Button>
               </HStack>
             </Box>

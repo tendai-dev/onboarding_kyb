@@ -48,7 +48,7 @@ interface Document {
   documentNumber: string;
   caseId: string;
   partnerId: string;
-  type: number;
+  type: number | string;
   fileName: string;
   contentType: string;
   sizeBytes: number;
@@ -58,8 +58,27 @@ interface Document {
   uploadedBy: string;
 }
 
-const getDocumentTypeName = (type: number): string => {
-  const types: Record<number, string> = {
+const getDocumentTypeName = (type: number | string): string => {
+  // Handle string types from backend (e.g., "ArticlesOfIncorporation", "ProofOfAddress")
+  if (typeof type === 'string') {
+    const stringTypes: Record<string, string> = {
+      'Passport': 'Passport',
+      'DriversLicense': "Driver's License",
+      'NationalId': 'National ID',
+      'ProofOfAddress': 'Proof of Address',
+      'BankStatement': 'Bank Statement',
+      'TaxDocument': 'Tax Document',
+      'BusinessRegistration': 'Business Registration',
+      'ArticlesOfIncorporation': 'Articles of Incorporation',
+      'ShareholderRegistry': 'Shareholder Registry',
+      'FinancialStatements': 'Financial Statements',
+      'Other': 'Other',
+    };
+    return stringTypes[type] || type.replace(/([A-Z])/g, ' $1').trim() || 'Unknown';
+  }
+  
+  // Handle numeric types (legacy)
+  const numericTypes: Record<number, string> = {
     1: 'Passport',
     2: "Driver's License",
     3: 'National ID',
@@ -72,8 +91,8 @@ const getDocumentTypeName = (type: number): string => {
     10: 'Financial Statements',
     99: 'Other',
   };
-  const validType = type in types ? type : null;
-  return validType !== null ? types[validType] : 'Unknown';
+  const validType = type in numericTypes ? type : null;
+  return validType !== null ? numericTypes[validType] : 'Unknown';
 };
 
 const formatFileSize = (bytes: number): string => {
@@ -90,14 +109,16 @@ const formatFileSize = (bytes: number): string => {
 // Map backend response (snake_case) to frontend interface (camelCase)
 // Backend uses JsonNamingPolicy.SnakeCaseLower, so all properties are snake_case
 const mapApiDocumentToDocument = (apiDoc: Record<string, unknown>): Document => {
-  // Parse Type from string to number (backend returns "1", "2", etc. as string)
+  // Type can be a string (e.g., "ArticlesOfIncorporation") or number
   const typeValue = apiDoc.type || apiDoc.Type;
-  const typeNumber =
-    typeof typeValue === 'string'
-      ? parseInt(typeValue, 10)
-      : typeof typeValue === 'number'
-        ? typeValue
-        : 99; // Default to "Other" if invalid
+  // Keep as string if it's a named type, otherwise try to parse as number
+  const parsedType = typeof typeValue === 'string' && isNaN(parseInt(typeValue, 10))
+    ? typeValue  // Keep string types like "ArticlesOfIncorporation"
+    : typeof typeValue === 'number'
+      ? typeValue
+      : typeof typeValue === 'string'
+        ? parseInt(typeValue, 10)
+        : 'Other';
 
   // Handle uploadedAt - can be string or Date object
   let uploadedAtStr = '';
@@ -121,7 +142,7 @@ const mapApiDocumentToDocument = (apiDoc: Record<string, unknown>): Document => 
     ),
     caseId: String(apiDoc.case_id || apiDoc.caseId || apiDoc.CaseId || ''),
     partnerId: String(apiDoc.partner_id || apiDoc.partnerId || apiDoc.PartnerId || ''),
-    type: typeNumber,
+    type: parsedType,
     fileName: String(apiDoc.file_name || apiDoc.fileName || apiDoc.FileName || ''),
     contentType: String(
       apiDoc.content_type || apiDoc.contentType || apiDoc.ContentType || ''
@@ -361,7 +382,22 @@ export default function DocumentsPage() {
   };
 
   // Filter by document type category
-  const getDocumentTypeCategory = (type: number): DocumentTypeFilter => {
+  const getDocumentTypeCategory = (type: number | string): DocumentTypeFilter => {
+    // Handle string types from backend
+    if (typeof type === 'string') {
+      const idTypes = ['Passport', 'DriversLicense', 'NationalId'];
+      const addressTypes = ['ProofOfAddress'];
+      const financialTypes = ['BankStatement', 'TaxDocument', 'FinancialStatements'];
+      const businessTypes = ['BusinessRegistration', 'ArticlesOfIncorporation', 'ShareholderRegistry'];
+      
+      if (idTypes.includes(type)) return 'ID';
+      if (addressTypes.includes(type)) return 'ADDRESS';
+      if (financialTypes.includes(type)) return 'FINANCIAL';
+      if (businessTypes.includes(type)) return 'BUSINESS';
+      return 'OTHER';
+    }
+    
+    // Handle numeric types (legacy)
     if ([1, 2, 3].includes(type)) return 'ID'; // Passport, Driver's License, National ID
     if ([4].includes(type)) return 'ADDRESS'; // Proof of Address
     if ([5, 6, 10].includes(type)) return 'FINANCIAL'; // Bank Statement, Tax Document, Financial Statements

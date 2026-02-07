@@ -1,6 +1,6 @@
 'use client';
 
-import { Box, VStack, HStack, SimpleGrid, Flex, Spinner } from '@chakra-ui/react';
+import { Box, VStack, HStack, SimpleGrid, Flex, Spinner, Input, Textarea } from '@chakra-ui/react';
 import {
   Search,
   Typography,
@@ -8,10 +8,13 @@ import {
   IconWrapper,
   Tooltip,
   Dropdown,
+  Modal,
   // Icons
   AddIcon,
   DeleteIcon,
   EditIcon,
+  TickCircleIcon,
+  CloseIcon,
 } from '@mukuru/mukuru-react-components';
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
@@ -38,6 +41,16 @@ export default function NotificationRulesPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [priorityFilter, setPriorityFilter] = useState('ALL');
   const [selectedRule, setSelectedRule] = useState<NotificationRule | null>(null);
+  const [showNewRuleModal, setShowNewRuleModal] = useState(false);
+  const [showEditRuleModal, setShowEditRuleModal] = useState(false);
+  const [editingRule, setEditingRule] = useState<NotificationRule | null>(null);
+  const [newRule, setNewRule] = useState<Partial<NotificationRule>>({
+    name: '',
+    condition: '',
+    action: '',
+    isActive: true,
+    priority: 'MEDIUM',
+  });
 
   useEffect(() => {
     setTimeout(() => {
@@ -102,6 +115,55 @@ export default function NotificationRulesPage() {
   const activeCount = rules.filter((r) => r.isActive).length;
   const urgentCount = rules.filter((r) => r.priority === 'URGENT').length;
   const highCount = rules.filter((r) => r.priority === 'HIGH').length;
+
+  const handleCreateRule = () => {
+    if (!newRule.name || !newRule.condition || !newRule.action) {
+      alert('Please fill in all required fields (Name, Condition, and Action)');
+      return;
+    }
+    const id = `RULE-${String(rules.length + 1).padStart(3, '0')}`;
+    const created: NotificationRule = {
+      id,
+      name: newRule.name || '',
+      condition: newRule.condition || '',
+      action: newRule.action || '',
+      isActive: newRule.isActive ?? true,
+      priority: newRule.priority || 'MEDIUM',
+    };
+    setRules([...rules, created]);
+    setShowNewRuleModal(false);
+    setNewRule({
+      name: '',
+      condition: '',
+      action: '',
+      isActive: true,
+      priority: 'MEDIUM',
+    });
+  };
+
+  const handleEditRule = (rule: NotificationRule) => {
+    setEditingRule({ ...rule });
+    setShowEditRuleModal(true);
+  };
+
+  const handleSaveEditedRule = () => {
+    if (!editingRule) return;
+    if (!editingRule.name || !editingRule.condition || !editingRule.action) {
+      alert('Please fill in all required fields');
+      return;
+    }
+    setRules((prev) =>
+      prev.map((r) => (r.id === editingRule.id ? editingRule : r))
+    );
+    setShowEditRuleModal(false);
+    setEditingRule(null);
+  };
+
+  const handleDeleteRule = (ruleId: string) => {
+    if (confirm('Are you sure you want to delete this rule?')) {
+      setRules((prev) => prev.filter((r) => r.id !== ruleId));
+    }
+  };
 
   return (
     <Box minH="100vh" bg="#F8FAFC">
@@ -221,7 +283,7 @@ export default function NotificationRulesPage() {
               <Box w="1px" h="32px" bg="#E2E8F0" />
 
               <Tooltip content="Add new rule">
-                <Button variant="primary" size="sm">
+                <Button variant="primary" size="sm" onClick={() => setShowNewRuleModal(true)}>
                   <IconWrapper>
                     <AddIcon width="16" height="16" />
                   </IconWrapper>
@@ -484,7 +546,10 @@ export default function NotificationRulesPage() {
                               cursor="pointer"
                               transition="all 0.15s"
                               _hover={{ bg: '#F1F5F9' }}
-                              onClick={(e) => e.stopPropagation()}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleEditRule(rule);
+                              }}
                             >
                               <EditIcon width="14" height="14" color="#64748B" />
                             </Box>
@@ -495,7 +560,10 @@ export default function NotificationRulesPage() {
                               cursor="pointer"
                               transition="all 0.15s"
                               _hover={{ bg: '#FEE2E2' }}
-                              onClick={(e) => e.stopPropagation()}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleDeleteRule(rule.id);
+                              }}
                             >
                               <DeleteIcon width="14" height="14" color="#EF4444" />
                             </Box>
@@ -510,6 +578,244 @@ export default function NotificationRulesPage() {
           )}
         </Box>
       </Box>
+
+      {/* New Rule Modal */}
+      <Modal
+        isOpen={showNewRuleModal}
+        onClose={() => setShowNewRuleModal(false)}
+        title="Create New Rule"
+        size="large"
+      >
+        <VStack gap="20px" align="stretch" p="4px">
+          <Box>
+            <Typography fontSize="13px" fontWeight="600" color="#1E293B" mb="8px">
+              Rule Name *
+            </Typography>
+            <Input
+              placeholder="Enter rule name"
+              value={newRule.name}
+              onChange={(e) => setNewRule({ ...newRule, name: e.target.value })}
+              size="md"
+              borderColor="#E2E8F0"
+              _focus={{ borderColor: '#F05423', boxShadow: '0 0 0 1px #F05423' }}
+            />
+          </Box>
+
+          <Box>
+            <Typography fontSize="13px" fontWeight="600" color="#1E293B" mb="8px">
+              Condition *
+            </Typography>
+            <Textarea
+              placeholder="e.g., riskLevel == 'CRITICAL'"
+              value={newRule.condition}
+              onChange={(e) => setNewRule({ ...newRule, condition: e.target.value })}
+              size="md"
+              borderColor="#E2E8F0"
+              _focus={{ borderColor: '#F05423', boxShadow: '0 0 0 1px #F05423' }}
+              rows={3}
+              fontFamily="mono"
+            />
+          </Box>
+
+          <Box>
+            <Typography fontSize="13px" fontWeight="600" color="#1E293B" mb="8px">
+              Action *
+            </Typography>
+            <Textarea
+              placeholder="e.g., Send email to senior management"
+              value={newRule.action}
+              onChange={(e) => setNewRule({ ...newRule, action: e.target.value })}
+              size="md"
+              borderColor="#E2E8F0"
+              _focus={{ borderColor: '#F05423', boxShadow: '0 0 0 1px #F05423' }}
+              rows={2}
+            />
+          </Box>
+
+          <Box>
+            <Typography fontSize="13px" fontWeight="600" color="#1E293B" mb="8px">
+              Priority
+            </Typography>
+            <Dropdown
+              items={[
+                { label: 'Low', value: 'LOW' },
+                { label: 'Medium', value: 'MEDIUM' },
+                { label: 'High', value: 'HIGH' },
+                { label: 'Urgent', value: 'URGENT' },
+              ]}
+              placeholder="Select priority"
+              defaultValue={newRule.priority}
+              onSelectionChange={(val) => setNewRule({ ...newRule, priority: val as 'LOW' | 'MEDIUM' | 'HIGH' | 'URGENT' })}
+            />
+          </Box>
+
+          <Flex justify="space-between" align="center" pt="8px">
+            <HStack gap="8px">
+              <Typography fontSize="13px" color="#64748B">
+                Active
+              </Typography>
+              <Box
+                as="button"
+                w="44px"
+                h="24px"
+                bg={newRule.isActive ? '#10B981' : '#CBD5E1'}
+                borderRadius="full"
+                position="relative"
+                transition="all 0.2s"
+                cursor="pointer"
+                onClick={() => setNewRule({ ...newRule, isActive: !newRule.isActive })}
+              >
+                <Box
+                  w="20px"
+                  h="20px"
+                  bg="white"
+                  borderRadius="full"
+                  position="absolute"
+                  top="2px"
+                  left={newRule.isActive ? '22px' : '2px'}
+                  transition="all 0.2s"
+                  boxShadow="0 1px 3px rgba(0,0,0,0.15)"
+                />
+              </Box>
+            </HStack>
+
+            <HStack gap="12px">
+              <Button variant="secondary" onClick={() => setShowNewRuleModal(false)}>
+                Cancel
+              </Button>
+              <Button variant="primary" onClick={handleCreateRule}>
+                <IconWrapper>
+                  <TickCircleIcon width="14" height="14" />
+                </IconWrapper>
+                Create Rule
+              </Button>
+            </HStack>
+          </Flex>
+        </VStack>
+      </Modal>
+
+      {/* Edit Rule Modal */}
+      <Modal
+        isOpen={showEditRuleModal}
+        onClose={() => {
+          setShowEditRuleModal(false);
+          setEditingRule(null);
+        }}
+        title="Edit Rule"
+        size="large"
+      >
+        {editingRule && (
+          <VStack gap="20px" align="stretch" p="4px">
+            <Box>
+              <Typography fontSize="13px" fontWeight="600" color="#1E293B" mb="8px">
+                Rule Name *
+              </Typography>
+              <Input
+                placeholder="Enter rule name"
+                value={editingRule.name}
+                onChange={(e) => setEditingRule({ ...editingRule, name: e.target.value })}
+                size="md"
+                borderColor="#E2E8F0"
+                _focus={{ borderColor: '#F05423', boxShadow: '0 0 0 1px #F05423' }}
+              />
+            </Box>
+
+            <Box>
+              <Typography fontSize="13px" fontWeight="600" color="#1E293B" mb="8px">
+                Condition *
+              </Typography>
+              <Textarea
+                placeholder="e.g., riskLevel == 'CRITICAL'"
+                value={editingRule.condition}
+                onChange={(e) => setEditingRule({ ...editingRule, condition: e.target.value })}
+                size="md"
+                borderColor="#E2E8F0"
+                _focus={{ borderColor: '#F05423', boxShadow: '0 0 0 1px #F05423' }}
+                rows={3}
+                fontFamily="mono"
+              />
+            </Box>
+
+            <Box>
+              <Typography fontSize="13px" fontWeight="600" color="#1E293B" mb="8px">
+                Action *
+              </Typography>
+              <Textarea
+                placeholder="e.g., Send email to senior management"
+                value={editingRule.action}
+                onChange={(e) => setEditingRule({ ...editingRule, action: e.target.value })}
+                size="md"
+                borderColor="#E2E8F0"
+                _focus={{ borderColor: '#F05423', boxShadow: '0 0 0 1px #F05423' }}
+                rows={2}
+              />
+            </Box>
+
+            <Box>
+              <Typography fontSize="13px" fontWeight="600" color="#1E293B" mb="8px">
+                Priority
+              </Typography>
+              <Dropdown
+                items={[
+                  { label: 'Low', value: 'LOW' },
+                  { label: 'Medium', value: 'MEDIUM' },
+                  { label: 'High', value: 'HIGH' },
+                  { label: 'Urgent', value: 'URGENT' },
+                ]}
+                placeholder="Select priority"
+                defaultValue={editingRule.priority}
+                onSelectionChange={(val) => setEditingRule({ ...editingRule, priority: val as 'LOW' | 'MEDIUM' | 'HIGH' | 'URGENT' })}
+              />
+            </Box>
+
+            <Flex justify="space-between" align="center" pt="8px">
+              <HStack gap="8px">
+                <Typography fontSize="13px" color="#64748B">
+                  Active
+                </Typography>
+                <Box
+                  as="button"
+                  w="44px"
+                  h="24px"
+                  bg={editingRule.isActive ? '#10B981' : '#CBD5E1'}
+                  borderRadius="full"
+                  position="relative"
+                  transition="all 0.2s"
+                  cursor="pointer"
+                  onClick={() => setEditingRule({ ...editingRule, isActive: !editingRule.isActive })}
+                >
+                  <Box
+                    w="20px"
+                    h="20px"
+                    bg="white"
+                    borderRadius="full"
+                    position="absolute"
+                    top="2px"
+                    left={editingRule.isActive ? '22px' : '2px'}
+                    transition="all 0.2s"
+                    boxShadow="0 1px 3px rgba(0,0,0,0.15)"
+                  />
+                </Box>
+              </HStack>
+
+              <HStack gap="12px">
+                <Button variant="secondary" onClick={() => {
+                  setShowEditRuleModal(false);
+                  setEditingRule(null);
+                }}>
+                  Cancel
+                </Button>
+                <Button variant="primary" onClick={handleSaveEditedRule}>
+                  <IconWrapper>
+                    <TickCircleIcon width="14" height="14" />
+                  </IconWrapper>
+                  Save Changes
+                </Button>
+              </HStack>
+            </Flex>
+          </VStack>
+        )}
+      </Modal>
     </Box>
   );
 }

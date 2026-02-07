@@ -12,6 +12,11 @@ public interface INotificationRepository
     Task<List<DomainNotification>> ListByStatusAsync(string status, CancellationToken cancellationToken = default);
     Task<List<DomainNotification>> GetAllAsync(CancellationToken cancellationToken = default);
     Task<DomainNotification?> GetByIdAsync(NotificationId id, CancellationToken cancellationToken = default);
+    
+    /// <summary>
+    /// Deletes all notifications associated with a case. Used for cascade delete.
+    /// </summary>
+    Task<int> DeleteByCaseIdAsync(Guid caseId, CancellationToken cancellationToken = default);
 }
 
 public interface INotificationSender

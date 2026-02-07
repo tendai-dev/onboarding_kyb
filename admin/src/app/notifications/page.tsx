@@ -1,6 +1,6 @@
 'use client';
 
-import { Box, VStack, HStack, Flex, Spinner, SimpleGrid } from '@chakra-ui/react';
+import { Box, VStack, HStack, Flex, Spinner, SimpleGrid, Input, Textarea } from '@chakra-ui/react';
 import {
   Search,
   Typography,
@@ -9,9 +9,12 @@ import {
   IconWrapper,
   Tooltip,
   Dropdown,
+  Modal,
   // Icons
   AddIcon,
   SettingsIcon,
+  CloseIcon,
+  TickCircleIcon,
 } from '@mukuru/mukuru-react-components';
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
@@ -57,6 +60,25 @@ export default function NotificationsPage() {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [typeFilter, setTypeFilter] = useState('ALL');
+  const [showNewNotificationModal, setShowNewNotificationModal] = useState(false);
+  const [showSettingsModal, setShowSettingsModal] = useState(false);
+  const [newNotification, setNewNotification] = useState<Partial<Notification>>({
+    name: '',
+    type: 'EMAIL',
+    trigger: '',
+    description: '',
+    isActive: true,
+    recipients: [],
+    template: '',
+    frequency: 'IMMEDIATE',
+  });
+  const [recipientInput, setRecipientInput] = useState('');
+  const [globalSettings, setGlobalSettings] = useState({
+    emailEnabled: true,
+    smsEnabled: false,
+    systemEnabled: true,
+    defaultFrequency: 'IMMEDIATE' as 'IMMEDIATE' | 'DAILY' | 'WEEKLY' | 'MONTHLY',
+  });
 
   useEffect(() => {
     setTimeout(() => {
@@ -164,6 +186,60 @@ export default function NotificationsPage() {
   const activeCount = notifications.filter((n) => n.isActive).length;
   const emailCount = notifications.filter((n) => n.type === 'EMAIL').length;
   const immediateCount = notifications.filter((n) => n.frequency === 'IMMEDIATE').length;
+
+  const handleCreateNotification = () => {
+    if (!newNotification.name || !newNotification.trigger) {
+      alert('Please fill in required fields (Name and Trigger)');
+      return;
+    }
+    const id = `NOTIF-${String(notifications.length + 1).padStart(3, '0')}`;
+    const created: Notification = {
+      id,
+      name: newNotification.name || '',
+      type: newNotification.type || 'EMAIL',
+      trigger: newNotification.trigger || '',
+      description: newNotification.description || '',
+      isActive: newNotification.isActive ?? true,
+      recipients: newNotification.recipients || [],
+      template: newNotification.template || '',
+      frequency: newNotification.frequency || 'IMMEDIATE',
+    };
+    setNotifications([...notifications, created]);
+    setShowNewNotificationModal(false);
+    setNewNotification({
+      name: '',
+      type: 'EMAIL',
+      trigger: '',
+      description: '',
+      isActive: true,
+      recipients: [],
+      template: '',
+      frequency: 'IMMEDIATE',
+    });
+    setRecipientInput('');
+  };
+
+  const handleAddRecipient = () => {
+    if (recipientInput && recipientInput.includes('@')) {
+      setNewNotification({
+        ...newNotification,
+        recipients: [...(newNotification.recipients || []), recipientInput],
+      });
+      setRecipientInput('');
+    }
+  };
+
+  const handleRemoveRecipient = (index: number) => {
+    setNewNotification({
+      ...newNotification,
+      recipients: (newNotification.recipients || []).filter((_, i) => i !== index),
+    });
+  };
+
+  const handleSaveSettings = () => {
+    console.log('Settings saved:', globalSettings);
+    setShowSettingsModal(false);
+  };
 
   const getTypeIcon = (type: string) => {
     switch (type) {
@@ -295,7 +371,7 @@ export default function NotificationsPage() {
               <Box w="1px" h="32px" bg="#E2E8F0" />
 
               <Tooltip content="Add new notification">
-                <Button variant="primary" size="sm">
+                <Button variant="primary" size="sm" onClick={() => setShowNewNotificationModal(true)}>
                   <IconWrapper>
                     <AddIcon width="16" height="16" />
                   </IconWrapper>
@@ -303,7 +379,7 @@ export default function NotificationsPage() {
                 </Button>
               </Tooltip>
 
-              <Button variant="secondary" size="sm">
+              <Button variant="secondary" size="sm" onClick={() => setShowSettingsModal(true)}>
                 <IconWrapper>
                   <SettingsIcon width="16" height="16" />
                 </IconWrapper>
@@ -585,6 +661,332 @@ export default function NotificationsPage() {
           )}
         </Box>
       </Box>
+
+      {/* New Notification Modal */}
+      <Modal
+        isOpen={showNewNotificationModal}
+        onClose={() => setShowNewNotificationModal(false)}
+        title="Create New Notification"
+        size="large"
+      >
+        <VStack gap="20px" align="stretch" p="4px">
+          <Box>
+            <Typography fontSize="13px" fontWeight="600" color="#1E293B" mb="8px">
+              Name *
+            </Typography>
+            <Input
+              placeholder="Enter notification name"
+              value={newNotification.name}
+              onChange={(e) => setNewNotification({ ...newNotification, name: e.target.value })}
+              size="md"
+              borderColor="#E2E8F0"
+              _focus={{ borderColor: '#F05423', boxShadow: '0 0 0 1px #F05423' }}
+            />
+          </Box>
+
+          <Box>
+            <Typography fontSize="13px" fontWeight="600" color="#1E293B" mb="8px">
+              Type
+            </Typography>
+            <Dropdown
+              items={[
+                { label: 'Email', value: 'EMAIL' },
+                { label: 'System', value: 'SYSTEM' },
+                { label: 'SMS', value: 'SMS' },
+              ]}
+              placeholder="Select type"
+              defaultValue={newNotification.type}
+              onSelectionChange={(val) => setNewNotification({ ...newNotification, type: val as 'EMAIL' | 'SYSTEM' | 'SMS' })}
+            />
+          </Box>
+
+          <Box>
+            <Typography fontSize="13px" fontWeight="600" color="#1E293B" mb="8px">
+              Trigger Condition *
+            </Typography>
+            <Input
+              placeholder="e.g., Application submitted by partner"
+              value={newNotification.trigger}
+              onChange={(e) => setNewNotification({ ...newNotification, trigger: e.target.value })}
+              size="md"
+              borderColor="#E2E8F0"
+              _focus={{ borderColor: '#F05423', boxShadow: '0 0 0 1px #F05423' }}
+            />
+          </Box>
+
+          <Box>
+            <Typography fontSize="13px" fontWeight="600" color="#1E293B" mb="8px">
+              Description
+            </Typography>
+            <Textarea
+              placeholder="Describe what this notification does"
+              value={newNotification.description}
+              onChange={(e) => setNewNotification({ ...newNotification, description: e.target.value })}
+              size="md"
+              borderColor="#E2E8F0"
+              _focus={{ borderColor: '#F05423', boxShadow: '0 0 0 1px #F05423' }}
+              rows={2}
+            />
+          </Box>
+
+          <Box>
+            <Typography fontSize="13px" fontWeight="600" color="#1E293B" mb="8px">
+              Frequency
+            </Typography>
+            <Dropdown
+              items={[
+                { label: 'Immediate', value: 'IMMEDIATE' },
+                { label: 'Daily', value: 'DAILY' },
+                { label: 'Weekly', value: 'WEEKLY' },
+                { label: 'Monthly', value: 'MONTHLY' },
+              ]}
+              placeholder="Select frequency"
+              defaultValue={newNotification.frequency}
+              onSelectionChange={(val) => setNewNotification({ ...newNotification, frequency: val as 'IMMEDIATE' | 'DAILY' | 'WEEKLY' | 'MONTHLY' })}
+            />
+          </Box>
+
+          <Box>
+            <Typography fontSize="13px" fontWeight="600" color="#1E293B" mb="8px">
+              Email Template
+            </Typography>
+            <Textarea
+              placeholder="e.g., New application submitted by {{companyName}}"
+              value={newNotification.template}
+              onChange={(e) => setNewNotification({ ...newNotification, template: e.target.value })}
+              size="md"
+              borderColor="#E2E8F0"
+              _focus={{ borderColor: '#F05423', boxShadow: '0 0 0 1px #F05423' }}
+              rows={3}
+            />
+          </Box>
+
+          <Box>
+            <Typography fontSize="13px" fontWeight="600" color="#1E293B" mb="8px">
+              Recipients
+            </Typography>
+            <HStack gap="8px" mb="8px">
+              <Input
+                placeholder="Enter email address"
+                value={recipientInput}
+                onChange={(e) => setRecipientInput(e.target.value)}
+                size="md"
+                borderColor="#E2E8F0"
+                _focus={{ borderColor: '#F05423', boxShadow: '0 0 0 1px #F05423' }}
+                flex="1"
+                onKeyDown={(e) => e.key === 'Enter' && handleAddRecipient()}
+              />
+              <Button variant="secondary" size="sm" onClick={handleAddRecipient}>
+                Add
+              </Button>
+            </HStack>
+            {(newNotification.recipients || []).length > 0 && (
+              <VStack gap="6px" align="stretch">
+                {(newNotification.recipients || []).map((recipient, index) => (
+                  <Flex
+                    key={index}
+                    justify="space-between"
+                    align="center"
+                    p="8px 12px"
+                    bg="#F8FAFC"
+                    borderRadius="6px"
+                    border="1px solid #E2E8F0"
+                  >
+                    <Typography fontSize="13px" color="#1E293B">
+                      {recipient}
+                    </Typography>
+                    <Box
+                      as="button"
+                      cursor="pointer"
+                      onClick={() => handleRemoveRecipient(index)}
+                      p="4px"
+                      borderRadius="4px"
+                      _hover={{ bg: '#FEE2E2' }}
+                    >
+                      <CloseIcon width="12" height="12" color="#EF4444" />
+                    </Box>
+                  </Flex>
+                ))}
+              </VStack>
+            )}
+          </Box>
+
+          <HStack gap="12px" justify="flex-end" pt="12px">
+            <Button variant="secondary" onClick={() => setShowNewNotificationModal(false)}>
+              Cancel
+            </Button>
+            <Button variant="primary" onClick={handleCreateNotification}>
+              <IconWrapper>
+                <TickCircleIcon width="14" height="14" />
+              </IconWrapper>
+              Create Notification
+            </Button>
+          </HStack>
+        </VStack>
+      </Modal>
+
+      {/* Settings Modal */}
+      <Modal
+        isOpen={showSettingsModal}
+        onClose={() => setShowSettingsModal(false)}
+        title="Notification Settings"
+        size="small"
+      >
+        <VStack gap="20px" align="stretch" p="4px">
+          <Box>
+            <Typography fontSize="14px" fontWeight="600" color="#1E293B" mb="16px">
+              Notification Channels
+            </Typography>
+            <VStack gap="12px" align="stretch">
+              <Flex justify="space-between" align="center" p="12px" bg="#F8FAFC" borderRadius="8px">
+                <HStack gap="12px">
+                  <Box p="8px" bg="#DBEAFE" borderRadius="8px">
+                    <FiMail size={16} color="#2563EB" />
+                  </Box>
+                  <VStack align="start" gap="0">
+                    <Typography fontSize="13px" fontWeight="600" color="#1E293B">
+                      Email Notifications
+                    </Typography>
+                    <Typography fontSize="11px" color="#64748B">
+                      Send notifications via email
+                    </Typography>
+                  </VStack>
+                </HStack>
+                <Box
+                  as="button"
+                  w="44px"
+                  h="24px"
+                  bg={globalSettings.emailEnabled ? '#10B981' : '#CBD5E1'}
+                  borderRadius="full"
+                  position="relative"
+                  transition="all 0.2s"
+                  cursor="pointer"
+                  onClick={() => setGlobalSettings({ ...globalSettings, emailEnabled: !globalSettings.emailEnabled })}
+                >
+                  <Box
+                    w="20px"
+                    h="20px"
+                    bg="white"
+                    borderRadius="full"
+                    position="absolute"
+                    top="2px"
+                    left={globalSettings.emailEnabled ? '22px' : '2px'}
+                    transition="all 0.2s"
+                    boxShadow="0 1px 3px rgba(0,0,0,0.15)"
+                  />
+                </Box>
+              </Flex>
+
+              <Flex justify="space-between" align="center" p="12px" bg="#F8FAFC" borderRadius="8px">
+                <HStack gap="12px">
+                  <Box p="8px" bg="#FEF3C7" borderRadius="8px">
+                    <FiMessageSquare size={16} color="#D97706" />
+                  </Box>
+                  <VStack align="start" gap="0">
+                    <Typography fontSize="13px" fontWeight="600" color="#1E293B">
+                      SMS Notifications
+                    </Typography>
+                    <Typography fontSize="11px" color="#64748B">
+                      Send notifications via SMS
+                    </Typography>
+                  </VStack>
+                </HStack>
+                <Box
+                  as="button"
+                  w="44px"
+                  h="24px"
+                  bg={globalSettings.smsEnabled ? '#10B981' : '#CBD5E1'}
+                  borderRadius="full"
+                  position="relative"
+                  transition="all 0.2s"
+                  cursor="pointer"
+                  onClick={() => setGlobalSettings({ ...globalSettings, smsEnabled: !globalSettings.smsEnabled })}
+                >
+                  <Box
+                    w="20px"
+                    h="20px"
+                    bg="white"
+                    borderRadius="full"
+                    position="absolute"
+                    top="2px"
+                    left={globalSettings.smsEnabled ? '22px' : '2px'}
+                    transition="all 0.2s"
+                    boxShadow="0 1px 3px rgba(0,0,0,0.15)"
+                  />
+                </Box>
+              </Flex>
+
+              <Flex justify="space-between" align="center" p="12px" bg="#F8FAFC" borderRadius="8px">
+                <HStack gap="12px">
+                  <Box p="8px" bg="#D1FAE5" borderRadius="8px">
+                    <FiBell size={16} color="#059669" />
+                  </Box>
+                  <VStack align="start" gap="0">
+                    <Typography fontSize="13px" fontWeight="600" color="#1E293B">
+                      System Notifications
+                    </Typography>
+                    <Typography fontSize="11px" color="#64748B">
+                      In-app notification alerts
+                    </Typography>
+                  </VStack>
+                </HStack>
+                <Box
+                  as="button"
+                  w="44px"
+                  h="24px"
+                  bg={globalSettings.systemEnabled ? '#10B981' : '#CBD5E1'}
+                  borderRadius="full"
+                  position="relative"
+                  transition="all 0.2s"
+                  cursor="pointer"
+                  onClick={() => setGlobalSettings({ ...globalSettings, systemEnabled: !globalSettings.systemEnabled })}
+                >
+                  <Box
+                    w="20px"
+                    h="20px"
+                    bg="white"
+                    borderRadius="full"
+                    position="absolute"
+                    top="2px"
+                    left={globalSettings.systemEnabled ? '22px' : '2px'}
+                    transition="all 0.2s"
+                    boxShadow="0 1px 3px rgba(0,0,0,0.15)"
+                  />
+                </Box>
+              </Flex>
+            </VStack>
+          </Box>
+
+          <Box>
+            <Typography fontSize="14px" fontWeight="600" color="#1E293B" mb="12px">
+              Default Frequency
+            </Typography>
+            <Dropdown
+              items={[
+                { label: 'Immediate', value: 'IMMEDIATE' },
+                { label: 'Daily Digest', value: 'DAILY' },
+                { label: 'Weekly Digest', value: 'WEEKLY' },
+                { label: 'Monthly Digest', value: 'MONTHLY' },
+              ]}
+              placeholder="Select default frequency"
+              defaultValue={globalSettings.defaultFrequency}
+              onSelectionChange={(val) => setGlobalSettings({ ...globalSettings, defaultFrequency: val as 'IMMEDIATE' | 'DAILY' | 'WEEKLY' | 'MONTHLY' })}
+            />
+          </Box>
+
+          <HStack gap="12px" justify="flex-end" pt="12px">
+            <Button variant="secondary" onClick={() => setShowSettingsModal(false)}>
+              Cancel
+            </Button>
+            <Button variant="primary" onClick={handleSaveSettings}>
+              <IconWrapper>
+                <TickCircleIcon width="14" height="14" />
+              </IconWrapper>
+              Save Settings
+            </Button>
+          </HStack>
+        </VStack>
+      </Modal>
     </Box>
   );
 }
