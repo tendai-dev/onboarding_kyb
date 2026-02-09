@@ -35,8 +35,21 @@ public class ProjectionsController : ControllerBase
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error getting dashboard");
-            return StatusCode(500, new { error = "Failed to get dashboard", message = ex.Message });
+            _logger.LogError(ex, "Error getting dashboard - returning empty dashboard");
+            
+            // Return empty dashboard instead of 500 to allow UI to render gracefully
+            var emptyDashboard = new DashboardProjection
+            {
+                GeneratedAt = DateTime.UtcNow,
+                PartnerId = partnerId ?? "ALL",
+                Cases = new CaseStatistics(),
+                Performance = new PerformanceMetrics(),
+                Risk = new RiskMetrics(),
+                Compliance = new ComplianceMetrics(),
+                RecentActivities = new List<RecentActivity>(),
+                DailyTrends = new List<DailyMetric>()
+            };
+            return Ok(emptyDashboard);
         }
     }
 
@@ -134,8 +147,16 @@ public class ProjectionsController : ControllerBase
     [ProducesResponseType(typeof(List<DailyMetric>), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetTrends([FromQuery] string? partnerId = null)
     {
-        var dashboard = await _mediator.Send(new GetDashboardQuery(partnerId));
-        return Ok(dashboard.DailyTrends);
+        try
+        {
+            var dashboard = await _mediator.Send(new GetDashboardQuery(partnerId));
+            return Ok(dashboard.DailyTrends);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting trends - returning empty trends");
+            return Ok(new List<DailyMetric>());
+        }
     }
 
     /// <summary>
@@ -145,17 +166,32 @@ public class ProjectionsController : ControllerBase
     [ProducesResponseType(typeof(List<object>), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetEntityTypeDistribution([FromQuery] string? partnerId = null)
     {
-        var dashboard = await _mediator.Send(new GetDashboardQuery(partnerId));
-        
-        var distribution = new[]
+        try
         {
-            new { name = "Individual", value = dashboard.Cases.IndividualCases },
-            new { name = "Corporate", value = dashboard.Cases.CorporateCases },
-            new { name = "Trust", value = dashboard.Cases.TrustCases },
-            new { name = "Partnership", value = dashboard.Cases.PartnershipCases }
-        };
+            var dashboard = await _mediator.Send(new GetDashboardQuery(partnerId));
+            
+            var distribution = new[]
+            {
+                new { name = "Individual", value = dashboard.Cases.IndividualCases },
+                new { name = "Corporate", value = dashboard.Cases.CorporateCases },
+                new { name = "Trust", value = dashboard.Cases.TrustCases },
+                new { name = "Partnership", value = dashboard.Cases.PartnershipCases }
+            };
 
-        return Ok(distribution);
+            return Ok(distribution);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting entity type distribution - returning empty distribution");
+            var emptyDistribution = new[]
+            {
+                new { name = "Individual", value = 0 },
+                new { name = "Corporate", value = 0 },
+                new { name = "Trust", value = 0 },
+                new { name = "Partnership", value = 0 }
+            };
+            return Ok(emptyDistribution);
+        }
     }
 }
 
